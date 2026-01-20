@@ -1,0 +1,143 @@
+{
+  "Q1": [
+    {
+      "query_id": "Q1_C1",
+      "features": {
+        "executes": 1,
+        "schema_valid": 1,
+        "cross_domain": 1,
+        "domain_coverage": 1.0
+      }
+    },
+    {
+      "query_id": "Q1_C2",
+      "features": {
+        "executes": 1,
+        "schema_valid": 1,
+        "cross_domain": 1,
+        "domain_coverage": 1.0
+      }
+    },
+    {
+      "query_id": "Q1_C3",
+      "features": {
+        "executes": 0,
+        "schema_valid": 0,
+        "cross_domain": 0,
+        "domain_coverage": 0.0
+      }
+    },
+    {
+      "query_id": "Q1_C4",
+      "features": {
+        "executes": 0,
+        "schema_valid": 0,
+        "cross_domain": 0,
+        "domain_coverage": 0.0
+      }
+    },
+    {
+      "query_id": "Q1_C5",
+      "features": {
+        "executes": 1,
+        "schema_valid": 1,
+        "cross_domain": 1,
+        "domain_coverage": 1.0
+      }
+    }
+  ],
+  "Q2": [
+    {
+      "query_id": "Q2_C1",
+      "features": {
+        "executes": 1,
+        "schema_valid": 1,
+        "cross_domain": 1,
+        "domain_coverage": 1.0
+      }
+    },
+    {
+      "query_id": "Q2_C2",
+      "features": {
+        "executes": 1,
+        "schema_valid": 1,
+        "cross_domain": 1,
+        "domain_coverage": 1.0
+      }
+    },
+    {
+      "query_id": "Q2_C3",
+      "features": {
+        "executes": 0,
+        "schema_valid": 0,
+        "cross_domain": 0,
+        "domain_coverage": 0.0
+      }
+    },
+    {
+      "query_id": "Q2_C4",
+      "features": {
+        "executes": 0,
+        "schema_valid": 0,
+        "cross_domain": 0,
+        "domain_coverage": 0.0
+      }
+    },
+    {
+      "query_id": "Q2_C5",
+      "features": {
+        "executes": 1,
+        "schema_valid": 1,
+        "cross_domain": 1,
+        "domain_coverage": 1.0
+      }
+    }
+  ],
+  "Q3": [
+    {
+      "query_id": "Q3_C1",
+      "features": {
+        "executes": 1,
+        "schema_valid": 1,
+        "cross_domain": 0,
+        "domain_coverage": 0.5
+      }
+    },
+    {
+      "query_id": "Q3_C2",
+      "features": {
+        "executes": 1,
+        "schema_valid": 1,
+        "cross_domain": 0,
+        "domain_coverage": 0.5
+      }
+    },
+    {
+      "query_id": "Q3_C3",
+      "features": {
+        "executes": 0,
+        "schema_valid": 0,
+        "cross_domain": 0,
+        "domain_coverage": 0.0
+      }
+    },
+    {
+      "query_id": "Q3_C4",
+      "features": {
+        "executes": 0,
+        "schema_valid": 0,
+        "cross_domain": 0,
+        "domain_coverage": 0.0
+      }
+    },
+    {
+      "query_id": "Q3_C5",
+      "features": {
+        "executes": 1,
+        "schema_valid": 1,
+        "cross_domain": 0,
+        "domain_coverage": 0.5
+      }
+    }
+  ]
+}

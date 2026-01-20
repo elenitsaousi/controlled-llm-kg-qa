@@ -1,0 +1,26 @@
+{
+  "question_id": "Q31",
+  "question": "Which suppliers are associated with low yield?",
+  "candidates": [
+    {
+      "id": "Q31_C1",
+      "query": "MATCH (s:Supplier)-[:AFFECTS]->(y:Yield {value:'low'}) RETURN s.name"
+    },
+    {
+      "id": "Q31_C2",
+      "query": "MATCH (s:Supplier)<-[:AFFECTS]-(y:Yield {value:'low'}) RETURN s.name"
+    },
+    {
+      "id": "Q31_C3",
+      "query": "MATCH (s:Supplier)-[r:AFFECTS]->(y:Yield) WHERE y.value = 'low' RETURN s.name"
+    },
+    {
+      "id": "Q31_C4",
+      "query": "MATCH (s:Supplier)<-[r:AFFECTS]-(y:Yield) WHERE y.value = 'low' RETURN s.name"
+    },
+    {
+      "id": "Q31_C5",
+      "query": "MATCH (s:Supplier)-[:AFFECTS {value:'low'}]->(y:Yield) RETURN s.name"
+    }
+  ]
+}

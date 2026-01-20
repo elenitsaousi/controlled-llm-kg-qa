@@ -1,0 +1,26 @@
+{
+  "question_id": "Q1",
+  "question": "Which suppliers affect the production yield of product X?",
+  "candidates": [
+    {
+      "id": "Q1_C1",
+      "query": "MATCH (p:Product {name:'X'})<-[:SUPPLIES]-(s:Supplier)-[:AFFECTS]->(y:Yield) RETURN s, y"
+    },
+    {
+      "id": "Q1_C2",
+      "query": "MATCH (p:Product {name:'X'})<-[:SUPPLIES]-(s:Supplier)-[:AFFECTS]->(y:Yield) RETURN s.name, y.value"
+    },
+    {
+      "id": "Q1_C3",
+      "query": "MATCH (y:Yield)-[:AFFECTS]->(s:Supplier)-[:SUPPLIES]->(p:Product {name:'X'}) RETURN s"
+    },
+    {
+      "id": "Q1_C4",
+      "query": "MATCH (p:Product {name:'X'})-[:SUPPLIES]->(s:Supplier)-[:AFFECTS]->(y:Yield) RETURN s, y"
+    },
+    {
+      "id": "Q1_C5",
+      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)-[:USED_IN]->(ps:ProcessStep)<-[:REQUIRES]-(p:Product {name:'X'}) RETURN s, m, ps"
+    }
+  ]
+}

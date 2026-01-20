@@ -1,0 +1,10 @@
+{
+  "Q1": {
+    "prompt_only_selected": "Q1_C3",
+    "baseline_ranker_selected": "Q1_C2",
+    "gold_query": "Q1_C2",
+    "prompt_only_correct": false,
+    "baseline_correct": true,
+    "notes": "Prompt-only picked plausible but alternative cross-domain path; baseline selected yield-consistent query."
+  }
+}

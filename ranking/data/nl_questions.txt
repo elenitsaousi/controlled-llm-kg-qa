@@ -1,0 +1,199 @@
+Which suppliers provide specific materials?
+
+Which suppliers supply a given product?
+
+Which orders depend on a specific shipment?
+
+Which shipments have a particular status?
+
+Which inventories stock a given product?
+
+Which suppliers are associated with multiple products?
+
+Which orders contain a specific product?
+
+Which shipments are delayed?
+
+Which suppliers are linked to supply chain disruptions?
+
+Which materials are supplied by a given supplier?
+
+Which products are included in open orders?
+
+Which suppliers provide materials used in production?
+
+Which inventories have low days of supply?
+
+Which orders depend on delayed shipments?
+
+Which suppliers are critical for a product?
+
+Which shipments have a specific status?
+
+Which orders include products from a given supplier?
+
+Which inventories stock multiple products?
+
+Which suppliers provide raw materials?
+
+Which orders are linked to late shipments?
+
+Which shipments affect order fulfillment?
+
+Which suppliers are associated with material shortages?
+
+Which inventories have high days of supply?
+
+Which orders depend on multiple shipments?
+
+Which suppliers are involved in cross-border supply?
+
+Which shipments are pending delivery?
+
+Which products are stocked in inventory?
+
+Which suppliers are linked to multiple orders?
+
+Which shipments are associated with a specific order?
+
+Which inventories are running low?
+
+Which suppliers provide materials for multiple products?
+
+Which orders are delayed due to shipment issues?
+
+Which shipments have unresolved status?
+
+Which suppliers are primary providers of a material?
+
+Which inventories have surplus stock?
+
+Which orders include materials from a given supplier?
+
+Which shipments are critical for order completion?
+
+Which suppliers are associated with supply risks?
+
+Which inventories are below threshold?
+
+Which orders depend on a specific supplier?
+
+Which fabs produce a given product?
+
+Which fabs have capacity constraints?
+
+Which tools are used to process lots?
+
+Which lots are associated with defects?
+
+Which defects are linked to specific lots?
+
+Which tools are associated with defects?
+
+Which products require specific process steps?
+
+Which materials are used in a process step?
+
+Which lots are processed with a specific tool?
+
+Which fabs have tooling bottlenecks?
+
+Which products are produced in a fab?
+
+Which lots have reported defects?
+
+Which tools are used in manufacturing processes?
+
+Which defects affect product quality?
+
+Which process steps require specific materials?
+
+Which fabs are constrained by capacity limits?
+
+Which lots are linked to yield issues?
+
+Which tools are associated with manufacturing defects?
+
+Which products require multiple process steps?
+
+Which fabs produce multiple products?
+
+Which defects occur frequently in lots?
+
+Which tools are critical in production?
+
+Which materials are essential for manufacturing?
+
+Which process steps are used for a product?
+
+Which lots are processed in a specific fab?
+
+Which defects are severe?
+
+Which tools are used across multiple lots?
+
+Which products are affected by defects?
+
+Which fabs have recurring capacity constraints?
+
+Which materials are used in multiple process steps?
+
+Which lots are associated with a defect code?
+
+Which tools process high-volume lots?
+
+Which products are linked to yield loss?
+
+Which fabs experience production bottlenecks?
+
+Which defects impact manufacturing yield?
+
+Which tools are linked to quality issues?
+
+Which materials are critical in production?
+
+Which process steps are common across products?
+
+Which lots have low yield?
+
+Which fabs are constrained by tooling?
+
+Which suppliers affect manufacturing yield?
+
+Which suppliers impact product quality?
+
+Which materials supplied affect manufacturing processes?
+
+Which suppliers are linked to yield loss?
+
+Which products have yield issues related to suppliers?
+
+Which suppliers provide materials used in defective lots?
+
+Which shipments impact manufacturing schedules?
+
+Which suppliers are associated with manufacturing defects?
+
+Which materials affect process steps with defects?
+
+Which suppliers influence production bottlenecks?
+
+Which orders impact manufacturing capacity?
+
+Which suppliers are linked to capacity constraints?
+
+Which materials supplied cause production delays?
+
+Which suppliers affect fab output?
+
+Which shipments delay manufacturing orders?
+
+Which suppliers are associated with low yield?
+
+Which materials affect tool performance?
+
+Which suppliers impact manufacturing efficiency?
+
+Which orders affect production planning?
+
+Which suppliers influence defect rates?

@@ -1,0 +1,26 @@
+{
+  "question_id": "Q8",
+  "question": "Which shipments have a specific status?Answer",
+  "candidates": [
+    {
+      "id": "Q8_C1",
+      "query": "MATCH (s:Shipment)-[:HAS_STATUS]->(status:Status {name:'specific_status'}) RETURN s.shipment_id"
+    },
+    {
+      "id": "Q8_C2",
+      "query": "MATCH (s:Shipment)<-[:DEPENDS_ON]-(o:Order) WHERE EXISTS((s)-[:HAS_STATUS]->(status:Status {name:'specific_status'})) RETURN DISTINCT s.shipment_id"
+    },
+    {
+      "id": "Q8_C3",
+      "query": "MATCH (p:Product)-[:STOCKS]->(i:Inventory), (s:Shipment)<-[:DEPENDS_ON]-(o:Order {order_id:'placeholder_order_id'}) WHERE EXISTS((s)-[:HAS_STATUS]->(status:Status {name:'specific_status'})) RETURN s.shipment_id"
+    },
+    {
+      "id": "Q8_C4",
+      "query": "MATCH (l:Lot)-[:PROCESSED_WITH]->(t:Tool), (p:Product)-[:REQUIRES]->(ls:ProcessStep)-[:USED_IN]->(m:Material) WHERE EXISTS((s:Shipment)<-[:DEPENDS_ON]-(o:Order {order_id:'placeholder_order_id'})) AND EXISTS((s)-[:HAS_STATUS]->(status:Status {name:'specific_status'})) RETURN s.shipment_id"
+    },
+    {
+      "id": "Q8_C5",
+      "query": "MATCH (c:CapacityConstraint), (f:Fab)-[:PRODUCES]->(p:Product)-[:REQUIRES]->(ps:ProcessStep)-[:USED_IN]->(m:Material) WHERE EXISTS((s:Shipment)<-[:DEPENDS_ON]-(o:Order {order_id:'placeholder_order_id'})) AND EXISTS((s)-[:HAS_STATUS]->(status:Status {name:'specific_status'})) RETURN s.shipment_id"
+    }
+  ]
+}

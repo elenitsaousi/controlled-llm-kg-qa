@@ -1,0 +1,26 @@
+{
+  "question_id": "Q25",
+  "question": "Which products are affected by defects?",
+  "candidates": [
+    {
+      "id": "Q25_C1",
+      "query": "MATCH (p:Product)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+    },
+    {
+      "id": "Q25_C2",
+      "query": "MATCH (p:Product)<-[:PRODUCED_FOR]-(l:Lot)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+    },
+    {
+      "id": "Q25_C3",
+      "query": "MATCH (p:Product)<-[:REQUIRES]-(ps:ProcessStep)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+    },
+    {
+      "id": "Q25_C4",
+      "query": "MATCH (p:Product)<-[:USED_IN]-(ms:Material)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+    },
+    {
+      "id": "Q25_C5",
+      "query": "MATCH (p:Product)<-[:PRODUCES]-(f:Fab)-[:HAS_CONSTRAINT]->(cc:CapacityConstraint)-[:AFFECTS]->(y:Yield)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+    }
+  ]
+}

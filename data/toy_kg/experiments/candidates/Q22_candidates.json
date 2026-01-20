@@ -1,0 +1,26 @@
+{
+  "question_id": "Q22",
+  "question": "Which materials are used in a process step?",
+  "candidates": [
+    {
+      "id": "Q22_C1",
+      "query": "MATCH (m:Material)-[:USED_IN]->(ps:ProcessStep) RETURN m.name"
+    },
+    {
+      "id": "Q22_C2",
+      "query": "MATCH (m:Material)<-[:USED_IN]-(ps:ProcessStep) RETURN m.name"
+    },
+    {
+      "id": "Q22_C3",
+      "query": "MATCH p=(m:Material)-[:USED_IN]->(ps:ProcessStep) RETURN m.name"
+    },
+    {
+      "id": "Q22_C4",
+      "query": "MATCH (ps:ProcessStep)-[r:USED_IN]->(m:Material) RETURN m.name"
+    },
+    {
+      "id": "Q22_C5",
+      "query": "MATCH (ps:ProcessStep)<-[:USED_IN]-(m:Material) RETURN m.name"
+    }
+  ]
+}

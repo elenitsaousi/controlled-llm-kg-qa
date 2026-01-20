@@ -1,0 +1,26 @@
+{
+  "question_id": "Q2",
+  "question": "Which suppliers provide materials used in lithography for product X?",
+  "candidates": [
+    {
+      "id": "Q2_C1",
+      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)-[:USED_IN]->(ps:ProcessStep {name:'Lithography'})<-[:REQUIRES]-(p:Product {name:'X'}) RETURN s, m"
+    },
+    {
+      "id": "Q2_C2",
+      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)-[:USED_IN]->(ps:ProcessStep {name:'Lithography'})<-[:REQUIRES]-(p:Product {name:'X'}) RETURN s.name, m.name"
+    },
+    {
+      "id": "Q2_C3",
+      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)<-[:USED_IN]-(ps:ProcessStep {name:'Lithography'})<-[:REQUIRES]-(p:Product {name:'X'}) RETURN s, m"
+    },
+    {
+      "id": "Q2_C4",
+      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)-[:USED_IN]->(ps:ProcessStep {name:'Lithography'})-[:REQUIRES]->(p:Product {name:'X'}) RETURN s, m"
+    },
+    {
+      "id": "Q2_C5",
+      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(p:Product {name:'X'})-[:REQUIRES]->(ps:ProcessStep {name:'Lithography'}) RETURN s, ps"
+    }
+  ]
+}

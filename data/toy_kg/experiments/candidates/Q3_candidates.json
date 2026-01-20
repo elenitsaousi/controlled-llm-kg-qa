@@ -1,0 +1,26 @@
+{
+  "question_id": "Q3",
+  "question": "Which manufacturing tools are linked to defects for product X?",
+  "candidates": [
+    {
+      "id": "Q3_C1",
+      "query": "MATCH (p:Product {name:'X'})<-[:PRODUCED_FOR]-(l:Lot)-[:PROCESSED_WITH]->(t:Tool), (l)-[:HAS_DEFECT]->(d:Defect) RETURN DISTINCT t, d"
+    },
+    {
+      "id": "Q3_C2",
+      "query": "MATCH (p:Product {name:'X'})<-[:PRODUCED_FOR]-(l:Lot)-[:PROCESSED_WITH]->(t:Tool) RETURN DISTINCT t"
+    },
+    {
+      "id": "Q3_C3",
+      "query": "MATCH (t:Tool)-[:PROCESSED_WITH]->(l:Lot)-[:PRODUCED_FOR]->(p:Product {name:'X'}) RETURN t"
+    },
+    {
+      "id": "Q3_C4",
+      "query": "MATCH (p:Product {name:'X'})<-[:HAS_DEFECT]-(d:Defect) RETURN d"
+    },
+    {
+      "id": "Q3_C5",
+      "query": "MATCH (p:Product {name:'X'})<-[:PRODUCED_FOR]-(l:Lot)-[:HAS_DEFECT]->(d:Defect) RETURN DISTINCT d"
+    }
+  ]
+}

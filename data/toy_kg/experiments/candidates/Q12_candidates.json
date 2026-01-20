@@ -1,0 +1,26 @@
+{
+  "question_id": "Q12",
+  "question": "Which shipments affect order fulfillment?",
+  "candidates": [
+    {
+      "id": "Q12_C1",
+      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment) RETURN s.shipment_id"
+    },
+    {
+      "id": "Q12_C2",
+      "query": "MATCH (s:Shipment)<-[:DEPENDS_ON]-(o:Order) RETURN s.shipment_id"
+    },
+    {
+      "id": "Q12_C3",
+      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment {name:'placeholder'}) RETURN s.shipment_id"
+    },
+    {
+      "id": "Q12_C4",
+      "query": "MATCH (s:Shipment)<-[:DEPENDS_ON]-(o:Order {order_id:'placeholder'}) RETURN s.shipment_id"
+    },
+    {
+      "id": "Q12_C5",
+      "query": "MATCH (o:Order {order_id:'placeholder'})<-[:DEPENDS_ON]-(s:Shipment) RETURN s.shipment_id"
+    }
+  ]
+}
