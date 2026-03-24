@@ -1,0 +1,26 @@
+{
+  "question_id": "Q29",
+  "question": "Which suppliers are linked to product defects?",
+  "candidates": [
+    {
+      "id": "Q29_C1",
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?p a :Product . ?l a :Lot . ?d a :Defect . ?s :SUPPLIES ?p . ?l :PRODUCED_FOR ?p . ?l :HAS_DEFECT ?d . }"
+    },
+    {
+      "id": "Q29_C2",
+      "query": "SELECT ?supplier WHERE { ?defect a :Defect . ?lot :HAS_DEFECT ?defect . ?lot :PRODUCED_FOR ?product . ?product :REQUIRES ?processStep . ?processStep :USED_IN ?tool . ?supplier :SUPPLIES ?product . ?supplier a :Supplier . }"
+    },
+    {
+      "id": "Q29_C3",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?lot :HAS_DEFECT ?defect . ?lot :PROCESSED_WITH ?tool . ?tool :USED_IN ?material . ?supplier :SUPPLIES ?material . FILTER(?defect 'D123'^^xsd:string) }"
+    },
+    {
+      "id": "Q29_C4",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?lot :HAS_DEFECT ?defect . ?lot :PRODUCED_FOR ?product . ?product :REQUIRES ?processStep . ?supplier :SUPPLIES ?product . }"
+    },
+    {
+      "id": "Q29_C5",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?lot :HAS_DEFECT ?defect . ?lot :REQUIRES ?processStep . ?product :REQUIRES ?processStep . ?supplier :SUPPLIES ?product . }"
+    }
+  ]
+}

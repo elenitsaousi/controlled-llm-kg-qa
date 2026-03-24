@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q14_C1",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?s :SUPPLIES ?m . }"
     },
     {
       "id": "Q14_C2",
-      "query": "MATCH (s:Supplier)<-[:SUPPLIES]-(m:Material) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?m :SUPPLIES ?s . }"
     },
     {
       "id": "Q14_C3",
-      "query": "MATCH (s:Supplier)-[r:SUPPLIES]->(m:Material) RETURN s.name, r"
+      "query": "SELECT ?s ?r WHERE { ?s a :Supplier . ?m a :Material . }"
     },
     {
       "id": "Q14_C4",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES {type:'raw'}]->(m:Material) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?s :SUPPLIES ?m . ?m :type ?m_type . FILTER(?m_type = 'raw') }"
     },
     {
       "id": "Q14_C5",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material {name:'placeholder_material'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?m :name ?m_name . ?s :SUPPLIES ?m . FILTER(?m_name = 'placeholder_material') }"
     }
   ]
 }

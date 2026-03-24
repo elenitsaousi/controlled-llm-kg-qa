@@ -1,0 +1,26 @@
+{
+  "question_id": "Q9",
+  "question": "Which suppliers provide materials used in orders?",
+  "candidates": [
+    {
+      "id": "Q9_C1",
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?p a :Product . ?o a :Order . ?s :SUPPLIES ?m . ?m :USED_IN ?ps . ?p :REQUIRES ?ps . ?o :CONTAINS ?p . }"
+    },
+    {
+      "id": "Q9_C2",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material a :Material . ?order :CONTAINS ?product . ?material :USED_IN ?processStep . ?product :REQUIRES ?processStep . }"
+    },
+    {
+      "id": "Q9_C3",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material a :Material . ?order :STOCKS ?product . ?material :USED_IN ?processStep . ?product :REQUIRES ?tool . }"
+    },
+    {
+      "id": "Q9_C4",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material a :Material . ?order :CONTAINS ?material . }"
+    },
+    {
+      "id": "Q9_C5",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material a :Material . ?order :HAS_STATUS ?status . ?material :AFFECTS ?yield . ?yield :SEVERITY 'High' . }"
+    }
+  ]
+}

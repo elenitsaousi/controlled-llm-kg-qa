@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q7_C1",
-      "query": "MATCH (o:Order)-[:CONTAINS]->(p:Product {name:'GivenProductName'}) RETURN o.order_id"
+      "query": "SELECT ?o WHERE { ?o a :Order . ?p a :Product . ?p :name ?p_name . ?o :CONTAINS ?p . FILTER(?p_name = 'GivenProductName') }"
     },
     {
       "id": "Q7_C2",
-      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment)<-[:STOCKS]-(p:Product {name:'GivenProductName'}) RETURN o.order_id"
+      "query": "SELECT ?o WHERE { ?o a :Order . ?s a :Shipment . ?p a :Product . ?p :name ?p_name . ?o :DEPENDS_ON ?s . ?p :STOCKS ?s . FILTER(?p_name = 'GivenProductName') }"
     },
     {
       "id": "Q7_C3",
-      "query": "MATCH (o:Order)-[:CONTAINS]->(l:Lot)<-[:PRODUCED_FOR]-(p:Product {name:'GivenProductName'}) RETURN o.order_id"
+      "query": "SELECT ?o WHERE { ?o a :Order . ?l a :Lot . ?p a :Product . ?p :name ?p_name . ?o :CONTAINS ?l . ?p :PRODUCED_FOR ?l . FILTER(?p_name = 'GivenProductName') }"
     },
     {
       "id": "Q7_C4",
-      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment)<-[:STOCKS]-(l:Lot)<-[:PRODUCED_FOR]-(p:Product {name:'GivenProductName'}) RETURN o.order_id"
+      "query": "SELECT ?o WHERE { ?o a :Order . ?s a :Shipment . ?l a :Lot . ?p a :Product . ?p :name ?p_name . ?o :DEPENDS_ON ?s . ?l :STOCKS ?s . ?p :PRODUCED_FOR ?l . FILTER(?p_name = 'GivenProductName') }"
     },
     {
       "id": "Q7_C5",
-      "query": "MATCH (o:Order)-[:CONTAINS]->(p:Product {lot_id:'GivenLotId'}) RETURN o.order_id"
+      "query": "SELECT ?o WHERE { ?o a :Order . ?p a :Product . ?p :lot_id ?p_lot_id . ?o :CONTAINS ?p . FILTER(?p_lot_id = 'GivenLotId') }"
     }
   ]
 }

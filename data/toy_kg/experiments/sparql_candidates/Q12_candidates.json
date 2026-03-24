@@ -1,0 +1,26 @@
+{
+  "question_id": "Q12",
+  "question": "Which shipments affect order fulfillment?",
+  "candidates": [
+    {
+      "id": "Q12_C1",
+      "query": "SELECT ?shipment WHERE { ?order a :Order . ?order :REQUIRES ?processStep . ?shipment a :Shipment . ?order :DEPENDS_ON ?shipment . }"
+    },
+    {
+      "id": "Q12_C2",
+      "query": "SELECT ?shipment WHERE { ?order :DEPENDS_ON ?shipment . ?shipment a :Shipment . }"
+    },
+    {
+      "id": "Q12_C3",
+      "query": "SELECT ?shipment WHERE { ?order :CONTAINS ?product . ?product :REQUIRES ?processStep . ?processStep :USED_IN ?material . ?material :SUPPLIES ?supplier . ?supplier :AFFECTS ?impact . FILTER(?impact = ?fulfillment) . }"
+    },
+    {
+      "id": "Q12_C4",
+      "query": "SELECT ?shipment WHERE { ?shipment a :Shipment . ?order :DEPENDS_ON ?shipment . ?shipment :AFFECTS ?fulfillment . }"
+    },
+    {
+      "id": "Q12_C5",
+      "query": "SELECT ?shipment WHERE { ?order :HAS_STATUS ?status . ?status :AFFECTS ?shipment . FILTER(?shipment != ?order) . }"
+    }
+  ]
+}

@@ -1,6 +1,13 @@
 FEATURE_NAMES = [
     "node_count",
     "rel_count",
+    "triple_count",
+    "type_triple_count",
+    "has_type",
+    "component_count",
+    "has_disconnected",
+    "invalid_predicate_count",
+    "unused_select_vars",
     "distinct_label_count",
     "distinct_relation_count",
     "has_variable_length",

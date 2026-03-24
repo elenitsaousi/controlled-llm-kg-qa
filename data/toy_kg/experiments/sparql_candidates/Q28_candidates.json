@@ -1,0 +1,26 @@
+{
+  "question_id": "Q28",
+  "question": "Which materials supplied impact production processes?",
+  "candidates": [
+    {
+      "id": "Q28_C1",
+      "query": "SELECT ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?s :SUPPLIES ?m . ?m :USED_IN ?ps . }"
+    },
+    {
+      "id": "Q28_C2",
+      "query": "SELECT ?material WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?product . ?product :REQUIRES ?processStep . ?processStep :USED_IN ?material . ?material :HAS_STATUS ?status . ?status :AFFECTS ?yield . }"
+    },
+    {
+      "id": "Q28_C3",
+      "query": "SELECT ?material WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?product . ?product :HAS_DEFECT ?defect . ?defect :AFFECTS ?yield . ?material :USED_IN ?yield . }"
+    },
+    {
+      "id": "Q28_C4",
+      "query": "SELECT ?material WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?product . ?product :REQUIRES ?processStep . ?processStep a :ProcessStep . ?material a :Material . ?processStep :USED_IN ?material . }"
+    },
+    {
+      "id": "Q28_C5",
+      "query": "SELECT ?material WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?product . ?product :PRODUCES ?lot . ?lot :HAS_DEFECT ?defect . ?defect :AFFECTS ?yield . ?material a :Material . ?processStep :USED_IN ?material . }"
+    }
+  ]
+}

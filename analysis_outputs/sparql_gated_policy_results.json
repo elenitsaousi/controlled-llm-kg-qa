@@ -1,0 +1,266 @@
+[
+  {
+    "question_id": "Q1",
+    "entropy": 1.385629221116446,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q2",
+    "entropy": 1.6089299371605277,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q3",
+    "entropy": 1.60807508822919,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q4",
+    "entropy": 1.3842608321252203,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q5",
+    "entropy": 1.3857874233877385,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q6",
+    "entropy": 1.6088565786022169,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q7",
+    "entropy": 1.60784824056309,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q8",
+    "entropy": 1.0987721542724551,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q9",
+    "entropy": 1.3860828852810723,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q10",
+    "entropy": 1.3854763086693143,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q11",
+    "entropy": 0.6935941275213771,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q12",
+    "entropy": 1.6084422728404717,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q13",
+    "entropy": 1.0988559192506768,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q14",
+    "entropy": 1.3859732425039675,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q15",
+    "entropy": 1.6087934926070089,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q16",
+    "entropy": 1.6086233836532573,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q17",
+    "entropy": 1.6090118396830144,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q18",
+    "entropy": 1.3852298482819916,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q19",
+    "entropy": 1.6083012726170143,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q20",
+    "entropy": 1.6093039315785467,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q21",
+    "entropy": 1.6092103913617664,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q22",
+    "entropy": 1.6083512748555209,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q23",
+    "entropy": 1.6091646184087243,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q24",
+    "entropy": 1.385845905888571,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q25",
+    "entropy": 1.608334103434883,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q26",
+    "entropy": 0.6932839478437911,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q27",
+    "entropy": 1.6075536249050477,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q28",
+    "entropy": 1.6086401459868667,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "mid"
+  },
+  {
+    "question_id": "Q29",
+    "entropy": 1.609041207073573,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q30",
+    "entropy": 1.0988008648430752,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "low"
+  },
+  {
+    "question_id": "Q31",
+    "entropy": 1.6092399200375267,
+    "schema_correct": 1,
+    "learning_correct": 0,
+    "gated_correct": 1,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q32",
+    "entropy": 1.6092259630506933,
+    "schema_correct": 0,
+    "learning_correct": 1,
+    "gated_correct": 0,
+    "entropy_bin": "high"
+  },
+  {
+    "question_id": "Q33",
+    "entropy": 1.6093494076719557,
+    "schema_correct": 1,
+    "learning_correct": 1,
+    "gated_correct": 1,
+    "entropy_bin": "high"
+  }
+]

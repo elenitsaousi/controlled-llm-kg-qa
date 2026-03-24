@@ -1,5 +1,50 @@
 {
   "description": "Toy knowledge graph schema for supply chain and manufacturing QA. Use this to constrain query generation.",
+  "classes": [
+    "Product",
+    "Supplier",
+    "Material",
+    "Yield",
+    "Lot",
+    "Tool",
+    "Defect",
+    "ProcessStep",
+    "Fab",
+    "CapacityConstraint",
+    "Shipment",
+    "Order",
+    "Status",
+    "Inventory"
+  ],
+  "predicates": [
+    "SUPPLIES",
+    "AFFECTS",
+    "REQUIRES",
+    "USED_IN",
+    "PRODUCED_FOR",
+    "PROCESSED_WITH",
+    "HAS_DEFECT",
+    "PRODUCES",
+    "HAS_CONSTRAINT",
+    "CONTAINS",
+    "DEPENDS_ON",
+    "HAS_STATUS",
+    "STOCKS"
+  ],
+  "properties": [
+    "name",
+    "value",
+    "lot_id",
+    "tool_id",
+    "defect_code",
+    "severity",
+    "fab_id",
+    "constraint_type",
+    "limit",
+    "shipment_id",
+    "order_id",
+    "days_of_supply"
+  ],
   "labels": {
     "Product": {
       "properties": ["name"],

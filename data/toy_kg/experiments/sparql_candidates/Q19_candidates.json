@@ -1,0 +1,26 @@
+{
+  "question_id": "Q19",
+  "question": "Which defects are linked to specific lots?",
+  "candidates": [
+    {
+      "id": "Q19_C1",
+      "query": "SELECT ?defect WHERE { ?lot a :Lot . ?lot :PRODUCED_FOR ?product . ?product a :Product . ?lot :HAS_DEFECT ?defect . ?defect a :Defect . }"
+    },
+    {
+      "id": "Q19_C2",
+      "query": "SELECT ?defect WHERE { ?lot a :Lot . ?lot :HAS_DEFECT ?defect . }"
+    },
+    {
+      "id": "Q19_C3",
+      "query": "SELECT ?defect WHERE { ?lot a :Lot . ?lot :SUPPLIES ?material . ?material :REQUIRES ?processStep . ?processStep :USED_IN ?tool . ?tool :AFFECTS ?yield . ?yield :HAS_DEFECT ?defect . ?defect a :Defect . }"
+    },
+    {
+      "id": "Q19_C4",
+      "query": "SELECT ?defect WHERE { ?lot a :Lot . ?lot :HAS_DEFECT ?defect . ?defect a :Defect . }"
+    },
+    {
+      "id": "Q19_C5",
+      "query": "SELECT ?defect WHERE { ?lot a :Lot . ?lot :HAS_DEFECT ?defect . ?defect a :Defect . ?defect :defect_code ?code . FILTER(?code = 'X') }"
+    }
+  ]
+}

@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q27_C1",
-      "query": "MATCH (s:Supplier)-[r:AFFECTS]->(yield:Yield) RETURN s.name, r, yield.value"
+      "query": "SELECT ?s ?r ?yield WHERE { ?s a :Supplier . ?yield a :Yield . }"
     },
     {
       "id": "Q27_C2",
-      "query": "MATCH (s:Supplier)-[:AFFECTS]->(y:Yield) RETURN s.name, y.value"
+      "query": "SELECT ?s ?y WHERE { ?s a :Supplier . ?y a :Yield . ?s :AFFECTS ?y . }"
     },
     {
       "id": "Q27_C3",
-      "query": "MATCH (supplier:Supplier)-[rel:AFFECTS]-(yield:Yield) RETURN supplier.name, rel, yield.value"
+      "query": "SELECT ?supplier ?rel ?yield WHERE { ?supplier a :Supplier . ?yield a :Yield . }"
     },
     {
       "id": "Q27_C4",
-      "query": "MATCH (Supplier)-[r:AFFECTS]->(Yield) WHERE NOT (r IS NULL) RETURN Supplier.name, r, Yield.value"
+      "query": "SELECT ?Supplier ?r ?Yield WHERE {  }"
     },
     {
       "id": "Q27_C5",
-      "query": "MATCH p=(s:Supplier)-[r:AFFECTS]->(y:Yield) RETURN s.name, r, y.value LIMIT 5"
+      "query": "SELECT ?s ?r ?y WHERE { ?s a :Supplier . ?y a :Yield . }"
     }
   ]
 }

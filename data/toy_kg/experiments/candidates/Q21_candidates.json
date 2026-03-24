@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q21_C1",
-      "query": "MATCH (p:Product)-[:REQUIRES]->(ps:ProcessStep) RETURN p.name, ps.name"
+      "query": "SELECT ?p ?ps WHERE { ?p a :Product . ?ps a :ProcessStep . ?p :REQUIRES ?ps . }"
     },
     {
       "id": "Q21_C2",
-      "query": "MATCH (p:Product)<-[:REQUIRES]-(ps:ProcessStep) RETURN p.name, ps.name"
+      "query": "SELECT ?p ?ps WHERE { ?p a :Product . ?ps a :ProcessStep . ?ps :REQUIRES ?p . }"
     },
     {
       "id": "Q21_C3",
-      "query": "MATCH (ps:ProcessStep)<-[:REQUIRES]-(p:Product) RETURN p.name, ps.name"
+      "query": "SELECT ?p ?ps WHERE { ?ps a :ProcessStep . ?p a :Product . ?p :REQUIRES ?ps . }"
     },
     {
       "id": "Q21_C4",
-      "query": "MATCH (p:Product)-[r:REQUIRES]->(ps:ProcessStep) RETURN p.name, ps.name, r"
+      "query": "SELECT ?p ?ps ?r WHERE { ?p a :Product . ?ps a :ProcessStep . }"
     },
     {
       "id": "Q21_C5",
-      "query": "MATCH (ps:ProcessStep)<-[r:REQUIRES]-(p:Product) RETURN p.name, ps.name, r"
+      "query": "SELECT ?p ?ps ?r WHERE { ?ps a :ProcessStep . ?p a :Product . }"
     }
   ]
 }

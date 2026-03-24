@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q20_C1",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect)<-[:USED_IN]-(t:Tool) RETURN DISTINCT t.name"
+      "query": "SELECT DISTINCT ?t WHERE { ?l a :Lot . ?d a :Defect . ?t a :Tool . ?l :HAS_DEFECT ?d . ?t :USED_IN ?d . }"
     },
     {
       "id": "Q20_C2",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect)<-[:PROCESSED_WITH]-(t:Tool) RETURN DISTINCT t.name"
+      "query": "SELECT DISTINCT ?t WHERE { ?l a :Lot . ?d a :Defect . ?t a :Tool . ?l :HAS_DEFECT ?d . ?t :PROCESSED_WITH ?d . }"
     },
     {
       "id": "Q20_C3",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect)<-[:USED_IN|PROCESSED_WITH]-(t:Tool) RETURN DISTINCT t.name"
+      "query": "SELECT DISTINCT ?t WHERE { ?l a :Lot . ?d a :Defect . ?t a :Tool . ?l :HAS_DEFECT ?d . ?t :USED_IN ?d . }"
     },
     {
       "id": "Q20_C4",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect), (l)-[:PROCESSED_WITH]->(t:Tool) RETURN DISTINCT t.name"
+      "query": "SELECT DISTINCT ?t WHERE { ?l a :Lot . ?d a :Defect . ?t a :Tool . ?l :HAS_DEFECT ?d . ?l :PROCESSED_WITH ?t . }"
     },
     {
       "id": "Q20_C5",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect)<-[:USED_IN|PROCESSED_WITH]-(t:Tool) WHERE NOT (t)-[]->() RETURN DISTINCT t.name"
+      "query": "SELECT DISTINCT ?t WHERE { ?l a :Lot . ?d a :Defect . ?t a :Tool . ?l :HAS_DEFECT ?d . ?t :USED_IN ?d . }"
     }
   ]
 }

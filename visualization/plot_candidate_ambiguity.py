@@ -80,7 +80,7 @@ def plot_candidate_ambiguity(
 
     ax.set_xlabel("Query Index")
     ax.set_ylabel("Selected Candidate Rank")
-    ax.set_title("Candidate Ambiguity Timeline with Selection Outcomes")
+    ax.set_title("Candidate Ambiguity Timeline with Selection Outcomes- SPARQL")
     ax.set_ylim(5.5, 0.5)
     ax.legend(loc="upper left", frameon=False)
 

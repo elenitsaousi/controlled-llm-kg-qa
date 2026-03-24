@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q25_C1",
-      "query": "MATCH (p:Product)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+      "query": "SELECT ?p WHERE { ?p a :Product . ?d a :Defect . ?p :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q25_C2",
-      "query": "MATCH (p:Product)<-[:PRODUCED_FOR]-(l:Lot)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+      "query": "SELECT ?p WHERE { ?p a :Product . ?l a :Lot . ?d a :Defect . ?l :PRODUCED_FOR ?p . ?l :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q25_C3",
-      "query": "MATCH (p:Product)<-[:REQUIRES]-(ps:ProcessStep)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+      "query": "SELECT ?p WHERE { ?p a :Product . ?ps a :ProcessStep . ?d a :Defect . ?ps :REQUIRES ?p . ?ps :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q25_C4",
-      "query": "MATCH (p:Product)<-[:USED_IN]-(ms:Material)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+      "query": "SELECT ?p WHERE { ?p a :Product . ?ms a :Material . ?d a :Defect . ?ms :USED_IN ?p . ?ms :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q25_C5",
-      "query": "MATCH (p:Product)<-[:PRODUCES]-(f:Fab)-[:HAS_CONSTRAINT]->(cc:CapacityConstraint)-[:AFFECTS]->(y:Yield)-[:HAS_DEFECT]->(d:Defect) RETURN p.name"
+      "query": "SELECT ?p WHERE { ?p a :Product . ?f a :Fab . ?cc a :CapacityConstraint . ?y a :Yield . ?d a :Defect . ?f :PRODUCES ?p . ?f :HAS_CONSTRAINT ?cc . ?cc :AFFECTS ?y . ?y :HAS_DEFECT ?d . }"
     }
   ]
 }

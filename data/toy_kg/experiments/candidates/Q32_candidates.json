@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q32_C1",
-      "query": "MATCH (m:Material)-[:USED_IN]->(p:ProcessStep)-[:PROCESSED_WITH]->(t:Tool) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?m a :Material . ?p a :ProcessStep . ?t a :Tool . ?m :USED_IN ?p . ?p :PROCESSED_WITH ?t . }"
     },
     {
       "id": "Q32_C2",
-      "query": "MATCH (m:Material)<-[:USED_IN]-(ps:ProcessStep)-[:PROCESSED_WITH]->(t:Tool) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?m a :Material . ?ps a :ProcessStep . ?t a :Tool . ?ps :USED_IN ?m . ?ps :PROCESSED_WITH ?t . }"
     },
     {
       "id": "Q32_C3",
-      "query": "MATCH (t:Tool)<-[:PROCESSED_WITH]-(ps:ProcessStep)<-[:USED_IN]-(m:Material) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?t a :Tool . ?ps a :ProcessStep . ?m a :Material . ?ps :PROCESSED_WITH ?t . ?m :USED_IN ?ps . }"
     },
     {
       "id": "Q32_C4",
-      "query": "MATCH (m:Material)-[:USED_IN]->(:ProcessStep)-[:PROCESSED_WITH]->(t:Tool) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?m a :Material . ?anon1 a :ProcessStep . ?t a :Tool . ?m :USED_IN ?anon1 . ?anon1 :PROCESSED_WITH ?t . }"
     },
     {
       "id": "Q32_C5",
-      "query": "MATCH (m:Material)-[:USED_IN]->(ps:ProcessStep)-[:PROCESSED_WITH]->(t:Tool) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?m a :Material . ?ps a :ProcessStep . ?t a :Tool . ?m :USED_IN ?ps . ?ps :PROCESSED_WITH ?t . }"
     }
   ]
 }

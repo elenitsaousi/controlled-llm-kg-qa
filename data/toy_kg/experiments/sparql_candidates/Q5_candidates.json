@@ -1,0 +1,26 @@
+{
+  "question_id": "Q5",
+  "question": "Which orders depend on a particular shipment?",
+  "candidates": [
+    {
+      "id": "Q5_C1",
+      "query": "SELECT ?o WHERE { ?o a :Order . ?s a :Shipment . ?s :shipment_id ?s_shipment_id . ?o :DEPENDS_ON ?s . FILTER(?s_shipment_id = 'SHIPMENT_ID') }"
+    },
+    {
+      "id": "Q5_C2",
+      "query": "SELECT ?order WHERE { ?order a :Order . ?order :REQUIRES ?process_step . ?process_step :USED_IN ?material . ?material :SUPPLIES ?product . ?order :DEPENDS_ON ?shipment . ?shipment a :Shipment . }"
+    },
+    {
+      "id": "Q5_C3",
+      "query": "SELECT ?order WHERE { ?order a :Order . ?order :DEPENDS_ON ?shipment . ?shipment a :Shipment . ?shipment :HAS_STATUS ?status . }"
+    },
+    {
+      "id": "Q5_C4",
+      "query": "SELECT ?order WHERE { ?order a :Order . ?order :HAS_STATUS ?status . ?status :SHIPMENT_DEPENDENT_OF ?shipment . ?shipment a :Shipment . }"
+    },
+    {
+      "id": "Q5_C5",
+      "query": "SELECT ?order WHERE { ?order a :Order . ?order :DEPENDS_ON ?shipment . ?shipment a :Shipment . }"
+    }
+  ]
+}

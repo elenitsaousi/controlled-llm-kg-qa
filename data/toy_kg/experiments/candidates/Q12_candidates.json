@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q12_C1",
-      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment) RETURN s.shipment_id"
+      "query": "SELECT ?s WHERE { ?o a :Order . ?s a :Shipment . ?o :DEPENDS_ON ?s . }"
     },
     {
       "id": "Q12_C2",
-      "query": "MATCH (s:Shipment)<-[:DEPENDS_ON]-(o:Order) RETURN s.shipment_id"
+      "query": "SELECT ?s WHERE { ?s a :Shipment . ?o a :Order . ?o :DEPENDS_ON ?s . }"
     },
     {
       "id": "Q12_C3",
-      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment {name:'placeholder'}) RETURN s.shipment_id"
+      "query": "SELECT ?s WHERE { ?o a :Order . ?s a :Shipment . ?s :name ?s_name . ?o :DEPENDS_ON ?s . FILTER(?s_name = 'placeholder') }"
     },
     {
       "id": "Q12_C4",
-      "query": "MATCH (s:Shipment)<-[:DEPENDS_ON]-(o:Order {order_id:'placeholder'}) RETURN s.shipment_id"
+      "query": "SELECT ?s WHERE { ?s a :Shipment . ?o a :Order . ?o :order_id ?o_order_id . ?o :DEPENDS_ON ?s . FILTER(?o_order_id = 'placeholder') }"
     },
     {
       "id": "Q12_C5",
-      "query": "MATCH (o:Order {order_id:'placeholder'})<-[:DEPENDS_ON]-(s:Shipment) RETURN s.shipment_id"
+      "query": "SELECT ?s WHERE { ?o a :Order . ?o :order_id ?o_order_id . ?s a :Shipment . ?s :DEPENDS_ON ?o . FILTER(?o_order_id = 'placeholder') }"
     }
   ]
 }

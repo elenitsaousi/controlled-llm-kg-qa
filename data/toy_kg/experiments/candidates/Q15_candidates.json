@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q15_C1",
-      "query": "MATCH (f:Fab)-[:PRODUCES]->(p:Product {name:'GivenProductName'}) RETURN f.name"
+      "query": "SELECT ?f WHERE { ?f a :Fab . ?p a :Product . ?p :name ?p_name . ?f :PRODUCES ?p . FILTER(?p_name = 'GivenProductName') }"
     },
     {
       "id": "Q15_C2",
-      "query": "MATCH (f:Fab)-[:PRODUCES]->(p:Product {name:'GivenProductName'}) RETURN f.fab_id, f.name"
+      "query": "SELECT ?f ?f WHERE { ?f a :Fab . ?p a :Product . ?p :name ?p_name . ?f :PRODUCES ?p . FILTER(?p_name = 'GivenProductName') }"
     },
     {
       "id": "Q15_C3",
-      "query": "MATCH (f:Fab)-[:PRODUCES]->(p:Product {name:'GivenProductName'}) RETURN f.fab_id, f.name, f.capacityConstraint"
+      "query": "SELECT ?f ?f ?f WHERE { ?f a :Fab . ?p a :Product . ?p :name ?p_name . ?f :PRODUCES ?p . FILTER(?p_name = 'GivenProductName') }"
     },
     {
       "id": "Q15_C4",
-      "query": "MATCH (f:Fab)-[:PRODUCES]->(p:Product {name:'GivenProductName'}) RETURN f.fab_id, f.name, p.name"
+      "query": "SELECT ?f ?f ?p WHERE { ?f a :Fab . ?p a :Product . ?p :name ?p_name . ?f :PRODUCES ?p . FILTER(?p_name = 'GivenProductName') }"
     },
     {
       "id": "Q15_C5",
-      "query": "MATCH (f:Fab)-[:PRODUCES]->(p:Product {name:'GivenProductName'}) RETURN f.capacityConstraint"
+      "query": "SELECT ?f WHERE { ?f a :Fab . ?p a :Product . ?p :name ?p_name . ?f :PRODUCES ?p . FILTER(?p_name = 'GivenProductName') }"
     }
   ]
 }

@@ -1,26 +1,43 @@
-import json
 import sys
+import json
+from pathlib import Path
+import sys
+from pathlib import Path
+
+# 👉 ΠΑΝΤΑ 2 levels up για scripts μέσα στο analysis/
+BASE = Path(__file__).resolve().parents[1]
+
+if str(BASE) not in sys.path:
+    sys.path.append(str(BASE))
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from pathlib import Path
 from scipy.stats import entropy as shannon_entropy
+from kg.sparql_matching import is_relaxed_correct
 
 # ===============================
 # Paths
 # ===============================
 
-BASE = Path(__file__).resolve().parents[1]
-if str(BASE) not in sys.path:
-    sys.path.append(str(BASE))
 
 OUTPUT_DIR = BASE / "analysis_outputs"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-FEATURES_FILE = BASE / "ranking" / "features_domain.json"
+QUESTIONS_FILE = BASE / "data" / "toy_kg" / "questions" / "questions.json"
+
+with open(QUESTIONS_FILE) as f:
+    questions = json.load(f)
+
+gold_queries = {
+    q["id"]: q["gold_query"]
+    for q in questions
+}
+
+FEATURES_FILE = BASE / "ranking" / "features_domain_sparql.json"
 GOLD_FILE = BASE / "ranking" / "data" / "gold_labels.json"
 ENTROPY_FILE = OUTPUT_DIR / "entropy_per_question.json"
-CANDIDATES_DIR = BASE / "data" / "toy_kg" / "experiments" / "candidates"
+CANDIDATES_DIR = BASE / "data" / "toy_kg" / "experiments" / "sparql_candidates"
 LOGISTIC_MODEL = BASE / "ranking" / "models" / "logistic_ranker.joblib"
 
 from kg.schema import load_default_schema
@@ -198,11 +215,15 @@ for qid, candidate_list in feature_entries.items():
         continue
     learning_best = candidate_list[int(np.argmax(scores))]
 
+    schema_query = queries_by_id[candidate_id(schema_best)]
+    learning_query = queries_by_id[candidate_id(learning_best)]
+    gold_query = gold_queries[qid]
+
     rows.append({
         "question_id": qid,
         "entropy": entropy[qid],
-        "schema_correct": int(candidate_id(schema_best) == gold[qid]),
-        "learning_correct": int(candidate_id(learning_best) == gold[qid]),
+        "schema_correct": int(is_relaxed_correct(schema_query, gold_query)),
+        "learning_correct": int(is_relaxed_correct(learning_query, gold_query)),
     })
 
 df = pd.DataFrame(rows)
@@ -239,7 +260,7 @@ plt.figure(figsize=(6, 4))
 summary["mean_delta"].plot(kind="bar")
 plt.axhline(0, color="black", linestyle="--")
 plt.ylabel("Mean Learning Gain (Δ)")
-plt.title("Learning Gain vs Ambiguity Regime")
+plt.title("Learning Gain vs Ambiguity Regime - SPARQL")
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / "learning_gain_vs_entropy.png")
 plt.close()
@@ -248,7 +269,7 @@ plt.figure(figsize=(6, 4))
 summary["schema_acc"].plot(marker="o", label="Schema")
 summary["learning_acc"].plot(marker="o", label="Learning")
 plt.ylabel("Top-1 Accuracy")
-plt.title("Accuracy vs Ambiguity Regime")
+plt.title("Accuracy vs Ambiguity Regime - SPARQL")
 plt.legend()
 plt.tight_layout()
 plt.savefig(OUTPUT_DIR / "accuracy_vs_entropy.png")

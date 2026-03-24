@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q11_C1",
-      "query": "MATCH (s:Supplier)-[:AFFECTS]->(y:Yield {name:'Supply Delay'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?y a :Yield . ?y :name ?y_name . ?s :AFFECTS ?y . FILTER(?y_name = 'Supply Delay') }"
     },
     {
       "id": "Q11_C2",
-      "query": "MATCH (s:Supplier)<-[:SUPPLIES]-(p:Product)-[:HAS_CONSTRAINT]->(cc:CapacityConstraint {constraint_type:'Supply Delay'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?p a :Product . ?cc a :CapacityConstraint . ?cc :constraint_type ?cc_constraint_type . ?p :SUPPLIES ?s . ?p :HAS_CONSTRAINT ?cc . FILTER(?cc_constraint_type = 'Supply Delay') }"
     },
     {
       "id": "Q11_C3",
-      "query": "MATCH (s:Supplier)<-[:DEPENDS_ON]-(sh:Shipment)-[:HAS_STATUS {name:'Supply Delay'}]->() RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?sh a :Shipment . ?sh :DEPENDS_ON ?s . ?sh :HAS_STATUS ?anon1 . ?anon1 :name ?anon1_name . FILTER(?anon1_name = 'Supply Delay') }"
     },
     {
       "id": "Q11_C4",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]-(l:Lot)-[:PROCESSED_WITH]->(t:Tool)-[:HAS_CONSTRAINT]->(cc:CapacityConstraint {constraint_type:'Supply Delay'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?l a :Lot . ?t a :Tool . ?cc a :CapacityConstraint . ?cc :constraint_type ?cc_constraint_type . ?l :PROCESSED_WITH ?t . ?t :HAS_CONSTRAINT ?cc . FILTER(?cc_constraint_type = 'Supply Delay') }"
     },
     {
       "id": "Q11_C5",
-      "query": "MATCH (s:Supplier)<-[:SUPPLIES]-(p:Product)-[:STOCKS]->(i:Inventory)-[:HAS_CONSTRAINT]->(cc:CapacityConstraint {constraint_type:'Supply Delay'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?p a :Product . ?i a :Inventory . ?cc a :CapacityConstraint . ?cc :constraint_type ?cc_constraint_type . ?p :SUPPLIES ?s . ?p :STOCKS ?i . ?i :HAS_CONSTRAINT ?cc . FILTER(?cc_constraint_type = 'Supply Delay') }"
     }
   ]
 }

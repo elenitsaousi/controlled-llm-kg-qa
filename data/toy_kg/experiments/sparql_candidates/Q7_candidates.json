@@ -1,0 +1,26 @@
+{
+  "question_id": "Q7",
+  "question": "Which orders include a given product?",
+  "candidates": [
+    {
+      "id": "Q7_C1",
+      "query": "SELECT ?o WHERE { ?o a :Order . ?p a :Product . ?p :name ?p_name . ?o :CONTAINS ?p . FILTER(?p_name = 'GivenProductName') }"
+    },
+    {
+      "id": "Q7_C2",
+      "query": "SELECT ?order WHERE { ?order a :Order . ?order :CONTAINS ?product . ?product a :Product . }"
+    },
+    {
+      "id": "Q7_C3",
+      "query": "SELECT ?order WHERE { ?order a :Order . ?order :DEPENDS_ON ?supply_chain_event . ?supply_chain_event :SUPPLIES ?material . ?material :REQUIRES ?process_step . ?process_step :HAS_DEFECT ?defect . ?defect :AFFECTS ?product . ?product a :Product . }"
+    },
+    {
+      "id": "Q7_C4",
+      "query": "SELECT ?order WHERE { ?order a :Order . ?order :STOCKS ?product . ?product a :Product . }"
+    },
+    {
+      "id": "Q7_C5",
+      "query": "SELECT ?order WHERE { ?order a :Order . ?order :DEPENDS_ON ?shipment . ?shipment a :Shipment . ?shipment :PROCESSED_WITH ?tool . ?tool a :Tool . }"
+    }
+  ]
+}

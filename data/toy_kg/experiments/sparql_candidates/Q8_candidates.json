@@ -1,0 +1,26 @@
+{
+  "question_id": "Q8",
+  "question": "Which shipments have a specific status?Answer",
+  "candidates": [
+    {
+      "id": "Q8_C1",
+      "query": "SELECT ?s WHERE { ?s a :Shipment . ?st a :Status . ?st :name ?st_name . ?s :HAS_STATUS ?st . FILTER(?st_name = 'specific_status') }"
+    },
+    {
+      "id": "Q8_C2",
+      "query": "SELECT ?shipment WHERE { ?shipment a :Shipment . ?shipment :STOCKS ?product . ?product :PRODUCED_FOR ?order . ?order :HAS_STATUS ?status . }"
+    },
+    {
+      "id": "Q8_C3",
+      "query": "SELECT ?shipment WHERE { ?shipment a :Shipment . ?shipment :USED_IN ?process_step . ?process_step :REQUIRES ?tool . ?tool :DEPENDS_ON ?order . ?order :HAS_STATUS ?status . }"
+    },
+    {
+      "id": "Q8_C4",
+      "query": "SELECT ?shipment WHERE { ?shipment a :Shipment . ?shipment :USED_IN ?process_step . ?process_step :REQUIRES ?tool . ?tool :TOOL_ID 'specific_tool_id' . }"
+    },
+    {
+      "id": "Q8_C5",
+      "query": "SELECT ?shipment WHERE { ?shipment a :Shipment . ?shipment :USED_IN ?process_step . ?process_step :REQUIRES ?tool . ?tool :PROCESSED_WITH ?lot . ?lot :HAS_DEFECT ?defect . ?defect :DEFECT_CODE 'specific_status_code' . }"
+    }
+  ]
+}

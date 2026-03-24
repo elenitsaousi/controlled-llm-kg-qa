@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q23_C1",
-      "query": "MATCH (l:Lot)-[:PROCESSED_WITH]->(t:Tool {name:'specific_tool_name'}) RETURN l.lot_id"
+      "query": "SELECT ?l WHERE { ?l a :Lot . ?t a :Tool . ?t :name ?t_name . ?l :PROCESSED_WITH ?t . FILTER(?t_name = 'specific_tool_name') }"
     },
     {
       "id": "Q23_C2",
-      "query": "MATCH (l:Lot)-[:PROCESSED_WITH]->(t:Tool {tool_id:'specific_tool_id'}) RETURN l.lot_id"
+      "query": "SELECT ?l WHERE { ?l a :Lot . ?t a :Tool . ?t :tool_id ?t_tool_id . ?l :PROCESSED_WITH ?t . FILTER(?t_tool_id = 'specific_tool_id') }"
     },
     {
       "id": "Q23_C3",
-      "query": "MATCH (l:Lot)-[:PROCESSED_WITH]->(t:Tool) WHERE t.name = 'specific_tool_name' OR t.tool_id = 'specific_tool_id' RETURN l.lot_id"
+      "query": "SELECT ?l WHERE { ?l a :Lot . ?t a :Tool . ?l :PROCESSED_WITH ?t . }"
     },
     {
       "id": "Q23_C4",
-      "query": "MATCH (l:Lot)-[:PROCESSED_WITH {name:'specific_tool_name'}]->() RETURN l.lot_id"
+      "query": "SELECT ?l WHERE { ?l a :Lot . ?l :PROCESSED_WITH ?anon6 . ?anon6 :name ?anon6_name . FILTER(?anon6_name = 'specific_tool_name') }"
     },
     {
       "id": "Q23_C5",
-      "query": "MATCH (l:Lot)-[:PROCESSED_WITH {tool_id:'specific_tool_id'}]->() RETURN l.lot_id"
+      "query": "SELECT ?l WHERE { ?l a :Lot . ?l :PROCESSED_WITH ?anon7 . ?anon7 :tool_id ?anon7_tool_id . FILTER(?anon7_tool_id = 'specific_tool_id') }"
     }
   ]
 }

@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q17_C1",
-      "query": "MATCH (l:Lot)-[:PROCESSED_WITH]->(t:Tool) RETURN t.name"
+      "query": "SELECT ?t WHERE { ?l a :Lot . ?t a :Tool . ?l :PROCESSED_WITH ?t . }"
     },
     {
       "id": "Q17_C2",
-      "query": "MATCH (l:Lot)-[:PROCESSED_WITH {name:'Tool'}]->(p:Product) RETURN DISTINCT p.name, t.name"
+      "query": "SELECT DISTINCT ?p ?t WHERE { ?l a :Lot . ?p a :Product . ?l :PROCESSED_WITH ?p . ?p :name ?p_name . FILTER(?p_name = 'Tool') }"
     },
     {
       "id": "Q17_C3",
-      "query": "MATCH (l:Lot)-[r:PROCESSED_WITH]->(t:Tool) RETURN r.name, t.name"
+      "query": "SELECT ?r ?t WHERE { ?l a :Lot . ?t a :Tool . }"
     },
     {
       "id": "Q17_C4",
-      "query": "MATCH (l:Lot)-[:PROCESSED_WITH]->(t:Tool) WHERE t.tool_id = '12345' RETURN t.name"
+      "query": "SELECT ?t WHERE { ?l a :Lot . ?t a :Tool . ?l :PROCESSED_WITH ?t . }"
     },
     {
       "id": "Q17_C5",
-      "query": "MATCH (l:Lot)-[:PROCESSED_WITH]->(t:Tool) WITH t MATCH (t)-[r:AFFECTS]->(y:Yield) RETURN t.name, y.value"
+      "query": "SELECT ?t ?y WHERE { ?l a :Lot . ?t a :Tool . ?y a :Yield . ?l :PROCESSED_WITH ?t . }"
     }
   ]
 }

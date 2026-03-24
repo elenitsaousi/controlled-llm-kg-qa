@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q28_C1",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)<-[:REQUIRES]-(ps:ProcessStep) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?s :SUPPLIES ?m . ?ps :REQUIRES ?m . }"
     },
     {
       "id": "Q28_C2",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)<-[:USED_IN]-(ps:ProcessStep) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?s :SUPPLIES ?m . ?ps :USED_IN ?m . }"
     },
     {
       "id": "Q28_C3",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material), (m:Material)<-[:REQUIRES|USED_IN]-(ps:ProcessStep) RETURN DISTINCT m.name"
+      "query": "SELECT DISTINCT ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?s :SUPPLIES ?m . ?ps :REQUIRES ?m . }"
     },
     {
       "id": "Q28_C4",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)<-[:REQUIRES|USED_IN]-(ps:ProcessStep) WHERE NOT EXISTS((m)-[:SUPPLIED_BY]->(:Supplier)) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?s :SUPPLIES ?m . ?ps :REQUIRES ?m . }"
     },
     {
       "id": "Q28_C5",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)<-[:REQUIRES|USED_IN]-(ps:ProcessStep) WITH m, COUNT(DISTINCT ps) AS process_count WHERE process_count > 1 RETURN m.name"
+      "query": "SELECT ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?s :SUPPLIES ?m . ?ps :REQUIRES ?m . }"
     }
   ]
 }

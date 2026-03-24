@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q29_C1",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(p:Product)-[:HAS_DEFECT]->(d:Defect) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?p a :Product . ?d a :Defect . ?s :SUPPLIES ?p . ?p :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q29_C2",
-      "query": "MATCH (s:Supplier)-[:AFFECTS]-(y:Yield)<-[:HAS_DEFECT]-(l:Lot)-[:PRODUCED_FOR]->(p:Product) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?y a :Yield . ?l a :Lot . ?p a :Product . ?l :HAS_DEFECT ?y . ?l :PRODUCED_FOR ?p . }"
     },
     {
       "id": "Q29_C3",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)-[:USED_IN]->(ps:ProcessStep)-[:HAS_DEFECT]->(d:Defect)-[:PRODUCED_FOR]->(p:Product) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?d a :Defect . ?p a :Product . ?s :SUPPLIES ?m . ?m :USED_IN ?ps . ?ps :HAS_DEFECT ?d . ?d :PRODUCED_FOR ?p . }"
     },
     {
       "id": "Q29_C4",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)<-[:REQUIRES]-(p:Product)-[:HAS_DEFECT]->(d:Defect) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?p a :Product . ?d a :Defect . ?s :SUPPLIES ?m . ?p :REQUIRES ?m . ?p :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q29_C5",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(f:Fab)-[:PRODUCES]->(p:Product)-[:HAS_DEFECT]->(d:Defect) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?f a :Fab . ?p a :Product . ?d a :Defect . ?s :SUPPLIES ?f . ?f :PRODUCES ?p . ?p :HAS_DEFECT ?d . }"
     }
   ]
 }

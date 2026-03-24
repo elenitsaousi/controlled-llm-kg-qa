@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q2_C1",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)-[:USED_IN]->(ps:ProcessStep {name:'Lithography'})<-[:REQUIRES]-(p:Product {name:'X'}) RETURN s, m"
+      "query": "SELECT ?s ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?ps :name ?ps_name . ?p a :Product . ?p :name ?p_name . ?s :SUPPLIES ?m . ?m :USED_IN ?ps . ?p :REQUIRES ?ps . FILTER(?ps_name = 'Lithography') FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q2_C2",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)-[:USED_IN]->(ps:ProcessStep {name:'Lithography'})<-[:REQUIRES]-(p:Product {name:'X'}) RETURN s.name, m.name"
+      "query": "SELECT ?s ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?ps :name ?ps_name . ?p a :Product . ?p :name ?p_name . ?s :SUPPLIES ?m . ?m :USED_IN ?ps . ?p :REQUIRES ?ps . FILTER(?ps_name = 'Lithography') FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q2_C3",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)<-[:USED_IN]-(ps:ProcessStep {name:'Lithography'})<-[:REQUIRES]-(p:Product {name:'X'}) RETURN s, m"
+      "query": "SELECT ?s ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?ps :name ?ps_name . ?p a :Product . ?p :name ?p_name . ?s :SUPPLIES ?m . ?ps :USED_IN ?m . ?p :REQUIRES ?ps . FILTER(?ps_name = 'Lithography') FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q2_C4",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)-[:USED_IN]->(ps:ProcessStep {name:'Lithography'})-[:REQUIRES]->(p:Product {name:'X'}) RETURN s, m"
+      "query": "SELECT ?s ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?ps :name ?ps_name . ?p a :Product . ?p :name ?p_name . ?s :SUPPLIES ?m . ?m :USED_IN ?ps . ?ps :REQUIRES ?p . FILTER(?ps_name = 'Lithography') FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q2_C5",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(p:Product {name:'X'})-[:REQUIRES]->(ps:ProcessStep {name:'Lithography'}) RETURN s, ps"
+      "query": "SELECT ?s ?ps WHERE { ?s a :Supplier . ?p a :Product . ?p :name ?p_name . ?ps a :ProcessStep . ?ps :name ?ps_name . ?s :SUPPLIES ?p . ?p :REQUIRES ?ps . FILTER(?p_name = 'X') FILTER(?ps_name = 'Lithography') }"
     }
   ]
 }

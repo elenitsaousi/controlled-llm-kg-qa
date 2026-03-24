@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q3_C1",
-      "query": "MATCH (p:Product {name:'X'})<-[:PRODUCED_FOR]-(l:Lot)-[:PROCESSED_WITH]->(t:Tool), (l)-[:HAS_DEFECT]->(d:Defect) RETURN DISTINCT t, d"
+      "query": "SELECT DISTINCT ?t ?d WHERE { ?p a :Product . ?p :name ?p_name . ?l a :Lot . ?t a :Tool . ?d a :Defect . ?l :PRODUCED_FOR ?p . ?l :PROCESSED_WITH ?t . ?l :HAS_DEFECT ?d . FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q3_C2",
-      "query": "MATCH (p:Product {name:'X'})<-[:PRODUCED_FOR]-(l:Lot)-[:PROCESSED_WITH]->(t:Tool) RETURN DISTINCT t"
+      "query": "SELECT DISTINCT ?t WHERE { ?p a :Product . ?p :name ?p_name . ?l a :Lot . ?t a :Tool . ?l :PRODUCED_FOR ?p . ?l :PROCESSED_WITH ?t . FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q3_C3",
-      "query": "MATCH (t:Tool)-[:PROCESSED_WITH]->(l:Lot)-[:PRODUCED_FOR]->(p:Product {name:'X'}) RETURN t"
+      "query": "SELECT ?t WHERE { ?t a :Tool . ?l a :Lot . ?p a :Product . ?p :name ?p_name . ?t :PROCESSED_WITH ?l . ?l :PRODUCED_FOR ?p . FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q3_C4",
-      "query": "MATCH (p:Product {name:'X'})<-[:HAS_DEFECT]-(d:Defect) RETURN d"
+      "query": "SELECT ?d WHERE { ?p a :Product . ?p :name ?p_name . ?d a :Defect . ?d :HAS_DEFECT ?p . FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q3_C5",
-      "query": "MATCH (p:Product {name:'X'})<-[:PRODUCED_FOR]-(l:Lot)-[:HAS_DEFECT]->(d:Defect) RETURN DISTINCT d"
+      "query": "SELECT DISTINCT ?d WHERE { ?p a :Product . ?p :name ?p_name . ?l a :Lot . ?d a :Defect . ?l :PRODUCED_FOR ?p . ?l :HAS_DEFECT ?d . FILTER(?p_name = 'X') }"
     }
   ]
 }

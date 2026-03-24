@@ -1,0 +1,26 @@
+{
+  "question_id": "Q2",
+  "question": "Which suppliers provide materials used in lithography for product X?",
+  "candidates": [
+    {
+      "id": "Q2_C1",
+      "query": "SELECT ?s ?m WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?ps :name ?ps_name . ?p a :Product . ?p :name ?p_name . ?s :SUPPLIES ?m . ?m :USED_IN ?ps . ?p :REQUIRES ?ps . FILTER(?ps_name = 'Lithography') FILTER(?p_name = 'X') }"
+    },
+    {
+      "id": "Q2_C2",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :DEPENDS_ON ?depSupplier . ?depSupplier a :Supplier . ?depSupplier :SUPPLIES ?material . ?material a :Material . ?material :REQUIRES ?processStep . ?product a :Product ; :NAME 'X' . ?processStep :USED_IN :Lithography . }"
+    },
+    {
+      "id": "Q2_C3",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material a :Material . ?material :REQUIRES ?processStep . ?product a :Product ; :NAME 'X' . ?processStep :USED_IN :Lithography . }"
+    },
+    {
+      "id": "Q2_C4",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material a :Material . ?material :USED_IN :Lithography . ?product :PRODUCED_FOR ?lot . ?lot :CONTAINS ?material . }"
+    },
+    {
+      "id": "Q2_C5",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material a :Material . ?material :REQUIRES :Lithography . ?product :PRODUCES ?lot . ?lot :CONTAINS ?material . }"
+    }
+  ]
+}

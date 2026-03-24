@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q1_C1",
-      "query": "MATCH (p:Product {name:'X'})<-[:SUPPLIES]-(s:Supplier)-[:AFFECTS]->(y:Yield) RETURN s, y"
+      "query": "SELECT ?s ?y WHERE { ?p a :Product . ?p :name ?p_name . ?s a :Supplier . ?y a :Yield . ?s :SUPPLIES ?p . ?s :AFFECTS ?y . FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q1_C2",
-      "query": "MATCH (p:Product {name:'X'})<-[:SUPPLIES]-(s:Supplier)-[:AFFECTS]->(y:Yield) RETURN s.name, y.value"
+      "query": "SELECT ?s ?y WHERE { ?p a :Product . ?p :name ?p_name . ?s a :Supplier . ?y a :Yield . ?s :SUPPLIES ?p . ?s :AFFECTS ?y . FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q1_C3",
-      "query": "MATCH (y:Yield)-[:AFFECTS]->(s:Supplier)-[:SUPPLIES]->(p:Product {name:'X'}) RETURN s"
+      "query": "SELECT ?s WHERE { ?y a :Yield . ?s a :Supplier . ?p a :Product . ?p :name ?p_name . ?y :AFFECTS ?s . ?s :SUPPLIES ?p . FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q1_C4",
-      "query": "MATCH (p:Product {name:'X'})-[:SUPPLIES]->(s:Supplier)-[:AFFECTS]->(y:Yield) RETURN s, y"
+      "query": "SELECT ?s ?y WHERE { ?p a :Product . ?p :name ?p_name . ?s a :Supplier . ?y a :Yield . ?p :SUPPLIES ?s . ?s :AFFECTS ?y . FILTER(?p_name = 'X') }"
     },
     {
       "id": "Q1_C5",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material)-[:USED_IN]->(ps:ProcessStep)<-[:REQUIRES]-(p:Product {name:'X'}) RETURN s, m, ps"
+      "query": "SELECT ?s ?m ?ps WHERE { ?s a :Supplier . ?m a :Material . ?ps a :ProcessStep . ?p a :Product . ?p :name ?p_name . ?s :SUPPLIES ?m . ?m :USED_IN ?ps . ?p :REQUIRES ?ps . FILTER(?p_name = 'X') }"
     }
   ]
 }

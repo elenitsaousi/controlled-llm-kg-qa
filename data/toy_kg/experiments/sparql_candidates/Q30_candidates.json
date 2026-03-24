@@ -1,0 +1,26 @@
+{
+  "question_id": "Q30",
+  "question": "Which shipments delay manufacturing orders?",
+  "candidates": [
+    {
+      "id": "Q30_C1",
+      "query": "SELECT ?s WHERE { ?o a :Order . ?s a :Shipment . ?st a :Status . ?st :name ?st_name . ?o :DEPENDS_ON ?s . ?s :HAS_STATUS ?st . FILTER(?st_name = 'Delayed') }"
+    },
+    {
+      "id": "Q30_C2",
+      "query": "SELECT ?shipment WHERE { ?order a :Order . ?order :DEPENDS_ON ?shipment . ?shipment :HAS_STATUS ?status . ?status :SEVERITY 'delay' . }"
+    },
+    {
+      "id": "Q30_C3",
+      "query": "SELECT ?shipment WHERE { ?order a :Order . ?order :CONTAINS ?product . ?shipment a :Shipment . ?order :DEPENDS_ON ?shipment . ?shipment :HAS_STATUS ?status . FILTER(?status_value='delay') . }"
+    },
+    {
+      "id": "Q30_C4",
+      "query": "SELECT ?shipment WHERE { ?order a :Order . ?order :CONTAINS ?product . ?shipment :HAS_CONSTRAINT ?constraint . ?constraint :constraint_type 'delay' . }"
+    },
+    {
+      "id": "Q30_C5",
+      "query": "SELECT ?shipment WHERE { ?order a :Order . ?order :DEPENDS_ON ?shipment . ?shipment :HAS_DEFECT ?defect . ?defect :SEVERITY 'delay' . }"
+    }
+  ]
+}

@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q30_C1",
-      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment)<-[:HAS_STATUS]-(st:Status {name:'Delayed'}) RETURN o.order_id"
+      "query": "SELECT ?o WHERE { ?o a :Order . ?s a :Shipment . ?st a :Status . ?st :name ?st_name . ?o :DEPENDS_ON ?s . ?st :HAS_STATUS ?s . FILTER(?st_name = 'Delayed') }"
     },
     {
       "id": "Q30_C2",
-      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment)<-[:HAS_STATUS]-(st:Status {name:'Delayed'})<-[:STOCKS]-(p:Product) RETURN p.name, o.order_id"
+      "query": "SELECT ?p ?o WHERE { ?o a :Order . ?s a :Shipment . ?st a :Status . ?st :name ?st_name . ?p a :Product . ?o :DEPENDS_ON ?s . ?st :HAS_STATUS ?s . ?p :STOCKS ?st . FILTER(?st_name = 'Delayed') }"
     },
     {
       "id": "Q30_C3",
-      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment)<-[:HAS_STATUS]-(st:Status {name:'Delayed'})<-[:PRODUCES]-(f:Fab) RETURN f.fab_id, o.order_id"
+      "query": "SELECT ?f ?o WHERE { ?o a :Order . ?s a :Shipment . ?st a :Status . ?st :name ?st_name . ?f a :Fab . ?o :DEPENDS_ON ?s . ?st :HAS_STATUS ?s . ?f :PRODUCES ?st . FILTER(?st_name = 'Delayed') }"
     },
     {
       "id": "Q30_C4",
-      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment)<-[:HAS_STATUS]-(st:Status {name:'Delayed'})<-[:SUPPLIES]-(m:Material) RETURN m.name, o.order_id"
+      "query": "SELECT ?m ?o WHERE { ?o a :Order . ?s a :Shipment . ?st a :Status . ?st :name ?st_name . ?m a :Material . ?o :DEPENDS_ON ?s . ?st :HAS_STATUS ?s . ?m :SUPPLIES ?st . FILTER(?st_name = 'Delayed') }"
     },
     {
       "id": "Q30_C5",
-      "query": "MATCH (o:Order)-[:DEPENDS_ON]->(s:Shipment)<-[:HAS_STATUS]-(st:Status {name:'Delayed'})<-[:USED_IN]-(ps:ProcessStep) RETURN ps.name, o.order_id"
+      "query": "SELECT ?ps ?o WHERE { ?o a :Order . ?s a :Shipment . ?st a :Status . ?st :name ?st_name . ?ps a :ProcessStep . ?o :DEPENDS_ON ?s . ?st :HAS_STATUS ?s . ?ps :USED_IN ?st . FILTER(?st_name = 'Delayed') }"
     }
   ]
 }

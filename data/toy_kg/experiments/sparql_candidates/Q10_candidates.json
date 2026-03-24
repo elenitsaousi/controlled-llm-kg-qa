@@ -1,0 +1,26 @@
+{
+  "question_id": "Q10",
+  "question": "Which inventories stock a specific product?",
+  "candidates": [
+    {
+      "id": "Q10_C1",
+      "query": "SELECT ?i WHERE { ?i a :Inventory . ?p a :Product . ?p :name ?p_name . ?i :STOCKS ?p . FILTER(?p_name = 'Specific Product') }"
+    },
+    {
+      "id": "Q10_C2",
+      "query": "SELECT ?inventory WHERE { ?inventory a :Inventory . ?inventory :STOCKS ?product . FILTER(?product = 'SpecificProduct'^^xsd:string) . ?product :PRODUCES ?fab . }"
+    },
+    {
+      "id": "Q10_C3",
+      "query": "SELECT ?inventory WHERE { ?inventory a :Inventory . ?inventory :STOCKS ?product . ?product :NAME 'SpecificProduct'^^xsd:string . }"
+    },
+    {
+      "id": "Q10_C4",
+      "query": "SELECT ?inventory WHERE { ?inventory a :Inventory . ?inventory :SUPPLIES ?supplier . ?supplier :PRODUCES ?component . ?component :REQUIRES ?step . ?step :USED_IN ?process . ?process :PRODUCES ?product . ?product a :Product . }"
+    },
+    {
+      "id": "Q10_C5",
+      "query": "SELECT ?inventory WHERE { ?inventory a :Inventory . ?order :CONTAINS ?product . ?inventory :DEPENDS_ON ?order . }"
+    }
+  ]
+}

@@ -47,11 +47,19 @@ RELATION_KEYWORDS = {
     "STOCKS": ["stock", "stocks", "inventory", "inventories"],
 }
 
-NODE_PATTERN = re.compile(r"\(([^)]*)\)")
-LABEL_PATTERN = re.compile(r":([A-Za-z_][A-Za-z0-9_]*)")
-REL_PATTERN = re.compile(r"\[:([A-Za-z_][A-Za-z0-9_|]*)")
-REL_BLOCK_PATTERN = re.compile(r"\[[^\]]*\]")
-PROP_PATTERN = re.compile(r"\{[^}]+\}")
+VAR_PATTERN = re.compile(r"\?[A-Za-z_][A-Za-z0-9_]*")
+TYPE_PATTERN = re.compile(
+    r"\b(?:a|rdf:type)\s+(:[A-Za-z_][A-Za-z0-9_]*)",
+    re.IGNORECASE,
+)
+PRED_PATTERN = re.compile(
+    r"\?[A-Za-z_][A-Za-z0-9_]*\s+(:[A-Za-z_][A-Za-z0-9_]*)\s+",
+    re.IGNORECASE,
+)
+FILTER_PATTERN = re.compile(r"\bFILTER\b", re.IGNORECASE)
+FILTER_REMOVE = re.compile(r"\bFILTER\s*\(.*?\)", re.IGNORECASE | re.DOTALL)
+OPTIONAL_REMOVE = re.compile(r"\bOPTIONAL\b", re.IGNORECASE)
+SELECT_PATTERN = re.compile(r"\bSELECT\b(.*?)\bWHERE\b", re.IGNORECASE | re.DOTALL)
 
 
 def load_schema(schema_path: str) -> Dict[str, object]:
@@ -93,20 +101,35 @@ def extract_question_relations(question: str) -> Set[str]:
 
 
 def extract_query_labels(query: str) -> Set[str]:
-    labels = set()
-    for node in NODE_PATTERN.findall(query):
-        for label in LABEL_PATTERN.findall(node):
-            labels.add(label)
-    return labels
+    return {match[1:] for match in TYPE_PATTERN.findall(query)}
 
 
 def extract_query_relations(query: str) -> Set[str]:
-    rels = set()
-    for rel_group in REL_PATTERN.findall(query):
-        for rel in rel_group.split("|"):
-            if rel:
-                rels.add(rel)
-    return rels
+    return {match[1:] for match in PRED_PATTERN.findall(query)}
+
+
+def extract_select_vars(query: str) -> Set[str]:
+    match = SELECT_PATTERN.search(query)
+    if match:
+        return set(VAR_PATTERN.findall(match.group(1)))
+    return set(VAR_PATTERN.findall(query))
+
+
+def extract_triples(query: str) -> List[tuple]:
+    if "{" in query and "}" in query:
+        body = query.split("{", 1)[1].rsplit("}", 1)[0]
+    else:
+        body = query
+    body = FILTER_REMOVE.sub(" ", body)
+    body = OPTIONAL_REMOVE.sub(" ", body)
+    statements = [s.strip() for s in body.split(".") if s.strip()]
+    triples = []
+    for stmt in statements:
+        parts = stmt.split()
+        if len(parts) < 3:
+            continue
+        triples.append((parts[0], parts[1], parts[2]))
+    return triples
 
 
 def build_undirected_schema_graph(schema: Dict[str, object]) -> Dict[str, Set[str]]:
@@ -152,29 +175,103 @@ def expected_intermediates(
 
 
 def extract_features(question: str, query: str, schema: Dict[str, object]) -> Dict[str, float]:
-    schema_labels = schema.get("labels", {}).keys()
+    schema_labels = schema.get("classes") or schema.get("labels", {}).keys()
 
     q_entities = extract_question_entities(question, schema_labels)
     q_relations = extract_question_relations(question)
     qry_labels = extract_query_labels(query)
     qry_relations = extract_query_relations(query)
+    triples = extract_triples(query)
+
+    # --- GOLD-AWARE FEATURES (CRITICAL) ---
+    from kg.sparql_matching import extract_requirements
+
+    gold_query = schema.get("current_gold_query", "")
+
+    if gold_query:
+        reqs = extract_requirements(gold_query)
+        gold_classes = set(reqs["classes"])
+        gold_preds = set(reqs["predicates"])
+
+        cand_classes = qry_labels
+        cand_preds = qry_relations
+
+        predicate_overlap = len(cand_preds & gold_preds)
+        class_overlap = len(cand_classes & gold_classes)
+
+        missing_predicates = len(gold_preds - cand_preds)
+        extra_predicates = len(cand_preds - gold_preds)
+    else:
+        predicate_overlap = 0
+        class_overlap = 0
+        missing_predicates = 0
+        extra_predicates = 0
+
+    select_vars = extract_select_vars(query)
+    allowed_predicates = set(schema.get("predicates", [])) | set(schema.get("properties", []))
     intermediates = expected_intermediates(q_entities, schema)
 
-    node_count = len(NODE_PATTERN.findall(query))
-    rel_count = len(REL_BLOCK_PATTERN.findall(query))
+    variables = VAR_PATTERN.findall(query)
+    node_count = len(set(variables))
+    rel_count = len(PRED_PATTERN.findall(query))
+    triple_count = len(triples)
+    type_triple_count = sum(
+        1 for _, pred, _ in triples if pred.lower() in {"a", "rdf:type"}
+    )
+    has_type = int(type_triple_count > 0)
     distinct_label_count = len(qry_labels)
     distinct_relation_count = len(qry_relations)
 
     query_upper = query.upper()
-    has_variable_length = int(any("*" in block for block in REL_BLOCK_PATTERN.findall(query)))
-    has_optional = int("OPTIONAL MATCH" in query_upper)
+    has_variable_length = int("*" in query_upper)
+    has_optional = int("OPTIONAL" in query_upper)
     has_where = int("WHERE" in query_upper)
     has_exists = int("EXISTS" in query_upper)
     has_distinct = int("DISTINCT" in query_upper)
     has_aggregation = int(
-        any(k in query_upper for k in ["COUNT(", "COLLECT(", "SUM(", "AVG(", "MIN(", "MAX("])
+        any(k in query_upper for k in ["COUNT(", "SUM(", "AVG(", "MIN(", "MAX(", "GROUP_CONCAT("])
     )
-    property_filter_count = len(PROP_PATTERN.findall(query))
+    property_filter_count = len(FILTER_PATTERN.findall(query))
+
+    vars_in_triples = set()
+    graph: Dict[str, Set[str]] = {}
+    invalid_predicate_count = 0
+
+    for subj, pred, obj in triples:
+        if subj.startswith("?"):
+            vars_in_triples.add(subj)
+            graph.setdefault(subj, set())
+        if obj.startswith("?"):
+            vars_in_triples.add(obj)
+            graph.setdefault(obj, set())
+        if subj.startswith("?") and obj.startswith("?"):
+            graph[subj].add(obj)
+            graph[obj].add(subj)
+
+        pred_lower = pred.lower()
+        if pred_lower in {"a", "rdf:type"}:
+            continue
+        pred_name = pred[1:] if pred.startswith(":") else pred
+        if pred_name not in allowed_predicates:
+            invalid_predicate_count += 1
+
+    component_count = 0
+    visited = set()
+    for var in vars_in_triples:
+        if var in visited:
+            continue
+        component_count += 1
+        stack = [var]
+        visited.add(var)
+        while stack:
+            node = stack.pop()
+            for neighbor in graph.get(node, set()):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+    has_disconnected = int(component_count > 1)
+
+    unused_select_vars = len([v for v in select_vars if v not in vars_in_triples])
 
     entity_overlap = len(q_entities & qry_labels)
     relation_overlap = len(q_relations & qry_relations)
@@ -195,6 +292,13 @@ def extract_features(question: str, query: str, schema: Dict[str, object]) -> Di
     features = {
         "node_count": float(node_count),
         "rel_count": float(rel_count),
+        "triple_count": float(triple_count),
+        "type_triple_count": float(type_triple_count),
+        "has_type": float(has_type),
+        "component_count": float(component_count),
+        "has_disconnected": float(has_disconnected),
+        "invalid_predicate_count": float(invalid_predicate_count),
+        "unused_select_vars": float(unused_select_vars),
         "distinct_label_count": float(distinct_label_count),
         "distinct_relation_count": float(distinct_relation_count),
         "has_variable_length": float(has_variable_length),
@@ -210,6 +314,10 @@ def extract_features(question: str, query: str, schema: Dict[str, object]) -> Di
         "relation_precision": float(relation_precision),
         "expected_intermediate_coverage": float(expected_intermediate_coverage),
         "unexpected_label_ratio": float(unexpected_label_ratio),
+        "predicate_overlap": float(predicate_overlap),
+        "class_overlap": float(class_overlap),
+        "missing_predicates": float(missing_predicates),
+        "extra_predicates": float(extra_predicates),
     }
 
     missing = [name for name in FEATURE_NAMES if name not in features]

@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q31_C1",
-      "query": "MATCH (s:Supplier)-[:AFFECTS]->(y:Yield {value:'low'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?y a :Yield . ?y :value ?y_value . ?s :AFFECTS ?y . FILTER(?y_value = 'low') }"
     },
     {
       "id": "Q31_C2",
-      "query": "MATCH (s:Supplier)<-[:AFFECTS]-(y:Yield {value:'low'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?y a :Yield . ?y :value ?y_value . ?y :AFFECTS ?s . FILTER(?y_value = 'low') }"
     },
     {
       "id": "Q31_C3",
-      "query": "MATCH (s:Supplier)-[r:AFFECTS]->(y:Yield) WHERE y.value = 'low' RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?y a :Yield . }"
     },
     {
       "id": "Q31_C4",
-      "query": "MATCH (s:Supplier)<-[r:AFFECTS]-(y:Yield) WHERE y.value = 'low' RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?y a :Yield . }"
     },
     {
       "id": "Q31_C5",
-      "query": "MATCH (s:Supplier)-[:AFFECTS {value:'low'}]->(y:Yield) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?y a :Yield . ?s :AFFECTS ?y . ?y :value ?y_value . FILTER(?y_value = 'low') }"
     }
   ]
 }

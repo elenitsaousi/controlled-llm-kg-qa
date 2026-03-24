@@ -1,0 +1,26 @@
+{
+  "question_id": "Q25",
+  "question": "Which products are affected by defects?",
+  "candidates": [
+    {
+      "id": "Q25_C1",
+      "query": "SELECT ?p WHERE { ?p a :Product . ?l a :Lot . ?d a :Defect . ?l :PRODUCED_FOR ?p . ?l :HAS_DEFECT ?d . }"
+    },
+    {
+      "id": "Q25_C2",
+      "query": "SELECT ?product WHERE { ?lot a :Lot . ?lot :HAS_DEFECT ?defect . ?defect :HAS_DEFECT ?product . ?product a :Product . }"
+    },
+    {
+      "id": "Q25_C3",
+      "query": "SELECT ?product WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material :USED_IN ?processStep . ?lot :REQUIRES ?processStep . ?lot :HAS_DEFECT ?defect . ?defect :HAS_DEFECT ?product . ?product a :Product . }"
+    },
+    {
+      "id": "Q25_C4",
+      "query": "SELECT ?product WHERE { ?defect a :Defect . ?defect :HAS_DEFECT ?product . ?product a :Product . }"
+    },
+    {
+      "id": "Q25_C5",
+      "query": "SELECT ?product WHERE { ?processStep a :ProcessStep . ?lot :REQUIRES ?processStep . ?lot :HAS_DEFECT ?defect . ?defect :HAS_DEFECT ?product . ?product a :Product . }"
+    }
+  ]
+}

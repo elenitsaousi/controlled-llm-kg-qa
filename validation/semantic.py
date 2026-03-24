@@ -1,7 +1,7 @@
 import re
 from typing import Dict, List
 
-_WRITE_RE = re.compile(r"\b(CREATE|DELETE|MERGE|SET)\b", re.IGNORECASE)
+_WRITE_RE = re.compile(r"\b(INSERT|DELETE|UPDATE)\b", re.IGNORECASE)
 
 
 def validate_query_semantic(query: str) -> List[Dict[str, str]]:

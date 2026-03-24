@@ -1,0 +1,26 @@
+{
+  "question_id": "Q3",
+  "question": "Which manufacturing tools are linked to defects for product X?",
+  "candidates": [
+    {
+      "id": "Q3_C1",
+      "query": "SELECT DISTINCT ?t ?d WHERE { ?p a :Product . ?p :name ?p_name . ?l a :Lot . ?t a :Tool . ?d a :Defect . ?l :PRODUCED_FOR ?p . ?l :PROCESSED_WITH ?t . ?l :HAS_DEFECT ?d . FILTER(?p_name = 'X') }"
+    },
+    {
+      "id": "Q3_C2",
+      "query": "SELECT ?tool WHERE { ?product a :Product . ?lot :PRODUCED_FOR ?product . ?lot :HAS_DEFECT ?defect . ?lot :PROCESSED_WITH ?tool . ?tool a :Tool . }"
+    },
+    {
+      "id": "Q3_C3",
+      "query": "SELECT ?tool WHERE { ?product a :Product . ?lot :PRODUCED_FOR ?product . ?lot :HAS_DEFECT ?defect . ?lot :USED_IN ?material . ?processStep a :ProcessStep . ?material :REQUIRES ?processStep . ?tool :USED_IN ?processStep . FILTER(?defect = 'X'^^<http://www.w3.org/2001/XMLSchema#string>) . }"
+    },
+    {
+      "id": "Q3_C4",
+      "query": "SELECT ?tool WHERE { ?defect a :Defect . ?lot :HAS_DEFECT ?defect . ?lot :USED_IN ?material . ?processStep a :ProcessStep . ?material :REQUIRES ?processStep . ?tool :USED_IN ?processStep . ?lot :PROCESSED_WITH ?tool . }"
+    },
+    {
+      "id": "Q3_C5",
+      "query": "SELECT ?tool WHERE { ?lot a :Lot ; :HAS_DEFECT ?defect . ?lot :CONTAINS ?product . ?product :REQUIRES ?processStep . ?tool :USED_IN ?processStep . }"
+    }
+  ]
+}

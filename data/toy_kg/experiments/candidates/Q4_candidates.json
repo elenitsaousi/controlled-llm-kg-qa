@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q4_C1",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(m:Material {name:'specific_material'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?m :name ?m_name . ?s :SUPPLIES ?m . FILTER(?m_name = 'specific_material') }"
     },
     {
       "id": "Q4_C2",
-      "query": "MATCH (s:Supplier)<-[:SUPPLIES]-(m:Material {name:'specific_material'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?m :name ?m_name . ?m :SUPPLIES ?s . FILTER(?m_name = 'specific_material') }"
     },
     {
       "id": "Q4_C3",
-      "query": "MATCH p=(s:Supplier)-[:SUPPLIES]->(m:Material {name:'specific_material'}) RETURN DISTINCT s.name"
+      "query": "SELECT DISTINCT ?s WHERE { ?s a :Supplier . ?m a :Material . ?m :name ?m_name . ?s :SUPPLIES ?m . FILTER(?m_name = 'specific_material') }"
     },
     {
       "id": "Q4_C4",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(:Material {name:'specific_material'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?anon2 a :Material . ?anon2 :name ?anon2_name . ?s :SUPPLIES ?anon2 . FILTER(?anon2_name = 'specific_material') }"
     },
     {
       "id": "Q4_C5",
-      "query": "MATCH (s:Supplier)<-[:SUPPLIES]-(m:Material {name:'specific_material'}) WITH s MATCH (s)-[r:SUPPLIES]->(m) RETURN DISTINCT s.name"
+      "query": "SELECT DISTINCT ?s WHERE { ?s a :Supplier . ?m a :Material . ?m :name ?m_name . ?m :SUPPLIES ?s . FILTER(?m_name = 'specific_material') }"
     }
   ]
 }

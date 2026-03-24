@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q22_C1",
-      "query": "MATCH (m:Material)-[:USED_IN]->(ps:ProcessStep) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?m a :Material . ?ps a :ProcessStep . ?m :USED_IN ?ps . }"
     },
     {
       "id": "Q22_C2",
-      "query": "MATCH (m:Material)<-[:USED_IN]-(ps:ProcessStep) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?m a :Material . ?ps a :ProcessStep . ?ps :USED_IN ?m . }"
     },
     {
       "id": "Q22_C3",
-      "query": "MATCH p=(m:Material)-[:USED_IN]->(ps:ProcessStep) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?m a :Material . ?ps a :ProcessStep . ?m :USED_IN ?ps . }"
     },
     {
       "id": "Q22_C4",
-      "query": "MATCH (ps:ProcessStep)-[r:USED_IN]->(m:Material) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?ps a :ProcessStep . ?m a :Material . }"
     },
     {
       "id": "Q22_C5",
-      "query": "MATCH (ps:ProcessStep)<-[:USED_IN]-(m:Material) RETURN m.name"
+      "query": "SELECT ?m WHERE { ?ps a :ProcessStep . ?m a :Material . ?m :USED_IN ?ps . }"
     }
   ]
 }

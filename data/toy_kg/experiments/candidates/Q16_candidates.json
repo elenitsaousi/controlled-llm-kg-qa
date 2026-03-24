@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q16_C1",
-      "query": "MATCH (f:Fab)-[:HAS_CONSTRAINT]->(c:CapacityConstraint) RETURN f.name"
+      "query": "SELECT ?f WHERE { ?f a :Fab . ?c a :CapacityConstraint . ?f :HAS_CONSTRAINT ?c . }"
     },
     {
       "id": "Q16_C2",
-      "query": "MATCH (f:Fab)<-[:HAS_CONSTRAINT]-(c:CapacityConstraint) RETURN f.name"
+      "query": "SELECT ?f WHERE { ?f a :Fab . ?c a :CapacityConstraint . ?c :HAS_CONSTRAINT ?f . }"
     },
     {
       "id": "Q16_C3",
-      "query": "MATCH (f:Fab)-[r:HAS_CONSTRAINT]->()<-[:HAS_CONSTRAINT]-(f2:Fab) WHERE NOT f=f2 RETURN DISTINCT f.name"
+      "query": "SELECT DISTINCT ?f WHERE { ?f a :Fab . ?f2 a :Fab . ?f2 :HAS_CONSTRAINT ?anon2 . }"
     },
     {
       "id": "Q16_C4",
-      "query": "MATCH (f:Fab)-[:HAS_CONSTRAINT]->(c:CapacityConstraint) WITH f MATCH (f)-[:PRODUCES]->(p:Product) RETURN f.name, p.name"
+      "query": "SELECT ?f ?p WHERE { ?f a :Fab . ?c a :CapacityConstraint . ?p a :Product . ?f :HAS_CONSTRAINT ?c . ?f :PRODUCES ?p . }"
     },
     {
       "id": "Q16_C5",
-      "query": "MATCH (f:Fab)<-[:HAS_CONSTRAINT]-(c:CapacityConstraint) WITH f MATCH (f)-[:PRODUCES]->(p:Product) RETURN f.name, p.name"
+      "query": "SELECT ?f ?p WHERE { ?f a :Fab . ?c a :CapacityConstraint . ?p a :Product . ?c :HAS_CONSTRAINT ?f . ?f :PRODUCES ?p . }"
     }
   ]
 }

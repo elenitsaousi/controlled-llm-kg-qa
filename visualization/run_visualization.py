@@ -22,10 +22,14 @@ CANDIDATES_DIR = os.path.join(
     "data",
     "toy_kg",
     "experiments",
-    "candidates"
+    "sparql_candidates"
 )
 
-FEATURES_FILE = os.path.join(BASE_DIR, "ranking", "features_domain.json")
+FEATURES_FILE = os.path.join(
+    BASE_DIR,
+    "ranking",
+    "features_domain_sparql.json"
+)
 QUESTIONS_FILE = os.path.join(
     BASE_DIR,
     "data",

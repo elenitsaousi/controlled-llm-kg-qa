@@ -1,0 +1,26 @@
+{
+  "question_id": "Q18",
+  "question": "Which lots are associated with defects?",
+  "candidates": [
+    {
+      "id": "Q18_C1",
+      "query": "SELECT ?lot WHERE { ?lot a :Lot . ?defect a :Defect . ?lot :HAS_DEFECT ?defect . }"
+    },
+    {
+      "id": "Q18_C2",
+      "query": "SELECT ?lot WHERE { ?lot a :Lot . ?lot :HAS_DEFECT ?defect . }"
+    },
+    {
+      "id": "Q18_C3",
+      "query": "SELECT ?lot WHERE { ?lot a :Lot . ?order :CONTAINS ?product . ?lot :PRODUCED_FOR ?product . ?order :DEPENDS_ON ?shipment . ?shipment :HAS_STATUS ?status . FILTER(?status = 'Defective') . }"
+    },
+    {
+      "id": "Q18_C4",
+      "query": "SELECT ?lot WHERE { ?lot a :Lot . ?lot :HAS_STATUS ?status . ?status :SEVERITY 'critical' . }"
+    },
+    {
+      "id": "Q18_C5",
+      "query": "SELECT ?lot WHERE { ?lot a :Lot . ?lot :PROCESSED_WITH ?tool . ?tool a :Tool . }"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "question_id": "Q17",
+  "question": "Which tools are used to process lots?",
+  "candidates": [
+    {
+      "id": "Q17_C1",
+      "query": "SELECT ?tool WHERE { ?lot a :Lot . ?tool a :Tool . ?lot :PROCESSED_WITH ?tool . }"
+    },
+    {
+      "id": "Q17_C2",
+      "query": "SELECT ?tool WHERE { ?processStep a :ProcessStep . ?lot :REQUIRES ?processStep . ?processStep :USED_IN ?tool . ?tool a :Tool . }"
+    },
+    {
+      "id": "Q17_C3",
+      "query": "SELECT ?tool WHERE { ?material a :Material . ?processStep :USED_IN ?tool . ?lot :CONTAINS ?material . ?processStep :PROCESSED_WITH ?lot . ?tool a :Tool . }"
+    },
+    {
+      "id": "Q17_C4",
+      "query": "SELECT ?tool WHERE { ?lot a :Lot . ?processStep :REQUIRES ?lot . ?processStep :USED_IN ?tool . ?tool a :Tool . }"
+    },
+    {
+      "id": "Q17_C5",
+      "query": "SELECT ?tool WHERE { ?lot a :Lot . ?tool :DEPENDS_ON ?lot . ?tool a :Tool . }"
+    }
+  ]
+}

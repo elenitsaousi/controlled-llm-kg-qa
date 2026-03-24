@@ -1,0 +1,29 @@
+{
+  "low": {
+    "n": 11,
+    "schema": 4,
+    "learning": 11,
+    "delta": 7,
+    "schema_acc": 0.36363636363636365,
+    "learning_acc": 1.0,
+    "mean_delta": 0.6363636363636364
+  },
+  "high": {
+    "n": 11,
+    "schema": 7,
+    "learning": 10,
+    "delta": 3,
+    "schema_acc": 0.6363636363636364,
+    "learning_acc": 0.9090909090909091,
+    "mean_delta": 0.2727272727272727
+  },
+  "mid": {
+    "n": 11,
+    "schema": 4,
+    "learning": 11,
+    "delta": 7,
+    "schema_acc": 0.36363636363636365,
+    "learning_acc": 1.0,
+    "mean_delta": 0.6363636363636364
+  }
+}

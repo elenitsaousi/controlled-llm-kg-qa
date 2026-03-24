@@ -1,0 +1,26 @@
+{
+  "question_id": "Q14",
+  "question": "Which suppliers provide raw materials?",
+  "candidates": [
+    {
+      "id": "Q14_C1",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material a :Material . }"
+    },
+    {
+      "id": "Q14_C2",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :DEPENDS_ON ?tool . ?tool a :Tool . ?tool :USED_IN ?process_step . ?process_step :REQUIRES ?material . ?material a :Material . }"
+    },
+    {
+      "id": "Q14_C3",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?product . ?product a :Product . ?product :HAS_CONSTRAINT ?constraint . ?constraint :AFFECTS ?yield . ?yield :HAS_DEFECT ?defect . ?defect :DEFECT_CODE 'raw_material_defect' . }"
+    },
+    {
+      "id": "Q14_C4",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :PRODUCES ?product . ?product :REQUIRES ?material . ?material a :Material . }"
+    },
+    {
+      "id": "Q14_C5",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?lot . ?lot :CONTAINS ?material . ?material a :Material . }"
+    }
+  ]
+}

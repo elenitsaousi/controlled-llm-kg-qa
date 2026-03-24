@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q6_C1",
-      "query": "MATCH (i:Inventory {days_of_supply: 'low'}) RETURN i"
+      "query": "SELECT ?i WHERE { ?i a :Inventory . ?i :days_of_supply ?i_days_of_supply . FILTER(?i_days_of_supply = 'low') }"
     },
     {
       "id": "Q6_C2",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(p:Product)<-[:HAS_STATUS {name:'Delayed'}]-(sh:Shipment) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?p a :Product . ?sh a :Shipment . ?s :SUPPLIES ?p . ?sh :HAS_STATUS ?p . ?p :name ?p_name . FILTER(?p_name = 'Delayed') }"
     },
     {
       "id": "Q6_C3",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(o:Order)-[:DEPENDS_ON]->(sh:Shipment {status:'Delayed'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?o a :Order . ?sh a :Shipment . ?sh :status ?sh_status . ?s :SUPPLIES ?o . ?o :DEPENDS_ON ?sh . FILTER(?sh_status = 'Delayed') }"
     },
     {
       "id": "Q6_C4",
-      "query": "MATCH (s:Supplier)-[:AFFECTS]->(y:Yield)<-[:HAS_STATUS {name:'Delayed'}]-(sh:Shipment) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?y a :Yield . ?sh a :Shipment . ?s :AFFECTS ?y . ?sh :HAS_STATUS ?y . ?y :name ?y_name . FILTER(?y_name = 'Delayed') }"
     },
     {
       "id": "Q6_C5",
-      "query": "MATCH (s:Supplier)-[:SUPPLIES]->(p:Product)<-[:STOCKS]-(inv:Inventory)<-[:DEPENDS_ON]-(sh:Shipment {status:'Delayed'}) RETURN s.name"
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?p a :Product . ?inv a :Inventory . ?sh a :Shipment . ?sh :status ?sh_status . ?s :SUPPLIES ?p . ?inv :STOCKS ?p . ?sh :DEPENDS_ON ?inv . FILTER(?sh_status = 'Delayed') }"
     }
   ]
 }

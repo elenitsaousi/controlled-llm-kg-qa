@@ -1,0 +1,26 @@
+{
+  "question_id": "Q4",
+  "question": "Which suppliers provide a specific material?",
+  "candidates": [
+    {
+      "id": "Q4_C1",
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?m a :Material . ?m :name ?m_name . ?s :SUPPLIES ?m . FILTER(?m_name = 'specific_material') }"
+    },
+    {
+      "id": "Q4_C2",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?product . ?product :USED_IN ?process_step . ?process_step :REQUIRES ?material . ?material a :Material . }"
+    },
+    {
+      "id": "Q4_C3",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :DEPENDS_ON ?supporter . ?supporter a :Supporter . ?supporter :SUPPLIES ?material . }"
+    },
+    {
+      "id": "Q4_C4",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :PRODUCES ?product . ?product a :Product . ?product :REQUIRES ?processStep . ?processStep a :ProcessStep . ?processStep :USED_IN ?tool . ?tool a :Tool . ?tool :AFFECTS ?yield . ?yield a :Yield . ?yield :HAS_DEFECT ?defect . ?defect a :Defect . }"
+    },
+    {
+      "id": "Q4_C5",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :PRODUCES ?product . ?product a :Product . ?product :REQUIRES ?material . ?material a :Material . }"
+    }
+  ]
+}

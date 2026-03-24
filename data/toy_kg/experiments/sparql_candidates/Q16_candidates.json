@@ -1,0 +1,26 @@
+{
+  "question_id": "Q16",
+  "question": "Which fabs have capacity constraints?Answer (placeholder): No results returned by the stub executor.",
+  "candidates": [
+    {
+      "id": "Q16_C1",
+      "query": "SELECT ?fab WHERE { ?fab a :Fab . ?fab :DEPENDS_ON ?supplier . ?supplier a :Supplier . ?fab :HAS_CONSTRAINT ?constraint . ?constraint a :CapacityConstraint . }"
+    },
+    {
+      "id": "Q16_C2",
+      "query": "SELECT ?fab WHERE { ?fab a :Fab . ?fab :CONTAINS ?lot . ?lot :PROCESSED_WITH ?tool . ?tool :REQUIRES ?process_step . ?process_step :AFFECTS ?yield . ?yield :HAS_CONSTRAINT ?constraint . ?constraint a :CapacityConstraint . }"
+    },
+    {
+      "id": "Q16_C3",
+      "query": "SELECT ?fab WHERE { ?fab a :Fab . ?fab :PRODUCES ?product . ?product :HAS_CONSTRAINT ?capacity_constraint . ?capacity_constraint a :CapacityConstraint . FILTER(?fab_id = 'FAB123') }"
+    },
+    {
+      "id": "Q16_C4",
+      "query": "SELECT ?fab WHERE { ?fab a :Fab . ?fab :HAS_CONSTRAINT ?constraint . ?constraint a :CapacityConstraint . }"
+    },
+    {
+      "id": "Q16_C5",
+      "query": "SELECT ?fab WHERE { ?fab a :Fab . ?fab :SUPPLIES ?product . ?product :REQUIRES ?process_step . ?process_step :AFFECTS ?yield . ?yield :HAS_CONSTRAINT ?constraint . ?constraint a :CapacityConstraint . }"
+    }
+  ]
+}

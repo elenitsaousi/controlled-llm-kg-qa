@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q19_C1",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect) RETURN l.lot_id, d.defect_code, d.severity"
+      "query": "SELECT ?l ?d ?d WHERE { ?l a :Lot . ?d a :Defect . ?l :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q19_C2",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect) RETURN DISTINCT d.defect_code"
+      "query": "SELECT DISTINCT ?d WHERE { ?l a :Lot . ?d a :Defect . ?l :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q19_C3",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect) RETURN l.lot_id, d.defect_code"
+      "query": "SELECT ?l ?d WHERE { ?l a :Lot . ?d a :Defect . ?l :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q19_C4",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect) WHERE d.severity = 'CRITICAL' RETURN l.lot_id, d.defect_code, d.severity"
+      "query": "SELECT ?l ?d ?d WHERE { ?l a :Lot . ?d a :Defect . ?l :HAS_DEFECT ?d . }"
     },
     {
       "id": "Q19_C5",
-      "query": "MATCH (l:Lot)-[:HAS_DEFECT]->(d:Defect) WITH l, COLLECT(d) AS defects RETURN l.lot_id, SIZE(defects)"
+      "query": "SELECT ?l ?SIZE(defects) WHERE { ?l a :Lot . ?d a :Defect . ?l :HAS_DEFECT ?d . }"
     }
   ]
 }

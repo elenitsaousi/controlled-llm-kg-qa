@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q26_C1",
-      "query": "MATCH (f:Fab)-[:HAS_CONSTRAINT]->(c:CapacityConstraint {constraint_type:'production_bottleneck'}) RETURN f.name"
+      "query": "SELECT ?f WHERE { ?f a :Fab . ?c a :CapacityConstraint . ?c :constraint_type ?c_constraint_type . ?f :HAS_CONSTRAINT ?c . FILTER(?c_constraint_type = 'production_bottleneck') }"
     },
     {
       "id": "Q26_C2",
-      "query": "MATCH (f:Fab)<-[:PRODUCES]-(p:Product)-[:HAS_CONSTRAINT]->(c:CapacityConstraint {constraint_type:'production_bottleneck'}) RETURN f.name"
+      "query": "SELECT ?f WHERE { ?f a :Fab . ?p a :Product . ?c a :CapacityConstraint . ?c :constraint_type ?c_constraint_type . ?p :PRODUCES ?f . ?p :HAS_CONSTRAINT ?c . FILTER(?c_constraint_type = 'production_bottleneck') }"
     },
     {
       "id": "Q26_C3",
-      "query": "MATCH (f:Fab)<-[:PRODUCES]-(l:Lot)-[:HAS_DEFECT]->(d:Defect), (l)-[:PROCESSED_WITH]->(t:Tool) WHERE d.severity='high' RETURN DISTINCT f.name"
+      "query": "SELECT DISTINCT ?f WHERE { ?f a :Fab . ?l a :Lot . ?d a :Defect . ?t a :Tool . ?l :PRODUCES ?f . ?l :HAS_DEFECT ?d . ?l :PROCESSED_WITH ?t . }"
     },
     {
       "id": "Q26_C4",
-      "query": "MATCH (f:Fab)<-[:PRODUCES]-(p:Product)-[:DEPENDS_ON]->(s:Shipment)-[:HAS_STATUS {name:'delayed'}]->() RETURN f.name"
+      "query": "SELECT ?f WHERE { ?f a :Fab . ?p a :Product . ?s a :Shipment . ?p :PRODUCES ?f . ?p :DEPENDS_ON ?s . ?s :HAS_STATUS ?anon1 . ?anon1 :name ?anon1_name . FILTER(?anon1_name = 'delayed') }"
     },
     {
       "id": "Q26_C5",
-      "query": "MATCH (f:Fab)<-[:PRODUCES]-(i:Inventory)-[:STOCKS]->(p:Product)-[:HAS_CONSTRAINT]->(c:CapacityConstraint {constraint_type:'production_bottleneck'}) RETURN f.name"
+      "query": "SELECT ?f WHERE { ?f a :Fab . ?i a :Inventory . ?p a :Product . ?c a :CapacityConstraint . ?c :constraint_type ?c_constraint_type . ?i :PRODUCES ?f . ?i :STOCKS ?p . ?p :HAS_CONSTRAINT ?c . FILTER(?c_constraint_type = 'production_bottleneck') }"
     }
   ]
 }

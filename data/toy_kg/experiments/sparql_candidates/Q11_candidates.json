@@ -1,0 +1,26 @@
+{
+  "question_id": "Q11",
+  "question": "Which suppliers are associated with supply delays?",
+  "candidates": [
+    {
+      "id": "Q11_C1",
+      "query": "SELECT ?s WHERE { ?s a :Supplier . ?p a :Product . ?o a :Order . ?sh a :Shipment . ?st a :Status . ?st :name ?st_name . ?s :SUPPLIES ?p . ?o :CONTAINS ?p . ?o :DEPENDS_ON ?sh . ?sh :HAS_STATUS ?st . FILTER(?st_name = 'Delayed') }"
+    },
+    {
+      "id": "Q11_C2",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?fab a :Fab ; :PRODUCES ?product . ?order a :Order ; :STOCKS ?product . ?inventory a :Inventory ; :STOCKS ?product . ?order :DEPENDS_ON ?shipment . ?shipment a :Shipment ; :SUPPLIES ?supplier . ?shipment :HAS_STATUS ?status . ?status :SHIPMENT_STATUS 'delayed' . }"
+    },
+    {
+      "id": "Q11_C3",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :DEPENDS_ON ?shipment . ?shipment :HAS_STATUS ?status . ?status :DEFECT_CODE 'delay' . }"
+    },
+    {
+      "id": "Q11_C4",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?product . ?product :PRODUCED_FOR ?lot . ?lot :HAS_STATUS ?status . ?status :DEFECT_CODE 'delay' . }"
+    },
+    {
+      "id": "Q11_C5",
+      "query": "SELECT ?supplier WHERE { ?supplier a :Supplier . ?supplier :SUPPLIES ?material . ?material :REQUIRES ?process_step . ?process_step :AFFECTS ?yield . ?yield :severity 'Critical' . }"
+    }
+  ]
+}

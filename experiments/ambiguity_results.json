@@ -1,0 +1,200 @@
+[
+  {
+    "question": "Which suppliers affect the production yield of product X?",
+    "entropy": 1.6093956746503464,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which suppliers provide materials used in lithography for product X?",
+    "entropy": 1.6092741625311144,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which manufacturing tools are linked to defects for product X?",
+    "entropy": 1.386091624699626,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which inventories stock a specific product?",
+    "entropy": 1.6093102027102286,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which suppliers are associated with supply delays?",
+    "entropy": 1.0988496954210454,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which shipments affect order fulfillment?",
+    "entropy": 1.6093171169945826,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which orders are delayed due to shipment issues?",
+    "entropy": 1.609330781398397,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which suppliers provide raw materials?",
+    "entropy": 1.609252362718915,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which fabs produce a given product?",
+    "entropy": 1.6093896395841203,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which fabs have capacity constraints?Answer (placeholder): No results returned by the stub executor.",
+    "entropy": 1.0989278756471257,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which tools are used to process lots?",
+    "entropy": 1.6094292999006927,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which lots are associated with defects?",
+    "entropy": 1.6093056578473786,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which defects are linked to specific lots?",
+    "entropy": 1.6093652995503704,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which tools are associated with defects?",
+    "entropy": 1.6093509082317397,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which products require specific process steps?",
+    "entropy": 1.6090015393561021,
+    "correct": false,
+    "used_ml": true
+  },
+  {
+    "question": "Which materials are used in a process step?",
+    "entropy": 1.6093154129444796,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which lots are processed with a specific tool?",
+    "entropy": 1.6094086396025278,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which defects impact manufacturing yield?",
+    "entropy": 1.6090110525943466,
+    "correct": false,
+    "used_ml": true
+  },
+  {
+    "question": "Which products are affected by defects?",
+    "entropy": 1.609436308635438,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which fabs experience production bottlenecks?",
+    "entropy": 1.6087995200021274,
+    "correct": false,
+    "used_ml": true
+  },
+  {
+    "question": "Which suppliers affect manufacturing yield?",
+    "entropy": 1.6092952422000382,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which materials supplied impact production processes?",
+    "entropy": 1.6087773006181214,
+    "correct": false,
+    "used_ml": true
+  },
+  {
+    "question": "Which suppliers are linked to product defects?",
+    "entropy": 1.6093356982757359,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which shipments delay manufacturing orders?",
+    "entropy": 1.386082033919609,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which suppliers are associated with low yield?",
+    "entropy": 1.098512906398441,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which materials affect tool performance?",
+    "entropy": 1.6093076493823313,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which suppliers supply products?",
+    "entropy": 1.6093467187960286,
+    "correct": true,
+    "used_ml": false
+  },
+  {
+    "question": "Which suppliers provide a specific material?",
+    "entropy": 1.609252362718915,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which orders depend on a particular shipment?",
+    "entropy": 1.6093754731210677,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which inventories have low days of supply?",
+    "entropy": 1.6092429827367023,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which orders include a given product?",
+    "entropy": 1.609376172291531,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which shipments have a specific status?Answer",
+    "entropy": 1.6091815720172309,
+    "correct": false,
+    "used_ml": false
+  },
+  {
+    "question": "Which suppliers provide materials used in orders?",
+    "entropy": 1.609232673338732,
+    "correct": false,
+    "used_ml": false
+  }
+]

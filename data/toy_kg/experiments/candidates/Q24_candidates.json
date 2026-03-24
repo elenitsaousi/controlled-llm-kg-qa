@@ -4,23 +4,23 @@
   "candidates": [
     {
       "id": "Q24_C1",
-      "query": "MATCH (d:Defect)-[:AFFECTS]->(y:Yield) RETURN d.defect_code, y.value"
+      "query": "SELECT ?d ?y WHERE { ?d a :Defect . ?y a :Yield . ?d :AFFECTS ?y . }"
     },
     {
       "id": "Q24_C2",
-      "query": "MATCH (d:Defect)-[r:AFFECTS]->(y:Yield) RETURN d.defect_code, r.type, y.value"
+      "query": "SELECT ?d ?r ?y WHERE { ?d a :Defect . ?y a :Yield . }"
     },
     {
       "id": "Q24_C3",
-      "query": "MATCH (d:Defect)<-[:AFFECTS]-(y:Yield) RETURN d.defect_code, y.severity, y.value"
+      "query": "SELECT ?d ?y ?y WHERE { ?d a :Defect . ?y a :Yield . ?y :AFFECTS ?d . }"
     },
     {
       "id": "Q24_C4",
-      "query": "MATCH (d:Defect)-[r:AFFECTS]->(y:Yield) WHERE r.type = 'manufacturing' RETURN d.defect_code, r.type, y.value"
+      "query": "SELECT ?d ?r ?y WHERE { ?d a :Defect . ?y a :Yield . }"
     },
     {
       "id": "Q24_C5",
-      "query": "MATCH (d:Defect)-[:AFFECTS]->(y:Yield) WITH d, COLLECT(DISTINCT y.value) AS yields RETURN d.defect_code, yields"
+      "query": "SELECT ?d ?yields WHERE { ?d a :Defect . ?y a :Yield . ?d :AFFECTS ?y . }"
     }
   ]
 }
