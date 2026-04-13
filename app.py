@@ -4,7 +4,7 @@ import streamlit as st
 
 from kg.schema import load_default_schema, load_schema
 from llm.candidate_generation import generate_candidate_prompt
-from llm.ollama_client import OllamaClient
+from llm.client import OllamaClient
 from pipeline.qa import answer_question
 
 

@@ -1,0 +1,815 @@
+{
+  "description": "Schema extracted from ontology.ttl and observed graph.ttl predicates/classes.",
+  "classes": [
+    "10nm_to_less_than_28nm",
+    "180nm_or_greater",
+    "28nm_to_less_than_45nm",
+    "55nm_to_180nm",
+    "7nm_or_less",
+    "Advanced_driver-assistance_systems_%28ADAS%29",
+    "AggregatedDemand",
+    "Automotive",
+    "AutonomousDrivingDevelopment",
+    "AutonomousDrivingDevelopment_OEM",
+    "AutonomousDrivingDevelopment_Tier1",
+    "BEHV",
+    "BEV",
+    "Body_and_convenience",
+    "Chassis_and_safety",
+    "Company",
+    "Component",
+    "ComponentShare",
+    "ComponentShare_Tier1",
+    "ComponentType_Tier1",
+    "ConversionFactor",
+    "CurrentDemandAnalysis",
+    "CurrentRegionalDemand",
+    "Demand",
+    "DemandForRegion",
+    "DemandResponse",
+    "EV",
+    "FutureDemandAnalysis",
+    "FutureRegionalDemand",
+    "ICE",
+    "Infotainment_and_Telematics",
+    "Inventory",
+    "InventoryDevelopment",
+    "InventoryDevelopment_Semi",
+    "InventoryDevelopment_Tier1",
+    "InventoryTargetIndicator",
+    "InventoryTargetIndicator_Semi",
+    "MarketSegment",
+    "Month",
+    "OEM_Survey",
+    "OrderCancellation",
+    "OrderCancellationChange_Semi",
+    "Other",
+    "Powertrain",
+    "Quarter",
+    "Region",
+    "SAELevel",
+    "Sales",
+    "Semiconductor_Survey",
+    "Survey",
+    "TechnologyCategory",
+    "TechnologyNode",
+    "Tier1_Survey",
+    "TimePeriod",
+    "VehicleSalesObservation",
+    "VehicleType",
+    "YearlySalesData",
+    "nonEV"
+  ],
+  "predicates": [
+    "analyzesTechnologyCategory",
+    "analyzesVehicleType",
+    "appliesToVehicleType",
+    "definesCategory",
+    "forCompany",
+    "forComponent",
+    "forTechnologyCategory",
+    "forTimePeriod",
+    "forVehicleType",
+    "fromCompany",
+    "hasAggregatedResult",
+    "hasAssumption",
+    "hasComponentTypeSplit",
+    "hasConversionFactor",
+    "hasDetail",
+    "hasFutureDemand",
+    "hasInventoryResponse",
+    "hasInventoryTrend",
+    "hasMarketSegment",
+    "hasOrderCancellation",
+    "hasRegionalDemand",
+    "hasResponse",
+    "hasResponseType",
+    "hasSAELevel",
+    "hasSurveyOrigin",
+    "hasTechnologyCategory",
+    "hasTechnologyNodeDemand",
+    "hasVehicleType",
+    "hasYearlySales",
+    "inRegion",
+    "quarter",
+    "usesBaseline"
+  ],
+  "properties": [
+    "assignedTechnologyCategory",
+    "assignedVehicleType",
+    "assumptionReason",
+    "baselineB1",
+    "baselineB1Percent",
+    "baselineB2",
+    "baselineB2Percent",
+    "baselineType",
+    "baselineYear",
+    "companyName",
+    "componentType",
+    "conversionDescription",
+    "conversionValue",
+    "currentDemand",
+    "dataType",
+    "forTimePeriod",
+    "forYear",
+    "hasPercentage",
+    "hasYear",
+    "inventoryTrend",
+    "isActiveInCategory",
+    "isActualData",
+    "isAggregatedResult",
+    "isForecastData",
+    "justificationDescription",
+    "methodologyDescription",
+    "nameplateLabel",
+    "participantCount",
+    "percentChangeB1",
+    "percentChangeB2",
+    "percentageChange",
+    "percentageChangeB1",
+    "percentageChangeB2",
+    "percentageChangeBL1",
+    "percentageChangeBL2",
+    "periodLabel",
+    "platformName",
+    "regionName",
+    "reportsShortage",
+    "splitPercentage",
+    "targetIndicatorStatus",
+    "technologyCategoryName",
+    "technologyDescription",
+    "technologyNodeLabel",
+    "totalDemand",
+    "totalDemandPercentageChange",
+    "unitsSold",
+    "yearlySales"
+  ],
+  "relationships": [
+    {
+      "type": "analyzesTechnologyCategory",
+      "from": [
+        "CurrentDemandAnalysis",
+        "FutureDemandAnalysis"
+      ],
+      "to": [
+        "TechnologyCategory"
+      ]
+    },
+    {
+      "type": "analyzesVehicleType",
+      "from": [
+        "CurrentDemandAnalysis",
+        "FutureDemandAnalysis",
+        "YearlySalesData"
+      ],
+      "to": [
+        "BEHV",
+        "BEV",
+        "ICE"
+      ]
+    },
+    {
+      "type": "appliesToVehicleType",
+      "from": [
+        "ConversionFactor"
+      ],
+      "to": [
+        "BEHV",
+        "BEV",
+        "ICE"
+      ]
+    },
+    {
+      "type": "baselineB1",
+      "from": [
+        "TechnologyCategory"
+      ],
+      "to": []
+    },
+    {
+      "type": "baselineB1Percent",
+      "from": [
+        "CurrentDemandAnalysis"
+      ],
+      "to": []
+    },
+    {
+      "type": "baselineB2",
+      "from": [
+        "TechnologyCategory"
+      ],
+      "to": []
+    },
+    {
+      "type": "baselineB2Percent",
+      "from": [
+        "CurrentDemandAnalysis"
+      ],
+      "to": []
+    },
+    {
+      "type": "baselineType",
+      "from": [
+        "CurrentDemandAnalysis",
+        "FutureDemandAnalysis"
+      ],
+      "to": []
+    },
+    {
+      "type": "companyName",
+      "from": [
+        "Company"
+      ],
+      "to": []
+    },
+    {
+      "type": "componentType",
+      "from": [
+        "Component",
+        "ComponentType_Tier1",
+        "EV"
+      ],
+      "to": []
+    },
+    {
+      "type": "conversionDescription",
+      "from": [
+        "ConversionFactor"
+      ],
+      "to": []
+    },
+    {
+      "type": "conversionValue",
+      "from": [
+        "ConversionFactor"
+      ],
+      "to": []
+    },
+    {
+      "type": "currentDemand",
+      "from": [
+        "TechnologyCategory"
+      ],
+      "to": []
+    },
+    {
+      "type": "definesCategory",
+      "from": [],
+      "to": [
+        "TechnologyCategory"
+      ]
+    },
+    {
+      "type": "forCompany",
+      "from": [
+        "ComponentShare",
+        "InventoryDevelopment_Semi",
+        "InventoryDevelopment_Tier1",
+        "InventoryTargetIndicator_Semi",
+        "OrderCancellation"
+      ],
+      "to": [
+        "Company"
+      ]
+    },
+    {
+      "type": "forComponent",
+      "from": [
+        "InventoryDevelopment_Tier1"
+      ],
+      "to": [
+        "Component"
+      ]
+    },
+    {
+      "type": "forTechnologyCategory",
+      "from": [
+        "InventoryDevelopment_Semi",
+        "InventoryTargetIndicator_Semi",
+        "OrderCancellation"
+      ],
+      "to": [
+        "180nm_or_greater",
+        "55nm_to_180nm"
+      ]
+    },
+    {
+      "type": "forTimePeriod",
+      "from": [
+        "FutureDemandAnalysis",
+        "VehicleSalesObservation"
+      ],
+      "to": [
+        "Month",
+        "Quarter"
+      ]
+    },
+    {
+      "type": "forVehicleType",
+      "from": [
+        "AggregatedDemand",
+        "DemandResponse"
+      ],
+      "to": [
+        "BEHV",
+        "BEV",
+        "ICE"
+      ]
+    },
+    {
+      "type": "forYear",
+      "from": [
+        "YearlySalesData"
+      ],
+      "to": []
+    },
+    {
+      "type": "fromCompany",
+      "from": [
+        "DemandResponse"
+      ],
+      "to": [
+        "Company"
+      ]
+    },
+    {
+      "type": "hasAggregatedResult",
+      "from": [
+        "CurrentDemandAnalysis",
+        "FutureDemandAnalysis"
+      ],
+      "to": [
+        "AggregatedDemand",
+        "CurrentDemandAnalysis",
+        "FutureDemandAnalysis"
+      ]
+    },
+    {
+      "type": "hasComponentTypeSplit",
+      "from": [
+        "Company"
+      ],
+      "to": [
+        "ComponentType_Tier1",
+        "EV"
+      ]
+    },
+    {
+      "type": "hasConversionFactor",
+      "from": [
+        "TechnologyCategory"
+      ],
+      "to": [
+        "ConversionFactor"
+      ]
+    },
+    {
+      "type": "hasDetail",
+      "from": [
+        "AutonomousDrivingDevelopment_OEM",
+        "AutonomousDrivingDevelopment_Tier1"
+      ],
+      "to": [
+        "AutonomousDrivingDevelopment"
+      ]
+    },
+    {
+      "type": "hasFutureDemand",
+      "from": [
+        "FutureDemandAnalysis"
+      ],
+      "to": [
+        "FutureDemandAnalysis"
+      ]
+    },
+    {
+      "type": "hasInventoryResponse",
+      "from": [
+        "Semiconductor_Survey",
+        "Tier1_Survey"
+      ],
+      "to": [
+        "ComponentShare",
+        "InventoryDevelopment_Semi",
+        "InventoryDevelopment_Tier1",
+        "InventoryTargetIndicator_Semi"
+      ]
+    },
+    {
+      "type": "hasInventoryTrend",
+      "from": [
+        "InventoryDevelopment_Semi"
+      ],
+      "to": [
+        "InventoryDevelopment_Tier1"
+      ]
+    },
+    {
+      "type": "hasMarketSegment",
+      "from": [
+        "CurrentDemandAnalysis",
+        "FutureDemandAnalysis"
+      ],
+      "to": [
+        "Automotive"
+      ]
+    },
+    {
+      "type": "hasOrderCancellation",
+      "from": [
+        "Semiconductor_Survey"
+      ],
+      "to": [
+        "OrderCancellation"
+      ]
+    },
+    {
+      "type": "hasPercentage",
+      "from": [
+        "AutonomousDrivingDevelopment"
+      ],
+      "to": []
+    },
+    {
+      "type": "hasRegionalDemand",
+      "from": [
+        "CurrentRegionalDemand"
+      ],
+      "to": [
+        "DemandForRegion"
+      ]
+    },
+    {
+      "type": "hasResponse",
+      "from": [
+        "CurrentDemandAnalysis"
+      ],
+      "to": [
+        "DemandResponse"
+      ]
+    },
+    {
+      "type": "hasResponseType",
+      "from": [
+        "OrderCancellation"
+      ],
+      "to": [
+        "InventoryDevelopment_Tier1"
+      ]
+    },
+    {
+      "type": "hasSAELevel",
+      "from": [
+        "AutonomousDrivingDevelopment",
+        "BEHV",
+        "BEV",
+        "ICE"
+      ],
+      "to": [
+        "SAELevel"
+      ]
+    },
+    {
+      "type": "hasSurveyOrigin",
+      "from": [
+        "AggregatedDemand",
+        "AutonomousDrivingDevelopment_OEM",
+        "AutonomousDrivingDevelopment_Tier1",
+        "Company",
+        "CurrentDemandAnalysis",
+        "DemandForRegion",
+        "DemandResponse",
+        "FutureDemandAnalysis"
+      ],
+      "to": [
+        "OEM_Survey",
+        "Semiconductor_Survey",
+        "Tier1_Survey"
+      ]
+    },
+    {
+      "type": "hasTechnologyCategory",
+      "from": [],
+      "to": [
+        "TechnologyCategory"
+      ]
+    },
+    {
+      "type": "hasTechnologyNodeDemand",
+      "from": [],
+      "to": [
+        "TechnologyNode"
+      ]
+    },
+    {
+      "type": "hasVehicleType",
+      "from": [
+        "AutonomousDrivingDevelopment",
+        "AutonomousDrivingDevelopment_OEM",
+        "AutonomousDrivingDevelopment_Tier1"
+      ],
+      "to": [
+        "BEHV",
+        "BEV",
+        "ICE"
+      ]
+    },
+    {
+      "type": "hasYear",
+      "from": [
+        "AutonomousDrivingDevelopment",
+        "VehicleSalesObservation"
+      ],
+      "to": []
+    },
+    {
+      "type": "hasYearlySales",
+      "from": [
+        "CurrentDemandAnalysis"
+      ],
+      "to": [
+        "YearlySalesData"
+      ]
+    },
+    {
+      "type": "inRegion",
+      "from": [
+        "DemandForRegion"
+      ],
+      "to": [
+        "Region"
+      ]
+    },
+    {
+      "type": "inventoryTrend",
+      "from": [
+        "InventoryDevelopment_Tier1"
+      ],
+      "to": []
+    },
+    {
+      "type": "isActiveInCategory",
+      "from": [
+        "Advanced_driver-assistance_systems_%28ADAS%29",
+        "Body_and_convenience",
+        "Chassis_and_safety",
+        "ComponentShare",
+        "ComponentShare_Tier1",
+        "Infotainment_and_Telematics",
+        "Other",
+        "Powertrain"
+      ],
+      "to": []
+    },
+    {
+      "type": "isActualData",
+      "from": [
+        "VehicleSalesObservation"
+      ],
+      "to": []
+    },
+    {
+      "type": "isAggregatedResult",
+      "from": [
+        "AggregatedDemand"
+      ],
+      "to": []
+    },
+    {
+      "type": "isForecastData",
+      "from": [
+        "VehicleSalesObservation"
+      ],
+      "to": []
+    },
+    {
+      "type": "participantCount",
+      "from": [
+        "InventoryDevelopment_Tier1",
+        "OrderCancellation"
+      ],
+      "to": []
+    },
+    {
+      "type": "percentChangeB1",
+      "from": [
+        "TechnologyCategory"
+      ],
+      "to": []
+    },
+    {
+      "type": "percentChangeB2",
+      "from": [
+        "TechnologyCategory"
+      ],
+      "to": []
+    },
+    {
+      "type": "percentageChange",
+      "from": [
+        "AggregatedDemand",
+        "CurrentDemandAnalysis",
+        "DemandResponse",
+        "FutureDemandAnalysis"
+      ],
+      "to": []
+    },
+    {
+      "type": "percentageChangeB1",
+      "from": [
+        "TechnologyNode"
+      ],
+      "to": []
+    },
+    {
+      "type": "percentageChangeB2",
+      "from": [
+        "TechnologyNode"
+      ],
+      "to": []
+    },
+    {
+      "type": "percentageChangeBL1",
+      "from": [
+        "CurrentDemandAnalysis"
+      ],
+      "to": []
+    },
+    {
+      "type": "percentageChangeBL2",
+      "from": [
+        "CurrentDemandAnalysis"
+      ],
+      "to": []
+    },
+    {
+      "type": "periodLabel",
+      "from": [
+        "Month",
+        "Quarter"
+      ],
+      "to": []
+    },
+    {
+      "type": "quarter",
+      "from": [
+        "DemandForRegion"
+      ],
+      "to": [
+        "Quarter"
+      ]
+    },
+    {
+      "type": "regionName",
+      "from": [
+        "Region"
+      ],
+      "to": []
+    },
+    {
+      "type": "reportsShortage",
+      "from": [
+        "Company"
+      ],
+      "to": []
+    },
+    {
+      "type": "splitPercentage",
+      "from": [
+        "ComponentType_Tier1",
+        "EV"
+      ],
+      "to": []
+    },
+    {
+      "type": "subClassOf",
+      "from": [
+        "10nm_to_less_than_28nm",
+        "180nm_or_greater",
+        "28nm_to_less_than_45nm",
+        "55nm_to_180nm",
+        "7nm_or_less",
+        "Advanced_driver-assistance_systems_%28ADAS%29",
+        "AggregatedDemand",
+        "Automotive",
+        "AutonomousDrivingDevelopment_OEM",
+        "AutonomousDrivingDevelopment_Tier1",
+        "BEHV",
+        "BEV",
+        "Body_and_convenience",
+        "Chassis_and_safety",
+        "ComponentShare_Tier1",
+        "ComponentType_Tier1",
+        "CurrentDemandAnalysis",
+        "CurrentRegionalDemand",
+        "DemandForRegion",
+        "DemandResponse",
+        "EV",
+        "FutureDemandAnalysis",
+        "FutureRegionalDemand",
+        "ICE",
+        "Infotainment_and_Telematics",
+        "InventoryDevelopment",
+        "InventoryDevelopment_Semi",
+        "InventoryDevelopment_Tier1",
+        "InventoryTargetIndicator",
+        "InventoryTargetIndicator_Semi",
+        "Month",
+        "OEM_Survey",
+        "OrderCancellationChange_Semi",
+        "Other",
+        "Powertrain",
+        "Quarter",
+        "Semiconductor_Survey",
+        "Tier1_Survey",
+        "VehicleSalesObservation",
+        "YearlySalesData",
+        "nonEV"
+      ],
+      "to": [
+        "AutonomousDrivingDevelopment",
+        "ComponentShare",
+        "ComponentShare_Tier1",
+        "ComponentType_Tier1",
+        "Demand",
+        "Inventory",
+        "InventoryDevelopment",
+        "InventoryDevelopment_Semi",
+        "InventoryTargetIndicator",
+        "InventoryTargetIndicator_Semi",
+        "MarketSegment",
+        "OrderCancellation",
+        "OrderCancellationChange_Semi",
+        "Sales",
+        "Survey",
+        "TimePeriod",
+        "VehicleType"
+      ]
+    },
+    {
+      "type": "targetIndicatorStatus",
+      "from": [
+        "InventoryTargetIndicator_Semi"
+      ],
+      "to": []
+    },
+    {
+      "type": "technologyCategoryName",
+      "from": [
+        "FutureDemandAnalysis",
+        "TechnologyCategory"
+      ],
+      "to": []
+    },
+    {
+      "type": "technologyDescription",
+      "from": [
+        "TechnologyCategory"
+      ],
+      "to": []
+    },
+    {
+      "type": "technologyNodeLabel",
+      "from": [
+        "TechnologyNode"
+      ],
+      "to": []
+    },
+    {
+      "type": "totalDemand",
+      "from": [
+        "DemandForRegion"
+      ],
+      "to": []
+    },
+    {
+      "type": "totalDemandPercentageChange",
+      "from": [
+        "DemandForRegion"
+      ],
+      "to": []
+    },
+    {
+      "type": "unitsSold",
+      "from": [
+        "VehicleSalesObservation"
+      ],
+      "to": []
+    },
+    {
+      "type": "usesBaseline",
+      "from": [
+        "CurrentDemandAnalysis",
+        "FutureDemandAnalysis"
+      ],
+      "to": []
+    },
+    {
+      "type": "yearlySales",
+      "from": [
+        "YearlySalesData"
+      ],
+      "to": []
+    }
+  ]
+}

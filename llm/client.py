@@ -1,3 +1,4 @@
+#client.py
 import json
 import os
 import re
@@ -75,6 +76,32 @@ class InfineonGPTClient:
 
         raise LLMClientError(f"API failed: {last_error}")
 
+from openai import OpenAI
+
+
+class OpenAIClient:
+    def __init__(
+        self,
+        model: Optional[str] = None,
+        temperature: float = 0.2,
+        max_tokens: int = 512,
+    ) -> None:
+        self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4.1")
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+    def generate(self, prompt: str, k: int = 5) -> List[str]:
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+        )
+
+        text = response.choices[0].message.content
+        return _parse_candidates(text)[:k]
+    
 
 def _parse_candidates(text: str) -> List[str]:
     cleaned = text.strip()

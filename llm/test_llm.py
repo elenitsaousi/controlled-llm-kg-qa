@@ -1,5 +1,6 @@
+#test_llm.py
 from dotenv import load_dotenv
-load_dotenv(".env.infineon")
+load_dotenv(".env")
 
 from llm.client import InfineonGPTClient
 
