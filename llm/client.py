@@ -4,8 +4,7 @@ import os
 import re
 import requests
 from typing import List, Optional
-import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 class LLMClientError(RuntimeError):
     pass
@@ -30,7 +29,7 @@ class InfineonGPTClient:
             raise ValueError("Missing API URL or API key.")
 
     def generate(self, prompt: str, k: int = 5) -> List[str]:
-        url = f"{self.base_url}/chat/completions"
+        url = f"{self.base_url}/v1/chat/completions"
 
         payload = {
             "model": self.model,
@@ -58,12 +57,11 @@ class InfineonGPTClient:
         for headers in headers_options:
             try:
                 response = requests.post(
-                url,
-                headers=headers,
-                json=payload,
-                timeout=120,
-                verify=False,
-            )
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=120,
+                )
 
                 if response.status_code == 200:
                     data = response.json()
