@@ -811,5 +811,22 @@
       ],
       "to": []
     }
-  ]
+  ],
+"notes": [
+  "Key named instances in the graph:",
+  "survey:OEM_Survey → a survey:OEM_Survey (use as hasSurveyOrigin value)",
+  "survey:Tier1_Survey → a survey:Tier1_Survey (use as hasSurveyOrigin value)",
+  "survey:Semiconductor_Survey → a survey:Semiconductor_Survey (use as hasSurveyOrigin value)",
+  "survey:Automotive → a survey:MarketSegment (use as hasMarketSegment value)",
+  "survey:Tier1CurrentDemand → a survey:CurrentDemandAnalysis (Tier1 current demand root)",
+  "survey:OEMCurrentDemand → a survey:CurrentDemandAnalysis (OEM current demand root)",
+  "survey:SemiCurrentDemand → a survey:CurrentDemandAnalysis (Semi current demand root)",
+  "survey:SemiFutureDemand_Option1 → a survey:FutureDemandAnalysis",
+  "survey:SemiFutureDemand_Option2 → a survey:FutureDemandAnalysis",
+  "survey:SemiFutureDemand_Option3 → a survey:FutureDemandAnalysis",
+  "Baseline values are strings: 'BL1', 'BL2' (used with survey:baselineType)",
+  "survey:hasSurveyOrigin links any analysis to OEM_Survey, Tier1_Survey or Semiconductor_Survey",
+  "survey:hasAggregatedResult links root instance to detail entries",
+  "survey:hasMarketSegment links analysis to survey:Automotive"
+]
 }
