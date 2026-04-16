@@ -1,9 +1,11 @@
-#client.py
+# client.py
 import json
 import os
 import re
 import requests
 from typing import List, Optional
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class LLMClientError(RuntimeError):
@@ -17,20 +19,18 @@ class InfineonGPTClient:
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         temperature: float = 0.2,
-        max_tokens: int = 512,
+        max_tokens: int = 2048,
     ) -> None:
-        self.model = model or os.environ.get("INFINEON_MODEL", "gpt-4ifx")
+        self.model = model or os.environ.get("INFINEON_MODEL", "gpt-4o")
         self.base_url = base_url or os.environ.get("INFINEON_API_URL")
         self.api_key = api_key or os.environ.get("INFINEON_API_KEY")
         self.temperature = temperature
         self.max_tokens = max_tokens
-
         if not self.base_url or not self.api_key:
             raise ValueError("Missing API URL or API key.")
 
     def generate(self, prompt: str, k: int = 5) -> List[str]:
-        url = f"{self.base_url}/v1/chat/completions"
-
+        url = f"{self.base_url}/chat/completions"
         payload = {
             "model": self.model,
             "messages": [
@@ -39,8 +39,7 @@ class InfineonGPTClient:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
-
-        # 🔁 Try Bearer first, fallback to api-key
+        # Try Bearer first, fallback to api-key
         headers_options = [
             {
                 "Authorization": f"Bearer {self.api_key}",
@@ -51,9 +50,7 @@ class InfineonGPTClient:
                 "Content-Type": "application/json",
             },
         ]
-
         last_error = None
-
         for headers in headers_options:
             try:
                 response = requests.post(
@@ -61,8 +58,8 @@ class InfineonGPTClient:
                     headers=headers,
                     json=payload,
                     timeout=120,
+                    verify=False,
                 )
-
                 if response.status_code == 200:
                     data = response.json()
                     text = data["choices"][0]["message"]["content"]
@@ -70,11 +67,10 @@ class InfineonGPTClient:
                     return candidates[:k]
                 else:
                     last_error = response.text
-
             except requests.RequestException as exc:
                 last_error = str(exc)
-
         raise LLMClientError(f"API failed: {last_error}")
+
 
 from openai import OpenAI
 
@@ -84,7 +80,7 @@ class OpenAIClient:
         self,
         model: Optional[str] = None,
         temperature: float = 0.2,
-        max_tokens: int = 512,
+        max_tokens: int = 2048,
     ) -> None:
         self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4.1")
         self.temperature = temperature
@@ -98,10 +94,21 @@ class OpenAIClient:
             temperature=self.temperature,
             max_tokens=self.max_tokens,
         )
-
         text = response.choices[0].message.content
         return _parse_candidates(text)[:k]
-    
+
+
+def _clean_query(query: str) -> str:
+    import re
+    query = query.strip()
+    while query and query[0] in '"\'':
+        query = query[1:]
+    while query and query[-1] in '"\'':
+        query = query[:-1]
+    query = query.strip()
+    query = re.sub(r'\bSELECTT\b', 'SELECT', query)
+    return query
+
 
 def _parse_candidates(text: str) -> List[str]:
     cleaned = text.strip()
@@ -110,7 +117,8 @@ def _parse_candidates(text: str) -> List[str]:
 
     # Try JSON list
     try:
-        return list(json.loads(cleaned))
+        parsed = list(json.loads(cleaned))
+        return [_clean_query(str(q)) for q in parsed if q]
     except json.JSONDecodeError:
         pass
 
@@ -118,10 +126,11 @@ def _parse_candidates(text: str) -> List[str]:
     match = re.search(r"\[[\s\S]*\]", cleaned)
     if match:
         try:
-            return list(json.loads(match.group(0)))
+            parsed = list(json.loads(match.group(0)))
+            return [_clean_query(str(q)) for q in parsed if q]
         except json.JSONDecodeError:
             pass
 
     # Fallback: line-based parsing
-    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-    return lines
+    lines = [_clean_query(line) for line in cleaned.splitlines() if line.strip()]
+    return [l for l in lines if l]
