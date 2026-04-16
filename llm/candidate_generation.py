@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 from kg.schema import KGSchema
 from llm.client import OpenAIClient
 from llm.prompts import build_candidate_prompt
+from llm.client import OpenAIClient, InfineonGPTClient
 import re
 
 
@@ -24,13 +25,12 @@ def generate_candidates(
 
     # Use provided client or default
     import os
-    from llm.client import OpenAIClient, InfineonClient
-
+    from llm.client import OpenAIClient, InfineonGPTClient
     def get_default_client():
-        provider = os.getenv("LLM_PROVIDER", "openai")
+        provider = os.getenv("LLM_PROVIDER") or os.getenv("LLM_BACKEND", "openai")
 
         if provider == "infineon":
-            return InfineonClient()
+            return InfineonGPTClient()
         elif provider == "openai":
             return OpenAIClient()
         else:
@@ -38,15 +38,12 @@ def generate_candidates(
         
     client = llm_client or get_default_client()
 
-    print("\n=== PROMPT ===")
-    print(prompt)
+
 
     try:
         # Call LLM
         generated = client.generate(prompt, k=k)
 
-        print("\n=== RAW LLM OUTPUT ===")
-        print(generated)
 
         # -----------------------------
         # Normalize LLM output
@@ -72,8 +69,6 @@ def generate_candidates(
         else:
             raise ValueError(f"Unexpected LLM output type: {type(generated)}")
 
-        print("\n=== PARSED CANDIDATES ===")
-        print(generated)
 
         # Build structured candidates
         candidates = [
