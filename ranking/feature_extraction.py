@@ -1,10 +1,9 @@
+# ranking/feature_extraction.py
 import json
 import re
 from collections import defaultdict, deque
 from typing import Dict, Iterable, List, Set
-
 from ranking.feature_config import FEATURE_NAMES
-
 
 LABEL_KEYWORDS = {
     "Supplier": ["supplier", "suppliers"],
@@ -47,6 +46,29 @@ RELATION_KEYWORDS = {
     "STOCKS": ["stock", "stocks", "inventory", "inventories"],
 }
 
+# Infineon-specific named instances [7]
+INFINEON_NAMED_INSTANCES = [
+    "Tier1CurrentDemand",
+    "OEMCurrentDemand",
+    "SemiCurrentDemand",
+    "SemiFutureDemand_Option1",
+    "SemiFutureDemand_Option2",
+    "SemiFutureDemand_Option3",
+    "Tier1FutureDemand_Option1",
+    "Tier1FutureDemand_Option2",
+    "Tier1FutureDemand_Option3",
+    "OEMFutureDemand_Option1",
+    "OEMFutureDemand_Option2",
+    "OEMFutureDemand_Option3",
+]
+
+# Infineon-specific survey origins [7]
+INFINEON_SURVEY_ORIGINS = [
+    "OEM_Survey",
+    "Tier1_Survey",
+    "Semiconductor_Survey",
+]
+
 VAR_PATTERN = re.compile(r"\?[A-Za-z_][A-Za-z0-9_]*")
 TYPE_PATTERN = re.compile(
     r"\b(?:a|rdf:type)\s+(:[A-Za-z_][A-Za-z0-9_]*)",
@@ -60,6 +82,20 @@ FILTER_PATTERN = re.compile(r"\bFILTER\b", re.IGNORECASE)
 FILTER_REMOVE = re.compile(r"\bFILTER\s*\(.*?\)", re.IGNORECASE | re.DOTALL)
 OPTIONAL_REMOVE = re.compile(r"\bOPTIONAL\b", re.IGNORECASE)
 SELECT_PATTERN = re.compile(r"\bSELECT\b(.*?)\bWHERE\b", re.IGNORECASE | re.DOTALL)
+
+# Lazy load sentence transformer to avoid slow startup
+_semantic_model = None
+
+def _get_semantic_model():
+    """Lazy load sentence transformer model."""
+    global _semantic_model
+    if _semantic_model is None:
+        try:
+            from sentence_transformers import SentenceTransformer
+            _semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+        except Exception:
+            _semantic_model = None
+    return _semantic_model
 
 
 def load_schema(schema_path: str) -> Dict[str, object]:
@@ -174,31 +210,42 @@ def expected_intermediates(
     return intermediates
 
 
+def _semantic_similarity(question: str, query: str) -> float:
+    """
+    Semantic similarity between question and SPARQL query. [7]
+    Uses sentence transformers if available, fallback to 0.0
+    """
+    try:
+        from sklearn.metrics.pairwise import cosine_similarity
+        model = _get_semantic_model()
+        if model is None:
+            return 0.0
+        q_emb = model.encode([question])
+        c_emb = model.encode([query])
+        return float(cosine_similarity(q_emb, c_emb)[0][0])
+    except Exception:
+        return 0.0
+
+
 def extract_features(question: str, query: str, schema: Dict[str, object]) -> Dict[str, float]:
     schema_labels = schema.get("classes") or schema.get("labels", {}).keys()
-
     q_entities = extract_question_entities(question, schema_labels)
     q_relations = extract_question_relations(question)
     qry_labels = extract_query_labels(query)
     qry_relations = extract_query_relations(query)
     triples = extract_triples(query)
 
-    # --- GOLD-AWARE FEATURES (CRITICAL) ---
+    # --- GOLD-AWARE FEATURES ---
     from kg.sparql_matching import extract_requirements
-
     gold_query = schema.get("current_gold_query", "")
-
     if gold_query:
         reqs = extract_requirements(gold_query)
         gold_classes = set(reqs["classes"])
         gold_preds = set(reqs["predicates"])
-
         cand_classes = qry_labels
         cand_preds = qry_relations
-
         predicate_overlap = len(cand_preds & gold_preds)
         class_overlap = len(cand_classes & gold_classes)
-
         missing_predicates = len(gold_preds - cand_preds)
         extra_predicates = len(cand_preds - gold_preds)
     else:
@@ -210,7 +257,6 @@ def extract_features(question: str, query: str, schema: Dict[str, object]) -> Di
     select_vars = extract_select_vars(query)
     allowed_predicates = set(schema.get("predicates", [])) | set(schema.get("properties", []))
     intermediates = expected_intermediates(q_entities, schema)
-
     variables = VAR_PATTERN.findall(query)
     node_count = len(set(variables))
     rel_count = len(PRED_PATTERN.findall(query))
@@ -221,7 +267,6 @@ def extract_features(question: str, query: str, schema: Dict[str, object]) -> Di
     has_type = int(type_triple_count > 0)
     distinct_label_count = len(qry_labels)
     distinct_relation_count = len(qry_relations)
-
     query_upper = query.upper()
     has_variable_length = int("*" in query_upper)
     has_optional = int("OPTIONAL" in query_upper)
@@ -229,7 +274,9 @@ def extract_features(question: str, query: str, schema: Dict[str, object]) -> Di
     has_exists = int("EXISTS" in query_upper)
     has_distinct = int("DISTINCT" in query_upper)
     has_aggregation = int(
-        any(k in query_upper for k in ["COUNT(", "SUM(", "AVG(", "MIN(", "MAX(", "GROUP_CONCAT("])
+        any(k in query_upper for k in [
+            "COUNT(", "SUM(", "AVG(", "MIN(", "MAX(", "GROUP_CONCAT("
+        ])
     )
     property_filter_count = len(FILTER_PATTERN.findall(query))
 
@@ -247,7 +294,6 @@ def extract_features(question: str, query: str, schema: Dict[str, object]) -> Di
         if subj.startswith("?") and obj.startswith("?"):
             graph[subj].add(obj)
             graph[obj].add(subj)
-
         pred_lower = pred.lower()
         if pred_lower in {"a", "rdf:type"}:
             continue
@@ -269,18 +315,15 @@ def extract_features(question: str, query: str, schema: Dict[str, object]) -> Di
                 if neighbor not in visited:
                     visited.add(neighbor)
                     stack.append(neighbor)
+
     has_disconnected = int(component_count > 1)
-
     unused_select_vars = len([v for v in select_vars if v not in vars_in_triples])
-
     entity_overlap = len(q_entities & qry_labels)
     relation_overlap = len(q_relations & qry_relations)
-
     entity_coverage = entity_overlap / len(q_entities) if q_entities else 0.0
     entity_precision = entity_overlap / len(qry_labels) if qry_labels else 0.0
     relation_coverage = relation_overlap / len(q_relations) if q_relations else 0.0
     relation_precision = relation_overlap / len(qry_relations) if qry_relations else 0.0
-
     expected_intermediate_coverage = (
         len(intermediates & qry_labels) / len(intermediates) if intermediates else 0.0
     )
@@ -288,6 +331,15 @@ def extract_features(question: str, query: str, schema: Dict[str, object]) -> Di
     unexpected_label_ratio = (
         len(unexpected_labels) / len(qry_labels) if qry_labels else 0.0
     )
+
+    # --- Infineon-specific features [7] ---
+    has_named_instance = int(
+        any(inst in query for inst in INFINEON_NAMED_INSTANCES)
+    )
+    uses_correct_survey = int(
+        any(s in query for s in INFINEON_SURVEY_ORIGINS)
+    )
+    semantic_sim = _semantic_similarity(question, query)
 
     features = {
         "node_count": float(node_count),
@@ -318,10 +370,13 @@ def extract_features(question: str, query: str, schema: Dict[str, object]) -> Di
         "class_overlap": float(class_overlap),
         "missing_predicates": float(missing_predicates),
         "extra_predicates": float(extra_predicates),
+        # Infineon-specific [7]
+        "has_named_instance": float(has_named_instance),
+        "uses_correct_survey": float(uses_correct_survey),
+        "semantic_similarity": float(semantic_sim),
     }
 
     missing = [name for name in FEATURE_NAMES if name not in features]
     if missing:
         raise ValueError(f"Missing features: {missing}")
-
     return features

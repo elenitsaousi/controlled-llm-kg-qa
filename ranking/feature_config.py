@@ -23,4 +23,13 @@ FEATURE_NAMES = [
     "relation_precision",
     "expected_intermediate_coverage",
     "unexpected_label_ratio",
+    "predicate_overlap",
+    "class_overlap",
+    "missing_predicates",
+    "extra_predicates",
+    # Infineon-specific [7]
+    "has_named_instance",
+    "uses_correct_survey",
+    "semantic_similarity",
+
 ]
