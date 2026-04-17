@@ -43,6 +43,8 @@ def main() -> None:
         label_top_n=50,
         iterations=500,
         show_names=True,
+        layout_scale=0.75,
+        label_font_size=10,
     )
 
 

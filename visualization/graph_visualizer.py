@@ -215,7 +215,15 @@ class GraphVisualizer:
         return fig, ax
 
     def _setup_interactivity(
-        self, fig, ax, H, pos, node_weights, label_top_n, show_names
+        self,
+        fig,
+        ax,
+        H,
+        pos,
+        node_weights,
+        label_top_n,
+        show_names,
+        label_font_size,
     ):
         def update_labels():
             for artist in ax.texts:
@@ -244,7 +252,9 @@ class GraphVisualizer:
 
                     labels[node] = label
 
-            nx.draw_networkx_labels(H, pos, labels=labels, font_size=8, ax=ax)
+            nx.draw_networkx_labels(
+                H, pos, labels=labels, font_size=label_font_size, ax=ax
+            )
 
         def zoom(event):
             base_scale = 1.1
@@ -341,6 +351,8 @@ class GraphVisualizer:
         cluster_colors=None,
         measure_name=None,
         centrality_measures=None,
+        layout_scale=1.0,
+        label_font_size=8,
     ):
         H, node_weights, node_sizes = self._filter_and_prepare_graph(
             G, node_scale, weight_threshold
@@ -350,6 +362,11 @@ class GraphVisualizer:
             return
 
         pos = self._calculate_layout(H, cluster_colors, iterations)
+        if layout_scale != 1.0:
+            pos = {
+                node: (x * layout_scale, y * layout_scale)
+                for node, (x, y) in pos.items()
+            }
         if centrality_measures is not None and measure_name is not None:
             fig, ax = self._draw_centrality_graph(
                 H, pos, node_sizes, centrality_measures, measure_name, figsize
@@ -358,7 +375,14 @@ class GraphVisualizer:
             fig, ax = self._draw_graph(H, pos, node_sizes, cluster_colors, figsize)
 
         self._setup_interactivity(
-            fig, ax, H, pos, node_weights, label_top_n, show_names
+            fig,
+            ax,
+            H,
+            pos,
+            node_weights,
+            label_top_n,
+            show_names,
+            label_font_size,
         )
 
         plt.show(block=True)
