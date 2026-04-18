@@ -1,0 +1,194 @@
+[
+  {
+    "id": "LOW1",
+    "question": "How many distinct regions exist?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986123085021973,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "LOW2",
+    "question": "List all region names",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986088514328003,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "LOW3",
+    "question": "Count all DemandForRegion instances",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986123085021973,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "LOW5",
+    "question": "How many Company instances are there?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986121892929077,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "LOW6",
+    "question": "List all survey types in the graph",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986119508743286,
+    "top1_correct": false,
+    "any_correct": true
+  },
+  {
+    "id": "LOW7",
+    "question": "How many Tier1 survey entries exist?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986123085021973,
+    "top1_correct": false,
+    "any_correct": false
+  },
+  {
+    "id": "LOW9",
+    "question": "Count all Company instances linked to Tier1 Survey",
+    "ambiguity_bin": "high",
+    "entropy": 1.09861159324646,
+    "top1_correct": false,
+    "any_correct": true
+  },
+  {
+    "id": "LOW10",
+    "question": "How many OEM survey entries exist?",
+    "ambiguity_bin": "high",
+    "entropy": 1.098608136177063,
+    "top1_correct": false,
+    "any_correct": false
+  },
+  {
+    "id": "LOW11",
+    "question": "List all baseline types in the graph",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986100435256958,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "LOW15",
+    "question": "How many SAE levels exist in the graph?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986069440841675,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "LOW17",
+    "question": "Count all inventory development Tier1 instances",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986123085021973,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "LOW19",
+    "question": "How many order cancellation instances exist?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986123085021973,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "MID1",
+    "question": "What is the BL1 percentage change for Tier1?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986117124557495,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "MID5",
+    "question": "What is the Tier1 demand for Europe?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0904067754745483,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "MID6",
+    "question": "How many regions are covered in the Tier1 survey?",
+    "ambiguity_bin": "high",
+    "entropy": 0.9986189603805542,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "MID7",
+    "question": "What is the average demand across all Tier1 regions?",
+    "ambiguity_bin": "high",
+    "entropy": 0.9895834922790527,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "MID9",
+    "question": "What is the demand percentage change for Tier1 baseline BL2?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0985636711120605,
+    "top1_correct": false,
+    "any_correct": false
+  },
+  {
+    "id": "MID10",
+    "question": "How many Tier1 companies report semiconductor shortage?",
+    "ambiguity_bin": "high",
+    "entropy": 0.981971263885498,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "MID11",
+    "question": "What is the total Tier1 demand across all regions?",
+    "ambiguity_bin": "high",
+    "entropy": 0.9895461797714233,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "MID12",
+    "question": "Which region has the lowest Tier1 demand?",
+    "ambiguity_bin": "high",
+    "entropy": 0.9894826412200928,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "MID17",
+    "question": "What is the current demand change for Tier1 across baselines BL1 and BL2?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986120700836182,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "MID18",
+    "question": "Which region has the highest Tier1 demand?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0289138555526733,
+    "top1_correct": true,
+    "any_correct": true
+  },
+  {
+    "id": "HIGH5",
+    "question": "What is the autonomous driving development trend for Tier1 by vehicle type and SAE level?",
+    "ambiguity_bin": "high",
+    "entropy": 1.036605954170227,
+    "top1_correct": false,
+    "any_correct": false
+  },
+  {
+    "id": "HIGH10",
+    "question": "How does current demand vary in Tier1 automotive between BL1 and BL2?",
+    "ambiguity_bin": "high",
+    "entropy": 1.0986119508743286,
+    "top1_correct": true,
+    "any_correct": true
+  }
+]
