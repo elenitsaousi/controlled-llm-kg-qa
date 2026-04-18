@@ -1,29 +1,29 @@
 {
-  "high": {
-    "n": 11,
-    "schema": 1,
-    "learning": 2,
-    "delta": 1,
-    "schema_acc": 0.09090909090909091,
-    "learning_acc": 0.18181818181818182,
-    "mean_delta": 0.09090909090909091
-  },
-  "low": {
-    "n": 11,
-    "schema": 0,
-    "learning": 1,
-    "delta": 1,
-    "schema_acc": 0.0,
-    "learning_acc": 0.09090909090909091,
-    "mean_delta": 0.09090909090909091
-  },
   "mid": {
     "n": 10,
+    "schema": 1,
+    "learning": 4,
+    "delta": 3,
+    "schema_acc": 0.1,
+    "learning_acc": 0.4,
+    "mean_delta": 0.3
+  },
+  "high": {
+    "n": 11,
     "schema": 0,
     "learning": 0,
     "delta": 0,
     "schema_acc": 0.0,
     "learning_acc": 0.0,
     "mean_delta": 0.0
+  },
+  "low": {
+    "n": 11,
+    "schema": 0,
+    "learning": 7,
+    "delta": 7,
+    "schema_acc": 0.0,
+    "learning_acc": 0.6363636363636364,
+    "mean_delta": 0.6363636363636364
   }
 }
