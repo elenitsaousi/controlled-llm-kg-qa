@@ -65,10 +65,31 @@ python evaluation/run_infineon_100_eval.py \
 
 This is the practical runtime evaluation after integrating ML reranking.
 
+## 4) Validate ambiguity definition + gated policy (no leakage CV)
+
+Use grouped CV with threshold tuning on train folds only to validate:
+- ambiguity regime estimation (`low/mid/high`) from entropy
+- policy comparison: `no-ML` vs `ML-all` vs `gated` (e.g., ML only in `mid`)
+
+```bash
+python analysis/validate_infineon_ambiguity_cv.py \
+  --training-data ranking/infineon_training_data_100.json \
+  --out results/infineon_ambiguity_gated_cv_100.json \
+  --folds 5 \
+  --entropy-source schema \
+  --ml-regimes mid
+```
+
+What to check in output JSON:
+- `overall.gated_top1.rate` is higher than both static baselines.
+- `ambiguity_classification.accuracy` and `macro_f1` are stable enough.
+- `per_true_ambiguity` confirms that ML helps mostly in `mid`.
+
 ## Notes
 
 - Unbiased metric for scientific reporting: `results/infineon_ranker_cv_100.json`
 - Deployment metric for practical improvement: `results/infineon_eval_100_with_np_ml.json`
+- Ambiguity/gating validation report: `results/infineon_ambiguity_gated_cv_100.json`
 - If you want sentence-transformer semantic features, set:
   `ENABLE_SEMANTIC_EMBEDDING=1`
   (default is off to avoid dependency issues and leakage noise).
