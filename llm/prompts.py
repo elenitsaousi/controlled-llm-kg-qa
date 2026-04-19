@@ -264,3 +264,36 @@ def build_candidate_prompt(question: str, schema: KGSchema, k: int = 5) -> str:
 
         "Output:\n"
     )
+
+
+def build_repair_prompt(
+    question: str,
+    schema: KGSchema,
+    invalid_query: str,
+    error_message: str,
+) -> str:
+    schema_text = schema.as_prompt_text()
+    return (
+        "You repair one invalid SPARQL SELECT query for an enterprise knowledge graph.\n\n"
+        "TASK:\n"
+        "- Keep the original question intent exactly.\n"
+        "- Fix only what is needed so the query is syntactically valid and schema-consistent.\n"
+        "- Do not invent predicates/classes not present in schema.\n"
+        "- Return a single repaired query.\n\n"
+        "NAMESPACE:\n"
+        "PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>\n"
+        "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n\n"
+        "SCHEMA (authoritative):\n"
+        f"{schema_text}\n\n"
+        "QUESTION:\n"
+        f"{question}\n\n"
+        "INVALID QUERY:\n"
+        f"{invalid_query}\n\n"
+        "EXECUTION/PARSE ERROR:\n"
+        f"{error_message}\n\n"
+        "OUTPUT FORMAT:\n"
+        "Return ONLY a JSON array with exactly one SPARQL query.\n"
+        "No explanation.\n"
+        "Example: [\"SELECT ... WHERE { ... }\"]\n\n"
+        "Output:\n"
+    )

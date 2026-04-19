@@ -77,6 +77,12 @@ def main() -> None:
     print(f"Gold invalid: {summary['gold_invalid']}")
     print(f"Gold timeout: {summary['gold_timeout']}")
     print(f"LLM generation failures: {summary.get('llm_generation_failures', 0)}")
+    print(
+        "Repairs: "
+        f"enabled={summary.get('repair_enabled', False)} "
+        f"attempted={summary.get('repair_candidates_attempted', 0)} "
+        f"succeeded={summary.get('repair_candidates_succeeded', 0)}"
+    )
     print(f"ML ranking: {summary['ml_ranking']}")
     if summary.get("ml_ambiguity_regimes"):
         print(f"ML ambiguity regimes: {','.join(summary['ml_ambiguity_regimes'])}")

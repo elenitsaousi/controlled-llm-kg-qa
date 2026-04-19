@@ -34,7 +34,13 @@ This creates `ranking/infineon_training_data_100.json` with:
 - generated candidate queries per question
 - execution-based correctness labels (`is_correct`)
 - ambiguity labels and family grouping metadata
+- execution-guided repair for invalid candidates (enabled by default)
 - If no LLM candidates are generated, script now fails (to avoid a misleading gold-only dataset).
+
+Optional controls:
+- disable repair: `--no-repair-invalid`
+- max repaired candidates per run: `--repair-max-candidates 2`
+- repair attempts per candidate: `--repair-attempts 1`
 
 ## 2) Train + evaluate unbiased with grouped stratified 5-fold CV
 
@@ -66,6 +72,11 @@ python evaluation/run_infineon_100_eval.py \
 ```
 
 This is the practical runtime evaluation after integrating ML reranking.
+Runtime includes execution-guided repair for invalid generated candidates.
+You can tune with env vars:
+- `INFINEON_ENABLE_REPAIR=1|0`
+- `INFINEON_REPAIR_MAX_CANDIDATES` (default `2`)
+- `INFINEON_REPAIR_ATTEMPTS` (default `1`)
 
 ## 4) Validate ambiguity definition + gated policy (no leakage CV)
 

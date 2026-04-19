@@ -20,7 +20,7 @@ except Exception:
     pass
 
 from kg.schema import KGSchema, load_default_schema, load_schema
-from llm.candidate_generation import generate_candidates
+from llm.candidate_generation import generate_candidates, repair_candidate_query
 from llm.client import InfineonGPTClient
 
 DEFAULT_PREFIX = """\
@@ -218,6 +218,122 @@ def _ml_rank_candidates(
     except Exception:
         return candidates  # fallback to original order
 
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int, min_value: int = 0) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except Exception:
+        return default
+    return max(min_value, value)
+
+
+def _validate_candidate_query(
+    graph: Graph,
+    query: str,
+    timeout_s: Optional[float],
+) -> Tuple[bool, Optional[str]]:
+    try:
+        _run_query(graph, _ensure_prefixes(query), timeout_s)
+        return True, None
+    except QueryTimeout as exc:
+        return False, f"timeout: {exc}"
+    except Exception as exc:
+        return False, str(exc)
+
+
+def _repair_invalid_candidates(
+    question: str,
+    schema: KGSchema,
+    candidates: List[Dict],
+    llm_client: object,
+    graph: Graph,
+    query_timeout: Optional[float],
+    max_repaired_candidates: int,
+    max_attempts_per_candidate: int,
+) -> Tuple[List[Dict], int, int]:
+    if not candidates or max_repaired_candidates <= 0 or max_attempts_per_candidate <= 0:
+        return candidates, 0, 0
+
+    repaired_attempted = 0
+    repaired_succeeded = 0
+    updated: List[Dict] = []
+
+    for cand in candidates:
+        query = _strip_comments(str(cand.get("query", "")).strip())
+        if not query:
+            continue
+
+        is_valid, err = _validate_candidate_query(graph, query, query_timeout)
+        if is_valid:
+            c = dict(cand)
+            c["query"] = query
+            updated.append(c)
+            continue
+
+        if repaired_attempted >= max_repaired_candidates:
+            c = dict(cand)
+            c["query"] = query
+            updated.append(c)
+            continue
+
+        repaired_attempted += 1
+        current_error = err or "unknown query error"
+        repaired_query: Optional[str] = None
+
+        for _ in range(max_attempts_per_candidate):
+            try:
+                proposal = repair_candidate_query(
+                    question=question,
+                    schema=schema,
+                    invalid_query=query,
+                    error_message=current_error,
+                    llm_client=llm_client,
+                )
+            except Exception as exc:
+                proposal = None
+                current_error = str(exc)
+
+            if not proposal:
+                break
+
+            proposal = _strip_comments(proposal.strip())
+            valid_after, err_after = _validate_candidate_query(graph, proposal, query_timeout)
+            if valid_after:
+                repaired_query = proposal
+                repaired_succeeded += 1
+                break
+            current_error = err_after or "unknown query error"
+
+        c = dict(cand)
+        c["query"] = repaired_query or query
+        updated.append(c)
+
+    # Stable dedup after repair.
+    seen = set()
+    deduped: List[Dict] = []
+    for cand in updated:
+        q = str(cand.get("query", "")).strip()
+        if not q:
+            continue
+        key = " ".join(q.split()).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cand)
+
+    return deduped, repaired_attempted, repaired_succeeded
+
+
 def evaluate(
     dataset_path: str,
     graph_path: str,
@@ -272,6 +388,10 @@ def evaluate(
     if llm_client is None:
         raise RuntimeError("No LLM client available.")
 
+    repair_enabled = _env_bool("INFINEON_ENABLE_REPAIR", True)
+    repair_max_candidates = _env_int("INFINEON_REPAIR_MAX_CANDIDATES", 2, min_value=0)
+    repair_attempts = _env_int("INFINEON_REPAIR_ATTEMPTS", 1, min_value=0)
+
     summary = {
         "total": 0,
         "gold_invalid": 0,
@@ -288,6 +408,11 @@ def evaluate(
         "all_invalid": 0,
         "all_valid_wrong": 0,
         "llm_generation_failures": 0,
+        "repair_enabled": repair_enabled,
+        "repair_max_candidates": repair_max_candidates,
+        "repair_attempts_per_candidate": repair_attempts,
+        "repair_candidates_attempted": 0,
+        "repair_candidates_succeeded": 0,
         "llm": llm,
         "temperature": temperature,
         "schema_path": schema_path,
@@ -395,6 +520,20 @@ def evaluate(
                 }
             )
             continue
+
+        if repair_enabled and candidates:
+            candidates, rep_attempted, rep_succeeded = _repair_invalid_candidates(
+                question=question,
+                schema=schema,
+                candidates=candidates,
+                llm_client=llm_client,
+                graph=g,
+                query_timeout=query_timeout,
+                max_repaired_candidates=repair_max_candidates,
+                max_attempts_per_candidate=repair_attempts,
+            )
+            summary["repair_candidates_attempted"] += rep_attempted
+            summary["repair_candidates_succeeded"] += rep_succeeded
 
         # ML Ranking
         apply_ml_ranking = ml_ranking_enabled

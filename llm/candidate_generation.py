@@ -1,7 +1,8 @@
 # candidate_generation.py
+import json
 from typing import Dict, List, Optional
 from kg.schema import KGSchema
-from llm.prompts import build_candidate_prompt
+from llm.prompts import build_candidate_prompt, build_repair_prompt
 from llm.client import InfineonGPTClient
 import re
 
@@ -27,6 +28,64 @@ def generate_candidate_prompt(
     return build_candidate_prompt(question, schema, k)
 
 
+def _default_client():
+    import os
+
+    provider = (os.getenv("LLM_PROVIDER") or os.getenv("LLM_BACKEND", "infineon")).strip().lower()
+    if provider == "infiineon":
+        provider = "infineon"
+
+    if provider == "infineon":
+        return InfineonGPTClient()
+    raise ValueError(
+        f"Unknown/unsupported LLM backend '{provider}'. "
+        "Supported backend: infineon."
+    )
+
+
+def _normalize_generated_output(generated: object) -> List[str]:
+    if generated is None:
+        return []
+    if isinstance(generated, str):
+        cleaned = generated.strip()
+        if cleaned.startswith("[") and cleaned.endswith("]"):
+            try:
+                parsed = json.loads(cleaned)
+                if isinstance(parsed, list):
+                    return [str(x).strip() for x in parsed if str(x).strip()]
+            except Exception:
+                pass
+        split_candidates = re.split(r"\n\d+\.\s*", generated)
+        if len(split_candidates) <= 1:
+            split_candidates = generated.split("\n")
+        return [g.strip() for g in split_candidates if g.strip()]
+    if isinstance(generated, list):
+        return [str(g).strip() for g in generated if str(g).strip()]
+    raise ValueError(f"Unexpected LLM output type: {type(generated)}")
+
+
+def repair_candidate_query(
+    question: str,
+    schema: KGSchema,
+    invalid_query: str,
+    error_message: str,
+    llm_client: Optional[object] = None,
+) -> Optional[str]:
+    prompt = build_repair_prompt(
+        question=question,
+        schema=schema,
+        invalid_query=invalid_query,
+        error_message=error_message,
+    )
+    client = llm_client or _default_client()
+    generated = client.generate(prompt, k=1)
+    items = _normalize_generated_output(generated)
+    if not items:
+        return None
+    repaired = _normalize_candidate_query(items[0])
+    return repaired or None
+
+
 def generate_candidates(
     question: str,
     schema: KGSchema,
@@ -38,21 +97,7 @@ def generate_candidates(
     prompt = build_candidate_prompt(question, schema, k)
 
     # Use provided client or default
-    import os
-    def get_default_client():
-        provider = (os.getenv("LLM_PROVIDER") or os.getenv("LLM_BACKEND", "infineon")).strip().lower()
-        if provider == "infiineon":
-            provider = "infineon"
-
-        if provider == "infineon":
-            return InfineonGPTClient()
-        else:
-            raise ValueError(
-                f"Unknown/unsupported LLM backend '{provider}'. "
-                "Supported backend: infineon."
-            )
-        
-    client = llm_client or get_default_client()
+    client = llm_client or _default_client()
 
 
 
@@ -64,26 +109,7 @@ def generate_candidates(
         # -----------------------------
         # Normalize LLM output
         # -----------------------------
-        if generated is None:
-            generated = []
-
-        # Case 1: string output
-        elif isinstance(generated, str):
-            # Try numbered split first (1. ... 2. ...)
-            split_candidates = re.split(r"\n\d+\.\s*", generated)
-
-            # fallback: simple newline split
-            if len(split_candidates) <= 1:
-                split_candidates = generated.split("\n")
-
-            generated = [g.strip() for g in split_candidates if g.strip()]
-
-        # Case 2: already list
-        elif isinstance(generated, list):
-            generated = [str(g).strip() for g in generated if str(g).strip()]
-
-        else:
-            raise ValueError(f"Unexpected LLM output type: {type(generated)}")
+        generated = _normalize_generated_output(generated)
 
 
         seen = set()

@@ -5,7 +5,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from rdflib import Graph
 
@@ -22,7 +22,8 @@ except Exception:
     pass
 
 from kg.schema import load_schema
-from llm.candidate_generation import generate_candidates
+from llm.candidate_generation import generate_candidates, repair_candidate_query
+from llm.client import InfineonGPTClient
 from ranking.feature_extraction import extract_features
 
 
@@ -90,6 +91,95 @@ def _validate_backend_env(allow_gold_only: bool) -> None:
         )
 
 
+def _try_query_signature(graph: Graph, query: str) -> Tuple[int, Set[Tuple[str, ...]], str]:
+    full_query = _ensure_prefixes(query)
+    try:
+        sig = _result_signature(graph.query(full_query))
+        return 1, sig, ""
+    except Exception as exc:
+        return 0, set(), str(exc)
+
+
+def _repair_candidates_for_run(
+    question: str,
+    schema,
+    candidates: List[Dict[str, str]],
+    graph: Graph,
+    llm_client: Optional[object],
+    max_candidates: int,
+    max_attempts: int,
+) -> Tuple[List[Dict[str, str]], int, int]:
+    if not candidates or max_candidates <= 0 or max_attempts <= 0:
+        return candidates, 0, 0
+
+    repaired_attempted = 0
+    repaired_succeeded = 0
+    updated: List[Dict[str, str]] = []
+
+    for cand in candidates:
+        query = str(cand.get("query", "")).strip()
+        if not query:
+            continue
+
+        is_valid, _, error_message = _try_query_signature(graph, query)
+        if is_valid:
+            updated.append(cand)
+            continue
+
+        if repaired_attempted >= max_candidates:
+            updated.append(cand)
+            continue
+
+        repaired_attempted += 1
+        current_error = error_message or "unknown query error"
+        repaired_query = None
+
+        for _ in range(max_attempts):
+            try:
+                proposal = repair_candidate_query(
+                    question=question,
+                    schema=schema,
+                    invalid_query=query,
+                    error_message=current_error,
+                    llm_client=llm_client,
+                )
+            except Exception as exc:
+                proposal = None
+                current_error = str(exc)
+
+            if not proposal:
+                break
+
+            is_valid_after, _, error_after = _try_query_signature(graph, proposal)
+            if is_valid_after:
+                repaired_query = proposal
+                repaired_succeeded += 1
+                break
+            current_error = error_after or "unknown query error"
+
+        if repaired_query:
+            c = dict(cand)
+            c["query"] = repaired_query
+            updated.append(c)
+        else:
+            updated.append(cand)
+
+    # Stable dedup after repair.
+    deduped: List[Dict[str, str]] = []
+    seen = set()
+    for cand in updated:
+        query = str(cand.get("query", "")).strip()
+        if not query:
+            continue
+        key = " ".join(query.split()).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cand)
+
+    return deduped, repaired_attempted, repaired_succeeded
+
+
 def build_training_data(
     dataset_path: str,
     graph_path: str,
@@ -98,6 +188,9 @@ def build_training_data(
     k: int = 5,
     n_runs: int = 3,
     allow_gold_only: bool = False,
+    repair_invalid: bool = True,
+    repair_max_candidates: int = 2,
+    repair_attempts: int = 1,
 ) -> None:
     _validate_backend_env(allow_gold_only=allow_gold_only)
 
@@ -119,6 +212,17 @@ def build_training_data(
     total_llm_candidates = 0
     total_generation_failures = 0
     total_generation_runs = 0
+    total_repair_attempts = 0
+    total_repair_successes = 0
+
+    llm_client: Optional[object] = None
+    if os.environ.get("INFINEON_API_URL") and os.environ.get("INFINEON_API_KEY"):
+        try:
+            llm_client = InfineonGPTClient()
+        except Exception as exc:
+            if not allow_gold_only:
+                raise
+            print(f"⚠️ Could not initialize Infineon client once upfront: {exc}")
 
     for i, item in enumerate(dataset, start=1):
         qid = item["id"]
@@ -173,12 +277,25 @@ def build_training_data(
             print(f"  Generation run {run_idx + 1}/{n_runs} ...")
             total_generation_runs += 1
             try:
-                generated = generate_candidates(question, schema, k=k)
+                generated = generate_candidates(question, schema, k=k, llm_client=llm_client)
                 candidates = generated.get("candidates", [])
             except Exception as exc:
                 print(f"    ❌ Candidate generation failed: {exc}")
                 total_generation_failures += 1
                 continue
+
+            if repair_invalid and candidates:
+                candidates, rep_attempted, rep_succeeded = _repair_candidates_for_run(
+                    question=question,
+                    schema=schema,
+                    candidates=candidates,
+                    graph=g,
+                    llm_client=llm_client,
+                    max_candidates=repair_max_candidates,
+                    max_attempts=repair_attempts,
+                )
+                total_repair_attempts += rep_attempted
+                total_repair_successes += rep_succeeded
 
             for cand_idx, cand in enumerate(candidates):
                 query = str(cand.get("query", "")).strip()
@@ -188,14 +305,8 @@ def build_training_data(
                     continue
                 seen_queries.add(query)
 
-                full_query = _ensure_prefixes(query)
-                try:
-                    sig = _result_signature(g.query(full_query))
-                    is_valid = 1
-                    is_correct = int(sig == gold_rows and len(sig) > 0)
-                except Exception:
-                    is_valid = 0
-                    is_correct = 0
+                is_valid, sig, _ = _try_query_signature(g, query)
+                is_correct = int(is_valid == 1 and sig == gold_rows and len(sig) > 0)
 
                 try:
                     feats = extract_features(question, query, schema_dict)
@@ -244,6 +355,10 @@ def build_training_data(
     print(f"Total candidates:   {total_candidates}")
     print(f"LLM candidates:     {total_llm_candidates}")
     print(f"LLM run failures:   {total_generation_failures}/{total_generation_runs}")
+    print(
+        f"Repairs:            enabled={repair_invalid} "
+        f"attempted={total_repair_attempts} succeeded={total_repair_successes}"
+    )
     if total_candidates > 0:
         print(
             f"Correct candidates: {total_correct} "
@@ -274,6 +389,23 @@ def main() -> None:
         action="store_true",
         help="Allow writing output even when zero LLM candidates were generated (debug only).",
     )
+    parser.add_argument(
+        "--no-repair-invalid",
+        action="store_true",
+        help="Disable execution-guided repair for invalid generated candidates.",
+    )
+    parser.add_argument(
+        "--repair-max-candidates",
+        type=int,
+        default=2,
+        help="Maximum invalid candidates to repair per generation run.",
+    )
+    parser.add_argument(
+        "--repair-attempts",
+        type=int,
+        default=1,
+        help="Repair attempts per invalid candidate.",
+    )
     args = parser.parse_args()
 
     build_training_data(
@@ -284,6 +416,9 @@ def main() -> None:
         k=args.k,
         n_runs=args.n_runs,
         allow_gold_only=args.allow_gold_only,
+        repair_invalid=not args.no_repair_invalid,
+        repair_max_candidates=max(0, int(args.repair_max_candidates)),
+        repair_attempts=max(0, int(args.repair_attempts)),
     )
 
 
