@@ -1,0 +1,702 @@
+[
+  {
+    "id": "LOW1",
+    "question": "How many distinct regions exist in the Infineon survey graph?",
+    "query": "SELECT (COUNT(DISTINCT ?r) AS ?count) WHERE { ?r a survey:Region }",
+    "ambiguity_label": "low",
+    "topic": "catalog"
+  },
+  {
+    "id": "LOW2",
+    "question": "List all region names in the Infineon graph.",
+    "query": "SELECT ?name WHERE { ?r a survey:Region ; survey:regionName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "catalog"
+  },
+  {
+    "id": "LOW3",
+    "question": "How many DemandForRegion entries exist in total?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE { ?d a survey:DemandForRegion }",
+    "ambiguity_label": "low",
+    "topic": "demand"
+  },
+  {
+    "id": "LOW4",
+    "question": "How many Company instances are present?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE { ?c a survey:Company }",
+    "ambiguity_label": "low",
+    "topic": "company"
+  },
+  {
+    "id": "LOW5",
+    "question": "How many Quarter entities exist?",
+    "query": "SELECT (COUNT(?q) AS ?count) WHERE { ?q a survey:Quarter }",
+    "ambiguity_label": "low",
+    "topic": "time"
+  },
+  {
+    "id": "LOW6",
+    "question": "How many FutureDemandAnalysis entries exist overall?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE { ?f a survey:FutureDemandAnalysis }",
+    "ambiguity_label": "low",
+    "topic": "demand"
+  },
+  {
+    "id": "LOW7",
+    "question": "How many OrderCancellation entries exist overall?",
+    "query": "SELECT (COUNT(?o) AS ?count) WHERE { ?o a survey:OrderCancellation }",
+    "ambiguity_label": "low",
+    "topic": "orders"
+  },
+  {
+    "id": "LOW8",
+    "question": "How many AutonomousDrivingDevelopment entries exist?",
+    "query": "SELECT (COUNT(?a) AS ?count) WHERE { ?a a survey:AutonomousDrivingDevelopment }",
+    "ambiguity_label": "low",
+    "topic": "autonomous"
+  },
+  {
+    "id": "LOW9",
+    "question": "How many VehicleSalesObservation records exist?",
+    "query": "SELECT (COUNT(?v) AS ?count) WHERE { ?v a survey:VehicleSalesObservation }",
+    "ambiguity_label": "low",
+    "topic": "sales"
+  },
+  {
+    "id": "LOW10",
+    "question": "How many TechnologyCategory entities exist?",
+    "query": "SELECT (COUNT(?t) AS ?count) WHERE { ?t a survey:TechnologyCategory }",
+    "ambiguity_label": "low",
+    "topic": "technology"
+  },
+  {
+    "id": "LOW11",
+    "question": "How many SAE levels are represented?",
+    "query": "SELECT (COUNT(DISTINCT ?s) AS ?count) WHERE { ?x survey:hasSAELevel ?s }",
+    "ambiguity_label": "low",
+    "topic": "autonomous"
+  },
+  {
+    "id": "LOW12",
+    "question": "List all baseline types used in the dataset.",
+    "query": "SELECT DISTINCT ?baseline WHERE { ?x survey:baselineType ?baseline } ORDER BY ?baseline",
+    "ambiguity_label": "low",
+    "topic": "baseline"
+  },
+  {
+    "id": "LOW13",
+    "question": "List all quarter labels used in the dataset.",
+    "query": "SELECT DISTINCT ?label WHERE { ?q a survey:Quarter ; survey:periodLabel ?label } ORDER BY ?label",
+    "ambiguity_label": "low",
+    "topic": "time"
+  },
+  {
+    "id": "LOW14",
+    "question": "List all technology category names.",
+    "query": "SELECT DISTINCT ?name WHERE { ?t a survey:TechnologyCategory ; survey:technologyCategoryName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "technology"
+  },
+  {
+    "id": "LOW15",
+    "question": "Which survey types are present among Tier1, OEM and Semiconductor?",
+    "query": "SELECT DISTINCT ?type WHERE { ?s a ?type . FILTER(?type IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey)) } ORDER BY ?type",
+    "ambiguity_label": "low",
+    "topic": "survey"
+  },
+  {
+    "id": "LOW16",
+    "question": "How many DemandForRegion entries are linked to Tier1 survey?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE {\n                ?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "demand"
+  },
+  {
+    "id": "LOW17",
+    "question": "How many company entries are linked to Tier1 survey?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "company"
+  },
+  {
+    "id": "LOW18",
+    "question": "How many FutureDemandAnalysis entries are linked to Tier1 survey?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE {\n                ?f a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "demand"
+  },
+  {
+    "id": "LOW19",
+    "question": "How many OrderCancellation entries are linked to Tier1 survey?",
+    "query": "SELECT (COUNT(?oc) AS ?count) WHERE {\n                ?oc a survey:OrderCancellation ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "orders"
+  },
+  {
+    "id": "LOW20",
+    "question": "How many Tier1 companies report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Tier1_Survey .\n                FILTER(?flag = true)\n                }",
+    "ambiguity_label": "low",
+    "topic": "shortage"
+  },
+  {
+    "id": "LOW21",
+    "question": "How many Tier1 companies do not report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Tier1_Survey .\n                FILTER(?flag = false)\n                }",
+    "ambiguity_label": "low",
+    "topic": "shortage"
+  },
+  {
+    "id": "LOW22",
+    "question": "How many DemandForRegion entries are linked to OEM survey?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE {\n                ?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "demand"
+  },
+  {
+    "id": "LOW23",
+    "question": "How many company entries are linked to OEM survey?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "company"
+  },
+  {
+    "id": "LOW24",
+    "question": "How many FutureDemandAnalysis entries are linked to OEM survey?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE {\n                ?f a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin ?o .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "demand"
+  },
+  {
+    "id": "LOW25",
+    "question": "How many OrderCancellation entries are linked to OEM survey?",
+    "query": "SELECT (COUNT(?oc) AS ?count) WHERE {\n                ?oc a survey:OrderCancellation ; survey:hasSurveyOrigin ?o .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "orders"
+  },
+  {
+    "id": "LOW26",
+    "question": "How many OEM companies report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:OEM_Survey .\n                FILTER(?flag = true)\n                }",
+    "ambiguity_label": "low",
+    "topic": "shortage"
+  },
+  {
+    "id": "LOW27",
+    "question": "How many OEM companies do not report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:OEM_Survey .\n                FILTER(?flag = false)\n                }",
+    "ambiguity_label": "low",
+    "topic": "shortage"
+  },
+  {
+    "id": "LOW28",
+    "question": "How many DemandForRegion entries are linked to Semiconductor survey?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE {\n                ?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "demand"
+  },
+  {
+    "id": "LOW29",
+    "question": "How many company entries are linked to Semiconductor survey?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "company"
+  },
+  {
+    "id": "LOW30",
+    "question": "How many FutureDemandAnalysis entries are linked to Semiconductor survey?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE {\n                ?f a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "demand"
+  },
+  {
+    "id": "LOW31",
+    "question": "How many OrderCancellation entries are linked to Semiconductor survey?",
+    "query": "SELECT (COUNT(?oc) AS ?count) WHERE {\n                ?oc a survey:OrderCancellation ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "orders"
+  },
+  {
+    "id": "LOW32",
+    "question": "How many Semiconductor companies report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Semiconductor_Survey .\n                FILTER(?flag = true)\n                }",
+    "ambiguity_label": "low",
+    "topic": "shortage"
+  },
+  {
+    "id": "LOW33",
+    "question": "How many Semiconductor companies do not report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Semiconductor_Survey .\n                FILTER(?flag = false)\n                }",
+    "ambiguity_label": "low",
+    "topic": "shortage"
+  },
+  {
+    "id": "LOW34",
+    "question": "How many Tier1 demand entries exist for region Americas?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE {\n                    ?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o ; survey:inRegion ?r .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName \"Americas\"\n                    }",
+    "ambiguity_label": "low",
+    "topic": "demand"
+  },
+  {
+    "id": "MID1",
+    "question": "What is the total demand by region for Tier1 survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID2",
+    "question": "What is the total demand by region for OEM survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID3",
+    "question": "What is the total demand by region for Semiconductor survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID4",
+    "question": "What is the total Tier1 demand for region Americas?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID5",
+    "question": "What is the total Tier1 demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID6",
+    "question": "What is the total Tier1 demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID7",
+    "question": "What is the total Tier1 demand for region Europe?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID8",
+    "question": "What is the total Tier1 demand for region Japan?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID9",
+    "question": "What is the total OEM demand for region Americas?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID10",
+    "question": "What is the total OEM demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID11",
+    "question": "What is the total OEM demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID12",
+    "question": "What is the total OEM demand for region Europe?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID13",
+    "question": "What is the total OEM demand for region Japan?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID14",
+    "question": "What is the total Semiconductor demand for region Americas?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID15",
+    "question": "What is the total Semiconductor demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID16",
+    "question": "What is the total Semiconductor demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID17",
+    "question": "What is the total Semiconductor demand for region Europe?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID18",
+    "question": "What is the total Semiconductor demand for region Japan?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID19",
+    "question": "What is the average Tier1 demand for region Americas?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID20",
+    "question": "What is the average Tier1 demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID21",
+    "question": "What is the average Tier1 demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID22",
+    "question": "What is the average Tier1 demand for region Europe?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID23",
+    "question": "What is the average Tier1 demand for region Japan?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID24",
+    "question": "What is the average OEM demand for region Americas?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID25",
+    "question": "What is the average OEM demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID26",
+    "question": "What is the average OEM demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID27",
+    "question": "What is the average OEM demand for region Europe?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID28",
+    "question": "What is the average OEM demand for region Japan?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID29",
+    "question": "What is the average Semiconductor demand for region Americas?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID30",
+    "question": "What is the average Semiconductor demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID31",
+    "question": "What is the average Semiconductor demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID32",
+    "question": "What is the average Semiconductor demand for region Europe?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "MID33",
+    "question": "What is the average Semiconductor demand for region Japan?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH1",
+    "question": "How does Tier1 demand percentage change by quarter and region?",
+    "query": "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH2",
+    "question": "What is the quarterly demand percentage trend for Tier1 survey?",
+    "query": "SELECT ?quarterLabel (AVG(?pct) AS ?avgPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Tier1_Survey .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ORDER BY ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH3",
+    "question": "Which region has the highest total demand in Tier1 survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH4",
+    "question": "Which region has the lowest total demand in Tier1 survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY ASC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH5",
+    "question": "What is the shortage split (yes/no) for Tier1 companies?",
+    "query": "SELECT ?status (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:reportsShortage ?flag .\n                ?o a survey:Tier1_Survey .\n                BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n                } GROUP BY ?status ORDER BY ?status",
+    "ambiguity_label": "high",
+    "topic": "shortage"
+  },
+  {
+    "id": "HIGH6",
+    "question": "What are total and average demand levels for Tier1 survey?",
+    "query": "SELECT (SUM(?units) AS ?totalDemand) (AVG(?units) AS ?avgDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH7",
+    "question": "How does OEM demand percentage change by quarter and region?",
+    "query": "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH8",
+    "question": "What is the quarterly demand percentage trend for OEM survey?",
+    "query": "SELECT ?quarterLabel (AVG(?pct) AS ?avgPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:OEM_Survey .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ORDER BY ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH9",
+    "question": "Which region has the highest total demand in OEM survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH10",
+    "question": "Which region has the lowest total demand in OEM survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY ASC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH11",
+    "question": "What is the shortage split (yes/no) for OEM companies?",
+    "query": "SELECT ?status (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:reportsShortage ?flag .\n                ?o a survey:OEM_Survey .\n                BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n                } GROUP BY ?status ORDER BY ?status",
+    "ambiguity_label": "high",
+    "topic": "shortage"
+  },
+  {
+    "id": "HIGH12",
+    "question": "What are total and average demand levels for OEM survey?",
+    "query": "SELECT (SUM(?units) AS ?totalDemand) (AVG(?units) AS ?avgDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH13",
+    "question": "How does Semiconductor demand percentage change by quarter and region?",
+    "query": "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH14",
+    "question": "What is the quarterly demand percentage trend for Semiconductor survey?",
+    "query": "SELECT ?quarterLabel (AVG(?pct) AS ?avgPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Semiconductor_Survey .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ORDER BY ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH15",
+    "question": "Which region has the highest total demand in Semiconductor survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH16",
+    "question": "Which region has the lowest total demand in Semiconductor survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY ASC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH17",
+    "question": "What is the shortage split (yes/no) for Semiconductor companies?",
+    "query": "SELECT ?status (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:reportsShortage ?flag .\n                ?o a survey:Semiconductor_Survey .\n                BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n                } GROUP BY ?status ORDER BY ?status",
+    "ambiguity_label": "high",
+    "topic": "shortage"
+  },
+  {
+    "id": "HIGH18",
+    "question": "What are total and average demand levels for Semiconductor survey?",
+    "query": "SELECT (SUM(?units) AS ?totalDemand) (AVG(?units) AS ?avgDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:totalDemand ?units .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "high",
+    "topic": "demand"
+  },
+  {
+    "id": "HIGH19",
+    "question": "What is the average autonomous-driving development for Tier1 by vehicle type, SAE level and year?",
+    "query": "SELECT ?vehicle ?sae ?year (AVG(?pct) AS ?avgPct) WHERE {\n                ?root a survey:AutonomousDrivingDevelopment_Tier1 ;\n                      survey:hasSurveyOrigin survey:Tier1_Survey ;\n                      survey:hasDetail ?entry .\n                ?entry a survey:AutonomousDrivingDevelopment ;\n                       survey:hasVehicleType ?vehicle ;\n                       survey:hasSAELevel ?sae ;\n                       survey:hasPercentage ?pct ;\n                       survey:hasYear ?year .\n                } GROUP BY ?vehicle ?sae ?year ORDER BY ?vehicle ?sae ?year",
+    "ambiguity_label": "high",
+    "topic": "autonomous"
+  },
+  {
+    "id": "HIGH20",
+    "question": "What is the average autonomous-driving development for OEM by vehicle type, SAE level and year?",
+    "query": "SELECT ?vehicle ?sae ?year (AVG(?pct) AS ?avgPct) WHERE {\n                ?root a survey:AutonomousDrivingDevelopment_OEM ;\n                      survey:hasSurveyOrigin survey:OEM_Survey ;\n                      survey:hasDetail ?entry .\n                ?entry a survey:AutonomousDrivingDevelopment ;\n                       survey:hasVehicleType ?vehicle ;\n                       survey:hasSAELevel ?sae ;\n                       survey:hasPercentage ?pct ;\n                       survey:hasYear ?year .\n                } GROUP BY ?vehicle ?sae ?year ORDER BY ?vehicle ?sae ?year",
+    "ambiguity_label": "high",
+    "topic": "autonomous"
+  },
+  {
+    "id": "HIGH21",
+    "question": "What are semiconductor order-cancellation response counts by technology category and response type?",
+    "query": "SELECT ?tech ?responseType (SUM(xsd:integer(?cnt)) AS ?responses) WHERE {\n            ?oc a survey:OrderCancellation ;\n                survey:forTechnologyCategory ?tech ;\n                survey:hasResponseType ?responseType ;\n                survey:participantCount ?cnt .\n            } GROUP BY ?tech ?responseType ORDER BY ?tech ?responseType",
+    "ambiguity_label": "high",
+    "topic": "orders"
+  },
+  {
+    "id": "HIGH22",
+    "question": "Compare total demand across Tier1, OEM and Semiconductor by region.",
+    "query": "SELECT ?surveyType ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n            ?d a survey:DemandForRegion ;\n               survey:hasSurveyOrigin ?o ;\n               survey:inRegion ?r ;\n               survey:totalDemand ?units .\n            ?o a ?surveyType .\n            ?r survey:regionName ?regionName .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            } GROUP BY ?surveyType ?regionName ORDER BY ?surveyType ?regionName",
+    "ambiguity_label": "high",
+    "topic": "comparison"
+  },
+  {
+    "id": "HIGH23",
+    "question": "Compare company shortage status across Tier1, OEM and Semiconductor surveys.",
+    "query": "SELECT ?surveyType ?status (COUNT(?c) AS ?count) WHERE {\n            ?c a survey:Company ;\n               survey:hasSurveyOrigin ?o ;\n               survey:reportsShortage ?flag .\n            ?o a ?surveyType .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n            } GROUP BY ?surveyType ?status ORDER BY ?surveyType ?status",
+    "ambiguity_label": "high",
+    "topic": "comparison"
+  },
+  {
+    "id": "HIGH24",
+    "question": "How many demand entries does each survey have per quarter label?",
+    "query": "SELECT ?surveyType ?quarterLabel (COUNT(?d) AS ?entries) WHERE {\n            ?d a survey:DemandForRegion ;\n               survey:hasSurveyOrigin ?o ;\n               survey:quarter ?q .\n            ?o a ?surveyType .\n            ?q survey:periodLabel ?quarterLabel .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            } GROUP BY ?surveyType ?quarterLabel ORDER BY ?surveyType ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "comparison"
+  },
+  {
+    "id": "HIGH25",
+    "question": "What is the average demand per survey type across all regions?",
+    "query": "SELECT ?surveyType (AVG(?units) AS ?avgDemand) WHERE {\n            ?d a survey:DemandForRegion ;\n               survey:hasSurveyOrigin ?o ;\n               survey:totalDemand ?units .\n            ?o a ?surveyType .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            } GROUP BY ?surveyType ORDER BY ?surveyType",
+    "ambiguity_label": "high",
+    "topic": "comparison"
+  },
+  {
+    "id": "HIGH26",
+    "question": "What are Tier1 automotive percentage changes for baselines BL1 and BL2?",
+    "query": "SELECT ?baseline ?pct WHERE {\n            survey:Tier1CurrentDemand survey:hasAggregatedResult ?entry .\n            ?entry survey:baselineType ?baseline ;\n                   survey:percentageChange ?pct .\n            FILTER(?baseline IN (\"BL1\", \"BL2\"))\n            } ORDER BY ?baseline",
+    "ambiguity_label": "high",
+    "topic": "baseline"
+  },
+  {
+    "id": "HIGH27",
+    "question": "What is the BL1-BL2 delta for Tier1 current demand percentage change?",
+    "query": "SELECT\n            (SUM(IF(?baseline = \"BL1\", ?pct, 0)) AS ?bl1)\n            (SUM(IF(?baseline = \"BL2\", ?pct, 0)) AS ?bl2)\n            ((SUM(IF(?baseline = \"BL1\", ?pct, 0)) - SUM(IF(?baseline = \"BL2\", ?pct, 0))) AS ?delta)\n            WHERE {\n            survey:Tier1CurrentDemand survey:hasAggregatedResult ?entry .\n            ?entry survey:baselineType ?baseline ;\n                   survey:percentageChange ?pct .\n            FILTER(?baseline IN (\"BL1\", \"BL2\"))\n            }",
+    "ambiguity_label": "high",
+    "topic": "baseline"
+  },
+  {
+    "id": "HIGH28",
+    "question": "How are Tier1 inventory responses distributed by component and trend?",
+    "query": "SELECT ?component ?trend (SUM(xsd:integer(?cnt)) AS ?responses) WHERE {\n            ?entry a survey:InventoryDevelopment_Tier1 ;\n                   survey:forComponent ?component ;\n                   survey:inventoryTrend ?trend ;\n                   survey:participantCount ?cnt .\n            } GROUP BY ?component ?trend ORDER BY ?component ?trend",
+    "ambiguity_label": "high",
+    "topic": "inventory"
+  },
+  {
+    "id": "HIGH29",
+    "question": "[Infineon benchmark variant 1] How is inventory distributed across EV, non-EV, and mixed components?",
+    "query": "SELECT ?category (COALESCE(SUM(IF(STR(?trend) = \"Increase\", xsd:integer(?cnt), 0)), 0) AS ?increase) (COALESCE(SUM(IF(STR(?trend) = \"Decrease\", xsd:integer(?cnt), 0)), 0) AS ?decrease) (COALESCE(SUM(IF(STR(?trend) = \"Stable\", xsd:integer(?cnt), 0)), 0) AS ?stable) (SUM(xsd:integer(?cnt)) AS ?total) WHERE { survey:AggregatedInventoryTrendSummary a survey:InventoryDevelopment_Tier1 ; survey:hasInventoryResponse ?agg . ?agg a survey:InventoryDevelopment_Tier1 ; survey:forComponent ?comp ; survey:inventoryTrend ?trend ; survey:participantCount ?cnt . BIND( IF( ?comp = survey:Component_EV, \"EV\", IF( ?comp = survey:Component_non_EV, \"non EV\", IF( ?comp = survey:Component_both, \"both\", REPLACE(STRAFTER(STR(?comp), \"Component_\"), \"_\", \" \") ) ) ) AS ?category ) BIND( IF( ?category = \"EV\", 1, IF(?category = \"non EV\", 2, IF(?category = \"both\", 3, 4) ) ) AS ?ord ) } GROUP BY ?category ?ord ORDER BY ?ord",
+    "ambiguity_label": "high",
+    "topic": "seed_fallback"
+  },
+  {
+    "id": "HIGH30",
+    "question": "[Infineon benchmark variant 2] How does future demand vary across regions and quarters for Tier1?",
+    "query": "SELECT ?quarterLabel ?regionName (ROUND(IF(?grandTotal > 0, ((SUM(?pct) / ?grandTotal) * 100), 0) * 100) / 100 AS ?percentShare) WHERE { BIND(survey:Tier1_Survey AS ?surveyType) ?origin a ?surveyType . ?entry a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:quarter ?q ; survey:totalDemandPercentageChange ?pct . ?q survey:periodLabel ?quarterLabel . ?region survey:regionName ?regionName . { SELECT ?origin ?quarterLabel (SUM(?v) AS ?grandTotal) WHERE { ?e a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:quarter ?qq ; survey:totalDemandPercentageChange ?v . ?qq survey:periodLabel ?quarterLabel . } GROUP BY ?origin ?quarterLabel } } GROUP BY ?quarterLabel ?regionName ?grandTotal ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "seed_fallback"
+  },
+  {
+    "id": "HIGH31",
+    "question": "[Infineon benchmark variant 3] What is the average autonomous driving development by vehicle type and SAE level for Tier1?",
+    "query": "SELECT ?vehicle ?saeLabel ?year (AVG(?pct) AS ?avgPct) WHERE { ?oemClass a survey:AutonomousDrivingDevelopment_Tier1 ; survey:hasSurveyOrigin survey:Tier1_Survey ; survey:hasDetail ?entry . ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?veh ; survey:hasSAELevel ?sae ; survey:hasPercentage ?pct ; survey:hasYear ?year . BIND( IF(CONTAINS(STR(?veh), \"BEV\"), \"BEV\", IF(CONTAINS(STR(?veh), \"BEHV\"), \"BEHV\", IF(CONTAINS(STR(?veh), \"ICE\"), \"ICE\", \"OTHER\") ) ) AS ?vehicle ) FILTER(?vehicle != \"OTHER\") BIND(STRAFTER(STR(?sae), \"SAE_Level_\") AS ?saeLabel) } GROUP BY ?vehicle ?saeLabel ?year ORDER BY ?vehicle xsd:integer(?saeLabel) xsd:integer(?year)",
+    "ambiguity_label": "high",
+    "topic": "seed_fallback"
+  },
+  {
+    "id": "HIGH32",
+    "question": "[Infineon benchmark variant 4] How does semiconductor future demand evolve across technology categories and quarters?",
+    "query": "SELECT ?techLabel ?quarter (SUM(IF(?baseline = \"Option1\", ?pct, 0)) AS ?Option1) (SUM(IF(?baseline = \"Option2\", ?pct, 0)) AS ?Option2) (SUM(IF(?baseline = \"Option3\", ?pct, 0)) AS ?Option3) WHERE { { survey:SemiFutureDemand_Option1 a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin survey:Semiconductor_Survey ; survey:hasAggregatedResult ?e1 . ?e1 a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:forTimePeriod ?period ; survey:percentageChange ?pct . BIND(\"Option1\" AS ?baseline) } UNION { survey:SemiFutureDemand_Option2 a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin survey:Semiconductor_Survey ; survey:hasAggregatedResult ?e2 . ?e2 a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:forTimePeriod ?period ; survey:percentageChange ?pct . BIND(\"Option2\" AS ?baseline) } UNION { survey:SemiFutureDemand_Option3 a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin survey:Semiconductor_Survey ; survey:hasAggregatedResult ?e3 . ?e3 a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:forTimePeriod ?period ; survey:percentageChange ?pct . BIND(\"Option3\" AS ?baseline) } FILTER(STRSTARTS(STR(?tech), STR(survey:TechCategory_))) OPTIONAL { ?period survey:periodLabel ?qLabelRaw . } BIND( REPLACE( COALESCE(?qLabelRaw, STRAFTER(STR(?period), \"survey:\")), \"_\", \" \" ) AS ?quarter ) BIND( REPLACE( REPLACE( REPLACE( REPLACE( REPLACE(STRAFTER(STR(?tech), \"TechCategory_\"), \"%3C%3D\", \"<=\") , \"_to_%3C\", \" to <\") , \"_or_greater\", \" or greater\") , \"_\", \" \") , \"lte 7nm\", \"<= 7nm\") AS ?techLabel ) } GROUP BY ?techLabel ?quarter ORDER BY ?techLabel ?quarter",
+    "ambiguity_label": "high",
+    "topic": "seed_fallback"
+  },
+  {
+    "id": "HIGH33",
+    "question": "[Infineon benchmark variant 5] What are the order cancellation trends across semiconductor technology categories?",
+    "query": "SELECT ?techLabel (SUM(IF(BOUND(?rtype) && ?rtype = survey:Increase, xsd:integer(?cnt), 0)) AS ?increaseCount) (SUM(IF(BOUND(?rtype) && ?rtype = survey:Decrease, xsd:integer(?cnt), 0)) AS ?decreaseCount) (SUM(IF(BOUND(?rtype) && ?rtype = survey:Stable, xsd:integer(?cnt), 0)) AS ?stableCount) (SUM(IF(BOUND(?cnt), xsd:integer(?cnt), 0)) AS ?totalResponses) WHERE { VALUES ?techCat { survey:OrderCancellationChange_Semi_lt%3D_7nm survey:OrderCancellationChange_Semi_10nm_to_lt28nm survey:OrderCancellationChange_Semi_28nm_to_lt45nm survey:OrderCancellationChange_Semi_55nm_to_180nm survey:OrderCancellationChange_Semi_180nm_or_greater } OPTIONAL { ?oc a survey:OrderCancellation ; survey:forTechnologyCategory ?techCat ; survey:hasResponseType ?rtype ; survey:participantCount ?cnt . } BIND( STRAFTER(STR(?techCat), \"OrderCancellationChange_Semi_\") AS ?suffix ) BIND( REPLACE( REPLACE( REPLACE( REPLACE( REPLACE( REPLACE( ?suffix, \"lt%3D_\", \"<= \" ), \"%3C\", \"<\" ), \"_to_lt\", \" to <\" ), \"_or_greater\", \" or greater\" ), \"_to_\", \" to \" ), \"_\", \" \" ) AS ?techLabel ) } GROUP BY ?techLabel ORDER BY ?techLabel",
+    "ambiguity_label": "high",
+    "topic": "seed_fallback"
+  }
+]

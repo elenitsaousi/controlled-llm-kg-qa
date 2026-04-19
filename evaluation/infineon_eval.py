@@ -23,14 +23,6 @@ from kg.schema import KGSchema, load_default_schema, load_schema
 from llm.candidate_generation import generate_candidates
 from llm.client import InfineonGPTClient, OpenAIClient
 
-# ML Ranking imports
-try:
-    from ranking.runtime_ranker import LogisticRanker
-    from ranking.feature_extraction import extract_features
-    ML_RANKING_AVAILABLE = True
-except Exception:
-    ML_RANKING_AVAILABLE = False
-
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
 PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -111,6 +103,16 @@ def _build_llm_client(choice: str, temperature: float):
         return InfineonGPTClient(temperature=temperature)
     return None
 
+
+def _ml_dependencies_available() -> bool:
+    try:
+        from ranking.runtime_ranker import LogisticRanker  # noqa: F401
+        from ranking.feature_extraction import extract_features  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
 def _ml_rank_candidates(
     candidates: List[Dict],
     question: str,
@@ -119,6 +121,9 @@ def _ml_rank_candidates(
 ) -> List[Dict]:
     """Rank candidates using ML model. Returns reranked candidates."""
     try:
+        from ranking.runtime_ranker import LogisticRanker
+        from ranking.feature_extraction import extract_features
+
         ranker = LogisticRanker(model_path)
         feature_dicts = []
         for c in candidates:
@@ -173,9 +178,9 @@ def evaluate(
 
     # Check ML ranking availability
     ml_ranking_enabled = (
-        use_ml_ranking and
-        ML_RANKING_AVAILABLE and
-        os.path.exists(ml_model_path)
+        use_ml_ranking
+        and os.path.exists(ml_model_path)
+        and _ml_dependencies_available()
     )
     if progress:
         print(f"ML Ranking: {'✅ Enabled' if ml_ranking_enabled else '❌ Disabled'}")
@@ -204,6 +209,7 @@ def evaluate(
         "schema_path": schema_path,
         "query_timeout": query_timeout,
         "ml_ranking": ml_ranking_enabled,
+        "per_ambiguity": {},
     }
 
     details = []
@@ -219,17 +225,53 @@ def evaluate(
         qid = item.get("id", "")
         question = item.get("question", "")
         gold_query = _strip_comments(str(item.get("query", "")).strip())
+        ambiguity_label = str(item.get("ambiguity_label", "")).strip().lower()
+        if not ambiguity_label:
+            ambiguity_label = None
+
+        amb_summary = None
+        if ambiguity_label is not None:
+            amb_summary = summary["per_ambiguity"].setdefault(
+                ambiguity_label,
+                {
+                    "total": 0,
+                    "gold_invalid": 0,
+                    "gold_timeout": 0,
+                    "top1_correct": 0,
+                    "any_correct": 0,
+                },
+            )
+            amb_summary["total"] += 1
+
         gold_full = _ensure_prefixes(gold_query)
 
         try:
             gold_sig = _run_query(g, gold_full, query_timeout)
         except QueryTimeout as exc:
             summary["gold_timeout"] += 1
-            details.append({"id": qid, "question": question, "gold_error": str(exc)})
+            if amb_summary is not None:
+                amb_summary["gold_timeout"] += 1
+            details.append(
+                {
+                    "id": qid,
+                    "question": question,
+                    "ambiguity_label": ambiguity_label,
+                    "gold_error": str(exc),
+                }
+            )
             continue
         except Exception as exc:
             summary["gold_invalid"] += 1
-            details.append({"id": qid, "question": question, "gold_error": str(exc)})
+            if amb_summary is not None:
+                amb_summary["gold_invalid"] += 1
+            details.append(
+                {
+                    "id": qid,
+                    "question": question,
+                    "ambiguity_label": ambiguity_label,
+                    "gold_error": str(exc),
+                }
+            )
             continue
 
         # Generate candidates
@@ -303,6 +345,9 @@ def evaluate(
             summary["top1_correct"] += 1
         if any_correct:
             summary["any_correct"] += 1
+        if amb_summary is not None:
+            amb_summary["top1_correct"] += int(top1_correct)
+            amb_summary["any_correct"] += int(any_correct)
         if not any_valid:
             summary["all_invalid"] += 1
         if any_valid and not any_correct:
@@ -311,6 +356,7 @@ def evaluate(
         details.append({
             "id": qid,
             "question": question,
+            "ambiguity_label": ambiguity_label,
             "top1_correct": top1_correct,
             "any_correct": any_correct,
             "candidates": candidate_results,
@@ -328,6 +374,11 @@ def evaluate(
     else:
         summary["candidate_correct_rate"] = 0.0
         summary["candidate_invalid_rate"] = 0.0
+
+    for label, stats in summary["per_ambiguity"].items():
+        denom = stats["total"] if stats["total"] > 0 else 1
+        stats["top1_correct_rate"] = stats["top1_correct"] / denom
+        stats["any_correct_rate"] = stats["any_correct"] / denom
 
     payload = {"summary": summary, "details": details}
 
