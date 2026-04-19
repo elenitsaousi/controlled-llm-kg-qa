@@ -1,5 +1,8 @@
 # Infineon Ranker Workflow (Unbiased + Deployment)
 
+For the extended 500-question train/dev/test pipeline (generation recall + KPI + ambiguity calibration), see:
+`docs/infineon_500_pipeline.md`.
+
 ## 0) Configure Infineon backend env (`.env`)
 
 Create `.env` in project root with at least:

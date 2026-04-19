@@ -22,6 +22,11 @@ except Exception:
 from kg.schema import KGSchema, load_default_schema, load_schema
 from llm.candidate_generation import generate_candidates, repair_candidate_query
 from llm.client import InfineonGPTClient
+from ranking.ambiguity_policy import (
+    AmbiguityConfig,
+    load_ambiguity_config,
+    predict_regime,
+)
 
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -345,9 +350,11 @@ def evaluate(
     temperature: float = 0.2,
     progress: bool = False,
     query_timeout: Optional[float] = None,
+    generation_runs: int = 1,
     use_ml_ranking: bool = True,
     ml_model_path: str = "ranking/models/infineon_ranker.joblib",
     ml_ambiguity_regimes: Optional[List[str]] = None,
+    ambiguity_config_path: Optional[str] = None,
 ) -> Dict[str, object]:
     allowed_regimes = {"low", "mid", "high"}
     normalized_regimes: List[str] = []
@@ -381,6 +388,19 @@ def evaluate(
         and os.path.exists(ml_model_path)
         and _ml_dependencies_available(ml_model_path)
     )
+
+    ambiguity_config: Optional[AmbiguityConfig] = None
+    ambiguity_model = None
+    if ambiguity_config_path:
+        ambiguity_config = load_ambiguity_config(ambiguity_config_path)
+        if not normalized_regimes:
+            normalized_regimes = list(ambiguity_config.ml_regimes)
+        if ambiguity_config.entropy_source == "ml" and _is_np_model_file(ml_model_path):
+            try:
+                ambiguity_model = _load_np_ranker(ml_model_path)
+            except Exception:
+                ambiguity_model = None
+
     if progress:
         print(f"ML Ranking: {'✅ Enabled' if ml_ranking_enabled else '❌ Disabled'}")
 
@@ -408,6 +428,7 @@ def evaluate(
         "all_invalid": 0,
         "all_valid_wrong": 0,
         "llm_generation_failures": 0,
+        "generation_runs_requested": int(max(1, generation_runs)),
         "repair_enabled": repair_enabled,
         "repair_max_candidates": repair_max_candidates,
         "repair_attempts_per_candidate": repair_attempts,
@@ -419,6 +440,8 @@ def evaluate(
         "query_timeout": query_timeout,
         "ml_ranking": ml_ranking_enabled,
         "ml_ambiguity_regimes": normalized_regimes,
+        "ambiguity_config_path": ambiguity_config_path,
+        "predicted_regime_counts": {},
         "per_ambiguity": {},
     }
 
@@ -435,7 +458,7 @@ def evaluate(
         qid = item.get("id", "")
         question = item.get("question", "")
         gold_query = _strip_comments(str(item.get("query", "")).strip())
-        ambiguity_label = str(item.get("ambiguity_label", "")).strip().lower()
+        ambiguity_label = _normalize_amb_label(str(item.get("ambiguity_label", "")))
         if not ambiguity_label:
             ambiguity_label = None
 
@@ -484,26 +507,30 @@ def evaluate(
             )
             continue
 
-        # Generate candidates
-        try:
-            generated = generate_candidates(question, schema, k=k, llm_client=llm_client)
-            candidates = generated.get("candidates", [])
-        except Exception as exc:
-            summary["llm_generation_failures"] += 1
-            summary["top1_invalid"] += 1
-            summary["all_invalid"] += 1
-            details.append(
-                {
-                    "id": qid,
-                    "question": question,
-                    "ambiguity_label": ambiguity_label,
-                    "generation_error": str(exc),
-                    "candidates": [],
-                    "top1_correct": False,
-                    "any_correct": False,
-                }
-            )
-            continue
+        # Generate candidates (optionally multiple generation runs, merged uniquely).
+        candidates = []
+        generation_errors = []
+        seen_gen = set()
+        for gen_run in range(max(1, int(generation_runs))):
+            try:
+                generated = generate_candidates(question, schema, k=k, llm_client=llm_client)
+                batch = generated.get("candidates", [])
+            except Exception as exc:
+                summary["llm_generation_failures"] += 1
+                generation_errors.append(str(exc))
+                continue
+
+            for cand in batch:
+                qtext = _strip_comments(str(cand.get("query", "")).strip())
+                if not qtext:
+                    continue
+                key = " ".join(qtext.split()).lower()
+                if key in seen_gen:
+                    continue
+                seen_gen.add(key)
+                c = dict(cand)
+                c["query"] = qtext
+                candidates.append(c)
 
         if not candidates:
             summary["top1_invalid"] += 1
@@ -513,7 +540,11 @@ def evaluate(
                     "id": qid,
                     "question": question,
                     "ambiguity_label": ambiguity_label,
-                    "generation_error": "No candidates generated",
+                    "generation_error": (
+                        "; ".join(generation_errors)
+                        if generation_errors
+                        else "No candidates generated"
+                    ),
                     "candidates": [],
                     "top1_correct": False,
                     "any_correct": False,
@@ -535,10 +566,38 @@ def evaluate(
             summary["repair_candidates_attempted"] += rep_attempted
             summary["repair_candidates_succeeded"] += rep_succeeded
 
-        # ML Ranking
+        predicted_regime = None
+        predicted_entropy = None
+        regime_for_policy = ambiguity_label
+        if ambiguity_config is not None:
+            try:
+                cand_payload = []
+                for c in candidates:
+                    row = {"query": str(c.get("query", ""))}
+                    feats = c.get("features")
+                    if isinstance(feats, dict) and feats:
+                        row["features"] = feats
+                    cand_payload.append(row)
+                predicted_regime, predicted_entropy = predict_regime(
+                    question=question,
+                    candidates=cand_payload,
+                    config=ambiguity_config,
+                    schema_dict=schema_dict,
+                    model=ambiguity_model,
+                    graph=g if ambiguity_config.entropy_source == "agreement" else None,
+                )
+                regime_for_policy = predicted_regime
+                summary["predicted_regime_counts"][predicted_regime] = (
+                    int(summary["predicted_regime_counts"].get(predicted_regime, 0)) + 1
+                )
+            except Exception:
+                predicted_regime = None
+                predicted_entropy = None
+
+        # ML Ranking (all, label-gated, or config-gated)
         apply_ml_ranking = ml_ranking_enabled
         if apply_ml_ranking and normalized_regimes:
-            apply_ml_ranking = ambiguity_label in set(normalized_regimes)
+            apply_ml_ranking = regime_for_policy in set(normalized_regimes)
 
         if apply_ml_ranking and candidates:
             candidates = _ml_rank_candidates(
@@ -618,6 +677,10 @@ def evaluate(
             "id": qid,
             "question": question,
             "ambiguity_label": ambiguity_label,
+            "policy_regime": regime_for_policy,
+            "predicted_regime": predicted_regime,
+            "predicted_entropy": predicted_entropy,
+            "ml_applied": apply_ml_ranking,
             "top1_correct": top1_correct,
             "any_correct": any_correct,
             "candidates": candidate_results,
@@ -663,6 +726,7 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--progress", action="store_true")
     parser.add_argument("--query-timeout", type=float, default=None)
+    parser.add_argument("--generation-runs", type=int, default=1)
     parser.add_argument("--out", default="results/infineon_eval.json")
     parser.add_argument("--no-ml-ranking", action="store_true",
                         help="Disable ML ranking")
@@ -673,6 +737,11 @@ def main() -> None:
         "--ml-ambiguity-regimes",
         default="",
         help="Comma-separated ambiguity labels where ML ranking is used (e.g. mid or low,mid).",
+    )
+    parser.add_argument(
+        "--ambiguity-config",
+        default="",
+        help="Optional ambiguity config JSON for runtime regime prediction.",
     )
     args = parser.parse_args()
 
@@ -687,9 +756,11 @@ def main() -> None:
         temperature=args.temperature,
         progress=args.progress,
         query_timeout=args.query_timeout,
+        generation_runs=max(1, int(args.generation_runs)),
         use_ml_ranking=not args.no_ml_ranking,
         ml_model_path=args.ml_model,
         ml_ambiguity_regimes=regimes,
+        ambiguity_config_path=(args.ambiguity_config or None),
     )
 
     summary = results["summary"]

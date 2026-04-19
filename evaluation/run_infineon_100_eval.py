@@ -29,6 +29,12 @@ def main() -> None:
     )
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--query-timeout", type=float, default=None)
+    parser.add_argument(
+        "--generation-runs",
+        type=int,
+        default=1,
+        help="How many independent LLM generation runs to merge per question.",
+    )
     parser.add_argument("--progress", action="store_true")
     parser.add_argument(
         "--use-ml-ranking",
@@ -43,6 +49,11 @@ def main() -> None:
         "--ml-ambiguity-regimes",
         default="",
         help="Comma-separated ambiguity labels where ML is enabled (e.g. mid). Empty => ML for all.",
+    )
+    parser.add_argument(
+        "--ambiguity-config",
+        default="",
+        help="Optional ambiguity config JSON (tau1/tau2 + entropy source) for runtime regime prediction.",
     )
     args = parser.parse_args()
 
@@ -64,9 +75,11 @@ def main() -> None:
         temperature=args.temperature,
         progress=args.progress,
         query_timeout=args.query_timeout,
+        generation_runs=max(1, int(args.generation_runs)),
         use_ml_ranking=args.use_ml_ranking,
         ml_model_path=args.ml_model,
         ml_ambiguity_regimes=ml_regimes,
+        ambiguity_config_path=(args.ambiguity_config or None),
     )
 
     summary = results["summary"]
@@ -86,6 +99,10 @@ def main() -> None:
     print(f"ML ranking: {summary['ml_ranking']}")
     if summary.get("ml_ambiguity_regimes"):
         print(f"ML ambiguity regimes: {','.join(summary['ml_ambiguity_regimes'])}")
+    if summary.get("ambiguity_config_path"):
+        print(f"Ambiguity config: {summary['ambiguity_config_path']}")
+        if summary.get("predicted_regime_counts"):
+            print(f"Predicted regimes: {summary['predicted_regime_counts']}")
 
     per_amb = summary.get("per_ambiguity", {})
     if per_amb:
