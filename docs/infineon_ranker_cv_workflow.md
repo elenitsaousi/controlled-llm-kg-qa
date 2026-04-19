@@ -80,6 +80,19 @@ python analysis/validate_infineon_ambiguity_cv.py \
   --ml-regimes mid
 ```
 
+Try the industrial proxy from the paper (candidate output agreement):
+
+```bash
+python analysis/validate_infineon_ambiguity_cv.py \
+  --training-data ranking/infineon_training_data_100.json \
+  --graph data/infineon/graph.ttl \
+  --out results/infineon_ambiguity_gated_cv_100_agreement.json \
+  --folds 5 \
+  --entropy-source agreement \
+  --agreement-top-n 3 \
+  --ml-regimes mid
+```
+
 What to check in output JSON:
 - `overall.gated_top1.rate` is higher than both static baselines.
 - `ambiguity_classification.accuracy` and `macro_f1` are stable enough.

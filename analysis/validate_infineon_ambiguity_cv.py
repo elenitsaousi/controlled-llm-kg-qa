@@ -12,6 +12,9 @@ Key properties:
   2) ml_all : always rank by ML model score
   3) gated  : apply ML only on selected ambiguity regimes (default: mid)
 - Reports ambiguity-classification quality against dataset labels (if present).
+- Supports ambiguity estimation from:
+  - score entropy (`schema` / `ml`)
+  - output disagreement proxy (`agreement`) on candidate result sets.
 """
 
 from __future__ import annotations
@@ -26,9 +29,10 @@ import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import numpy as np
+from rdflib import Graph
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -49,6 +53,13 @@ VAR_RE = re.compile(r"\?[A-Za-z_][A-Za-z0-9_]*")
 SINGLE_QUOTE_STR_RE = re.compile(r"'[^']*'")
 DOUBLE_QUOTE_STR_RE = re.compile(r'"[^"]*"')
 NUMBER_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
+
+DEFAULT_PREFIX = """\
+PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+"""
 
 
 def _query_family_signature(query: str) -> str:
@@ -253,6 +264,87 @@ def _schema_signal(features: Dict[str, float]) -> float:
     )
 
 
+def _ensure_prefixes(query: str) -> str:
+    if "PREFIX" in query.upper():
+        return query
+    return DEFAULT_PREFIX + query
+
+
+def _result_signature(rows: Iterable[Tuple]) -> frozenset[Tuple[str, ...]]:
+    return frozenset(tuple(str(v) for v in row) for row in rows)
+
+
+def _jaccard(a: frozenset[Tuple[str, ...]], b: frozenset[Tuple[str, ...]]) -> float:
+    if not a and not b:
+        return 1.0
+    union = len(a | b)
+    if union == 0:
+        return 1.0
+    return float(len(a & b) / union)
+
+
+def _agreement_ambiguity_for_item(
+    item: QuestionItem,
+    graph: Graph,
+    top_n: int,
+    invalid_penalty: float,
+) -> float:
+    # Rank by schema signal only (no learned model leakage).
+    ranked = sorted(
+        item.candidates,
+        key=lambda c: _schema_signal(c.features),
+        reverse=True,
+    )
+    selected = ranked[: max(1, top_n)]
+    signatures: List[Optional[frozenset[Tuple[str, ...]]]] = []
+    invalid = 0
+
+    for cand in selected:
+        try:
+            rows = graph.query(_ensure_prefixes(cand.query))
+            signatures.append(_result_signature(rows))
+        except Exception:
+            signatures.append(None)
+            invalid += 1
+
+    valid_sigs = [s for s in signatures if s is not None]
+    if len(valid_sigs) >= 2:
+        sims: List[float] = []
+        for i in range(len(valid_sigs)):
+            for j in range(i + 1, len(valid_sigs)):
+                sims.append(_jaccard(valid_sigs[i], valid_sigs[j]))
+        mean_sim = float(np.mean(sims)) if sims else 1.0
+        ambiguity = 1.0 - mean_sim
+    elif len(valid_sigs) == 1:
+        ambiguity = 0.0
+    else:
+        ambiguity = 1.0
+
+    if selected:
+        ambiguity = min(1.0, ambiguity + invalid_penalty * (invalid / len(selected)))
+    return float(max(0.0, ambiguity))
+
+
+def _precompute_agreement_ambiguity(
+    questions: Dict[str, QuestionItem],
+    graph_path: str,
+    top_n: int,
+    invalid_penalty: float,
+) -> Dict[str, float]:
+    g = Graph()
+    g.parse(graph_path, format="turtle")
+
+    out: Dict[str, float] = {}
+    for qid, item in questions.items():
+        out[qid] = _agreement_ambiguity_for_item(
+            item=item,
+            graph=g,
+            top_n=top_n,
+            invalid_penalty=invalid_penalty,
+        )
+    return out
+
+
 def _entropy_from_scores(scores: Sequence[float], normalize: bool = True) -> float:
     if not scores:
         return 0.0
@@ -280,6 +372,7 @@ def _evaluate_question(
     item: QuestionItem,
     model: NPTfidfRanker,
     entropy_source: str,
+    agreement_value: Optional[float] = None,
 ) -> Dict[str, object]:
     queries = [c.query for c in item.candidates]
     base_features = [c.features for c in item.candidates]
@@ -295,6 +388,10 @@ def _evaluate_question(
         entropy = _entropy_from_scores(schema_scores.tolist(), normalize=True)
     elif entropy_source == "ml":
         entropy = _entropy_from_scores(ml_scores.tolist(), normalize=True)
+    elif entropy_source == "agreement":
+        if agreement_value is None:
+            raise ValueError("agreement_value must be provided when entropy_source=agreement")
+        entropy = float(agreement_value)
     else:
         raise ValueError(f"Unsupported entropy_source={entropy_source}")
 
@@ -512,6 +609,9 @@ def _group_summary(rows: Sequence[FoldQuestionResult], key: str) -> Dict[str, ob
 
 
 def run_validation(args: argparse.Namespace) -> Dict[str, object]:
+    if args.agreement_top_n <= 0:
+        raise ValueError("--agreement-top-n must be >= 1")
+
     questions, dropped = _load_questions(
         path=args.training_data,
         include_gold=args.include_gold,
@@ -529,6 +629,15 @@ def run_validation(args: argparse.Namespace) -> Dict[str, object]:
     q1_grid = _parse_float_csv(args.q1_grid)
     q2_grid = _parse_float_csv(args.q2_grid)
     ml_regimes = _parse_label_set(args.ml_regimes)
+    agreement_ambiguity: Dict[str, float] = {}
+
+    if args.entropy_source == "agreement":
+        agreement_ambiguity = _precompute_agreement_ambiguity(
+            questions=questions,
+            graph_path=args.graph,
+            top_n=args.agreement_top_n,
+            invalid_penalty=args.agreement_invalid_penalty,
+        )
 
     fold_summaries = []
     all_rows: List[FoldQuestionResult] = []
@@ -548,7 +657,12 @@ def run_validation(args: argparse.Namespace) -> Dict[str, object]:
         train_rows = []
         for qid in train_qids:
             item = questions[qid]
-            ev = _evaluate_question(item, model, entropy_source=args.entropy_source)
+            ev = _evaluate_question(
+                item,
+                model,
+                entropy_source=args.entropy_source,
+                agreement_value=agreement_ambiguity.get(qid),
+            )
             train_rows.append(ev)
 
         tuned = _tune_thresholds(
@@ -563,7 +677,12 @@ def run_validation(args: argparse.Namespace) -> Dict[str, object]:
         fold_out = []
         for qid in test_qids:
             item = questions[qid]
-            ev = _evaluate_question(item, model, entropy_source=args.entropy_source)
+            ev = _evaluate_question(
+                item,
+                model,
+                entropy_source=args.entropy_source,
+                agreement_value=agreement_ambiguity.get(qid),
+            )
             reg = _regime_from_entropy(float(ev["entropy"]), tau1, tau2)
             use_ml = int(reg in ml_regimes)
             gated = int(ev["ml_top1"]) if use_ml else int(ev["no_ml_top1"])
@@ -638,6 +757,9 @@ def run_validation(args: argparse.Namespace) -> Dict[str, object]:
             "reg": args.reg,
             "epochs": args.epochs,
             "entropy_source": args.entropy_source,
+            "graph": args.graph,
+            "agreement_top_n": args.agreement_top_n,
+            "agreement_invalid_penalty": args.agreement_invalid_penalty,
             "ml_regimes": ml_regimes,
             "q1_grid": q1_grid,
             "q2_grid": q2_grid,
@@ -684,6 +806,7 @@ def main() -> None:
     )
     parser.add_argument("--folds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--graph", default="data/infineon/graph.ttl")
 
     parser.add_argument("--lr", type=float, default=0.05)
     parser.add_argument("--reg", type=float, default=0.02)
@@ -691,9 +814,21 @@ def main() -> None:
 
     parser.add_argument(
         "--entropy-source",
-        choices=["schema", "ml"],
+        choices=["schema", "ml", "agreement"],
         default="schema",
         help="Score source used to compute ambiguity entropy.",
+    )
+    parser.add_argument(
+        "--agreement-top-n",
+        type=int,
+        default=3,
+        help="Top-N schema-ranked candidates used for output-agreement ambiguity (entropy-source=agreement).",
+    )
+    parser.add_argument(
+        "--agreement-invalid-penalty",
+        type=float,
+        default=0.20,
+        help="Penalty added for invalid queries in agreement-based ambiguity.",
     )
     parser.add_argument(
         "--ml-regimes",
