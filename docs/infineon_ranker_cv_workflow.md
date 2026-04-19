@@ -49,6 +49,7 @@ python ranking/train_infineon_np_tfidf_ranker.py \
 What this does:
 - Uses grouped/stratified folds (by question family + ambiguity label)
 - Uses only train-fold data to fit TF-IDF and model
+- Excludes `source=gold` candidates by default (avoids optimistic leakage)
 - Produces out-of-fold metrics over all 100 questions (unbiased)
 - Trains final deployment model on all 100 afterward
 
@@ -59,6 +60,7 @@ python evaluation/run_infineon_100_eval.py \
   --dataset data/infineon/infineon_dataset_100.json \
   --use-ml-ranking \
   --ml-model ranking/models/infineon_np_tfidf_ranker.json \
+  --ml-ambiguity-regimes mid \
   --out results/infineon_eval_100_with_np_ml.json \
   --progress
 ```

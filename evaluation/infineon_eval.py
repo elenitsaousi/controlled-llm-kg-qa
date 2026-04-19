@@ -104,6 +104,29 @@ def _build_llm_client(choice: str, temperature: float):
     )
 
 
+def _normalize_amb_label(label: str) -> str:
+    x = (label or "").strip().lower()
+    if x == "medium":
+        return "mid"
+    return x
+
+
+def _parse_amb_regimes(text: Optional[str]) -> List[str]:
+    if not text:
+        return []
+    allowed = {"low", "mid", "high"}
+    out: List[str] = []
+    for tok in text.split(","):
+        lab = _normalize_amb_label(tok)
+        if not lab:
+            continue
+        if lab not in allowed:
+            raise ValueError(f"Invalid ambiguity label '{tok}'. Allowed: low,mid,high")
+        if lab not in out:
+            out.append(lab)
+    return out
+
+
 def _is_np_model_file(model_path: str) -> bool:
     if not model_path.lower().endswith(".json"):
         return False
@@ -208,7 +231,18 @@ def evaluate(
     query_timeout: Optional[float] = None,
     use_ml_ranking: bool = True,
     ml_model_path: str = "ranking/models/infineon_ranker.joblib",
+    ml_ambiguity_regimes: Optional[List[str]] = None,
 ) -> Dict[str, object]:
+    allowed_regimes = {"low", "mid", "high"}
+    normalized_regimes: List[str] = []
+    for lab in (ml_ambiguity_regimes or []):
+        nlab = _normalize_amb_label(str(lab))
+        if not nlab:
+            continue
+        if nlab not in allowed_regimes:
+            raise ValueError(f"Invalid ambiguity regime '{lab}'. Allowed: low,mid,high")
+        if nlab not in normalized_regimes:
+            normalized_regimes.append(nlab)
 
     g = Graph()
     g.parse(graph_path, format="turtle")
@@ -258,6 +292,7 @@ def evaluate(
         "schema_path": schema_path,
         "query_timeout": query_timeout,
         "ml_ranking": ml_ranking_enabled,
+        "ml_ambiguity_regimes": normalized_regimes,
         "per_ambiguity": {},
     }
 
@@ -328,7 +363,11 @@ def evaluate(
         candidates = generated.get("candidates", [])
 
         # ML Ranking
-        if ml_ranking_enabled and candidates:
+        apply_ml_ranking = ml_ranking_enabled
+        if apply_ml_ranking and normalized_regimes:
+            apply_ml_ranking = ambiguity_label in set(normalized_regimes)
+
+        if apply_ml_ranking and candidates:
             candidates = _ml_rank_candidates(
                 candidates, question, schema_dict, ml_model_path
             )
@@ -457,8 +496,14 @@ def main() -> None:
     parser.add_argument("--ml-model",
                         default="ranking/models/infineon_ranker.joblib",
                         help="Path to ML ranking model")
+    parser.add_argument(
+        "--ml-ambiguity-regimes",
+        default="",
+        help="Comma-separated ambiguity labels where ML ranking is used (e.g. mid or low,mid).",
+    )
     args = parser.parse_args()
 
+    regimes = _parse_amb_regimes(args.ml_ambiguity_regimes)
     results = evaluate(
         dataset_path=args.dataset,
         graph_path=args.graph,
@@ -471,6 +516,7 @@ def main() -> None:
         query_timeout=args.query_timeout,
         use_ml_ranking=not args.no_ml_ranking,
         ml_model_path=args.ml_model,
+        ml_ambiguity_regimes=regimes,
     )
 
     summary = results["summary"]

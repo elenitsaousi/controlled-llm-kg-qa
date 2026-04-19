@@ -105,6 +105,8 @@ def build_candidate_prompt(question: str, schema: KGSchema, k: int = 5) -> str:
         "- Use the 'survey:' namespace for entities and relations\n"
         "- Queries MUST reflect the full meaning of the question\n"
         "- Prefer correct structure (joins, aggregation, grouping) over simplicity\n"
+        "- Use only classes and predicates that appear in the schema section\n"
+        "- Do not invent fields; if uncertain, choose the most conservative valid path\n"
         "- Use realistic domain concepts (companies, demand, regions, technology trends)\n\n"
 
         "SPARQL REQUIREMENTS:\n"
@@ -116,15 +118,12 @@ def build_candidate_prompt(question: str, schema: KGSchema, k: int = 5) -> str:
         "- Use FILTER when needed\n"
         "- Use GROUP BY, ORDER BY, SUM, AVG when appropriate\n\n"
 
-        "DIVERSITY REQUIREMENTS (VERY IMPORTANT):\n"
-        "- Generate slightly different query structures when possible.\n"
-        "- Prioritize valid and schema-consistent queries over diversity.\n"
-        "- Use different combinations of classes and relations\n"
-        "- Queries must NOT be minor variations of each other\n"
-        "- One query MUST use aggregation (SUM/AVG/GROUP BY) if relevant\n"
-        "- One query MUST focus on filtering conditions\n"
-        "- One query MUST focus on joins between entities\n"
-        "- One query MUST strictly follow the most likely correct schema path\n\n"
+        "CANDIDATE REQUIREMENTS:\n"
+        "- Candidate 1 MUST be the most likely correct query (highest precision, conservative schema path).\n"
+        "- Other candidates may vary, but only with schema-valid alternatives.\n"
+        "- Do NOT force aggregation/filter/join variants when the question does not require them.\n"
+        "- Never aggregate textual/categorical values (e.g., status/trend strings) with SUM/AVG.\n"
+        "- Keep candidates meaningfully different; avoid trivial variable-renaming duplicates.\n\n"
 
         f"{hints_text}\n\n"
 

@@ -46,6 +46,7 @@ class QuestionCandidate:
     is_correct: int
     is_valid: int
     features: Dict[str, float]
+    source: str = "llm"
 
 
 @dataclass
@@ -57,7 +58,11 @@ class QuestionItem:
     candidates: List[QuestionCandidate]
 
 
-def load_training_data(path: str) -> Dict[str, QuestionItem]:
+def load_training_data(
+    path: str,
+    include_gold: bool = False,
+    min_candidates: int = 1,
+) -> Dict[str, QuestionItem]:
     with open(path, "r", encoding="utf-8") as f:
         raw = json.load(f)
 
@@ -76,6 +81,9 @@ def load_training_data(path: str) -> Dict[str, QuestionItem]:
 
         candidates: List[QuestionCandidate] = []
         for row in rows:
+            source = str(row.get("source", "")).strip().lower()
+            if source == "gold" and not include_gold:
+                continue
             candidates.append(
                 QuestionCandidate(
                     query_id=str(row.get("query_id", "")),
@@ -83,8 +91,12 @@ def load_training_data(path: str) -> Dict[str, QuestionItem]:
                     is_correct=int(row.get("is_correct", 0)),
                     is_valid=int(row.get("is_valid", 0)),
                     features={k: float(v) for k, v in row.get("features", {}).items()},
+                    source=source or "llm",
                 )
             )
+
+        if len(candidates) < max(1, int(min_candidates)):
+            continue
 
         parsed[qid] = QuestionItem(
             qid=qid,

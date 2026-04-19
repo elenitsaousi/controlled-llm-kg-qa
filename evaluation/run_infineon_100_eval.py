@@ -39,8 +39,21 @@ def main() -> None:
         "--ml-model",
         default="ranking/models/infineon_np_tfidf_ranker.json",
     )
+    parser.add_argument(
+        "--ml-ambiguity-regimes",
+        default="",
+        help="Comma-separated ambiguity labels where ML is enabled (e.g. mid). Empty => ML for all.",
+    )
     args = parser.parse_args()
 
+    ml_regimes = []
+    for tok in args.ml_ambiguity_regimes.split(","):
+        lab = tok.strip().lower()
+        if not lab:
+            continue
+        if lab == "medium":
+            lab = "mid"
+        ml_regimes.append(lab)
     results = evaluate(
         dataset_path=args.dataset,
         graph_path=args.graph,
@@ -53,6 +66,7 @@ def main() -> None:
         query_timeout=args.query_timeout,
         use_ml_ranking=args.use_ml_ranking,
         ml_model_path=args.ml_model,
+        ml_ambiguity_regimes=ml_regimes,
     )
 
     summary = results["summary"]
@@ -63,6 +77,8 @@ def main() -> None:
     print(f"Gold invalid: {summary['gold_invalid']}")
     print(f"Gold timeout: {summary['gold_timeout']}")
     print(f"ML ranking: {summary['ml_ranking']}")
+    if summary.get("ml_ambiguity_regimes"):
+        print(f"ML ambiguity regimes: {','.join(summary['ml_ambiguity_regimes'])}")
 
     per_amb = summary.get("per_ambiguity", {})
     if per_amb:

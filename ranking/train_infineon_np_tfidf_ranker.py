@@ -40,11 +40,30 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=0.05)
     parser.add_argument("--reg", type=float, default=0.02)
     parser.add_argument("--epochs", type=int, default=2500)
+    parser.add_argument(
+        "--include-gold",
+        action="store_true",
+        help="Include gold candidates in training/CV (debug only, can cause leakage).",
+    )
+    parser.add_argument(
+        "--min-candidates",
+        type=int,
+        default=1,
+        help="Minimum candidate count per question after filtering.",
+    )
     args = parser.parse_args()
 
-    data = load_training_data(args.training_data)
+    data = load_training_data(
+        args.training_data,
+        include_gold=args.include_gold,
+        min_candidates=args.min_candidates,
+    )
     if not data:
-        raise RuntimeError(f"No data found in {args.training_data}")
+        raise RuntimeError(
+            f"No usable training data found in {args.training_data}. "
+            "If your file contains only gold rows, rebuild training data with working LLM generation "
+            "or run with --include-gold for debug-only diagnostics."
+        )
 
     cv = cross_validate_ranker(
         data,
@@ -75,6 +94,8 @@ def main() -> None:
             "lr": args.lr,
             "reg": args.reg,
             "epochs": args.epochs,
+            "include_gold": args.include_gold,
+            "min_candidates": args.min_candidates,
         },
     )
 
@@ -93,6 +114,7 @@ def main() -> None:
         f"Baseline top1: {overall['baseline_top1_correct']}/{overall['n_questions']} "
         f"({overall['baseline_top1_rate']:.3f})"
     )
+    print(f"Include gold rows: {args.include_gold}")
     print(f"Saved CV report: {args.cv_out}")
     print(f"Saved model:     {args.model_out}")
 
