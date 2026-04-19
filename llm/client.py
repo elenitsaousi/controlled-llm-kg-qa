@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import time
 import requests
 from typing import List, Optional
 import urllib3
@@ -27,6 +28,8 @@ class InfineonGPTClient:
         self.chat_endpoint = os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.max_retries = int(os.environ.get("INFINEON_MAX_RETRIES", "4"))
+        self.retry_backoff_sec = float(os.environ.get("INFINEON_RETRY_BACKOFF_SEC", "1.0"))
         if not self.base_url or not self.api_key:
             raise ValueError("Missing API URL or API key.")
 
@@ -41,19 +44,14 @@ class InfineonGPTClient:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
-        # Try Bearer first, fallback to api-key
-        headers_options = [
-            {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            {
-                "api-key": self.api_key,
-                "Content-Type": "application/json",
-            },
-        ]
-        last_error = None
-        for headers in headers_options:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        retryable_statuses = {429, 500, 502, 503, 504}
+        last_error = "unknown error"
+
+        for attempt in range(self.max_retries + 1):
             try:
                 response = requests.post(
                     url,
@@ -61,16 +59,35 @@ class InfineonGPTClient:
                     json=payload,
                     timeout=120,
                     verify=False,
+                    allow_redirects=False,
                 )
                 if response.status_code == 200:
                     data = response.json()
                     text = data["choices"][0]["message"]["content"]
                     candidates = _parse_candidates(text)
                     return candidates[:k]
-                else:
-                    last_error = response.text
+                if response.status_code in {301, 302, 303, 307, 308}:
+                    location = response.headers.get("location", "")
+                    body = (response.text or "")[:500]
+                    raise LLMClientError(
+                        f"API redirect to SSO/gateway (status={response.status_code}, "
+                        f"location={location!r}). Body preview: {body!r}"
+                    )
+
+                body = (response.text or "")[:500]
+                last_error = (
+                    f"status={response.status_code} body={body!r}"
+                )
+                if response.status_code not in retryable_statuses or attempt >= self.max_retries:
+                    break
             except requests.RequestException as exc:
                 last_error = str(exc)
+                if attempt >= self.max_retries:
+                    break
+
+            sleep_s = self.retry_backoff_sec * (2 ** attempt)
+            time.sleep(sleep_s)
+
         raise LLMClientError(f"API failed: {last_error}")
 
 

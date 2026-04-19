@@ -287,6 +287,7 @@ def evaluate(
         "candidate_timeouts": 0,
         "all_invalid": 0,
         "all_valid_wrong": 0,
+        "llm_generation_failures": 0,
         "llm": llm,
         "temperature": temperature,
         "schema_path": schema_path,
@@ -359,8 +360,41 @@ def evaluate(
             continue
 
         # Generate candidates
-        generated = generate_candidates(question, schema, k=k, llm_client=llm_client)
-        candidates = generated.get("candidates", [])
+        try:
+            generated = generate_candidates(question, schema, k=k, llm_client=llm_client)
+            candidates = generated.get("candidates", [])
+        except Exception as exc:
+            summary["llm_generation_failures"] += 1
+            summary["top1_invalid"] += 1
+            summary["all_invalid"] += 1
+            details.append(
+                {
+                    "id": qid,
+                    "question": question,
+                    "ambiguity_label": ambiguity_label,
+                    "generation_error": str(exc),
+                    "candidates": [],
+                    "top1_correct": False,
+                    "any_correct": False,
+                }
+            )
+            continue
+
+        if not candidates:
+            summary["top1_invalid"] += 1
+            summary["all_invalid"] += 1
+            details.append(
+                {
+                    "id": qid,
+                    "question": question,
+                    "ambiguity_label": ambiguity_label,
+                    "generation_error": "No candidates generated",
+                    "candidates": [],
+                    "top1_correct": False,
+                    "any_correct": False,
+                }
+            )
+            continue
 
         # ML Ranking
         apply_ml_ranking = ml_ranking_enabled
