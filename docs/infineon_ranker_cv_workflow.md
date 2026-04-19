@@ -1,5 +1,23 @@
 # Infineon Ranker Workflow (Unbiased + Deployment)
 
+## 0) Configure Infineon backend env (`.env`)
+
+Create `.env` in project root with at least:
+
+```bash
+LLM_BACKEND=infineon
+INFINEON_API_URL=https://your-infineon-endpoint
+INFINEON_API_KEY=your-secret-key
+INFINEON_MODEL=gpt-4o
+INFINEON_CHAT_ENDPOINT=/chat/completions
+```
+
+Quick check before building training data:
+
+```bash
+python -c "import os; from dotenv import load_dotenv; load_dotenv('.env'); print('backend=', os.getenv('LLM_BACKEND')); print('url_set=', bool(os.getenv('INFINEON_API_URL')), 'key_set=', bool(os.getenv('INFINEON_API_KEY')))"
+```
+
 ## 1) Build candidate-level labeled training data (100 benchmark questions)
 
 ```bash
@@ -16,6 +34,7 @@ This creates `ranking/infineon_training_data_100.json` with:
 - generated candidate queries per question
 - execution-based correctness labels (`is_correct`)
 - ambiguity labels and family grouping metadata
+- If no LLM candidates are generated, script now fails (to avoid a misleading gold-only dataset).
 
 ## 2) Train + evaluate unbiased with grouped stratified 5-fold CV
 

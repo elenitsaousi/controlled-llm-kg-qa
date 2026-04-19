@@ -13,6 +13,14 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+    load_dotenv()
+except Exception:
+    pass
+
 from kg.schema import load_schema
 from llm.candidate_generation import generate_candidates
 from ranking.feature_extraction import extract_features
@@ -50,6 +58,38 @@ def _ensure_prefixes(query: str) -> str:
     return query if "PREFIX" in query.upper() else (PREFIX + query)
 
 
+def _resolve_backend() -> str:
+    backend = (
+        os.environ.get("LLM_PROVIDER")
+        or os.environ.get("LLM_BACKEND")
+        or "infineon"
+    ).strip().lower()
+    if backend == "infiineon":
+        backend = "infineon"
+    return backend
+
+
+def _validate_backend_env(allow_gold_only: bool) -> None:
+    backend = _resolve_backend()
+    if backend != "infineon":
+        raise RuntimeError(
+            f"Unsupported LLM backend '{backend}'. Supported backend: infineon."
+        )
+    if allow_gold_only:
+        return
+    missing = []
+    if not os.environ.get("INFINEON_API_URL"):
+        missing.append("INFINEON_API_URL")
+    if not os.environ.get("INFINEON_API_KEY"):
+        missing.append("INFINEON_API_KEY")
+    if missing:
+        names = ", ".join(missing)
+        raise RuntimeError(
+            f"Missing {names}. Configure env/.env before building training data. "
+            "Use --allow-gold-only only for debug runs."
+        )
+
+
 def build_training_data(
     dataset_path: str,
     graph_path: str,
@@ -57,7 +97,10 @@ def build_training_data(
     output_path: str,
     k: int = 5,
     n_runs: int = 3,
+    allow_gold_only: bool = False,
 ) -> None:
+    _validate_backend_env(allow_gold_only=allow_gold_only)
+
     with open(dataset_path, "r", encoding="utf-8") as f:
         dataset = json.load(f)
 
@@ -73,6 +116,9 @@ def build_training_data(
     training_data: Dict[str, List[Dict[str, object]]] = {}
     total_candidates = 0
     total_correct = 0
+    total_llm_candidates = 0
+    total_generation_failures = 0
+    total_generation_runs = 0
 
     for i, item in enumerate(dataset, start=1):
         qid = item["id"]
@@ -125,11 +171,13 @@ def build_training_data(
 
         for run_idx in range(n_runs):
             print(f"  Generation run {run_idx + 1}/{n_runs} ...")
+            total_generation_runs += 1
             try:
                 generated = generate_candidates(question, schema, k=k)
                 candidates = generated.get("candidates", [])
             except Exception as exc:
                 print(f"    ❌ Candidate generation failed: {exc}")
+                total_generation_failures += 1
                 continue
 
             for cand_idx, cand in enumerate(candidates):
@@ -172,10 +220,19 @@ def build_training_data(
                 )
                 total_candidates += 1
                 total_correct += is_correct
+                total_llm_candidates += 1
 
         correct_in_q = sum(1 for r in rows if int(r["is_correct"]) == 1)
-        print(f"  candidates={len(rows)} correct={correct_in_q}")
+        llm_in_q = sum(1 for r in rows if str(r.get("source")) == "llm")
+        print(f"  candidates={len(rows)} correct={correct_in_q} llm_candidates={llm_in_q}")
         training_data[qid] = rows
+
+    if total_llm_candidates == 0 and not allow_gold_only:
+        raise RuntimeError(
+            "No LLM-generated candidates were produced. "
+            "Refusing to save a gold-only training dataset. "
+            "Check INFINEON_API_URL / INFINEON_API_KEY and rerun."
+        )
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
@@ -185,6 +242,8 @@ def build_training_data(
     print("\n===== TRAINING DATA SUMMARY =====")
     print(f"Questions included: {len(training_data)}")
     print(f"Total candidates:   {total_candidates}")
+    print(f"LLM candidates:     {total_llm_candidates}")
+    print(f"LLM run failures:   {total_generation_failures}/{total_generation_runs}")
     if total_candidates > 0:
         print(
             f"Correct candidates: {total_correct} "
@@ -210,6 +269,11 @@ def main() -> None:
     )
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--n-runs", type=int, default=3)
+    parser.add_argument(
+        "--allow-gold-only",
+        action="store_true",
+        help="Allow writing output even when zero LLM candidates were generated (debug only).",
+    )
     args = parser.parse_args()
 
     build_training_data(
@@ -219,6 +283,7 @@ def main() -> None:
         output_path=args.out,
         k=args.k,
         n_runs=args.n_runs,
+        allow_gold_only=args.allow_gold_only,
     )
 
 
