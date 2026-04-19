@@ -1,6 +1,8 @@
 # ranking/feature_extraction.py
 import json
+import os
 import re
+import numpy as np
 from collections import defaultdict, deque
 from typing import Dict, Iterable, List, Set
 from ranking.feature_config import FEATURE_NAMES
@@ -89,6 +91,8 @@ _semantic_model = None
 def _get_semantic_model():
     """Lazy load sentence transformer model."""
     global _semantic_model
+    if os.getenv("ENABLE_SEMANTIC_EMBEDDING", "0") != "1":
+        return None
     if _semantic_model is None:
         try:
             from sentence_transformers import SentenceTransformer
@@ -216,13 +220,15 @@ def _semantic_similarity(question: str, query: str) -> float:
     Uses sentence transformers if available, fallback to 0.0
     """
     try:
-        from sklearn.metrics.pairwise import cosine_similarity
         model = _get_semantic_model()
         if model is None:
             return 0.0
-        q_emb = model.encode([question])
-        c_emb = model.encode([query])
-        return float(cosine_similarity(q_emb, c_emb)[0][0])
+        q_emb = np.asarray(model.encode([question])[0], dtype=float)
+        c_emb = np.asarray(model.encode([query])[0], dtype=float)
+        denom = float(np.linalg.norm(q_emb) * np.linalg.norm(c_emb))
+        if denom <= 1e-12:
+            return 0.0
+        return float(np.dot(q_emb, c_emb) / denom)
     except Exception:
         return 0.0
 
