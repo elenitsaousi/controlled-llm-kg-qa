@@ -21,7 +21,7 @@ except Exception:
 
 from kg.schema import KGSchema, load_default_schema, load_schema
 from llm.candidate_generation import generate_candidates
-from llm.client import InfineonGPTClient, OpenAIClient
+from llm.client import InfineonGPTClient
 
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -29,6 +29,9 @@ PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Mo
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 """
+
+NP_MODEL_TYPE = "np_tfidf_logreg_v1"
+_RANKER_CACHE: Dict[str, object] = {}
 
 def _ensure_prefixes(query: str) -> str:
     if "PREFIX" in query.upper():
@@ -86,28 +89,58 @@ def _load_questions(path: str) -> List[Dict[str, str]]:
 
 def _build_llm_client(choice: str, temperature: float):
     choice = (choice or "auto").lower()
-    if choice == "openai":
-        if not os.environ.get("OPENAI_API_KEY"):
-            raise RuntimeError("Missing OPENAI_API_KEY.")
-        return OpenAIClient(temperature=temperature)
+    if choice == "auto":
+        choice = (os.environ.get("LLM_PROVIDER") or os.environ.get("LLM_BACKEND") or "infineon").strip().lower()
+    if choice == "infiineon":
+        choice = "infineon"
     if choice == "infineon":
         if not os.environ.get("INFINEON_API_URL") or not os.environ.get("INFINEON_API_KEY"):
             raise RuntimeError("Missing INFINEON_API_URL or INFINEON_API_KEY.")
         return InfineonGPTClient(temperature=temperature)
     if choice == "none":
         return None
-    # auto
-    if os.environ.get("OPENAI_API_KEY"):
-        return OpenAIClient(temperature=temperature)
-    if os.environ.get("INFINEON_API_URL") and os.environ.get("INFINEON_API_KEY"):
-        return InfineonGPTClient(temperature=temperature)
-    return None
+    raise RuntimeError(
+        f"Unsupported LLM backend '{choice}'. Supported backend: infineon."
+    )
 
 
-def _ml_dependencies_available() -> bool:
+def _is_np_model_file(model_path: str) -> bool:
+    if not model_path.lower().endswith(".json"):
+        return False
+    if not os.path.exists(model_path):
+        return False
     try:
-        from ranking.runtime_ranker import LogisticRanker  # noqa: F401
+        with open(model_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("model_type") == NP_MODEL_TYPE
+    except Exception:
+        return False
+
+
+def _load_np_ranker(model_path: str):
+    ranker = _RANKER_CACHE.get(model_path)
+    if ranker is not None:
+        return ranker
+    from ranking.np_tfidf_ranker import NPTfidfRanker
+    ranker = NPTfidfRanker.load(model_path)
+    _RANKER_CACHE[model_path] = ranker
+    return ranker
+
+
+def _ml_dependencies_available(model_path: str) -> bool:
+    if _is_np_model_file(model_path):
+        try:
+            _load_np_ranker(model_path)
+            return True
+        except Exception:
+            return False
+    try:
+        from ranking.runtime_ranker import LogisticRanker
         from ranking.feature_extraction import extract_features  # noqa: F401
+        ranker = _RANKER_CACHE.get(model_path)
+        if ranker is None:
+            ranker = LogisticRanker(model_path)
+            _RANKER_CACHE[model_path] = ranker
         return True
     except Exception:
         return False
@@ -120,11 +153,27 @@ def _ml_rank_candidates(
     model_path: str
 ) -> List[Dict]:
     """Rank candidates using ML model. Returns reranked candidates."""
+    if _is_np_model_file(model_path):
+        try:
+            from ranking.np_tfidf_ranker import rank_candidates_with_model
+            ranker = _load_np_ranker(model_path)
+            return rank_candidates_with_model(
+                ranker,
+                question,
+                candidates,
+                schema_dict,
+            )
+        except Exception:
+            return candidates
+
     try:
         from ranking.runtime_ranker import LogisticRanker
         from ranking.feature_extraction import extract_features
 
-        ranker = LogisticRanker(model_path)
+        ranker = _RANKER_CACHE.get(model_path)
+        if ranker is None:
+            ranker = LogisticRanker(model_path)
+            _RANKER_CACHE[model_path] = ranker
         feature_dicts = []
         for c in candidates:
             try:
@@ -180,7 +229,7 @@ def evaluate(
     ml_ranking_enabled = (
         use_ml_ranking
         and os.path.exists(ml_model_path)
-        and _ml_dependencies_available()
+        and _ml_dependencies_available(ml_model_path)
     )
     if progress:
         print(f"ML Ranking: {'✅ Enabled' if ml_ranking_enabled else '❌ Disabled'}")
@@ -398,7 +447,7 @@ def main() -> None:
     parser.add_argument("--k", type=int, default=3)
     parser.add_argument("--schema", default="data/infineon/schema.json")
     parser.add_argument("--llm", default="auto",
-                        choices=["auto", "openai", "infineon"])
+                        choices=["auto", "infineon"])
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--progress", action="store_true")
     parser.add_argument("--query-timeout", type=float, default=None)

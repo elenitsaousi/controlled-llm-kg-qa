@@ -25,7 +25,7 @@ def main() -> None:
     parser.add_argument(
         "--llm",
         default="auto",
-        choices=["auto", "openai", "infineon"],
+        choices=["auto", "infineon"],
     )
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--query-timeout", type=float, default=None)
@@ -37,7 +37,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--ml-model",
-        default="ranking/models/infineon_ranker.joblib",
+        default="ranking/models/infineon_np_tfidf_ranker.json",
     )
     args = parser.parse_args()
 

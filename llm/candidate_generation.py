@@ -1,9 +1,8 @@
 # candidate_generation.py
 from typing import Dict, List, Optional
 from kg.schema import KGSchema
-from llm.client import OpenAIClient
 from llm.prompts import build_candidate_prompt
-from llm.client import OpenAIClient, InfineonGPTClient
+from llm.client import InfineonGPTClient
 import re
 
 
@@ -25,16 +24,18 @@ def generate_candidates(
 
     # Use provided client or default
     import os
-    from llm.client import OpenAIClient, InfineonGPTClient
     def get_default_client():
-        provider = os.getenv("LLM_PROVIDER") or os.getenv("LLM_BACKEND", "openai")
+        provider = (os.getenv("LLM_PROVIDER") or os.getenv("LLM_BACKEND", "infineon")).strip().lower()
+        if provider == "infiineon":
+            provider = "infineon"
 
         if provider == "infineon":
             return InfineonGPTClient()
-        elif provider == "openai":
-            return OpenAIClient()
         else:
-            raise ValueError(f"Unknown LLM_PROVIDER: {provider}")
+            raise ValueError(
+                f"Unknown/unsupported LLM backend '{provider}'. "
+                "Supported backend: infineon."
+            )
         
     client = llm_client or get_default_client()
 
@@ -72,7 +73,7 @@ def generate_candidates(
 
         # Build structured candidates
         candidates = [
-            {"query": text, "source": "openai"}
+            {"query": text, "source": "infineon"}
             for text in generated
         ]
 

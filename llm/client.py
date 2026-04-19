@@ -24,13 +24,15 @@ class InfineonGPTClient:
         self.model = model or os.environ.get("INFINEON_MODEL", "gpt-4o")
         self.base_url = base_url or os.environ.get("INFINEON_API_URL")
         self.api_key = api_key or os.environ.get("INFINEON_API_KEY")
+        self.chat_endpoint = os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
         self.temperature = temperature
         self.max_tokens = max_tokens
         if not self.base_url or not self.api_key:
             raise ValueError("Missing API URL or API key.")
 
     def generate(self, prompt: str, k: int = 5) -> List[str]:
-        url = f"{self.base_url}/chat/completions"
+        endpoint = self.chat_endpoint if self.chat_endpoint.startswith("/") else f"/{self.chat_endpoint}"
+        url = f"{self.base_url.rstrip('/')}{endpoint}"
         payload = {
             "model": self.model,
             "messages": [
@@ -72,30 +74,15 @@ class InfineonGPTClient:
         raise LLMClientError(f"API failed: {last_error}")
 
 
-from openai import OpenAI
-
-
 class OpenAIClient:
-    def __init__(
-        self,
-        model: Optional[str] = None,
-        temperature: float = 0.2,
-        max_tokens: int = 2048,
-    ) -> None:
-        self.model = model or os.environ.get("OPENAI_MODEL", "gpt-4.1")
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
-    def generate(self, prompt: str, k: int = 5) -> List[str]:
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
+    """
+    Backward-compatibility shim.
+    OpenAI backend is intentionally disabled in this repository branch.
+    """
+    def __init__(self, *args, **kwargs):
+        raise LLMClientError(
+            "OpenAI backend is disabled. Use InfineonGPTClient / LLM_BACKEND=infineon."
         )
-        text = response.choices[0].message.content
-        return _parse_candidates(text)[:k]
 
 
 def _clean_query(query: str) -> str:
