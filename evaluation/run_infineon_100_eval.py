@@ -55,6 +55,17 @@ def main() -> None:
         default="",
         help="Optional ambiguity config JSON (tau1/tau2 + entropy source) for runtime regime prediction.",
     )
+    parser.add_argument(
+        "--no-entity-linking",
+        action="store_true",
+        help="Disable entity canonicalization before candidate generation.",
+    )
+    parser.add_argument(
+        "--entity-link-max-matches",
+        type=int,
+        default=5,
+        help="Maximum entity mentions to canonicalize per question.",
+    )
     args = parser.parse_args()
 
     ml_regimes = []
@@ -80,6 +91,8 @@ def main() -> None:
         ml_model_path=args.ml_model,
         ml_ambiguity_regimes=ml_regimes,
         ambiguity_config_path=(args.ambiguity_config or None),
+        enable_entity_linking=not args.no_entity_linking,
+        entity_link_max_matches=max(1, int(args.entity_link_max_matches)),
     )
 
     summary = results["summary"]
@@ -97,6 +110,11 @@ def main() -> None:
         f"succeeded={summary.get('repair_candidates_succeeded', 0)}"
     )
     print(f"ML ranking: {summary['ml_ranking']}")
+    print(
+        "Entity linking: "
+        f"enabled={summary.get('entity_linking_enabled', False)} "
+        f"changed_questions={summary.get('entity_linked_questions', 0)}/{summary['total']}"
+    )
     if summary.get("ml_ambiguity_regimes"):
         print(f"ML ambiguity regimes: {','.join(summary['ml_ambiguity_regimes'])}")
     if summary.get("ambiguity_config_path"):

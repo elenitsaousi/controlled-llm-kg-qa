@@ -1,4 +1,6 @@
 # prompts.py
+from typing import Dict, List, Optional
+
 from kg.schema import KGSchema
 from ranking.feature_extraction import extract_question_entities, extract_question_relations
 
@@ -64,11 +66,21 @@ def _detect_query_pattern(question: str) -> str:
     return "\n".join(hints)
 
 
-def build_candidate_prompt(question: str, schema: KGSchema, k: int = 5) -> str:
+def build_candidate_prompt(
+    question: str,
+    schema: KGSchema,
+    k: int = 5,
+    canonical_question: Optional[str] = None,
+    entity_mappings: Optional[List[Dict[str, object]]] = None,
+) -> str:
+    effective_question = (canonical_question or question or "").strip()
+    if not effective_question:
+        effective_question = (question or "").strip()
+
     # --- Hints (light guidance) ---
     schema_labels = schema.classes or schema.labels.keys()
-    detected_entities = sorted(extract_question_entities(question, schema_labels))
-    detected_relations = sorted(extract_question_relations(question))
+    detected_entities = sorted(extract_question_entities(effective_question, schema_labels))
+    detected_relations = sorted(extract_question_relations(effective_question))
 
     hints = []
     if detected_entities:
@@ -81,7 +93,18 @@ def build_candidate_prompt(question: str, schema: KGSchema, k: int = 5) -> str:
     schema_text = schema.as_prompt_text()
 
     # --- Dynamic query pattern hint ---
-    pattern_hint = _detect_query_pattern(question)
+    pattern_hint = _detect_query_pattern(effective_question)
+
+    entity_mapping_lines: List[str] = []
+    for m in (entity_mappings or []):
+        mention = str(m.get("mention", "")).strip()
+        canonical = str(m.get("canonical", "")).strip()
+        if not mention or not canonical:
+            continue
+        if mention.lower() == canonical.lower():
+            continue
+        entity_mapping_lines.append(f"- '{mention}' -> '{canonical}'")
+    entity_mapping_text = "\n".join(entity_mapping_lines)
 
     return (
         "You generate SPARQL SELECT queries for a real enterprise knowledge graph.\n\n"
@@ -98,6 +121,14 @@ def build_candidate_prompt(question: str, schema: KGSchema, k: int = 5) -> str:
         f"{schema_text}\n\n"
 
         + (f"QUERY PATTERN HINTS:\n{pattern_hint}\n\n" if pattern_hint else "")
+
+        + (
+            "ENTITY CANONICALIZATION:\n"
+            + entity_mapping_text
+            + "\nUse canonical names exactly as shown above in the SPARQL query.\n\n"
+            if entity_mapping_text
+            else ""
+        )
 
         + "GUIDELINES:\n"
         "- Before writing the query, identify the main entity and how it connects to others\n"
@@ -254,7 +285,7 @@ def build_candidate_prompt(question: str, schema: KGSchema, k: int = 5) -> str:
         "} GROUP BY ?ShortageStatus\"\n"
         "]\n\n"
 
-        f"Question: {question}\n\n"
+        f"Question: {effective_question}\n\n"
 
         "OUTPUT FORMAT:\n"
         f"Return ONLY a JSON array of exactly {k} SPARQL queries.\n"

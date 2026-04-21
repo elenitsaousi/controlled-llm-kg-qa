@@ -22,6 +22,10 @@ except Exception:
     pass
 
 from kg.schema import load_schema
+from kg.entity_linking import (
+    build_entity_alias_index,
+    canonicalize_question_with_index,
+)
 from llm.candidate_generation import generate_candidates, repair_candidate_query
 from llm.client import InfineonGPTClient
 from ranking.feature_extraction import extract_features
@@ -191,6 +195,8 @@ def build_training_data(
     repair_invalid: bool = True,
     repair_max_candidates: int = 2,
     repair_attempts: int = 1,
+    enable_entity_linking: bool = True,
+    entity_link_max_matches: int = 5,
 ) -> None:
     _validate_backend_env(allow_gold_only=allow_gold_only)
 
@@ -206,6 +212,16 @@ def build_training_data(
     print(f"Graph loaded: {len(g)} triples")
     print(f"Benchmark questions: {len(dataset)}")
 
+    entity_alias_index = None
+    if enable_entity_linking:
+        entity_alias_index = build_entity_alias_index(g)
+        print(
+            "Entity linking: enabled "
+            f"(alias keys={len(entity_alias_index.key_to_labels)})"
+        )
+    else:
+        print("Entity linking: disabled")
+
     training_data: Dict[str, List[Dict[str, object]]] = {}
     total_candidates = 0
     total_correct = 0
@@ -214,6 +230,7 @@ def build_training_data(
     total_generation_runs = 0
     total_repair_attempts = 0
     total_repair_successes = 0
+    total_entity_linked_questions = 0
 
     llm_client: Optional[object] = None
     if os.environ.get("INFINEON_API_URL") and os.environ.get("INFINEON_API_KEY"):
@@ -226,14 +243,25 @@ def build_training_data(
 
     for i, item in enumerate(dataset, start=1):
         qid = item["id"]
-        question = item["question"]
+        question_raw = item["question"]
         gold_query = item["query"]
         ambiguity = str(item.get("ambiguity_label", "unknown")).lower()
         topic = str(item.get("topic", "unknown"))
         family = str(item.get("family", "")) or _query_family_signature(gold_query)
 
+        canon = canonicalize_question_with_index(
+            question_raw,
+            index=entity_alias_index,
+            max_matches=entity_link_max_matches,
+        )
+        question = canon.effective_question
+        if canon.changed:
+            total_entity_linked_questions += 1
+
         print(f"\n[{i}/{len(dataset)}] {qid} ({ambiguity})")
-        print(f"Q: {question}")
+        print(f"Q: {question_raw}")
+        if canon.changed:
+            print(f"  canonicalized: {question}")
 
         try:
             gold_rows = _result_signature(g.query(_ensure_prefixes(gold_query)))
@@ -257,6 +285,8 @@ def build_training_data(
             {
                 "query_id": f"{qid}_GOLD",
                 "question": question,
+                "original_question": question_raw,
+                "effective_question": question,
                 "query": gold_query,
                 "gold_query": gold_query,
                 "is_correct": 1,
@@ -267,6 +297,7 @@ def build_training_data(
                 "family": family,
                 "source": "gold",
                 "run_index": -1,
+                "entity_mappings": canon.mappings,
             }
         )
         seen_queries.add(gold_query.strip())
@@ -276,9 +307,23 @@ def build_training_data(
         for run_idx in range(n_runs):
             print(f"  Generation run {run_idx + 1}/{n_runs} ...")
             total_generation_runs += 1
+            run_question = question
+            run_mappings = canon.mappings
             try:
-                generated = generate_candidates(question, schema, k=k, llm_client=llm_client)
+                generated = generate_candidates(
+                    question_raw,
+                    schema,
+                    k=k,
+                    llm_client=llm_client,
+                    entity_alias_index=entity_alias_index,
+                    max_entity_links=entity_link_max_matches,
+                )
                 candidates = generated.get("candidates", [])
+                metadata = generated.get("metadata", {})
+                run_question = (
+                    str(metadata.get("effective_question", "")).strip() or question
+                )
+                run_mappings = metadata.get("entity_mappings") or canon.mappings
             except Exception as exc:
                 print(f"    ❌ Candidate generation failed: {exc}")
                 total_generation_failures += 1
@@ -286,7 +331,7 @@ def build_training_data(
 
             if repair_invalid and candidates:
                 candidates, rep_attempted, rep_succeeded = _repair_candidates_for_run(
-                    question=question,
+                    question=run_question,
                     schema=schema,
                     candidates=candidates,
                     graph=g,
@@ -309,14 +354,16 @@ def build_training_data(
                 is_correct = int(is_valid == 1 and sig == gold_rows and len(sig) > 0)
 
                 try:
-                    feats = extract_features(question, query, schema_dict)
+                    feats = extract_features(run_question, query, schema_dict)
                 except Exception:
                     feats = {}
 
                 rows.append(
                     {
                         "query_id": f"{qid}_R{run_idx}_C{cand_idx}",
-                        "question": question,
+                        "question": run_question,
+                        "original_question": question_raw,
+                        "effective_question": run_question,
                         "query": query,
                         "gold_query": gold_query,
                         "is_correct": is_correct,
@@ -327,6 +374,7 @@ def build_training_data(
                         "family": family,
                         "source": "llm",
                         "run_index": run_idx,
+                        "entity_mappings": run_mappings,
                     }
                 )
                 total_candidates += 1
@@ -358,6 +406,11 @@ def build_training_data(
     print(
         f"Repairs:            enabled={repair_invalid} "
         f"attempted={total_repair_attempts} succeeded={total_repair_successes}"
+    )
+    print(
+        "Entity linking:     "
+        f"enabled={enable_entity_linking} "
+        f"changed_questions={total_entity_linked_questions}/{len(training_data)}"
     )
     if total_candidates > 0:
         print(
@@ -406,6 +459,17 @@ def main() -> None:
         default=1,
         help="Repair attempts per invalid candidate.",
     )
+    parser.add_argument(
+        "--no-entity-linking",
+        action="store_true",
+        help="Disable entity canonicalization before candidate generation.",
+    )
+    parser.add_argument(
+        "--entity-link-max-matches",
+        type=int,
+        default=5,
+        help="Maximum entity mentions to canonicalize per question.",
+    )
     args = parser.parse_args()
 
     build_training_data(
@@ -419,6 +483,8 @@ def main() -> None:
         repair_invalid=not args.no_repair_invalid,
         repair_max_candidates=max(0, int(args.repair_max_candidates)),
         repair_attempts=max(0, int(args.repair_attempts)),
+        enable_entity_linking=not args.no_entity_linking,
+        entity_link_max_matches=max(1, int(args.entity_link_max_matches)),
     )
 
 

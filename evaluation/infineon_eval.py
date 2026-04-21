@@ -20,6 +20,10 @@ except Exception:
     pass
 
 from kg.schema import KGSchema, load_default_schema, load_schema
+from kg.entity_linking import (
+    build_entity_alias_index,
+    canonicalize_question_with_index,
+)
 from llm.candidate_generation import generate_candidates, repair_candidate_query
 from llm.client import InfineonGPTClient
 from ranking.ambiguity_policy import (
@@ -355,6 +359,8 @@ def evaluate(
     ml_model_path: str = "ranking/models/infineon_ranker.joblib",
     ml_ambiguity_regimes: Optional[List[str]] = None,
     ambiguity_config_path: Optional[str] = None,
+    enable_entity_linking: bool = True,
+    entity_link_max_matches: int = 5,
 ) -> Dict[str, object]:
     allowed_regimes = {"low", "mid", "high"}
     normalized_regimes: List[str] = []
@@ -370,6 +376,10 @@ def evaluate(
     g = Graph()
     g.parse(graph_path, format="turtle")
     questions = _load_questions(dataset_path)
+
+    entity_alias_index = None
+    if enable_entity_linking:
+        entity_alias_index = build_entity_alias_index(g)
 
     if schema is None:
         if schema_path:
@@ -443,6 +453,9 @@ def evaluate(
         "ambiguity_config_path": ambiguity_config_path,
         "predicted_regime_counts": {},
         "per_ambiguity": {},
+        "entity_linking_enabled": bool(enable_entity_linking),
+        "entity_link_max_matches": int(max(1, entity_link_max_matches)),
+        "entity_linked_questions": 0,
     }
 
     details = []
@@ -457,6 +470,15 @@ def evaluate(
         summary["total"] += 1
         qid = item.get("id", "")
         question = item.get("question", "")
+        canon = canonicalize_question_with_index(
+            question,
+            index=entity_alias_index,
+            max_matches=max(1, int(entity_link_max_matches)),
+        )
+        effective_question = canon.effective_question or question
+        entity_mappings = canon.mappings
+        if canon.changed:
+            summary["entity_linked_questions"] += 1
         gold_query = _strip_comments(str(item.get("query", "")).strip())
         ambiguity_label = _normalize_amb_label(str(item.get("ambiguity_label", "")))
         if not ambiguity_label:
@@ -488,6 +510,8 @@ def evaluate(
                 {
                     "id": qid,
                     "question": question,
+                    "effective_question": effective_question,
+                    "entity_mappings": entity_mappings,
                     "ambiguity_label": ambiguity_label,
                     "gold_error": str(exc),
                 }
@@ -501,6 +525,8 @@ def evaluate(
                 {
                     "id": qid,
                     "question": question,
+                    "effective_question": effective_question,
+                    "entity_mappings": entity_mappings,
                     "ambiguity_label": ambiguity_label,
                     "gold_error": str(exc),
                 }
@@ -511,10 +537,22 @@ def evaluate(
         candidates = []
         generation_errors = []
         seen_gen = set()
+        ranking_question = effective_question
         for gen_run in range(max(1, int(generation_runs))):
             try:
-                generated = generate_candidates(question, schema, k=k, llm_client=llm_client)
+                generated = generate_candidates(
+                    question,
+                    schema,
+                    k=k,
+                    llm_client=llm_client,
+                    entity_alias_index=entity_alias_index,
+                    max_entity_links=max(1, int(entity_link_max_matches)),
+                )
                 batch = generated.get("candidates", [])
+                metadata = generated.get("metadata", {})
+                q_eff = str(metadata.get("effective_question", "")).strip()
+                if q_eff:
+                    ranking_question = q_eff
             except Exception as exc:
                 summary["llm_generation_failures"] += 1
                 generation_errors.append(str(exc))
@@ -539,6 +577,8 @@ def evaluate(
                 {
                     "id": qid,
                     "question": question,
+                    "effective_question": ranking_question,
+                    "entity_mappings": entity_mappings,
                     "ambiguity_label": ambiguity_label,
                     "generation_error": (
                         "; ".join(generation_errors)
@@ -554,7 +594,7 @@ def evaluate(
 
         if repair_enabled and candidates:
             candidates, rep_attempted, rep_succeeded = _repair_invalid_candidates(
-                question=question,
+                question=ranking_question,
                 schema=schema,
                 candidates=candidates,
                 llm_client=llm_client,
@@ -579,7 +619,7 @@ def evaluate(
                         row["features"] = feats
                     cand_payload.append(row)
                 predicted_regime, predicted_entropy = predict_regime(
-                    question=question,
+                    question=ranking_question,
                     candidates=cand_payload,
                     config=ambiguity_config,
                     schema_dict=schema_dict,
@@ -601,7 +641,7 @@ def evaluate(
 
         if apply_ml_ranking and candidates:
             candidates = _ml_rank_candidates(
-                candidates, question, schema_dict, ml_model_path
+                candidates, ranking_question, schema_dict, ml_model_path
             )
 
         top1_correct = False
@@ -676,6 +716,8 @@ def evaluate(
         details.append({
             "id": qid,
             "question": question,
+            "effective_question": ranking_question,
+            "entity_mappings": entity_mappings,
             "ambiguity_label": ambiguity_label,
             "policy_regime": regime_for_policy,
             "predicted_regime": predicted_regime,
@@ -743,6 +785,17 @@ def main() -> None:
         default="",
         help="Optional ambiguity config JSON for runtime regime prediction.",
     )
+    parser.add_argument(
+        "--no-entity-linking",
+        action="store_true",
+        help="Disable entity canonicalization before candidate generation.",
+    )
+    parser.add_argument(
+        "--entity-link-max-matches",
+        type=int,
+        default=5,
+        help="Maximum entity mentions to canonicalize per question.",
+    )
     args = parser.parse_args()
 
     regimes = _parse_amb_regimes(args.ml_ambiguity_regimes)
@@ -761,6 +814,8 @@ def main() -> None:
         ml_model_path=args.ml_model,
         ml_ambiguity_regimes=regimes,
         ambiguity_config_path=(args.ambiguity_config or None),
+        enable_entity_linking=not args.no_entity_linking,
+        entity_link_max_matches=max(1, int(args.entity_link_max_matches)),
     )
 
     summary = results["summary"]

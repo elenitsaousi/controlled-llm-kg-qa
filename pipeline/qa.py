@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+from rdflib import Graph
 
 from kg.executor import execute_query_stub
+from kg.entity_linking import build_entity_alias_index
 from kg.schema import KGSchema, load_default_schema
 from kg.sparql_matching import is_relaxed_correct
 from kg.sparql_normalization import normalize_sparql
@@ -23,6 +25,24 @@ BASE = Path(__file__).resolve().parents[1]
 DEFAULT_LOGISTIC_MODEL = BASE / "ranking" / "models" / "logistic_ranker.joblib"
 GATED_THRESHOLDS = BASE / "analysis_outputs" / "gated_thresholds.json"
 EXPERIMENTS_DIR = BASE / "experiments"
+DEFAULT_INFINEON_GRAPH = BASE / "data" / "infineon" / "graph.ttl"
+_ENTITY_ALIAS_INDEX = None
+
+
+def _get_default_entity_alias_index():
+    global _ENTITY_ALIAS_INDEX
+    if _ENTITY_ALIAS_INDEX is not None:
+        return _ENTITY_ALIAS_INDEX
+    if not DEFAULT_INFINEON_GRAPH.exists():
+        _ENTITY_ALIAS_INDEX = None
+        return None
+    try:
+        g = Graph()
+        g.parse(str(DEFAULT_INFINEON_GRAPH), format="turtle")
+        _ENTITY_ALIAS_INDEX = build_entity_alias_index(g)
+    except Exception:
+        _ENTITY_ALIAS_INDEX = None
+    return _ENTITY_ALIAS_INDEX
 
 
 def _schema_to_dict(schema: KGSchema) -> Dict[str, object]:
@@ -179,13 +199,19 @@ def answer_question(
     schema: KGSchema,
     llm_client: Optional[object] = None,
     questions_path: Optional[str] = None,
+    enable_entity_linking: bool = True,
 ) -> Dict[str, object]:
+    alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
     generation = generate_candidates(
-        question, schema, llm_client=llm_client
+        question,
+        schema,
+        llm_client=llm_client,
+        entity_alias_index=alias_index,
     )
     candidates = generation.get("candidates", [])
     metadata = generation.get("metadata", {})
     prompt = generation.get("prompt", "")
+    effective_question = str(metadata.get("effective_question", "")).strip() or question
 
     if not candidates:
         return {
@@ -201,11 +227,12 @@ def answer_question(
             "entropy": 0.0,
             "selection_reason": "no_candidates",
             "used_ml": False,
+            "effective_question": effective_question,
         }
 
     schema_ranked = rank_schema_candidates(candidates, schema)
     learning_ranked = _rank_learning_candidates(
-        question, candidates, schema
+        effective_question, candidates, schema
     )
     entropy = _compute_entropy(schema_ranked)
 
@@ -230,6 +257,7 @@ def answer_question(
             "entropy": entropy,
             "selection_reason": decision.reason,
             "used_ml": used_ml,
+            "effective_question": effective_question,
         }
 
     selected_query = decision.query
@@ -269,6 +297,7 @@ def answer_question(
         "selection_reason": decision.reason,
         "used_ml": used_ml,
         "raw_result": results,
+        "effective_question": effective_question,
     }
 
 

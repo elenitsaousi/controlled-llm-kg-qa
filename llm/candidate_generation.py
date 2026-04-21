@@ -2,6 +2,7 @@
 import json
 from typing import Dict, List, Optional
 from kg.schema import KGSchema
+from kg.entity_linking import EntityAliasIndex, canonicalize_question_with_index
 from llm.prompts import build_candidate_prompt, build_repair_prompt
 from llm.client import InfineonGPTClient
 import re
@@ -23,9 +24,19 @@ def _normalize_candidate_query(text: str) -> str:
 
 
 def generate_candidate_prompt(
-    question: str, schema: KGSchema, k: int = 5
+    question: str,
+    schema: KGSchema,
+    k: int = 5,
+    canonical_question: Optional[str] = None,
+    entity_mappings: Optional[List[Dict[str, object]]] = None,
 ) -> str:
-    return build_candidate_prompt(question, schema, k)
+    return build_candidate_prompt(
+        question=question,
+        schema=schema,
+        k=k,
+        canonical_question=canonical_question,
+        entity_mappings=entity_mappings,
+    )
 
 
 def _default_client():
@@ -91,10 +102,25 @@ def generate_candidates(
     schema: KGSchema,
     k: int = 5,
     llm_client: Optional[object] = None,
+    entity_alias_index: Optional[EntityAliasIndex] = None,
+    max_entity_links: int = 5,
 ) -> Dict:
+    resolved = canonicalize_question_with_index(
+        question,
+        index=entity_alias_index,
+        max_matches=max_entity_links,
+    )
+    effective_question = resolved.effective_question
+    entity_mappings = resolved.mappings
 
     # Build prompt
-    prompt = build_candidate_prompt(question, schema, k)
+    prompt = build_candidate_prompt(
+        question=question,
+        schema=schema,
+        k=k,
+        canonical_question=effective_question,
+        entity_mappings=entity_mappings,
+    )
 
     # Use provided client or default
     client = llm_client or _default_client()
@@ -135,6 +161,10 @@ def generate_candidates(
             "metadata": {
                 "k_requested": k,
                 "k_returned": len(candidates),
+                "original_question": (question or "").strip(),
+                "effective_question": effective_question,
+                "entity_mappings": entity_mappings,
+                "entity_linking_applied": bool(entity_mappings),
             },
         }
 
