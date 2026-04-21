@@ -12,6 +12,15 @@ from pipeline.qa import answer_question
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+# Load .env for Streamlit runs (same behavior as training/eval scripts).
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(PROJECT_ROOT / ".env")
+    load_dotenv()
+except Exception:
+    pass
+
 DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
 DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
 DEFAULT_ML_MODEL_PATHS = [
