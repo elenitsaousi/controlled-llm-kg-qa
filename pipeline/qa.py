@@ -1,12 +1,14 @@
 # pipeline/qa.py
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from rdflib import Graph
+from rdflib.plugins.sparql.parser import parseQuery
 
 from kg.executor import execute_query_stub
 from kg.entity_linking import build_entity_alias_index
@@ -15,6 +17,11 @@ from kg.sparql_matching import is_relaxed_correct
 from kg.sparql_normalization import normalize_sparql
 from llm.answer_synthesis import synthesize_answer
 from llm.candidate_generation import generate_candidates
+from ranking.ambiguity_policy import (
+    AmbiguityConfig,
+    load_ambiguity_config,
+    predict_regime,
+)
 from ranking.feature_extraction import extract_features
 from ranking.ranker import rank_candidates as rank_schema_candidates
 from validation.semantic import validate_query_semantic
@@ -26,12 +33,22 @@ DEFAULT_LOGISTIC_MODEL = BASE / "ranking" / "models" / "logistic_ranker.joblib"
 DEFAULT_INFINEON_JOBLIB_MODEL = BASE / "ranking" / "models" / "infineon_ranker.joblib"
 DEFAULT_INFINEON_NP_MODEL = BASE / "ranking" / "models" / "infineon_np_tfidf_ranker_entitylink.json"
 DEFAULT_INFINEON_NP_MODEL_FALLBACK = BASE / "ranking" / "models" / "infineon_np_tfidf_ranker.json"
+DEFAULT_AMBIGUITY_CONFIG = BASE / "ranking" / "models" / "infineon_ambiguity_config.json"
+DEFAULT_AMBIGUITY_CONFIG_500 = BASE / "ranking" / "models" / "infineon_ambiguity_config_500.json"
 DEFAULT_INFINEON_SCHEMA_PATH = BASE / "data" / "infineon" / "schema.json"
 GATED_THRESHOLDS = BASE / "analysis_outputs" / "gated_thresholds.json"
 EXPERIMENTS_DIR = BASE / "experiments"
 DEFAULT_INFINEON_GRAPH = BASE / "data" / "infineon" / "graph.ttl"
+DEFAULT_PREFIX = """\
+PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+"""
 _ENTITY_ALIAS_INDEX = None
+_DEFAULT_GRAPH_CACHE: Optional[Graph] = None
 _RANKER_CACHE: Dict[str, object] = {}
+_AMBIGUITY_CONFIG_CACHE: Dict[str, AmbiguityConfig] = {}
 
 NP_MODEL_TYPE = "np_tfidf_logreg_v1"
 
@@ -40,16 +57,38 @@ def _get_default_entity_alias_index():
     global _ENTITY_ALIAS_INDEX
     if _ENTITY_ALIAS_INDEX is not None:
         return _ENTITY_ALIAS_INDEX
-    if not DEFAULT_INFINEON_GRAPH.exists():
-        _ENTITY_ALIAS_INDEX = None
-        return None
     try:
-        g = Graph()
-        g.parse(str(DEFAULT_INFINEON_GRAPH), format="turtle")
+        g = _get_default_graph()
+        if g is None:
+            _ENTITY_ALIAS_INDEX = None
+            return None
         _ENTITY_ALIAS_INDEX = build_entity_alias_index(g)
     except Exception:
         _ENTITY_ALIAS_INDEX = None
     return _ENTITY_ALIAS_INDEX
+
+
+def _get_default_graph() -> Optional[Graph]:
+    global _DEFAULT_GRAPH_CACHE
+    if _DEFAULT_GRAPH_CACHE is not None:
+        return _DEFAULT_GRAPH_CACHE
+    if not DEFAULT_INFINEON_GRAPH.exists():
+        _DEFAULT_GRAPH_CACHE = None
+        return None
+    try:
+        g = Graph()
+        g.parse(str(DEFAULT_INFINEON_GRAPH), format="turtle")
+        _DEFAULT_GRAPH_CACHE = g
+        return g
+    except Exception:
+        _DEFAULT_GRAPH_CACHE = None
+        return None
+
+
+def _ensure_prefixes(query: str) -> str:
+    if "PREFIX" in query.upper():
+        return query
+    return DEFAULT_PREFIX + query
 
 
 def _schema_to_dict(schema: KGSchema) -> Dict[str, object]:
@@ -99,6 +138,27 @@ def _resolve_learning_model_path(explicit_path: Optional[str]) -> Optional[Path]
             DEFAULT_INFINEON_NP_MODEL_FALLBACK,
             DEFAULT_INFINEON_JOBLIB_MODEL,
             DEFAULT_LOGISTIC_MODEL,
+        ]
+    )
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+
+def _resolve_ambiguity_config_path(explicit_path: Optional[str]) -> Optional[Path]:
+    candidates: List[Path] = []
+    if explicit_path:
+        candidates.append(Path(explicit_path))
+
+    env_path = (os.getenv("INFINEON_AMBIGUITY_CONFIG") or "").strip()
+    if env_path:
+        candidates.append(Path(env_path))
+
+    candidates.extend(
+        [
+            DEFAULT_AMBIGUITY_CONFIG_500,
+            DEFAULT_AMBIGUITY_CONFIG,
         ]
     )
     for p in candidates:
@@ -211,6 +271,104 @@ def _compute_entropy(ranked: List[Dict[str, object]]) -> float:
     return float(ambiguity_entropy(scores))
 
 
+def _load_ambiguity_config_cached(path: Path) -> Optional[AmbiguityConfig]:
+    key = str(path)
+    cached = _AMBIGUITY_CONFIG_CACHE.get(key)
+    if cached is not None:
+        return cached
+    try:
+        cfg = load_ambiguity_config(key)
+    except Exception:
+        return None
+    _AMBIGUITY_CONFIG_CACHE[key] = cfg
+    return cfg
+
+
+def _predict_runtime_regime(
+    question: str,
+    candidates: List[Dict[str, str]],
+    schema: KGSchema,
+    model_path: Optional[Path],
+    ambiguity_config: Optional[AmbiguityConfig],
+) -> Tuple[Optional[str], Optional[float]]:
+    if ambiguity_config is None or not candidates:
+        return None, None
+
+    schema_dict = _load_schema_dict_for_ranking(schema)
+    ambiguity_model = None
+    if (
+        ambiguity_config.entropy_source == "ml"
+        and model_path is not None
+        and _is_np_model_file(model_path)
+    ):
+        try:
+            ambiguity_model = _load_ranker_cached(model_path)
+        except Exception:
+            ambiguity_model = None
+
+    graph = _get_default_graph() if ambiguity_config.entropy_source == "agreement" else None
+    payload = [{"query": str(c.get("query", ""))} for c in candidates]
+    try:
+        regime, entropy = predict_regime(
+            question=question,
+            candidates=payload,
+            config=ambiguity_config,
+            schema_dict=schema_dict,
+            model=ambiguity_model,
+            graph=graph,
+        )
+        return regime, float(entropy)
+    except Exception:
+        return None, None
+
+
+def _ordered_candidate_queries(
+    primary: List[Dict[str, object]],
+    fallback: List[Dict[str, object]],
+) -> List[str]:
+    ordered: List[str] = []
+    seen = set()
+    for row in list(primary) + list(fallback):
+        q = str(row.get("query", "")).strip()
+        if not q:
+            continue
+        key = " ".join(q.split()).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        ordered.append(q)
+    return ordered
+
+
+def _runtime_validate_query(query: str) -> List[Dict[str, str]]:
+    errors = []
+    errors.extend(validate_query_syntax(query))
+    errors.extend(validate_query_semantic(query))
+    if errors:
+        return errors
+    try:
+        parseQuery(_ensure_prefixes(query))
+    except Exception as exc:
+        errors.append({"type": "syntax", "message": str(exc)})
+    return errors
+
+
+def _select_best_valid_query(
+    ordered_queries: List[str],
+) -> Tuple[Optional[str], List[Dict[str, str]], int]:
+    if not ordered_queries:
+        return None, [], -1
+
+    first_errors: List[Dict[str, str]] = []
+    for idx, query in enumerate(ordered_queries):
+        errs = _runtime_validate_query(query)
+        if not errs:
+            return query, [], idx
+        if idx == 0:
+            first_errors = errs
+    return ordered_queries[0], first_errors, 0
+
+
 @dataclass
 class PolicyDecision:
     type: str
@@ -306,8 +464,9 @@ def answer_question(
     questions_path: Optional[str] = None,
     enable_entity_linking: bool = True,
     use_ml_ranking: bool = True,
-    ml_policy: str = "all",
+    ml_policy: str = "auto",
     ml_model_path: Optional[str] = None,
+    ml_ambiguity_config_path: Optional[str] = None,
 ) -> Dict[str, object]:
     alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
     generation = generate_candidates(
@@ -320,12 +479,18 @@ def answer_question(
     metadata = generation.get("metadata", {})
     prompt = generation.get("prompt", "")
     effective_question = str(metadata.get("effective_question", "")).strip() or question
-    policy_mode = (ml_policy or "all").strip().lower()
-    if policy_mode not in {"off", "all", "mid"}:
-        policy_mode = "all"
+    policy_mode = (ml_policy or "auto").strip().lower()
+    if policy_mode not in {"off", "all", "mid", "auto"}:
+        policy_mode = "auto"
     if not use_ml_ranking:
         policy_mode = "off"
     resolved_model_path = _resolve_learning_model_path(ml_model_path)
+    resolved_ambiguity_config_path = _resolve_ambiguity_config_path(ml_ambiguity_config_path)
+    ambiguity_config = (
+        _load_ambiguity_config_cached(resolved_ambiguity_config_path)
+        if resolved_ambiguity_config_path is not None
+        else None
+    )
 
     if not candidates:
         return {
@@ -344,6 +509,13 @@ def answer_question(
             "effective_question": effective_question,
             "ml_policy": policy_mode,
             "ml_model_path": str(resolved_model_path) if resolved_model_path else None,
+            "predicted_regime": None,
+            "predicted_entropy": None,
+            "ambiguity_config_path": (
+                str(resolved_ambiguity_config_path)
+                if resolved_ambiguity_config_path
+                else None
+            ),
         }
 
     schema_ranked = rank_schema_candidates(candidates, schema)
@@ -358,12 +530,61 @@ def answer_question(
         else []
     )
     entropy = _compute_entropy(schema_ranked)
+    predicted_regime, predicted_entropy = _predict_runtime_regime(
+        question=effective_question,
+        candidates=candidates,
+        schema=schema,
+        model_path=resolved_model_path,
+        ambiguity_config=ambiguity_config,
+    )
 
-    policy = AmbiguityGatedPolicy(mode=policy_mode)
-    decision = policy.select(schema_ranked, learning_ranked, entropy)
-    used_ml = decision.type == "learning"
+    if policy_mode == "off":
+        use_learning = False
+        selection_reason = "policy=off"
+    elif policy_mode == "all":
+        use_learning = True
+        selection_reason = "policy=all"
+    elif policy_mode == "mid":
+        if predicted_regime is not None:
+            use_learning = predicted_regime == "mid"
+            selection_reason = f"policy=mid; predicted_regime={predicted_regime}"
+        else:
+            fallback_policy = AmbiguityGatedPolicy(mode="mid")
+            fallback_decision = fallback_policy.select(
+                schema_ranked=schema_ranked,
+                learning_ranked=learning_ranked,
+                entropy=entropy,
+            )
+            use_learning = fallback_decision.type == "learning"
+            selection_reason = f"{fallback_decision.reason}; predictor_unavailable"
+    else:  # auto
+        if predicted_regime is not None and ambiguity_config is not None:
+            allowed = set(ambiguity_config.ml_regimes or ["mid"])
+            use_learning = predicted_regime in allowed
+            selection_reason = (
+                "policy=auto; "
+                f"predicted_regime={predicted_regime}; "
+                f"ml_regimes={','.join(sorted(allowed))}"
+            )
+        else:
+            fallback_policy = AmbiguityGatedPolicy(mode="mid")
+            fallback_decision = fallback_policy.select(
+                schema_ranked=schema_ranked,
+                learning_ranked=learning_ranked,
+                entropy=entropy,
+            )
+            use_learning = fallback_decision.type == "learning"
+            selection_reason = f"{fallback_decision.reason}; auto_fallback=entropy_mid"
 
-    if decision.type == "abstain" or not decision.query:
+    primary = learning_ranked if use_learning else schema_ranked
+    fallback = schema_ranked if use_learning else learning_ranked
+    selected_policy = "learning" if use_learning else "schema"
+    if not primary and fallback:
+        primary, fallback = fallback, []
+        selected_policy = "schema" if use_learning else "learning"
+        selection_reason = f"{selection_reason}; fallback=no_primary_ranked"
+
+    if not primary:
         return {
             "answer": (
                 "Multiple structurally valid interpretations were detected. "
@@ -376,20 +597,57 @@ def answer_question(
             "metadata": metadata,
             "errors": [],
             "prompt": prompt,
-            "policy": decision.type,
+            "policy": "abstain",
             "entropy": entropy,
-            "selection_reason": decision.reason,
-            "used_ml": used_ml,
+            "selection_reason": "no_ranked_candidates",
+            "used_ml": False,
             "effective_question": effective_question,
             "ml_policy": policy_mode,
             "ml_model_path": str(resolved_model_path) if resolved_model_path else None,
+            "predicted_regime": predicted_regime,
+            "predicted_entropy": predicted_entropy,
+            "ambiguity_config_path": (
+                str(resolved_ambiguity_config_path)
+                if resolved_ambiguity_config_path
+                else None
+            ),
         }
 
-    selected_query = decision.query
+    ordered_queries = _ordered_candidate_queries(primary, fallback)
+    selected_query, errors, selected_rank = _select_best_valid_query(ordered_queries)
+    if selected_query is None:
+        return {
+            "answer": (
+                "Multiple structurally valid interpretations were detected. "
+                "Please refine your question."
+            ),
+            "selected_query": None,
+            "candidates": candidates,
+            "schema_ranked": schema_ranked,
+            "learning_ranked": learning_ranked,
+            "metadata": metadata,
+            "errors": [],
+            "prompt": prompt,
+            "policy": "abstain",
+            "entropy": entropy,
+            "selection_reason": f"{selection_reason}; no_ordered_queries",
+            "used_ml": False,
+            "effective_question": effective_question,
+            "ml_policy": policy_mode,
+            "ml_model_path": str(resolved_model_path) if resolved_model_path else None,
+            "predicted_regime": predicted_regime,
+            "predicted_entropy": predicted_entropy,
+            "ambiguity_config_path": (
+                str(resolved_ambiguity_config_path)
+                if resolved_ambiguity_config_path
+                else None
+            ),
+        }
 
-    syntax_errors = validate_query_syntax(selected_query)
-    semantic_errors = validate_query_semantic(selected_query)
-    errors = syntax_errors + semantic_errors
+    selected_key = " ".join(selected_query.split()).lower()
+    primary_keys = {" ".join(str(r.get("query", "")).split()).lower() for r in primary}
+    selected_from = "primary" if selected_key in primary_keys else "fallback"
+    used_ml = selected_policy == "learning" and selected_from == "primary"
 
     if errors:
         results = {
@@ -417,14 +675,23 @@ def answer_question(
         "metadata": metadata,
         "errors": errors,
         "prompt": prompt,
-        "policy": decision.type,
+        "policy": selected_policy,
         "entropy": entropy,
-        "selection_reason": decision.reason,
+        "selection_reason": selection_reason,
         "used_ml": used_ml,
         "raw_result": results,
         "effective_question": effective_question,
         "ml_policy": policy_mode,
         "ml_model_path": str(resolved_model_path) if resolved_model_path else None,
+        "predicted_regime": predicted_regime,
+        "predicted_entropy": predicted_entropy,
+        "ambiguity_config_path": (
+            str(resolved_ambiguity_config_path)
+            if resolved_ambiguity_config_path
+            else None
+        ),
+        "selected_query_rank": selected_rank,
+        "selected_query_from": selected_from,
     }
 
 

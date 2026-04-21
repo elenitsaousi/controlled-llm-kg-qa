@@ -28,6 +28,10 @@ DEFAULT_ML_MODEL_PATHS = [
     PROJECT_ROOT / "ranking" / "models" / "infineon_np_tfidf_ranker.json",
     PROJECT_ROOT / "ranking" / "models" / "infineon_ranker.joblib",
 ]
+DEFAULT_AMBIGUITY_CONFIG_PATHS = [
+    PROJECT_ROOT / "ranking" / "models" / "infineon_ambiguity_config_500.json",
+    PROJECT_ROOT / "ranking" / "models" / "infineon_ambiguity_config.json",
+]
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
 PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -41,6 +45,16 @@ def _default_ml_model_path() -> str:
         if p.exists():
             return str(p)
     return str(DEFAULT_ML_MODEL_PATHS[0])
+
+
+def _default_ambiguity_config_path() -> str:
+    env_path = (os.environ.get("INFINEON_AMBIGUITY_CONFIG") or "").strip()
+    if env_path:
+        return env_path
+    for p in DEFAULT_AMBIGUITY_CONFIG_PATHS:
+        if p.exists():
+            return str(p)
+    return str(DEFAULT_AMBIGUITY_CONFIG_PATHS[0])
 
 
 def _ensure_prefixes(query: str) -> str:
@@ -111,11 +125,16 @@ with st.sidebar:
     use_ml_ranking = st.checkbox("Use ML ranking", value=True)
     ml_policy = st.selectbox(
         "ML policy",
-        options=["all", "mid", "off"],
+        options=["auto", "all", "mid", "off"],
         index=0,
-        help="all: always ML, mid: ambiguity-gated, off: schema-only.",
+        help="auto: predict ambiguity and route automatically, all: always ML, mid: ML only for medium ambiguity, off: schema-only.",
     )
     ml_model_path = st.text_input("ML model path", value=_default_ml_model_path())
+    ambiguity_config_path = st.text_input(
+        "Ambiguity config path",
+        value=_default_ambiguity_config_path(),
+        help="Used when ML policy is auto/mid for runtime ambiguity regime prediction.",
+    )
     if not use_ml_ranking:
         ml_policy = "off"
 
@@ -164,6 +183,7 @@ if st.button("Ask", type="primary"):
                 use_ml_ranking=bool(use_ml_ranking),
                 ml_policy=ml_policy,
                 ml_model_path=ml_model_path.strip() or None,
+                ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
             )
         except LLMClientError as exc:
             st.error(f"LLM error: {exc}")
@@ -213,6 +233,17 @@ if st.button("Ask", type="primary"):
         col1.metric("Policy", str(result.get("policy", "unknown")))
         col2.metric("Used ML", "yes" if result.get("used_ml") else "no")
         col3.metric("Candidates", str(len(result.get("candidates", []))))
+        pred_regime = result.get("predicted_regime")
+        pred_entropy = result.get("predicted_entropy")
+        if pred_regime is not None:
+            st.caption(
+                f"Predicted ambiguity regime: {pred_regime}"
+                + (
+                    f" (entropy={float(pred_entropy):.3f})"
+                    if pred_entropy is not None
+                    else ""
+                )
+            )
         st.caption(
             f"ML policy setting: {result.get('ml_policy', ml_policy)} | "
             f"Model: {result.get('ml_model_path', ml_model_path)}"
