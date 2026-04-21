@@ -340,6 +340,10 @@ def _ordered_candidate_queries(
     return ordered
 
 
+def _candidate_key(query: str) -> str:
+    return " ".join((query or "").split()).lower()
+
+
 def _runtime_validate_query(query: str) -> List[Dict[str, str]]:
     errors = []
     errors.extend(validate_query_syntax(query))
@@ -367,6 +371,84 @@ def _select_best_valid_query(
         if idx == 0:
             first_errors = errs
     return ordered_queries[0], first_errors, 0
+
+
+def _build_selection_explanation(
+    question: str,
+    effective_question: str,
+    policy_mode: str,
+    selected_policy: str,
+    selection_reason: str,
+    predicted_regime: Optional[str],
+    predicted_entropy: Optional[float],
+    selected_query: Optional[str],
+    selected_from: Optional[str],
+    selected_rank: Optional[int],
+    selected_errors: Optional[List[Dict[str, str]]],
+    candidates: List[Dict[str, str]],
+    schema_ranked: List[Dict[str, object]],
+    learning_ranked: List[Dict[str, object]],
+) -> Dict[str, object]:
+    schema_scores = {
+        _candidate_key(str(r.get("query", ""))): float(r.get("score", 0.0))
+        for r in schema_ranked
+    }
+    learning_scores = {
+        _candidate_key(str(r.get("query", ""))): float(r.get("score", 0.0))
+        for r in learning_ranked
+    }
+    schema_rank_pos = {
+        _candidate_key(str(r.get("query", ""))): i + 1
+        for i, r in enumerate(schema_ranked)
+    }
+    learning_rank_pos = {
+        _candidate_key(str(r.get("query", ""))): i + 1
+        for i, r in enumerate(learning_ranked)
+    }
+    selected_key = _candidate_key(selected_query or "")
+
+    rows: List[Dict[str, object]] = []
+    for idx, cand in enumerate(candidates):
+        query = str(cand.get("query", "")).strip()
+        if not query:
+            continue
+        ckey = _candidate_key(query)
+        errs = _runtime_validate_query(query)
+        rows.append(
+            {
+                "candidate_index": idx + 1,
+                "is_selected": bool(selected_query and ckey == selected_key),
+                "is_valid": len(errs) == 0,
+                "error_count": len(errs),
+                "schema_score": schema_scores.get(ckey),
+                "schema_rank": schema_rank_pos.get(ckey),
+                "ml_score": learning_scores.get(ckey),
+                "ml_rank": learning_rank_pos.get(ckey),
+                "query_preview": (query[:180] + "...") if len(query) > 180 else query,
+            }
+        )
+
+    valid_count = sum(1 for r in rows if bool(r.get("is_valid")))
+    return {
+        "question": question,
+        "effective_question": effective_question,
+        "policy_mode": policy_mode,
+        "selected_policy": selected_policy,
+        "selection_reason": selection_reason,
+        "predicted_regime": predicted_regime,
+        "predicted_entropy": predicted_entropy,
+        "selected_from": selected_from,
+        "selected_rank_in_preference_order": selected_rank,
+        "selected_query_valid": (
+            bool(selected_query) and not bool(selected_errors)
+        ),
+        "selected_query_error_count": len(selected_errors or []),
+        "selected_query_errors": list(selected_errors or []),
+        "candidate_count": len(rows),
+        "valid_candidate_count": valid_count,
+        "invalid_candidate_count": max(0, len(rows) - valid_count),
+        "candidates": rows,
+    }
 
 
 @dataclass
@@ -493,6 +575,22 @@ def answer_question(
     )
 
     if not candidates:
+        selection_explanation = _build_selection_explanation(
+            question=question,
+            effective_question=effective_question,
+            policy_mode=policy_mode,
+            selected_policy="abstain",
+            selection_reason="no_candidates",
+            predicted_regime=None,
+            predicted_entropy=None,
+            selected_query=None,
+            selected_from=None,
+            selected_rank=None,
+            selected_errors=None,
+            candidates=[],
+            schema_ranked=[],
+            learning_ranked=[],
+        )
         return {
             "answer": "I could not generate any valid query candidates.",
             "selected_query": None,
@@ -516,6 +614,7 @@ def answer_question(
                 if resolved_ambiguity_config_path
                 else None
             ),
+            "selection_explanation": selection_explanation,
         }
 
     schema_ranked = rank_schema_candidates(candidates, schema)
@@ -585,6 +684,22 @@ def answer_question(
         selection_reason = f"{selection_reason}; fallback=no_primary_ranked"
 
     if not primary:
+        selection_explanation = _build_selection_explanation(
+            question=question,
+            effective_question=effective_question,
+            policy_mode=policy_mode,
+            selected_policy="abstain",
+            selection_reason="no_ranked_candidates",
+            predicted_regime=predicted_regime,
+            predicted_entropy=predicted_entropy,
+            selected_query=None,
+            selected_from=None,
+            selected_rank=None,
+            selected_errors=None,
+            candidates=candidates,
+            schema_ranked=schema_ranked,
+            learning_ranked=learning_ranked,
+        )
         return {
             "answer": (
                 "Multiple structurally valid interpretations were detected. "
@@ -611,11 +726,28 @@ def answer_question(
                 if resolved_ambiguity_config_path
                 else None
             ),
+            "selection_explanation": selection_explanation,
         }
 
     ordered_queries = _ordered_candidate_queries(primary, fallback)
     selected_query, errors, selected_rank = _select_best_valid_query(ordered_queries)
     if selected_query is None:
+        selection_explanation = _build_selection_explanation(
+            question=question,
+            effective_question=effective_question,
+            policy_mode=policy_mode,
+            selected_policy="abstain",
+            selection_reason=f"{selection_reason}; no_ordered_queries",
+            predicted_regime=predicted_regime,
+            predicted_entropy=predicted_entropy,
+            selected_query=None,
+            selected_from=None,
+            selected_rank=None,
+            selected_errors=None,
+            candidates=candidates,
+            schema_ranked=schema_ranked,
+            learning_ranked=learning_ranked,
+        )
         return {
             "answer": (
                 "Multiple structurally valid interpretations were detected. "
@@ -642,6 +774,7 @@ def answer_question(
                 if resolved_ambiguity_config_path
                 else None
             ),
+            "selection_explanation": selection_explanation,
         }
 
     selected_key = " ".join(selected_query.split()).lower()
@@ -664,6 +797,22 @@ def answer_question(
 
     answer = synthesize_answer(
         question, selected_query, results, errors or None
+    )
+    selection_explanation = _build_selection_explanation(
+        question=question,
+        effective_question=effective_question,
+        policy_mode=policy_mode,
+        selected_policy=selected_policy,
+        selection_reason=selection_reason,
+        predicted_regime=predicted_regime,
+        predicted_entropy=predicted_entropy,
+        selected_query=selected_query,
+        selected_from=selected_from,
+        selected_rank=selected_rank,
+        selected_errors=errors,
+        candidates=candidates,
+        schema_ranked=schema_ranked,
+        learning_ranked=learning_ranked,
     )
 
     return {
@@ -692,6 +841,7 @@ def answer_question(
         ),
         "selected_query_rank": selected_rank,
         "selected_query_from": selected_from,
+        "selection_explanation": selection_explanation,
     }
 
 

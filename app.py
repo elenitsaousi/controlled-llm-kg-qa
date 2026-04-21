@@ -1,14 +1,20 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 
 import streamlit as st
+import streamlit.components.v1 as components
 from rdflib import Graph
 
 from kg.schema import load_schema
 from llm.candidate_generation import generate_candidate_prompt
 from llm.client import InfineonGPTClient, LLMClientError
 from pipeline.qa import answer_question
+from visualization.interactive_graph import (
+    build_graph_html,
+    collect_full_graph_triples,
+    collect_query_subgraph_triples,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -99,6 +105,45 @@ def _execute_query_preview(
     return rows, truncated
 
 
+def _render_selection_explainability(result: Dict[str, Any]) -> None:
+    expl = result.get("selection_explanation")
+    if not isinstance(expl, dict):
+        st.info("No explainability payload available.")
+        return
+
+    st.subheader("Why This Query Was Selected")
+    left, mid, right = st.columns(3)
+    left.metric("Policy Mode", str(expl.get("policy_mode", "unknown")))
+    mid.metric("Selected Policy", str(expl.get("selected_policy", "unknown")))
+    right.metric("Valid Candidates", f"{expl.get('valid_candidate_count', 0)}/{expl.get('candidate_count', 0)}")
+
+    regime = expl.get("predicted_regime")
+    entropy = expl.get("predicted_entropy")
+    if regime is not None:
+        st.caption(
+            f"Predicted ambiguity regime: {regime}"
+            + (f" (entropy={float(entropy):.3f})" if entropy is not None else "")
+        )
+
+    st.write(f"Selection reason: `{expl.get('selection_reason', 'n/a')}`")
+    st.write(
+        "Selected query source: "
+        f"`{expl.get('selected_from', 'n/a')}` | "
+        "Rank in preference order: "
+        f"`{expl.get('selected_rank_in_preference_order', 'n/a')}`"
+    )
+
+    selected_errors = expl.get("selected_query_errors") or []
+    if selected_errors:
+        st.warning("Selected query had validation issues before fallback:")
+        st.json(selected_errors)
+
+    rows = expl.get("candidates") or []
+    if rows:
+        st.caption("Candidate diagnostics")
+        st.dataframe(rows, use_container_width=True)
+
+
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
 
 st.title("Infineon KG QA")
@@ -144,11 +189,36 @@ with st.sidebar:
     execute_selected = st.checkbox("Execute selected query on graph", value=True)
     max_preview_rows = st.number_input("Max preview rows", min_value=10, max_value=1000, value=200, step=10)
 
+    st.subheader("Graph Explorer")
+    full_graph_limit = st.number_input(
+        "Full graph triple limit (0 = all)",
+        min_value=0,
+        max_value=100000,
+        value=3000,
+        step=500,
+    )
+    subgraph_edge_limit = st.number_input(
+        "Question subgraph edge limit",
+        min_value=50,
+        max_value=20000,
+        value=1200,
+        step=50,
+    )
+    subgraph_hops = st.slider("Question subgraph hops", min_value=1, max_value=3, value=1, step=1)
+    graph_height = st.slider("Graph canvas height (px)", min_value=400, max_value=1200, value=760, step=20)
+
 question = st.text_area(
     "Your question",
     placeholder="e.g., How does semiconductor future demand evolve across technology categories and quarters?",
     height=120,
 )
+
+if "last_qa_result" not in st.session_state:
+    st.session_state["last_qa_result"] = None
+if "last_graph_rows" not in st.session_state:
+    st.session_state["last_graph_rows"] = []
+if "last_selected_query" not in st.session_state:
+    st.session_state["last_selected_query"] = ""
 
 if st.button("Ask", type="primary"):
     if not question.strip():
@@ -211,6 +281,10 @@ if st.button("Ask", type="primary"):
             except Exception as exc:
                 graph_exec_error = str(exc)
 
+        st.session_state["last_qa_result"] = result
+        st.session_state["last_graph_rows"] = graph_rows
+        st.session_state["last_selected_query"] = selected_query
+
         st.subheader("Answer")
         if graph_exec_error:
             st.error(f"Query execution error: {graph_exec_error}")
@@ -248,6 +322,7 @@ if st.button("Ask", type="primary"):
             f"ML policy setting: {result.get('ml_policy', ml_policy)} | "
             f"Model: {result.get('ml_model_path', ml_model_path)}"
         )
+        _render_selection_explainability(result)
 
         if execute_selected and selected_query:
             if not os.path.exists(graph_path):
@@ -273,3 +348,79 @@ if st.button("Ask", type="primary"):
                     source = item.get("source", "unknown")
                     st.caption(f"Candidate {idx} ({source})")
                     st.code(str(item.get("query", "")), language="sparql")
+
+st.divider()
+st.subheader("Interactive Graph Explorer")
+
+if not os.path.exists(graph_path):
+    st.warning(f"Graph path not found: {graph_path}")
+else:
+    tab_full, tab_question = st.tabs(["Full Graph", "Question Subgraph"])
+
+    with tab_full:
+        st.caption(
+            "Visualize entities/relationships with zoom, drag and node click. "
+            "Use a triple limit to keep the browser responsive."
+        )
+        if full_graph_limit == 0:
+            st.warning("Full graph without limit may be very heavy in browser.")
+        if st.button("Load Full Graph", key="load_full_graph_btn"):
+            with st.spinner("Loading graph and building visualization..."):
+                graph = _load_graph_cached(graph_path)
+                triples, total = collect_full_graph_triples(graph, limit=int(full_graph_limit))
+                if not triples:
+                    st.warning("No triples available for visualization.")
+                else:
+                    html = build_graph_html(
+                        triples,
+                        height_px=int(graph_height),
+                        heading="Infineon Graph (Full View)",
+                    )
+                    st.caption(
+                        f"Showing {len(triples)} triples out of total {total}."
+                    )
+                    components.html(
+                        html,
+                        height=int(graph_height) + 40,
+                        scrolling=True,
+                    )
+
+    with tab_question:
+        st.caption(
+            "Visualize the graph area related to the last selected query."
+        )
+        last_query = str(st.session_state.get("last_selected_query", "") or "").strip()
+        if not last_query:
+            st.info("Ask a question first to create a selected query.")
+        else:
+            st.code(last_query, language="sparql")
+            if st.button("Visualize Question Subgraph", key="load_question_subgraph_btn"):
+                with st.spinner("Building question-focused subgraph..."):
+                    graph = _load_graph_cached(graph_path)
+                    rows = st.session_state.get("last_graph_rows") or []
+                    triples, meta = collect_query_subgraph_triples(
+                        graph=graph,
+                        query=last_query,
+                        result_rows=rows,
+                        hops=int(subgraph_hops),
+                        limit=int(subgraph_edge_limit),
+                    )
+                    if not triples:
+                        st.warning(
+                            "Could not extract a non-empty subgraph for this query."
+                        )
+                    else:
+                        html = build_graph_html(
+                            triples,
+                            height_px=int(graph_height),
+                            heading="Infineon Graph (Question Subgraph)",
+                        )
+                        st.caption(
+                            f"Seeds: {meta.get('seed_count', 0)} | "
+                            f"Edges shown: {meta.get('edge_count', 0)}"
+                        )
+                        components.html(
+                            html,
+                            height=int(graph_height) + 40,
+                            scrolling=True,
+                        )
