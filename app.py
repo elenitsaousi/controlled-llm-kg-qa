@@ -172,14 +172,37 @@ if st.button("Ask", type="primary"):
             st.error(f"Request failed: {exc}")
             st.stop()
 
-        st.subheader("Answer")
-        st.write(result.get("answer", "No answer."))
-
         effective_question = str(result.get("effective_question", "")).strip()
         if effective_question and effective_question != question.strip():
             st.info(f"Canonicalized question: {effective_question}")
 
         selected_query = str(result.get("selected_query") or "").strip()
+        graph_rows: List[Dict[str, str]] = []
+        graph_rows_truncated = False
+        graph_exec_error = ""
+        if execute_selected and selected_query and os.path.exists(graph_path):
+            try:
+                graph = _load_graph_cached(graph_path)
+                graph_rows, graph_rows_truncated = _execute_query_preview(
+                    graph,
+                    selected_query,
+                    max_rows=int(max_preview_rows),
+                )
+            except Exception as exc:
+                graph_exec_error = str(exc)
+
+        st.subheader("Answer")
+        if graph_exec_error:
+            st.error(f"Query execution error: {graph_exec_error}")
+            st.write(result.get("answer", "No answer."))
+        elif execute_selected and selected_query:
+            if graph_rows:
+                st.success(f"Returned {len(graph_rows)} rows from Infineon graph.")
+            else:
+                st.warning("Selected query returned 0 rows from Infineon graph.")
+        else:
+            st.write(result.get("answer", "No answer."))
+
         if selected_query:
             st.subheader("Selected Query")
             st.code(selected_query, language="sparql")
@@ -199,23 +222,15 @@ if st.button("Ask", type="primary"):
             if not os.path.exists(graph_path):
                 st.error(f"Graph path not found: {graph_path}")
             else:
-                try:
-                    with st.spinner("Executing selected query on graph..."):
-                        graph = _load_graph_cached(graph_path)
-                        rows, truncated = _execute_query_preview(
-                            graph,
-                            selected_query,
-                            max_rows=int(max_preview_rows),
-                        )
-                    st.subheader("Graph Result Rows")
-                    if rows:
-                        st.dataframe(rows, use_container_width=True)
-                        if truncated:
-                            st.caption(f"Preview truncated at {int(max_preview_rows)} rows.")
-                    else:
-                        st.write("No rows returned.")
-                except Exception as exc:
-                    st.error(f"Selected query execution failed: {exc}")
+                st.subheader("Graph Result Rows")
+                if graph_exec_error:
+                    st.error(f"Selected query execution failed: {graph_exec_error}")
+                elif graph_rows:
+                    st.dataframe(graph_rows, use_container_width=True)
+                    if graph_rows_truncated:
+                        st.caption(f"Preview truncated at {int(max_preview_rows)} rows.")
+                else:
+                    st.write("No rows returned.")
 
         if show_candidates:
             st.subheader("Candidates")
