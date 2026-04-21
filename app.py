@@ -1,69 +1,220 @@
 import os
+from pathlib import Path
+from typing import Dict, List, Tuple
 
 import streamlit as st
+from rdflib import Graph
 
-from kg.schema import load_default_schema, load_schema
+from kg.schema import load_schema
 from llm.candidate_generation import generate_candidate_prompt
-from llm.client import OllamaClient
+from llm.client import InfineonGPTClient, LLMClientError
 from pipeline.qa import answer_question
 
 
-def _load_schema(schema_path: str):
-    cleaned = schema_path.strip()
+PROJECT_ROOT = Path(__file__).resolve().parent
+DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
+DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
+DEFAULT_ML_MODEL_PATHS = [
+    PROJECT_ROOT / "ranking" / "models" / "infineon_np_tfidf_ranker_entitylink.json",
+    PROJECT_ROOT / "ranking" / "models" / "infineon_np_tfidf_ranker.json",
+    PROJECT_ROOT / "ranking" / "models" / "infineon_ranker.joblib",
+]
+DEFAULT_PREFIX = """\
+PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+"""
+
+
+def _default_ml_model_path() -> str:
+    for p in DEFAULT_ML_MODEL_PATHS:
+        if p.exists():
+            return str(p)
+    return str(DEFAULT_ML_MODEL_PATHS[0])
+
+
+def _ensure_prefixes(query: str) -> str:
+    if "PREFIX" in query.upper():
+        return query
+    return DEFAULT_PREFIX + query
+
+
+def _load_schema_from_path(schema_path: str):
+    cleaned = (schema_path or "").strip()
     if not cleaned:
-        return load_default_schema()
+        cleaned = str(DEFAULT_SCHEMA_PATH)
     if not os.path.exists(cleaned):
-        st.warning(
-            "Schema path not found. Falling back to data/toy_kg/schema.json."
-        )
-        return load_default_schema()
+        raise FileNotFoundError(f"Schema path not found: {cleaned}")
     return load_schema(cleaned)
 
 
-st.set_page_config(page_title="Toy KG QA", layout="centered")
+@st.cache_resource(show_spinner=False)
+def _load_graph_cached(graph_path: str) -> Graph:
+    g = Graph()
+    g.parse(graph_path, format="turtle")
+    return g
 
-st.title("Toy KG Question Answering")
-st.caption("Type a natural language question and view a placeholder answer.")
 
-use_custom_schema = st.checkbox("Use custom schema path", value=False)
-schema_path = st.text_input(
-    "Schema path",
-    value="",
-    help="Provide a path to schema.json",
-    disabled=not use_custom_schema,
-)
-show_prompt = st.checkbox("Show candidate generation prompt", value=False)
-show_candidates = st.checkbox("Show candidates", value=True)
-default_model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b-instruct")
-model_name = st.text_input("Ollama model", value=default_model)
+def _execute_query_preview(
+    graph: Graph,
+    query: str,
+    max_rows: int = 200,
+) -> Tuple[List[Dict[str, str]], bool]:
+    results = graph.query(_ensure_prefixes(query))
+    rows: List[Dict[str, str]] = []
+    truncated = False
+    for idx, row in enumerate(results):
+        if idx >= max_rows:
+            truncated = True
+            break
+        if hasattr(row, "asdict"):
+            rd = row.asdict()
+            rows.append({str(k): str(v) for k, v in rd.items()})
+        else:
+            rows.append({f"col{j + 1}": str(v) for j, v in enumerate(row)})
+    return rows, truncated
+
+
+st.set_page_config(page_title="Infineon KG QA", layout="wide")
+
+st.title("Infineon KG QA")
+st.caption("Ask a natural-language question and inspect generated SPARQL plus graph results.")
+
+with st.sidebar:
+    st.subheader("Backend")
+    default_url = os.environ.get("INFINEON_API_URL", "https://gpt4ifx.icp.infineon.com")
+    default_model = os.environ.get("INFINEON_MODEL", "gpt-4o")
+    default_endpoint = os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
+    default_key = os.environ.get("INFINEON_API_KEY", "")
+
+    api_url = st.text_input("INFINEON_API_URL", value=default_url)
+    api_endpoint = st.text_input("INFINEON_CHAT_ENDPOINT", value=default_endpoint)
+    model_name = st.text_input("INFINEON_MODEL", value=default_model)
+    api_key = st.text_input("INFINEON_API_KEY", value=default_key, type="password")
+    temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.2, step=0.05)
+
+    st.subheader("Data")
+    schema_path = st.text_input("Schema path", value=str(DEFAULT_SCHEMA_PATH))
+    graph_path = st.text_input("Graph path", value=str(DEFAULT_GRAPH_PATH))
+
+    st.subheader("Ranking")
+    use_ml_ranking = st.checkbox("Use ML ranking", value=True)
+    ml_policy = st.selectbox(
+        "ML policy",
+        options=["all", "mid", "off"],
+        index=0,
+        help="all: always ML, mid: ambiguity-gated, off: schema-only.",
+    )
+    ml_model_path = st.text_input("ML model path", value=_default_ml_model_path())
+    if not use_ml_ranking:
+        ml_policy = "off"
+
+    st.subheader("Display")
+    show_prompt = st.checkbox("Show candidate prompt", value=False)
+    show_candidates = st.checkbox("Show candidates", value=True)
+    execute_selected = st.checkbox("Execute selected query on graph", value=True)
+    max_preview_rows = st.number_input("Max preview rows", min_value=10, max_value=1000, value=200, step=10)
 
 question = st.text_area(
     "Your question",
-    placeholder="e.g., Which suppliers affect the production yield of product X?",
-    height=100,
+    placeholder="e.g., How does semiconductor future demand evolve across technology categories and quarters?",
+    height=120,
 )
 
-if st.button("Ask"):
+if st.button("Ask", type="primary"):
     if not question.strip():
         st.warning("Please enter a question.")
+    elif not api_url.strip() or not api_key.strip():
+        st.error("Missing API URL or API key.")
     else:
-        schema = _load_schema(schema_path if use_custom_schema else "")
+        try:
+            schema = _load_schema_from_path(schema_path)
+        except Exception as exc:
+            st.error(f"Schema load failed: {exc}")
+            st.stop()
+
         if show_prompt:
             prompt = generate_candidate_prompt(question, schema, k=5)
             st.subheader("Candidate Generation Prompt")
             st.code(prompt, language="text")
-        client = OllamaClient(model=model_name.strip() or default_model)
-        result = answer_question(question, schema, llm_client=client)
+
+        try:
+            os.environ["INFINEON_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
+            client = InfineonGPTClient(
+                model=model_name.strip() or None,
+                base_url=api_url.strip() or None,
+                api_key=api_key.strip() or None,
+                temperature=float(temperature),
+            )
+            result = answer_question(
+                question,
+                schema,
+                llm_client=client,
+                enable_entity_linking=True,
+                use_ml_ranking=bool(use_ml_ranking),
+                ml_policy=ml_policy,
+                ml_model_path=ml_model_path.strip() or None,
+            )
+        except LLMClientError as exc:
+            st.error(f"LLM error: {exc}")
+            st.stop()
+        except Exception as exc:
+            st.error(f"Request failed: {exc}")
+            st.stop()
+
         st.subheader("Answer")
-        st.write(result["answer"])
-        metadata = result.get("metadata", {})
-        if metadata.get("error"):
-            st.error(f"LLM error: {metadata['error']}")
+        st.write(result.get("answer", "No answer."))
+
+        effective_question = str(result.get("effective_question", "")).strip()
+        if effective_question and effective_question != question.strip():
+            st.info(f"Canonicalized question: {effective_question}")
+
+        selected_query = str(result.get("selected_query") or "").strip()
+        if selected_query:
+            st.subheader("Selected Query")
+            st.code(selected_query, language="sparql")
+        else:
+            st.warning("No selected query.")
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Policy", str(result.get("policy", "unknown")))
+        col2.metric("Used ML", "yes" if result.get("used_ml") else "no")
+        col3.metric("Candidates", str(len(result.get("candidates", []))))
+        st.caption(
+            f"ML policy setting: {result.get('ml_policy', ml_policy)} | "
+            f"Model: {result.get('ml_model_path', ml_model_path)}"
+        )
+
+        if execute_selected and selected_query:
+            if not os.path.exists(graph_path):
+                st.error(f"Graph path not found: {graph_path}")
+            else:
+                try:
+                    with st.spinner("Executing selected query on graph..."):
+                        graph = _load_graph_cached(graph_path)
+                        rows, truncated = _execute_query_preview(
+                            graph,
+                            selected_query,
+                            max_rows=int(max_preview_rows),
+                        )
+                    st.subheader("Graph Result Rows")
+                    if rows:
+                        st.dataframe(rows, use_container_width=True)
+                        if truncated:
+                            st.caption(f"Preview truncated at {int(max_preview_rows)} rows.")
+                    else:
+                        st.write("No rows returned.")
+                except Exception as exc:
+                    st.error(f"Selected query execution failed: {exc}")
+
         if show_candidates:
             st.subheader("Candidates")
             candidates = result.get("candidates", [])
             if not candidates:
                 st.write("No candidates returned.")
             else:
-                for item in candidates:
-                    st.code(item.get("query", ""), language="text")
+                for idx, item in enumerate(candidates, start=1):
+                    source = item.get("source", "unknown")
+                    st.caption(f"Candidate {idx} ({source})")
+                    st.code(str(item.get("query", "")), language="sparql")

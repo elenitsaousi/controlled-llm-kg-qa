@@ -3,7 +3,7 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 from rdflib import Graph
@@ -23,10 +23,17 @@ from visualization.ambiguity_metrics import ambiguity_entropy
 
 BASE = Path(__file__).resolve().parents[1]
 DEFAULT_LOGISTIC_MODEL = BASE / "ranking" / "models" / "logistic_ranker.joblib"
+DEFAULT_INFINEON_JOBLIB_MODEL = BASE / "ranking" / "models" / "infineon_ranker.joblib"
+DEFAULT_INFINEON_NP_MODEL = BASE / "ranking" / "models" / "infineon_np_tfidf_ranker_entitylink.json"
+DEFAULT_INFINEON_NP_MODEL_FALLBACK = BASE / "ranking" / "models" / "infineon_np_tfidf_ranker.json"
+DEFAULT_INFINEON_SCHEMA_PATH = BASE / "data" / "infineon" / "schema.json"
 GATED_THRESHOLDS = BASE / "analysis_outputs" / "gated_thresholds.json"
 EXPERIMENTS_DIR = BASE / "experiments"
 DEFAULT_INFINEON_GRAPH = BASE / "data" / "infineon" / "graph.ttl"
 _ENTITY_ALIAS_INDEX = None
+_RANKER_CACHE: Dict[str, object] = {}
+
+NP_MODEL_TYPE = "np_tfidf_logreg_v1"
 
 
 def _get_default_entity_alias_index():
@@ -58,6 +65,68 @@ def _schema_to_dict(schema: KGSchema) -> Dict[str, object]:
     }
 
 
+def _load_schema_dict_for_ranking(schema: KGSchema) -> Dict[str, object]:
+    # Prefer explicit Infineon schema file when available.
+    if DEFAULT_INFINEON_SCHEMA_PATH.exists():
+        try:
+            with open(DEFAULT_INFINEON_SCHEMA_PATH, "r", encoding="utf-8") as f:
+                return dict(json.load(f))
+        except Exception:
+            pass
+    return _schema_to_dict(schema)
+
+
+def _is_np_model_file(model_path: Path) -> bool:
+    if model_path.suffix.lower() != ".json":
+        return False
+    if not model_path.exists():
+        return False
+    try:
+        with open(model_path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        return payload.get("model_type") == NP_MODEL_TYPE
+    except Exception:
+        return False
+
+
+def _resolve_learning_model_path(explicit_path: Optional[str]) -> Optional[Path]:
+    candidates: List[Path] = []
+    if explicit_path:
+        candidates.append(Path(explicit_path))
+    candidates.extend(
+        [
+            DEFAULT_INFINEON_NP_MODEL,
+            DEFAULT_INFINEON_NP_MODEL_FALLBACK,
+            DEFAULT_INFINEON_JOBLIB_MODEL,
+            DEFAULT_LOGISTIC_MODEL,
+        ]
+    )
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+
+def _load_ranker_cached(model_path: Path):
+    key = str(model_path)
+    cached = _RANKER_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    if _is_np_model_file(model_path):
+        from ranking.np_tfidf_ranker import NPTfidfRanker
+
+        ranker = NPTfidfRanker.load(str(model_path))
+        _RANKER_CACHE[key] = ranker
+        return ranker
+
+    from ranking.runtime_ranker import LogisticRanker
+
+    ranker = LogisticRanker(str(model_path))
+    _RANKER_CACHE[key] = ranker
+    return ranker
+
+
 def _normalize_query(text: str) -> str:
     return normalize_sparql(text)
 
@@ -71,25 +140,31 @@ def _rank_learning_candidates(
     question: str,
     candidates: List[Dict[str, str]],
     schema: KGSchema,
-    model_path: Path = DEFAULT_LOGISTIC_MODEL,
+    model_path: Optional[Path] = None,
 ) -> List[Dict[str, object]]:
-    if not candidates or not model_path.exists():
+    if not candidates:
+        return []
+
+    resolved_model_path = model_path or _resolve_learning_model_path(None)
+    if resolved_model_path is None or not resolved_model_path.exists():
         return []
 
     try:
-        from ranking.runtime_ranker import LogisticRanker
-        ranker = LogisticRanker(str(model_path))
+        ranker = _load_ranker_cached(resolved_model_path)
     except Exception:
         return []
 
-    schema_dict = _schema_to_dict(schema)
-    features: List[Dict[str, float]] = []
+    schema_dict = _load_schema_dict_for_ranking(schema)
+    feature_dicts: List[Dict[str, float]] = []
     rows: List[Dict[str, object]] = []
 
     for cand in candidates:
         query = str(cand.get("query", ""))
-        feats = extract_features(question, query, schema_dict)
-        features.append(feats)
+        try:
+            feats = extract_features(question, query, schema_dict)
+        except Exception:
+            feats = {}
+        feature_dicts.append(feats)
         rows.append(
             {
                 "query": query,
@@ -98,12 +173,28 @@ def _rank_learning_candidates(
         )
 
     try:
-        scores = ranker.score(features)
+        if _is_np_model_file(resolved_model_path):
+            queries = [str(c.get("query", "")) for c in candidates]
+            scores = ranker.score_question_candidates(
+                question,
+                queries,
+                feature_dicts,
+            )
+        else:
+            # Logistic/XGB runtime rankers.
+            from ranking.feature_config import FEATURE_NAMES
+            normalized_features = []
+            for feats in feature_dicts:
+                normalized_features.append(
+                    {name: float(feats.get(name, 0.0)) for name in FEATURE_NAMES}
+                )
+            scores = ranker.score(normalized_features)
     except Exception:
         return []
 
     for row, score in zip(rows, scores):
         row["score"] = float(score)
+        row["model_path"] = str(resolved_model_path)
 
     rows.sort(key=lambda x: x.get("score", float("-inf")), reverse=True)
     return rows
@@ -128,12 +219,19 @@ class PolicyDecision:
 
 
 class AmbiguityGatedPolicy:
-    def __init__(self, thresholds_path: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        thresholds_path: Optional[Path] = None,
+        mode: str = "all",
+    ) -> None:
         self.thresholds_path = thresholds_path or GATED_THRESHOLDS
+        self.mode = (mode or "all").strip().lower()
+        if self.mode not in {"off", "all", "mid"}:
+            self.mode = "all"
         self.H1: Optional[float] = None
         self.H2: Optional[float] = None
 
-        if self.thresholds_path.exists():
+        if self.mode == "mid" and self.thresholds_path.exists():
             try:
                 data = json_load(self.thresholds_path)
                 self.H1 = float(data.get("H1")) if "H1" in data else None
@@ -151,15 +249,22 @@ class AmbiguityGatedPolicy:
         if not schema_ranked and not learning_ranked:
             return PolicyDecision("abstain", None, "no_candidates")
 
-        use_learning = False
-        reason = "default_schema"
-        if self.H1 is not None and self.H2 is not None:
-            use_learning = self.H1 <= entropy <= self.H2
-            reason = (
-                f"entropy {entropy:.4f} "
-                f"{'within' if use_learning else 'outside'} "
-                f"[{self.H1:.4f}, {self.H2:.4f}]"
-            )
+        if self.mode == "off":
+            use_learning = False
+            reason = "policy=off"
+        elif self.mode == "all":
+            use_learning = True
+            reason = "policy=all"
+        else:
+            use_learning = False
+            reason = "policy=mid; default_schema"
+            if self.H1 is not None and self.H2 is not None:
+                use_learning = self.H1 <= entropy <= self.H2
+                reason = (
+                    f"policy=mid; entropy {entropy:.4f} "
+                    f"{'within' if use_learning else 'outside'} "
+                    f"[{self.H1:.4f}, {self.H2:.4f}]"
+                )
 
         primary = learning_ranked if use_learning else schema_ranked
         fallback = schema_ranked if use_learning else learning_ranked
@@ -200,6 +305,9 @@ def answer_question(
     llm_client: Optional[object] = None,
     questions_path: Optional[str] = None,
     enable_entity_linking: bool = True,
+    use_ml_ranking: bool = True,
+    ml_policy: str = "all",
+    ml_model_path: Optional[str] = None,
 ) -> Dict[str, object]:
     alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
     generation = generate_candidates(
@@ -212,6 +320,12 @@ def answer_question(
     metadata = generation.get("metadata", {})
     prompt = generation.get("prompt", "")
     effective_question = str(metadata.get("effective_question", "")).strip() or question
+    policy_mode = (ml_policy or "all").strip().lower()
+    if policy_mode not in {"off", "all", "mid"}:
+        policy_mode = "all"
+    if not use_ml_ranking:
+        policy_mode = "off"
+    resolved_model_path = _resolve_learning_model_path(ml_model_path)
 
     if not candidates:
         return {
@@ -228,15 +342,24 @@ def answer_question(
             "selection_reason": "no_candidates",
             "used_ml": False,
             "effective_question": effective_question,
+            "ml_policy": policy_mode,
+            "ml_model_path": str(resolved_model_path) if resolved_model_path else None,
         }
 
     schema_ranked = rank_schema_candidates(candidates, schema)
-    learning_ranked = _rank_learning_candidates(
-        effective_question, candidates, schema
+    learning_ranked = (
+        _rank_learning_candidates(
+            effective_question,
+            candidates,
+            schema,
+            model_path=resolved_model_path,
+        )
+        if policy_mode != "off"
+        else []
     )
     entropy = _compute_entropy(schema_ranked)
 
-    policy = AmbiguityGatedPolicy()
+    policy = AmbiguityGatedPolicy(mode=policy_mode)
     decision = policy.select(schema_ranked, learning_ranked, entropy)
     used_ml = decision.type == "learning"
 
@@ -258,6 +381,8 @@ def answer_question(
             "selection_reason": decision.reason,
             "used_ml": used_ml,
             "effective_question": effective_question,
+            "ml_policy": policy_mode,
+            "ml_model_path": str(resolved_model_path) if resolved_model_path else None,
         }
 
     selected_query = decision.query
@@ -298,6 +423,8 @@ def answer_question(
         "used_ml": used_ml,
         "raw_result": results,
         "effective_question": effective_question,
+        "ml_policy": policy_mode,
+        "ml_model_path": str(resolved_model_path) if resolved_model_path else None,
     }
 
 
