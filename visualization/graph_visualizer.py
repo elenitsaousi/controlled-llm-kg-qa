@@ -27,7 +27,7 @@ class GraphVisualizer:
             for val in values
         ]
 
-    def _filter_and_prepare_graph(self, G, node_scale, weight_threshold):
+    def _filter_and_prepare_graph(self, G, node_scale, weight_threshold, node_size_range):
         filtered_edges = [
             (u, v) for u, v, w in G.edges(data="weight") if w > weight_threshold
         ]
@@ -43,7 +43,11 @@ class GraphVisualizer:
             node_weights[v] += w
 
         raw_node_sizes = [node_weights[n] * node_scale for n in H.nodes()]
-        node_sizes = self._normalize_node_sizes(values=raw_node_sizes)
+        node_sizes = self._normalize_node_sizes(
+            values=raw_node_sizes,
+            new_min=node_size_range[0],
+            new_max=node_size_range[1],
+        )
 
         if not node_sizes:
             print("Warning: No valid node sizes computed. Cannot visualize.")
@@ -118,10 +122,80 @@ class GraphVisualizer:
         )
         return pos
 
-    def _draw_graph(self, H, pos, node_sizes, cluster_colors, figsize):
+    def _draw_graph(
+        self,
+        H,
+        pos,
+        node_sizes,
+        cluster_colors,
+        figsize,
+        node_color_attr=None,
+        node_palette=None,
+        show_edge_labels=False,
+        edge_label_font_size=8,
+    ):
         fig, ax = plt.subplots(figsize=figsize)
 
-        if cluster_colors is not None:
+        if node_color_attr is not None:
+            node_palette = node_palette or {}
+            fallback_color = node_palette.get("default", "#b8c7d9")
+            node_colors_mapped = [
+                node_palette.get(H.nodes[node].get(node_color_attr), fallback_color)
+                for node in H.nodes()
+            ]
+            title = "Schema Graph"
+
+            legend_handles = []
+            seen_values = []
+            for node in H.nodes():
+                value = H.nodes[node].get(node_color_attr)
+                if value not in seen_values:
+                    seen_values.append(value)
+
+            for value in seen_values:
+                if value is None:
+                    continue
+                color = node_palette.get(value, fallback_color)
+                legend_handles.append(
+                    plt.Line2D(
+                        [0],
+                        [0],
+                        marker="o",
+                        color="w",
+                        markerfacecolor=color,
+                        markeredgecolor="#334155",
+                        markeredgewidth=0.8,
+                        markersize=9,
+                        label=str(value).replace("_", " ").title(),
+                    )
+                )
+
+            if legend_handles:
+                ax.legend(
+                    handles=legend_handles,
+                    title="Domain",
+                    loc="upper left",
+                    bbox_to_anchor=(0.01, 0.99),
+                    frameon=True,
+                    framealpha=0.9,
+                    fontsize=9,
+                    title_fontsize=10,
+                )
+
+            nx.draw_networkx_edges(
+                H,
+                pos,
+                edge_color="#9ca3af",
+                width=1.4,
+                alpha=0.75,
+                ax=ax,
+                arrows=True,
+                arrowsize=16,
+                arrowstyle="-|>",
+                connectionstyle="arc3,rad=0.06",
+            )
+
+        elif cluster_colors is not None:
             node_colors = [cluster_colors.get(node, 0) for node in H.nodes()]
             cmap = cm.get_cmap("tab20")
             node_colors_mapped = [cmap(c % 20) for c in node_colors]
@@ -204,11 +278,36 @@ class GraphVisualizer:
             pos,
             node_size=node_sizes,
             node_color=node_colors_mapped,
-            alpha=0.7,
+            edgecolors="#1f2937",
+            linewidths=0.8,
+            alpha=0.92,
             ax=ax,
         )
 
-        ax.set_title(title, fontsize=14)
+        if show_edge_labels:
+            edge_labels = {
+                (u, v): data.get("label", "")
+                for u, v, data in H.edges(data=True)
+                if data.get("label")
+            }
+            nx.draw_networkx_edge_labels(
+                H,
+                pos,
+                edge_labels=edge_labels,
+                font_size=edge_label_font_size,
+                font_color="#374151",
+                label_pos=0.55,
+                rotate=False,
+                bbox={
+                    "facecolor": "white",
+                    "edgecolor": "none",
+                    "alpha": 0.88,
+                    "pad": 0.25,
+                },
+                ax=ax,
+            )
+
+        ax.set_title(title, fontsize=16)
         ax.axis("off")
         plt.tight_layout()
 
@@ -224,10 +323,15 @@ class GraphVisualizer:
         label_top_n,
         show_names,
         label_font_size,
+        node_label_box=True,
     ):
+        node_label_artists = []
+
         def update_labels():
-            for artist in ax.texts:
+            nonlocal node_label_artists
+            for artist in node_label_artists:
                 artist.remove()
+            node_label_artists = []
 
             xlim, ylim = ax.get_xlim(), ax.get_ylim()
             visible_nodes = [
@@ -252,9 +356,26 @@ class GraphVisualizer:
 
                     labels[node] = label
 
-            nx.draw_networkx_labels(
-                H, pos, labels=labels, font_size=label_font_size, ax=ax
+            bbox = None
+            if node_label_box:
+                bbox = {
+                    "facecolor": "white",
+                    "edgecolor": "#d1d5db",
+                    "alpha": 0.94,
+                    "boxstyle": "round,pad=0.22",
+                }
+
+            drawn_labels = nx.draw_networkx_labels(
+                H,
+                pos,
+                labels=labels,
+                font_size=label_font_size,
+                font_weight="bold",
+                font_color="#111827",
+                bbox=bbox,
+                ax=ax,
             )
+            node_label_artists = list(drawn_labels.values())
 
         def zoom(event):
             base_scale = 1.1
@@ -353,9 +474,18 @@ class GraphVisualizer:
         centrality_measures=None,
         layout_scale=1.0,
         label_font_size=8,
+        node_size_range=(5, 100),
+        node_color_attr=None,
+        node_palette=None,
+        show_edge_labels=False,
+        edge_label_font_size=8,
+        manual_node_positions=None,
+        node_label_box=True,
+        output_path=None,
+        show_plot=True,
     ):
         H, node_weights, node_sizes = self._filter_and_prepare_graph(
-            G, node_scale, weight_threshold
+            G, node_scale, weight_threshold, node_size_range
         )
 
         if not H or len(H.nodes()) == 0:
@@ -367,12 +497,26 @@ class GraphVisualizer:
                 node: (x * layout_scale, y * layout_scale)
                 for node, (x, y) in pos.items()
             }
+        if manual_node_positions:
+            for node, xy in manual_node_positions.items():
+                if node in pos and isinstance(xy, (tuple, list)) and len(xy) == 2:
+                    pos[node] = (float(xy[0]), float(xy[1]))
         if centrality_measures is not None and measure_name is not None:
             fig, ax = self._draw_centrality_graph(
                 H, pos, node_sizes, centrality_measures, measure_name, figsize
             )
         else:
-            fig, ax = self._draw_graph(H, pos, node_sizes, cluster_colors, figsize)
+            fig, ax = self._draw_graph(
+                H,
+                pos,
+                node_sizes,
+                cluster_colors,
+                figsize,
+                node_color_attr=node_color_attr,
+                node_palette=node_palette,
+                show_edge_labels=show_edge_labels,
+                edge_label_font_size=edge_label_font_size,
+            )
 
         self._setup_interactivity(
             fig,
@@ -383,7 +527,15 @@ class GraphVisualizer:
             label_top_n,
             show_names,
             label_font_size,
+            node_label_box,
         )
 
-        plt.show(block=True)
+        if output_path:
+            fig.savefig(output_path, dpi=300, bbox_inches="tight")
+
+        if show_plot:
+            plt.show(block=True)
+        else:
+            plt.close(fig)
+
         return H
