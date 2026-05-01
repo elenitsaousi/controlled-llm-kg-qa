@@ -73,6 +73,7 @@ def build_candidate_prompt(
     k: int = 5,
     canonical_question: Optional[str] = None,
     entity_mappings: Optional[List[Dict[str, object]]] = None,
+    predicted_query_plan_labels: Optional[List[str]] = None,
 ) -> str:
     effective_question = (canonical_question or question or "").strip()
     if not effective_question:
@@ -110,6 +111,9 @@ def build_candidate_prompt(
             continue
         entity_mapping_lines.append(f"- '{mention}' -> '{canonical}'")
     entity_mapping_text = "\n".join(entity_mapping_lines)
+    query_plan_labels_text = "\n".join(
+        f"- {label}" for label in (predicted_query_plan_labels or []) if str(label).strip()
+    )
 
     return (
         "You generate SPARQL SELECT queries for a real enterprise knowledge graph.\n\n"
@@ -132,6 +136,16 @@ def build_candidate_prompt(
             f"{required_concepts_text}\n"
             "Every candidate must cover these concepts unless the question is ambiguous.\n\n"
             if required_concepts_text
+            else ""
+        )
+
+        + (
+            "ML PREDICTED QUERY PLAN LABELS:\n"
+            f"{query_plan_labels_text}\n"
+            "Use these labels as soft structural guidance for classes, predicates, surveys, "
+            "aggregation, grouping, and query type. Do not copy impossible labels blindly; "
+            "the schema and question remain authoritative.\n\n"
+            if query_plan_labels_text
             else ""
         )
 

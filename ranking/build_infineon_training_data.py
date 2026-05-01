@@ -28,7 +28,7 @@ from kg.entity_linking import (
 )
 from llm.candidate_generation import generate_candidates, repair_candidate_query
 from llm.client import InfineonGPTClient
-from ranking.feature_extraction import extract_features
+from ranking.feature_extraction import extract_features, extract_query_plan
 
 
 PREFIX = (
@@ -281,6 +281,10 @@ def build_training_data(
             gold_feats = extract_features(question, gold_query, schema_dict)
         except Exception:
             gold_feats = {}
+        try:
+            gold_plan = extract_query_plan(gold_query, schema_dict)
+        except Exception:
+            gold_plan = {"labels": []}
         rows.append(
             {
                 "query_id": f"{qid}_GOLD",
@@ -292,6 +296,8 @@ def build_training_data(
                 "is_correct": 1,
                 "is_valid": 1,
                 "features": gold_feats,
+                "query_plan": gold_plan,
+                "query_plan_labels": list(gold_plan.get("labels", [])),
                 "ambiguity_label": ambiguity,
                 "topic": topic,
                 "family": family,
@@ -357,6 +363,10 @@ def build_training_data(
                     feats = extract_features(run_question, query, schema_dict)
                 except Exception:
                     feats = {}
+                try:
+                    plan = extract_query_plan(query, schema_dict)
+                except Exception:
+                    plan = {"labels": []}
 
                 rows.append(
                     {
@@ -369,6 +379,8 @@ def build_training_data(
                         "is_correct": is_correct,
                         "is_valid": is_valid,
                         "features": feats,
+                        "query_plan": plan,
+                        "query_plan_labels": list(plan.get("labels", [])),
                         "ambiguity_label": ambiguity,
                         "topic": topic,
                         "family": family,

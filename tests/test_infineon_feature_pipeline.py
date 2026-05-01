@@ -8,10 +8,16 @@ from kg.entity_linking import SURVEY_NS
 from ranking.feature_extraction import (
     extract_features,
     extract_query_labels,
+    extract_query_plan,
     extract_query_relations,
     extract_triples,
 )
-from ranking.np_tfidf_ranker import load_training_data
+from ranking.np_tfidf_ranker import (
+    QueryPlanPredictor,
+    evaluate_query_plan_predictor,
+    load_training_data,
+    train_query_plan_predictor,
+)
 from llm.prompts import build_candidate_prompt
 from kg.schema import load_schema
 from pipeline.qa import _rerank_with_semantic_coverage
@@ -53,6 +59,60 @@ def test_extract_features_nonzero_infineon_signal():
     assert feats["entity_coverage"] > 0.0
     assert feats["relation_coverage"] > 0.0
     assert feats["invalid_predicate_count"] == 0.0
+
+
+def test_extract_query_plan_labels_for_regional_demand():
+    schema = json.load(open("data/infineon/schema.json", "r", encoding="utf-8"))
+    plan = extract_query_plan(SAMPLE_QUERY, schema)
+
+    assert "DemandForRegion" in plan["classes"]
+    assert "Region" in plan["classes"]
+    assert "OEM_Survey" in plan["survey_origins"]
+    assert "totalDemand" in plan["predicates"]
+    assert "SUM" in plan["aggregations"]
+    assert "regionName" in plan["group_by_predicates"]
+    assert "class:DemandForRegion" in plan["labels"]
+    assert "predicate:totalDemand" in plan["labels"]
+    assert "survey:OEM_Survey" in plan["labels"]
+    assert "aggregation:SUM" in plan["labels"]
+    assert "query_type:grouped" in plan["labels"]
+
+
+def test_extract_query_plan_detects_filter_survey_origins():
+    schema = json.load(open("data/infineon/schema.json", "r", encoding="utf-8"))
+    query = (
+        "SELECT ?regionName ?originType (SUM(?unitsSold) AS ?totalDemand) WHERE { "
+        "?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; "
+        "survey:inRegion ?region ; survey:totalDemand ?unitsSold . "
+        "?origin a ?originType . "
+        "FILTER(?originType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey)) "
+        "?region a survey:Region ; survey:regionName ?regionName . "
+        "} GROUP BY ?regionName ?originType"
+    )
+    plan = extract_query_plan(query, schema)
+
+    assert plan["survey_origins"] == [
+        "OEM_Survey",
+        "Semiconductor_Survey",
+        "Tier1_Survey",
+    ]
+    assert "query_type:filtered" in plan["labels"]
+    assert "survey:Semiconductor_Survey" in plan["labels"]
+
+
+def test_query_plan_labels_are_training_row_friendly():
+    schema = json.load(open("data/infineon/schema.json", "r", encoding="utf-8"))
+    plan = extract_query_plan(SAMPLE_QUERY, schema)
+    row = {
+        "query": SAMPLE_QUERY,
+        "query_plan": plan,
+        "query_plan_labels": list(plan.get("labels", [])),
+    }
+
+    assert isinstance(row["query_plan"], dict)
+    assert isinstance(row["query_plan_labels"], list)
+    assert "class:DemandForRegion" in row["query_plan_labels"]
+    assert "predicate:totalDemand" in row["query_plan_labels"]
 
 
 def test_load_training_data_excludes_gold_by_default(tmp_path):
@@ -158,6 +218,86 @@ def test_candidate_prompt_includes_required_question_concepts():
     assert "OEM_Survey" in prompt
     assert "Semiconductor_Survey" in prompt
     assert "DemandForRegion" in prompt
+
+
+def test_candidate_prompt_includes_ml_query_plan_labels():
+    schema = load_schema("data/infineon/schema.json")
+    prompt = build_candidate_prompt(
+        "Compare total demand across Tier1, OEM and Semiconductor by region.",
+        schema,
+        k=3,
+        predicted_query_plan_labels=[
+            "class:DemandForRegion",
+            "predicate:totalDemand",
+            "survey:OEM_Survey",
+            "aggregation:SUM",
+            "query_type:grouped",
+        ],
+    )
+
+    assert "ML PREDICTED QUERY PLAN LABELS" in prompt
+    assert "class:DemandForRegion" in prompt
+    assert "predicate:totalDemand" in prompt
+    assert "query_type:grouped" in prompt
+
+
+def test_query_plan_predictor_trains_and_roundtrips(tmp_path):
+    rows = [
+        {
+            "id": "q1",
+            "question": "What is total demand by region?",
+            "query": SAMPLE_QUERY,
+            "labels": [
+                "class:DemandForRegion",
+                "predicate:totalDemand",
+                "aggregation:SUM",
+                "query_type:grouped",
+            ],
+        },
+        {
+            "id": "q2",
+            "question": "Show regional demand for OEM.",
+            "query": SAMPLE_QUERY,
+            "labels": [
+                "class:DemandForRegion",
+                "predicate:totalDemand",
+                "survey:OEM_Survey",
+                "aggregation:SUM",
+                "query_type:grouped",
+            ],
+        },
+        {
+            "id": "q3",
+            "question": "How many companies report shortage?",
+            "query": "SELECT ?status (COUNT(?Company) AS ?Count) WHERE { ?Company a survey:Company ; survey:reportsShortage ?Shortage . } GROUP BY ?status",
+            "labels": [
+                "class:Company",
+                "predicate:reportsShortage",
+                "aggregation:COUNT",
+                "query_type:grouped",
+            ],
+        },
+    ]
+
+    model = train_query_plan_predictor(
+        rows,
+        min_label_count=1,
+        threshold=0.25,
+        top_k=8,
+        epochs=80,
+    )
+    predicted = model.predict_labels("Compare total demand by region.")
+    assert "predicate:totalDemand" in predicted
+    assert "aggregation:SUM" in predicted
+
+    report = evaluate_query_plan_predictor(model, rows)
+    assert report["questions"] == 3
+    assert report["labels"] >= 6
+
+    model_path = tmp_path / "query_plan_model.json"
+    model.save(str(model_path), metadata={"test": True})
+    loaded = QueryPlanPredictor.load(str(model_path))
+    assert loaded.predict_labels("Compare total demand by region.")
 
 
 def test_execution_aware_selection_skips_empty_valid_query(monkeypatch):

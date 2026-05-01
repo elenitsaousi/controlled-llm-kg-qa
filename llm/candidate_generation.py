@@ -29,6 +29,7 @@ def generate_candidate_prompt(
     k: int = 5,
     canonical_question: Optional[str] = None,
     entity_mappings: Optional[List[Dict[str, object]]] = None,
+    predicted_query_plan_labels: Optional[List[str]] = None,
 ) -> str:
     return build_candidate_prompt(
         question=question,
@@ -36,6 +37,7 @@ def generate_candidate_prompt(
         k=k,
         canonical_question=canonical_question,
         entity_mappings=entity_mappings,
+        predicted_query_plan_labels=predicted_query_plan_labels,
     )
 
 
@@ -104,6 +106,7 @@ def generate_candidates(
     llm_client: Optional[object] = None,
     entity_alias_index: Optional[EntityAliasIndex] = None,
     max_entity_links: int = 5,
+    query_plan_predictor: Optional[object] = None,
 ) -> Dict:
     resolved = canonicalize_question_with_index(
         question,
@@ -112,6 +115,14 @@ def generate_candidates(
     )
     effective_question = resolved.effective_question
     entity_mappings = resolved.mappings
+    predicted_query_plan_labels: List[str] = []
+    if query_plan_predictor is not None:
+        try:
+            predicted_query_plan_labels = list(
+                query_plan_predictor.predict_labels(effective_question)
+            )
+        except Exception:
+            predicted_query_plan_labels = []
 
     # Build prompt
     prompt = build_candidate_prompt(
@@ -120,6 +131,7 @@ def generate_candidates(
         k=k,
         canonical_question=effective_question,
         entity_mappings=entity_mappings,
+        predicted_query_plan_labels=predicted_query_plan_labels,
     )
 
     # Use provided client or default
@@ -165,6 +177,8 @@ def generate_candidates(
                 "effective_question": effective_question,
                 "entity_mappings": entity_mappings,
                 "entity_linking_applied": bool(entity_mappings),
+                "predicted_query_plan_labels": predicted_query_plan_labels,
+                "query_plan_predictor_applied": bool(predicted_query_plan_labels),
             },
         }
 

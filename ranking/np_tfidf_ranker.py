@@ -10,7 +10,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 import numpy as np
 
 from ranking.feature_config import FEATURE_NAMES
-from ranking.feature_extraction import extract_features
+from ranking.feature_extraction import extract_features, extract_query_plan
 
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9_:%<>.=/-]+")
@@ -595,3 +595,217 @@ def rank_candidates_with_model(
     scores = model.score_question_candidates(question, queries, base_features)
     ranked = sorted(zip(scores, candidates), key=lambda x: x[0], reverse=True)
     return [c for _, c in ranked]
+
+
+def _tfidf_matrix(vectorizer: SimpleTfidf, texts: Sequence[str], vocab: Sequence[str]) -> np.ndarray:
+    rows = []
+    for text in texts:
+        vec = vectorizer.transform(text)
+        rows.append([float(vec.get(tok, 0.0)) for tok in vocab])
+    if not rows:
+        return np.zeros((0, len(vocab)), dtype=float)
+    return np.array(rows, dtype=float)
+
+
+class QueryPlanPredictor:
+    MODEL_TYPE = "query_plan_ovr_logreg_v1"
+
+    def __init__(
+        self,
+        labels: Sequence[str],
+        vocab: Sequence[str],
+        weights: np.ndarray,
+        bias: np.ndarray,
+        idf: Dict[str, float],
+        threshold: float = 0.35,
+        top_k: int = 24,
+    ) -> None:
+        self.labels = list(labels)
+        self.vocab = list(vocab)
+        self.weights = np.array(weights, dtype=float)
+        self.bias = np.array(bias, dtype=float)
+        self.vectorizer = SimpleTfidf(idf={k: float(v) for k, v in idf.items()})
+        self.threshold = float(threshold)
+        self.top_k = int(top_k)
+
+    def score(self, questions: Sequence[str]) -> np.ndarray:
+        X = _tfidf_matrix(self.vectorizer, questions, self.vocab)
+        if X.size == 0:
+            return np.zeros((0, len(self.labels)), dtype=float)
+        return _sigmoid((X @ self.weights.T) + self.bias)
+
+    def predict_labels(self, question: str, threshold: float | None = None, top_k: int | None = None) -> List[str]:
+        scores = self.score([question])
+        if scores.size == 0:
+            return []
+        th = self.threshold if threshold is None else float(threshold)
+        k = self.top_k if top_k is None else int(top_k)
+        row = scores[0]
+        selected = [self.labels[i] for i, s in enumerate(row) if float(s) >= th]
+        if not selected and len(row):
+            selected = [self.labels[int(row.argmax())]]
+        selected.sort(key=lambda lab: float(row[self.labels.index(lab)]), reverse=True)
+        return selected[: max(1, k)]
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "model_type": self.MODEL_TYPE,
+            "labels": self.labels,
+            "vocab": self.vocab,
+            "weights": self.weights.tolist(),
+            "bias": self.bias.tolist(),
+            "idf": self.vectorizer.idf,
+            "threshold": self.threshold,
+            "top_k": self.top_k,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "QueryPlanPredictor":
+        if data.get("model_type") != cls.MODEL_TYPE:
+            raise ValueError(f"Unsupported model_type: {data.get('model_type')}")
+        return cls(
+            labels=list(data.get("labels", [])),
+            vocab=list(data.get("vocab", [])),
+            weights=np.array(data.get("weights", []), dtype=float),
+            bias=np.array(data.get("bias", []), dtype=float),
+            idf={k: float(v) for k, v in dict(data.get("idf", {})).items()},
+            threshold=float(data.get("threshold", 0.35)),
+            top_k=int(data.get("top_k", 24)),
+        )
+
+    @classmethod
+    def load(cls, path: str) -> "QueryPlanPredictor":
+        with open(path, "r", encoding="utf-8") as f:
+            return cls.from_dict(json.load(f))
+
+    def save(self, path: str, metadata: Dict[str, object] | None = None) -> None:
+        payload = self.to_dict()
+        payload["metadata"] = metadata or {}
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
+
+def load_query_plan_training_rows(dataset_path: str, schema_path: str) -> List[Dict[str, object]]:
+    with open(dataset_path, "r", encoding="utf-8") as f:
+        dataset = json.load(f)
+    with open(schema_path, "r", encoding="utf-8") as f:
+        schema = json.load(f)
+
+    rows: List[Dict[str, object]] = []
+    for item in dataset:
+        question = str(item.get("question", "")).strip()
+        query = str(item.get("query", "")).strip()
+        if not question or not query:
+            continue
+        plan = extract_query_plan(query, schema)
+        labels = list(plan.get("labels", []))
+        if not labels:
+            continue
+        rows.append(
+            {
+                "id": str(item.get("id", "")),
+                "question": question,
+                "query": query,
+                "labels": labels,
+                "query_plan": plan,
+            }
+        )
+    return rows
+
+
+def train_query_plan_predictor(
+    rows: Sequence[Dict[str, object]],
+    min_label_count: int = 2,
+    threshold: float = 0.35,
+    top_k: int = 24,
+    lr: float = 0.2,
+    reg: float = 0.001,
+    epochs: int = 800,
+) -> QueryPlanPredictor:
+    if not rows:
+        raise RuntimeError("No query-plan training rows.")
+
+    label_counts = Counter()
+    for row in rows:
+        label_counts.update(str(l) for l in row.get("labels", []))
+    labels = sorted(
+        lab for lab, count in label_counts.items()
+        if int(count) >= max(1, int(min_label_count))
+    )
+    if not labels:
+        raise RuntimeError("No labels meet min_label_count.")
+
+    questions = [str(row.get("question", "")) for row in rows]
+    vectorizer = SimpleTfidf()
+    vectorizer.fit(questions)
+    vocab = sorted(vectorizer.idf.keys())
+    X = _tfidf_matrix(vectorizer, questions, vocab)
+
+    weights = []
+    biases = []
+    for label in labels:
+        y = np.array(
+            [1 if label in set(map(str, row.get("labels", []))) else 0 for row in rows],
+            dtype=int,
+        )
+        if int(y.sum()) == 0:
+            weights.append(np.zeros((len(vocab),), dtype=float))
+            biases.append(-10.0)
+            continue
+        if int(y.sum()) == len(y):
+            weights.append(np.zeros((len(vocab),), dtype=float))
+            biases.append(10.0)
+            continue
+        w, b = train_logistic(X, y, lr=lr, reg=reg, epochs=epochs)
+        weights.append(w)
+        biases.append(b)
+
+    return QueryPlanPredictor(
+        labels=labels,
+        vocab=vocab,
+        weights=np.array(weights, dtype=float),
+        bias=np.array(biases, dtype=float),
+        idf=vectorizer.idf,
+        threshold=threshold,
+        top_k=top_k,
+    )
+
+
+def evaluate_query_plan_predictor(
+    model: QueryPlanPredictor,
+    rows: Sequence[Dict[str, object]],
+    threshold: float | None = None,
+    top_k: int | None = None,
+) -> Dict[str, object]:
+    exact = 0
+    f1s = []
+    details = []
+    for row in rows:
+        gold = set(str(l) for l in row.get("labels", []) if str(l) in model.labels)
+        pred = set(model.predict_labels(str(row.get("question", "")), threshold=threshold, top_k=top_k))
+        tp = len(gold & pred)
+        precision = tp / len(pred) if pred else 0.0
+        recall = tp / len(gold) if gold else 0.0
+        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
+        f1s.append(f1)
+        exact += int(gold == pred)
+        details.append(
+            {
+                "id": row.get("id", ""),
+                "precision": precision,
+                "recall": recall,
+                "f1": f1,
+                "gold_count": len(gold),
+                "pred_count": len(pred),
+            }
+        )
+    n = max(1, len(rows))
+    return {
+        "questions": len(rows),
+        "labels": len(model.labels),
+        "exact_match_rate": exact / n,
+        "macro_f1": float(np.mean(f1s)) if f1s else 0.0,
+        "details": details,
+    }

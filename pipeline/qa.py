@@ -35,6 +35,7 @@ DEFAULT_INFINEON_NP_MODEL = BASE / "ranking" / "models" / "infineon_np_tfidf_ran
 DEFAULT_INFINEON_NP_MODEL_FALLBACK = BASE / "ranking" / "models" / "infineon_np_tfidf_ranker.json"
 DEFAULT_AMBIGUITY_CONFIG = BASE / "ranking" / "models" / "infineon_ambiguity_config.json"
 DEFAULT_AMBIGUITY_CONFIG_500 = BASE / "ranking" / "models" / "infineon_ambiguity_config_500.json"
+DEFAULT_QUERY_PLAN_MODEL = BASE / "ranking" / "models" / "infineon_query_plan_predictor.json"
 DEFAULT_INFINEON_SCHEMA_PATH = BASE / "data" / "infineon" / "schema.json"
 GATED_THRESHOLDS = BASE / "ranking" / "models" / "gated_thresholds.json"
 EXPERIMENTS_DIR = BASE / "experiments"
@@ -49,6 +50,7 @@ _ENTITY_ALIAS_INDEX = None
 _DEFAULT_GRAPH_CACHE: Optional[Graph] = None
 _RANKER_CACHE: Dict[str, object] = {}
 _AMBIGUITY_CONFIG_CACHE: Dict[str, AmbiguityConfig] = {}
+_QUERY_PLAN_PREDICTOR_CACHE: Dict[str, object] = {}
 
 NP_MODEL_TYPE = "np_tfidf_logreg_v1"
 
@@ -185,6 +187,23 @@ def _load_ranker_cached(model_path: Path):
     ranker = LogisticRanker(str(model_path))
     _RANKER_CACHE[key] = ranker
     return ranker
+
+
+def _load_query_plan_predictor_cached(model_path: Path = DEFAULT_QUERY_PLAN_MODEL):
+    key = str(model_path)
+    cached = _QUERY_PLAN_PREDICTOR_CACHE.get(key)
+    if cached is not None:
+        return cached
+    if not model_path.exists():
+        return None
+    try:
+        from ranking.np_tfidf_ranker import QueryPlanPredictor
+
+        predictor = QueryPlanPredictor.load(str(model_path))
+    except Exception:
+        return None
+    _QUERY_PLAN_PREDICTOR_CACHE[key] = predictor
+    return predictor
 
 
 def _normalize_query(text: str) -> str:
@@ -623,11 +642,13 @@ def answer_question(
     ml_ambiguity_config_path: Optional[str] = None,
 ) -> Dict[str, object]:
     alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
+    query_plan_predictor = _load_query_plan_predictor_cached()
     generation = generate_candidates(
         question,
         schema,
         llm_client=llm_client,
         entity_alias_index=alias_index,
+        query_plan_predictor=query_plan_predictor,
     )
     candidates = generation.get("candidates", [])
     metadata = generation.get("metadata", {})

@@ -178,6 +178,11 @@ FILTER_PATTERN = re.compile(r"\bFILTER\b", re.IGNORECASE)
 FILTER_REMOVE = re.compile(r"\bFILTER\s*\(.*?\)", re.IGNORECASE | re.DOTALL)
 OPTIONAL_REMOVE = re.compile(r"\bOPTIONAL\b", re.IGNORECASE)
 SELECT_PATTERN = re.compile(r"\bSELECT\b(.*?)\bWHERE\b", re.IGNORECASE | re.DOTALL)
+GROUP_BY_PATTERN = re.compile(r"\bGROUP\s+BY\b(.*?)(?:\bORDER\s+BY\b|\bHAVING\b|\bLIMIT\b|$)", re.IGNORECASE | re.DOTALL)
+ORDER_BY_PATTERN = re.compile(r"\bORDER\s+BY\b", re.IGNORECASE)
+LIMIT_PATTERN = re.compile(r"\bLIMIT\s+\d+\b", re.IGNORECASE)
+AGG_PATTERN = re.compile(r"\b(COUNT|SUM|AVG|MIN|MAX|GROUP_CONCAT)\s*\(", re.IGNORECASE)
+SURVEY_QNAME_RE = re.compile(r"survey:([A-Za-z_][A-Za-z0-9_%/-]*)")
 CAMEL_TOKEN_RE = re.compile(r"[A-Z]+(?=[A-Z][a-z]|[0-9]|_|$)|[A-Z]?[a-z]+|[0-9]+")
 
 # Lazy load sentence transformer to avoid slow startup
@@ -253,7 +258,7 @@ def _keywords_from_schema_term(term: str) -> List[str]:
 
 def _normalize_qname(token: str) -> str:
     t = token.strip().strip("()[]{}.,;")
-    if not t:
+    if not t or t.startswith("?"):
         return ""
     if t.startswith("<") and t.endswith(">"):
         core = t[1:-1]
@@ -397,6 +402,89 @@ def extract_select_vars(query: str) -> Set[str]:
     if match:
         return set(VAR_PATTERN.findall(match.group(1)))
     return set(VAR_PATTERN.findall(query))
+
+
+def extract_group_by_vars(query: str) -> Set[str]:
+    match = GROUP_BY_PATTERN.search(query)
+    if not match:
+        return set()
+    return set(VAR_PATTERN.findall(match.group(1)))
+
+
+def extract_aggregations(query: str) -> Set[str]:
+    return {m.group(1).upper() for m in AGG_PATTERN.finditer(query or "")}
+
+
+def extract_survey_qnames(query: str) -> Set[str]:
+    return {_normalize_qname(m.group(1)) for m in SURVEY_QNAME_RE.finditer(query or "")}
+
+
+def extract_query_plan(query: str, schema: Optional[Dict[str, object]] = None) -> Dict[str, object]:
+    """Extract a compact, supervised-learning-friendly query plan from SPARQL."""
+    schema_classes = set((schema or {}).get("classes", []))
+    schema_terms = extract_survey_qnames(query)
+    triple_classes = extract_query_labels(query)
+    predicates = extract_query_relations(query)
+    triples = extract_triples(query)
+    aggregations = extract_aggregations(query)
+    group_by_vars = extract_group_by_vars(query)
+    select_vars = extract_select_vars(query)
+    query_upper = query.upper()
+
+    survey_origins = {
+        s
+        for s in schema_terms | triple_classes
+        if s in {"Tier1_Survey", "OEM_Survey", "Semiconductor_Survey"}
+    }
+    classes = set(triple_classes)
+    if schema_classes:
+        classes.update(t for t in schema_terms if t in schema_classes)
+
+    group_by_predicates: Set[str] = set()
+    for subj, pred, obj in triples:
+        if obj in group_by_vars:
+            if pred.lower() in {"a", "rdf:type"}:
+                continue
+            pred_name = _normalize_qname(pred)
+            if pred_name:
+                group_by_predicates.add(pred_name)
+
+    query_types = set()
+    if aggregations:
+        query_types.add("aggregation")
+    if group_by_vars:
+        query_types.add("grouped")
+    if "FILTER" in query_upper or "VALUES" in query_upper:
+        query_types.add("filtered")
+    if "UNION" in query_upper:
+        query_types.add("union")
+    if ORDER_BY_PATTERN.search(query):
+        query_types.add("ordered")
+    if LIMIT_PATTERN.search(query):
+        query_types.add("limited")
+    if any(a in aggregations for a in {"MIN", "MAX"}) or LIMIT_PATTERN.search(query):
+        query_types.add("ranking")
+
+    labels = set()
+    labels.update(f"class:{x}" for x in sorted(classes))
+    labels.update(f"predicate:{x}" for x in sorted(predicates))
+    labels.update(f"survey:{x}" for x in sorted(survey_origins))
+    labels.update(f"aggregation:{x}" for x in sorted(aggregations))
+    labels.update(f"group_by_var:{x.lstrip('?')}" for x in sorted(group_by_vars))
+    labels.update(f"group_by_predicate:{x}" for x in sorted(group_by_predicates))
+    labels.update(f"query_type:{x}" for x in sorted(query_types))
+
+    return {
+        "classes": sorted(classes),
+        "predicates": sorted(predicates),
+        "survey_origins": sorted(survey_origins),
+        "aggregations": sorted(aggregations),
+        "group_by_vars": sorted(v.lstrip("?") for v in group_by_vars),
+        "group_by_predicates": sorted(group_by_predicates),
+        "select_vars": sorted(v.lstrip("?") for v in select_vars),
+        "query_types": sorted(query_types),
+        "labels": sorted(labels),
+    }
 
 
 def extract_triples(query: str) -> List[tuple]:

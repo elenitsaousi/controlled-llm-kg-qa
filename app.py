@@ -124,6 +124,10 @@ def _render_selection_explainability(result: Dict[str, Any]) -> None:
             f"Predicted ambiguity regime: {regime}"
             + (f" (entropy={float(entropy):.3f})" if entropy is not None else "")
         )
+    metadata = result.get("metadata") or {}
+    predicted_plan = metadata.get("predicted_query_plan_labels") or []
+    if predicted_plan:
+        st.caption("Predicted query-plan labels: " + ", ".join(map(str, predicted_plan[:16])))
 
     st.write(f"Selection reason: `{expl.get('selection_reason', 'n/a')}`")
     st.write(
