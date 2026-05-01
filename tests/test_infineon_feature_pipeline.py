@@ -22,6 +22,7 @@ from llm.prompts import build_candidate_prompt
 from kg.schema import load_schema
 from pipeline.qa import _rerank_with_semantic_coverage
 from validation.semantic import semantic_coverage_report
+from llm.candidate_generation import _template_candidate_queries
 
 
 SAMPLE_QUERY = (
@@ -344,3 +345,19 @@ def test_execution_aware_selection_skips_unbound_projected_variable(monkeypatch)
     assert selected == bound_query
     assert errors == []
     assert rank == 1
+
+
+def test_template_candidates_cover_hard_infineon_intents():
+    future_vehicle = _template_candidate_queries(
+        "Show future demand percentage change by vehicle type and quarter."
+    )
+    assert future_vehicle
+    assert "analyzesVehicleType" in future_vehicle[0]
+    assert "forTimePeriod" in future_vehicle[0]
+
+    order_cancel = _template_candidate_queries(
+        "Show order cancellation responses by semiconductor technology category."
+    )
+    assert order_cancel
+    assert "OrderCancellation" in order_cancel[0]
+    assert "hasResponseType" in order_cancel[0]

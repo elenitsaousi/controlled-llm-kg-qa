@@ -77,6 +77,65 @@ def _normalize_generated_output(generated: object) -> List[str]:
     raise ValueError(f"Unexpected LLM output type: {type(generated)}")
 
 
+def _template_candidate_queries(question: str) -> List[str]:
+    q = (question or "").lower()
+    templates: List[str] = []
+
+    if "future" in q and "demand" in q and "technology" in q and "quarter" in q:
+        templates.append(
+            "SELECT ?techLabel ?quarterLabel (SUM(?pct) AS ?totalFutureChange) WHERE { "
+            "?entry a survey:FutureDemandAnalysis ; "
+            "survey:analyzesTechnologyCategory ?tech ; "
+            "survey:forTimePeriod ?quarter ; "
+            "survey:percentageChange ?pct . "
+            "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?techLabel) "
+            "BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) "
+            "} GROUP BY ?techLabel ?quarterLabel ORDER BY ?techLabel ?quarterLabel"
+        )
+
+    if "future" in q and "demand" in q and "vehicle" in q and "quarter" in q:
+        templates.append(
+            "SELECT ?vehicleType ?quarterLabel (AVG(?pct) AS ?avgChange) WHERE { "
+            "?entry a survey:FutureDemandAnalysis ; "
+            "survey:analyzesVehicleType ?vehicle ; "
+            "survey:forTimePeriod ?quarter ; "
+            "survey:percentageChange ?pct . "
+            "BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) "
+            "BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) "
+            "} GROUP BY ?vehicleType ?quarterLabel ORDER BY ?vehicleType ?quarterLabel"
+        )
+
+    if (
+        "autonomous" in q
+        and "vehicle" in q
+        and "sae" in q
+        and any(w in q for w in ["highest", "max", "maximum", "top"])
+    ):
+        templates.append(
+            "SELECT ?vehicleType ?saeLevel (MAX(?percentage) AS ?maxPercentage) WHERE { "
+            "?entry a survey:AutonomousDrivingDevelopment ; "
+            "survey:hasVehicleType ?vehicle ; "
+            "survey:hasSAELevel ?sae ; "
+            "survey:hasPercentage ?percentage . "
+            "BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) "
+            "BIND(REPLACE(STR(?sae), '^.*/SAE_Level_', '') AS ?saeLevel) "
+            "} GROUP BY ?vehicleType ?saeLevel ORDER BY DESC(?maxPercentage) LIMIT 1"
+        )
+
+    if "order cancellation" in q and "technology" in q:
+        templates.append(
+            "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { "
+            "?entry a survey:OrderCancellation ; "
+            "survey:forTechnologyCategory ?tech ; "
+            "survey:hasResponseType ?responseType ; "
+            "survey:participantCount ?participants . "
+            "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) "
+            "} GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType"
+        )
+
+    return templates
+
+
 def repair_candidate_query(
     question: str,
     schema: KGSchema,
@@ -152,6 +211,15 @@ def generate_candidates(
 
         seen = set()
         candidates = []
+        for query in _template_candidate_queries(effective_question):
+            key = " ".join(query.split()).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            candidates.append({"query": query, "source": "template"})
+            if len(candidates) >= k:
+                break
+
         for text in generated:
             query = _normalize_candidate_query(str(text))
             if not query:
