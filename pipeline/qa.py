@@ -401,20 +401,54 @@ def _runtime_validate_query(query: str) -> List[Dict[str, str]]:
     return errors
 
 
-def _query_has_runtime_rows(query: str) -> Tuple[Optional[bool], Optional[str]]:
+def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
     graph = _get_default_graph()
     if graph is None:
-        return None, "graph_unavailable"
+        return {
+            "has_rows": None,
+            "row_count": 0,
+            "unbound_vars": [],
+            "error": "graph_unavailable",
+        }
     try:
         results = graph.query(_ensure_prefixes(query))
-        iterator = iter(results)
-        try:
-            next(iterator)
-            return True, None
-        except StopIteration:
-            return False, None
+        vars_seen = [str(v) for v in getattr(results, "vars", [])]
+        bound_counts = {v: 0 for v in vars_seen}
+        row_count = 0
+        for row in results:
+            if row_count >= max_rows:
+                break
+            row_count += 1
+            if hasattr(row, "asdict"):
+                rd = row.asdict()
+                for var in vars_seen:
+                    if rd.get(var) is not None:
+                        bound_counts[var] = bound_counts.get(var, 0) + 1
+            else:
+                for var, value in zip(vars_seen, row):
+                    if value is not None:
+                        bound_counts[var] = bound_counts.get(var, 0) + 1
+        unbound_vars = [
+            var for var in vars_seen if row_count > 0 and bound_counts.get(var, 0) == 0
+        ]
+        return {
+            "has_rows": row_count > 0,
+            "row_count": row_count,
+            "unbound_vars": unbound_vars,
+            "error": None,
+        }
     except Exception as exc:
-        return None, str(exc)
+        return {
+            "has_rows": None,
+            "row_count": 0,
+            "unbound_vars": [],
+            "error": str(exc),
+        }
+
+
+def _query_has_runtime_rows(query: str) -> Tuple[Optional[bool], Optional[str]]:
+    profile = _query_runtime_profile(query)
+    return profile.get("has_rows"), profile.get("error")
 
 
 def _select_best_valid_query(
@@ -424,6 +458,7 @@ def _select_best_valid_query(
         return None, [], -1
 
     first_valid: Optional[Tuple[str, int]] = None
+    first_nonempty: Optional[Tuple[str, int]] = None
     first_errors: List[Dict[str, str]] = []
     for idx, query in enumerate(ordered_queries):
         errs = _runtime_validate_query(query)
@@ -433,11 +468,19 @@ def _select_best_valid_query(
             continue
         if first_valid is None:
             first_valid = (query, idx)
-        has_rows, exec_error = _query_has_runtime_rows(query)
-        if has_rows is True:
+        profile = _query_runtime_profile(query)
+        has_rows = profile.get("has_rows")
+        exec_error = profile.get("error")
+        unbound_vars = profile.get("unbound_vars") or []
+        if has_rows is True and first_nonempty is None:
+            first_nonempty = (query, idx)
+        if has_rows is True and not unbound_vars:
             return query, [], idx
         if exec_error and idx == 0:
             first_errors = [{"type": "execution", "message": exec_error}]
+
+    if first_nonempty is not None:
+        return first_nonempty[0], [], first_nonempty[1]
 
     if first_valid is not None:
         return first_valid[0], [], first_valid[1]
@@ -486,6 +529,7 @@ def _build_selection_explanation(
     selected_has_rows, selected_execution_error = (
         _query_has_runtime_rows(selected_query or "") if selected_query else (None, None)
     )
+    selected_profile = _query_runtime_profile(selected_query or "") if selected_query else {}
 
     rows: List[Dict[str, object]] = []
     for idx, cand in enumerate(candidates):
@@ -498,6 +542,7 @@ def _build_selection_explanation(
         has_rows, exec_error = (
             _query_has_runtime_rows(query) if not errs else (None, None)
         )
+        exec_profile = _query_runtime_profile(query) if not errs else {}
         rows.append(
             {
                 "candidate_index": idx + 1,
@@ -506,6 +551,9 @@ def _build_selection_explanation(
                 "error_count": len(errs),
                 "execution_has_rows": has_rows,
                 "execution_error": exec_error,
+                "execution_unbound_vars": ", ".join(
+                    map(str, exec_profile.get("unbound_vars") or [])
+                ),
                 "coverage_score": coverage.get("coverage_score"),
                 "coverage_missing": ", ".join(coverage.get("missing", [])),
                 "schema_score": schema_scores.get(ckey),
@@ -535,6 +583,7 @@ def _build_selection_explanation(
         "selected_coverage": selected_coverage,
         "selected_execution_has_rows": selected_has_rows,
         "selected_execution_error": selected_execution_error,
+        "selected_execution_unbound_vars": list(selected_profile.get("unbound_vars") or []),
         "candidate_count": len(rows),
         "valid_candidate_count": valid_count,
         "invalid_candidate_count": max(0, len(rows) - valid_count),

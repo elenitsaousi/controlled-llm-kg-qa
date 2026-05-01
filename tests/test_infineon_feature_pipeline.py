@@ -316,3 +316,31 @@ def test_execution_aware_selection_skips_empty_valid_query(monkeypatch):
     assert selected == non_empty_query
     assert errors == []
     assert rank == 1
+
+
+def test_execution_aware_selection_skips_unbound_projected_variable(monkeypatch):
+    g = Graph()
+    company = URIRef(SURVEY_NS + "Company1")
+    g.add((company, RDF.type, URIRef(SURVEY_NS + "Company")))
+    monkeypatch.setattr(qa_pipeline, "_get_default_graph", lambda: g)
+
+    unbound_label_query = (
+        "SELECT ?x ?label WHERE { "
+        "?x a survey:Company . "
+        "OPTIONAL { ?x survey:missingLabel ?label } "
+        "}"
+    )
+    bound_query = (
+        "SELECT ?x ?label WHERE { "
+        "?x a survey:Company . "
+        "BIND('company' AS ?label) "
+        "}"
+    )
+
+    selected, errors, rank = qa_pipeline._select_best_valid_query(
+        [unbound_label_query, bound_query]
+    )
+
+    assert selected == bound_query
+    assert errors == []
+    assert rank == 1

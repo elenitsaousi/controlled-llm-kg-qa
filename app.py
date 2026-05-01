@@ -148,6 +148,12 @@ def _render_selection_explainability(result: Dict[str, Any]) -> None:
             )
     if "selected_execution_has_rows" in expl:
         st.write(f"Execution returned rows during selection: `{expl.get('selected_execution_has_rows')}`")
+        unbound = expl.get("selected_execution_unbound_vars") or []
+        if unbound:
+            st.warning(
+                "Selected query has unbound projected variables: "
+                + ", ".join(map(str, unbound))
+            )
         if expl.get("selected_execution_error"):
             st.warning(f"Selection execution check failed: {expl.get('selected_execution_error')}")
 

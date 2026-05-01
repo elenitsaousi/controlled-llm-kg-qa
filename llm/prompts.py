@@ -181,6 +181,9 @@ def build_candidate_prompt(
         "- Other candidates may vary, but only with schema-valid alternatives.\n"
         "- Do NOT force aggregation/filter/join variants when the question does not require them.\n"
         "- Never aggregate textual/categorical values (e.g., status/trend strings) with SUM/AVG.\n"
+        "- Every SELECT variable must be bound in WHERE or BIND; never return an unbound label column.\n"
+        "- If ?origin is typed with '?origin a ?surveyClass', compare ?surveyClass to survey:OEM_Survey/Tier1_Survey/Semiconductor_Survey.\n"
+        "- If ?origin is directly one of survey:OEM_Survey/Tier1_Survey/Semiconductor_Survey, compare ?origin to those resources.\n"
         "- Keep candidates meaningfully different; avoid trivial variable-renaming duplicates.\n\n"
 
         f"{hints_text}\n\n"
