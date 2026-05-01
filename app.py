@@ -69,6 +69,20 @@ def _ensure_prefixes(query: str) -> str:
     return DEFAULT_PREFIX + query
 
 
+def _format_graph_value(value: object) -> str:
+    text = str(value)
+    ns = "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/"
+    if text.startswith(ns):
+        text = text[len(ns):]
+    if text in {"OEM_Survey", "Tier1_Survey", "Semiconductor_Survey"}:
+        return {
+            "OEM_Survey": "OEM",
+            "Tier1_Survey": "Tier1",
+            "Semiconductor_Survey": "Semiconductor",
+        }[text]
+    return text
+
+
 def _load_schema_from_path(schema_path: str):
     cleaned = (schema_path or "").strip()
     if not cleaned:
@@ -99,9 +113,9 @@ def _execute_query_preview(
             break
         if hasattr(row, "asdict"):
             rd = row.asdict()
-            rows.append({str(k): str(v) for k, v in rd.items()})
+            rows.append({str(k): _format_graph_value(v) for k, v in rd.items()})
         else:
-            rows.append({f"col{j + 1}": str(v) for j, v in enumerate(row)})
+            rows.append({f"col{j + 1}": _format_graph_value(v) for j, v in enumerate(row)})
     return rows, truncated
 
 

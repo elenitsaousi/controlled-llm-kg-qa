@@ -184,6 +184,7 @@ def build_candidate_prompt(
         "- Every SELECT variable must be bound in WHERE or BIND; never return an unbound label column.\n"
         "- If ?origin is typed with '?origin a ?surveyClass', compare ?surveyClass to survey:OEM_Survey/Tier1_Survey/Semiconductor_Survey.\n"
         "- If ?origin is directly one of survey:OEM_Survey/Tier1_Survey/Semiconductor_Survey, compare ?origin to those resources.\n"
+        "- For survey comparison outputs, return a human-readable label like ?surveyType with BIND(IF(..., 'OEM', 'Tier1', 'Semiconductor')). Do not expose full survey class URIs to the user.\n"
         "- Keep candidates meaningfully different; avoid trivial variable-renaming duplicates.\n\n"
 
         f"{hints_text}\n\n"
