@@ -105,5 +105,5 @@ def load_schema(schema_path: str) -> KGSchema:
 
 def load_default_schema() -> KGSchema:
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    schema_path = os.path.join(base_dir, "data", "toy_kg", "schema.json")
+    schema_path = os.path.join(base_dir, "data", "infineon", "schema.json")
     return load_schema(schema_path)

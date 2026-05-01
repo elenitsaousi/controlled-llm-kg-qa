@@ -1,3 +1,0 @@
-git add test_untrained_no_model.py untrained_test.json
-git commit -m "add test files"
-git push

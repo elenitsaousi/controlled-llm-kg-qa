@@ -1,7 +1,0 @@
-[
-  {"id": "TEST1", "question": "What percentage of Tier1 shortage in EV components?", "expected_category": "tier1"},
-  {"id": "TEST2", "question": "Which regions have highest Tier1 future demand Q2?", "expected_category": "regional"},
-  {"id": "TEST3", "question": "How many semiconductor companies have order cancellations >10%?", "expected_category": "semi"},
-  {"id": "TEST4", "question": "Qualitative trend for autonomous driving SAE Level 3 in OEM BEV?", "expected_category": "oem"},
-  {"id": "TEST5", "question": "Average BL1 vs BL2 difference in OEM current demand?", "expected_category": "oem"}
-]

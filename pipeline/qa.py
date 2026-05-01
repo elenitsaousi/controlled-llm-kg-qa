@@ -36,7 +36,7 @@ DEFAULT_INFINEON_NP_MODEL_FALLBACK = BASE / "ranking" / "models" / "infineon_np_
 DEFAULT_AMBIGUITY_CONFIG = BASE / "ranking" / "models" / "infineon_ambiguity_config.json"
 DEFAULT_AMBIGUITY_CONFIG_500 = BASE / "ranking" / "models" / "infineon_ambiguity_config_500.json"
 DEFAULT_INFINEON_SCHEMA_PATH = BASE / "data" / "infineon" / "schema.json"
-GATED_THRESHOLDS = BASE / "analysis_outputs" / "gated_thresholds.json"
+GATED_THRESHOLDS = BASE / "ranking" / "models" / "gated_thresholds.json"
 EXPERIMENTS_DIR = BASE / "experiments"
 DEFAULT_INFINEON_GRAPH = BASE / "data" / "infineon" / "graph.ttl"
 DEFAULT_PREFIX = """\
@@ -871,14 +871,14 @@ def run_ambiguity_experiment(
     qpath = (
         Path(questions_path)
         if questions_path
-        else BASE / "data" / "toy_kg" / "questions" / "questions.json"
+        else BASE / "data" / "infineon" / "infineon_dataset_100.json"
     )
     questions = _load_questions(qpath)
 
     summary: List[Dict[str, object]] = []
     for item in questions:
         question_text = str(item.get("question", ""))
-        gold_query = str(item.get("gold_query", ""))
+        gold_query = str(item.get("gold_query") or item.get("query") or "")
 
         result = answer_question(
             question_text,

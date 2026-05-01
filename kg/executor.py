@@ -72,14 +72,11 @@ def execute_query_stub(
     questions_path: Optional[str] = None,
     question: Optional[str] = None,
 ) -> Dict[str, object]:
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    default_path = os.path.join(
-        base_dir, "data", "toy_kg", "questions", "questions.json"
-    )
-    results_path = os.path.join(
-        base_dir, "data", "toy_kg", "results.json"
-    )
-    questions_file = questions_path or default_path
+    if not questions_path:
+        return {"rows": [], "matched_question_id": None, "error": None}
+
+    questions_file = questions_path
+    results_path = os.path.splitext(questions_file)[0] + "_results.json"
 
     if not os.path.exists(questions_file) or not os.path.exists(results_path):
         return {"rows": [], "matched_question_id": None, "error": None}
