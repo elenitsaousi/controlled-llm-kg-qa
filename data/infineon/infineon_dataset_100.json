@@ -908,5 +908,1365 @@
     "query": "SELECT ?companyName (COUNT(?share) AS ?activeCategories) WHERE { ?share a survey:ComponentShare ; survey:forCompany ?company ; survey:isActiveInCategory true . ?company survey:companyName ?companyName . } GROUP BY ?companyName ORDER BY DESC(?activeCategories)",
     "ambiguity_label": "mid",
     "topic": "gold_expansion"
+  },
+  {
+    "id": "PARA131",
+    "question": "In the Infineon graph, how many distinct regions exist in the Infineon survey graph?",
+    "query": "SELECT (COUNT(DISTINCT ?r) AS ?count) WHERE { ?r a survey:Region }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW1"
+  },
+  {
+    "id": "PARA132",
+    "question": "In the Infineon graph, list all region names in the Infineon graph?",
+    "query": "SELECT ?name WHERE { ?r a survey:Region ; survey:regionName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW2"
+  },
+  {
+    "id": "PARA133",
+    "question": "In the Infineon graph, how many DemandForRegion entries exist in total?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE { ?d a survey:DemandForRegion }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW3"
+  },
+  {
+    "id": "PARA134",
+    "question": "In the Infineon graph, how many Company instances are present?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE { ?c a survey:Company }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW4"
+  },
+  {
+    "id": "PARA135",
+    "question": "In the Infineon graph, how many Quarter entities exist?",
+    "query": "SELECT (COUNT(?q) AS ?count) WHERE { ?q a survey:Quarter }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW5"
+  },
+  {
+    "id": "PARA136",
+    "question": "In the Infineon graph, how many FutureDemandAnalysis entries exist overall?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE { ?f a survey:FutureDemandAnalysis }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW6"
+  },
+  {
+    "id": "PARA137",
+    "question": "In the Infineon graph, how many OrderCancellation entries exist overall?",
+    "query": "SELECT (COUNT(?o) AS ?count) WHERE { ?o a survey:OrderCancellation }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW7"
+  },
+  {
+    "id": "PARA138",
+    "question": "In the Infineon graph, how many AutonomousDrivingDevelopment entries exist?",
+    "query": "SELECT (COUNT(?a) AS ?count) WHERE { ?a a survey:AutonomousDrivingDevelopment }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW8"
+  },
+  {
+    "id": "PARA139",
+    "question": "In the Infineon graph, how many VehicleSalesObservation records exist?",
+    "query": "SELECT (COUNT(?v) AS ?count) WHERE { ?v a survey:VehicleSalesObservation }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW9"
+  },
+  {
+    "id": "PARA140",
+    "question": "In the Infineon graph, how many TechnologyCategory entities exist?",
+    "query": "SELECT (COUNT(?t) AS ?count) WHERE { ?t a survey:TechnologyCategory }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW10"
+  },
+  {
+    "id": "PARA141",
+    "question": "In the Infineon graph, how many SAE levels are represented?",
+    "query": "SELECT (COUNT(DISTINCT ?s) AS ?count) WHERE { ?x survey:hasSAELevel ?s }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW11"
+  },
+  {
+    "id": "PARA142",
+    "question": "In the Infineon graph, list all baseline types used in the dataset?",
+    "query": "SELECT DISTINCT ?baseline WHERE { ?x survey:baselineType ?baseline } ORDER BY ?baseline",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW12"
+  },
+  {
+    "id": "PARA143",
+    "question": "In the Infineon graph, list all quarter labels used in the dataset?",
+    "query": "SELECT DISTINCT ?label WHERE { ?q a survey:Quarter ; survey:periodLabel ?label } ORDER BY ?label",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW13"
+  },
+  {
+    "id": "PARA144",
+    "question": "In the Infineon graph, list all technology category names?",
+    "query": "SELECT DISTINCT ?name WHERE { ?t a survey:TechnologyCategory ; survey:technologyCategoryName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW14"
+  },
+  {
+    "id": "PARA145",
+    "question": "In the Infineon graph, which survey types are present among Tier1, OEM and Semiconductor?",
+    "query": "SELECT DISTINCT ?type WHERE { ?s a ?type . FILTER(?type IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey)) } ORDER BY ?type",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW15"
+  },
+  {
+    "id": "PARA146",
+    "question": "In the Infineon graph, how many DemandForRegion entries are linked to Tier1 survey?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE {\n                ?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW16"
+  },
+  {
+    "id": "PARA147",
+    "question": "In the Infineon graph, how many company entries are linked to Tier1 survey?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW17"
+  },
+  {
+    "id": "PARA148",
+    "question": "In the Infineon graph, how many FutureDemandAnalysis entries are linked to Tier1 survey?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE {\n                ?f a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW18"
+  },
+  {
+    "id": "PARA149",
+    "question": "In the Infineon graph, how many OrderCancellation entries are linked to Tier1 survey?",
+    "query": "SELECT (COUNT(?oc) AS ?count) WHERE {\n                ?oc a survey:OrderCancellation ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW19"
+  },
+  {
+    "id": "PARA150",
+    "question": "In the Infineon graph, how many Tier1 companies report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Tier1_Survey .\n                FILTER(?flag = true)\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW20"
+  },
+  {
+    "id": "PARA151",
+    "question": "In the Infineon graph, how many Tier1 companies do not report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Tier1_Survey .\n                FILTER(?flag = false)\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW21"
+  },
+  {
+    "id": "PARA152",
+    "question": "In the Infineon graph, how many DemandForRegion entries are linked to OEM survey?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE {\n                ?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW22"
+  },
+  {
+    "id": "PARA153",
+    "question": "In the Infineon graph, how many company entries are linked to OEM survey?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW23"
+  },
+  {
+    "id": "PARA154",
+    "question": "In the Infineon graph, how many FutureDemandAnalysis entries are linked to OEM survey?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE {\n                ?f a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin ?o .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW24"
+  },
+  {
+    "id": "PARA155",
+    "question": "In the Infineon graph, how many OrderCancellation entries are linked to OEM survey?",
+    "query": "SELECT (COUNT(?oc) AS ?count) WHERE {\n                ?oc a survey:OrderCancellation ; survey:hasSurveyOrigin ?o .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW25"
+  },
+  {
+    "id": "PARA156",
+    "question": "In the Infineon graph, how many OEM companies report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:OEM_Survey .\n                FILTER(?flag = true)\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW26"
+  },
+  {
+    "id": "PARA157",
+    "question": "In the Infineon graph, how many OEM companies do not report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:OEM_Survey .\n                FILTER(?flag = false)\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW27"
+  },
+  {
+    "id": "PARA158",
+    "question": "In the Infineon graph, how many DemandForRegion entries are linked to Semiconductor survey?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE {\n                ?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW28"
+  },
+  {
+    "id": "PARA159",
+    "question": "In the Infineon graph, how many company entries are linked to Semiconductor survey?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW29"
+  },
+  {
+    "id": "PARA160",
+    "question": "In the Infineon graph, how many FutureDemandAnalysis entries are linked to Semiconductor survey?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE {\n                ?f a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW30"
+  },
+  {
+    "id": "PARA161",
+    "question": "In the Infineon graph, how many OrderCancellation entries are linked to Semiconductor survey?",
+    "query": "SELECT (COUNT(?oc) AS ?count) WHERE {\n                ?oc a survey:OrderCancellation ; survey:hasSurveyOrigin ?o .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW31"
+  },
+  {
+    "id": "PARA162",
+    "question": "In the Infineon graph, how many Semiconductor companies report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Semiconductor_Survey .\n                FILTER(?flag = true)\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW32"
+  },
+  {
+    "id": "PARA163",
+    "question": "In the Infineon graph, how many Semiconductor companies do not report semiconductor shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Semiconductor_Survey .\n                FILTER(?flag = false)\n                }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW33"
+  },
+  {
+    "id": "PARA164",
+    "question": "In the Infineon graph, how many Tier1 demand entries exist for region Americas?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE {\n                    ?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o ; survey:inRegion ?r .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName \"Americas\"\n                    }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW34"
+  },
+  {
+    "id": "PARA165",
+    "question": "In the Infineon graph, what is the total demand by region for Tier1 survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID1"
+  },
+  {
+    "id": "PARA166",
+    "question": "In the Infineon graph, what is the total demand by region for OEM survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID2"
+  },
+  {
+    "id": "PARA167",
+    "question": "In the Infineon graph, what is the total demand by region for Semiconductor survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID3"
+  },
+  {
+    "id": "PARA168",
+    "question": "In the Infineon graph, what is the total Tier1 demand for region Americas?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID4"
+  },
+  {
+    "id": "PARA169",
+    "question": "In the Infineon graph, what is the total Tier1 demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID5"
+  },
+  {
+    "id": "PARA170",
+    "question": "In the Infineon graph, what is the total Tier1 demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID6"
+  },
+  {
+    "id": "PARA171",
+    "question": "In the Infineon graph, what is the total Tier1 demand for region Europe?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID7"
+  },
+  {
+    "id": "PARA172",
+    "question": "In the Infineon graph, what is the total Tier1 demand for region Japan?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID8"
+  },
+  {
+    "id": "PARA173",
+    "question": "In the Infineon graph, what is the total OEM demand for region Americas?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID9"
+  },
+  {
+    "id": "PARA174",
+    "question": "In the Infineon graph, what is the total OEM demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID10"
+  },
+  {
+    "id": "PARA175",
+    "question": "In the Infineon graph, what is the total OEM demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID11"
+  },
+  {
+    "id": "PARA176",
+    "question": "In the Infineon graph, what is the total OEM demand for region Europe?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID12"
+  },
+  {
+    "id": "PARA177",
+    "question": "In the Infineon graph, what is the total OEM demand for region Japan?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID13"
+  },
+  {
+    "id": "PARA178",
+    "question": "In the Infineon graph, what is the total Semiconductor demand for region Americas?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID14"
+  },
+  {
+    "id": "PARA179",
+    "question": "In the Infineon graph, what is the total Semiconductor demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID15"
+  },
+  {
+    "id": "PARA180",
+    "question": "In the Infineon graph, what is the total Semiconductor demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID16"
+  },
+  {
+    "id": "PARA181",
+    "question": "In the Infineon graph, what is the total Semiconductor demand for region Europe?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID17"
+  },
+  {
+    "id": "PARA182",
+    "question": "In the Infineon graph, what is the total Semiconductor demand for region Japan?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID18"
+  },
+  {
+    "id": "PARA183",
+    "question": "In the Infineon graph, what is the average Tier1 demand for region Americas?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID19"
+  },
+  {
+    "id": "PARA184",
+    "question": "In the Infineon graph, what is the average Tier1 demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID20"
+  },
+  {
+    "id": "PARA185",
+    "question": "In the Infineon graph, what is the average Tier1 demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID21"
+  },
+  {
+    "id": "PARA186",
+    "question": "In the Infineon graph, what is the average Tier1 demand for region Europe?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID22"
+  },
+  {
+    "id": "PARA187",
+    "question": "In the Infineon graph, what is the average Tier1 demand for region Japan?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID23"
+  },
+  {
+    "id": "PARA188",
+    "question": "In the Infineon graph, what is the average OEM demand for region Americas?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID24"
+  },
+  {
+    "id": "PARA189",
+    "question": "In the Infineon graph, what is the average OEM demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID25"
+  },
+  {
+    "id": "PARA190",
+    "question": "In the Infineon graph, what is the average OEM demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID26"
+  },
+  {
+    "id": "PARA191",
+    "question": "In the Infineon graph, what is the average OEM demand for region Europe?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID27"
+  },
+  {
+    "id": "PARA192",
+    "question": "In the Infineon graph, what is the average OEM demand for region Japan?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID28"
+  },
+  {
+    "id": "PARA193",
+    "question": "In the Infineon graph, what is the average Semiconductor demand for region Americas?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID29"
+  },
+  {
+    "id": "PARA194",
+    "question": "In the Infineon graph, what is the average Semiconductor demand for region Asia Pacific/All Other?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/All Other\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID30"
+  },
+  {
+    "id": "PARA195",
+    "question": "In the Infineon graph, what is the average Semiconductor demand for region Asia Pacific/China?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID31"
+  },
+  {
+    "id": "PARA196",
+    "question": "In the Infineon graph, what is the average Semiconductor demand for region Europe?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Europe\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID32"
+  },
+  {
+    "id": "PARA197",
+    "question": "In the Infineon graph, what is the average Semiconductor demand for region Japan?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "MID33"
+  },
+  {
+    "id": "PARA198",
+    "question": "In the Infineon graph, how does Tier1 demand percentage change by quarter and region?",
+    "query": "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH1"
+  },
+  {
+    "id": "PARA199",
+    "question": "In the Infineon graph, what is the quarterly demand percentage trend for Tier1 survey?",
+    "query": "SELECT ?quarterLabel (AVG(?pct) AS ?avgPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Tier1_Survey .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ORDER BY ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH2"
+  },
+  {
+    "id": "PARA200",
+    "question": "In the Infineon graph, which region has the highest total demand in Tier1 survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH3"
+  },
+  {
+    "id": "PARA201",
+    "question": "In the Infineon graph, which region has the lowest total demand in Tier1 survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY ASC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH4"
+  },
+  {
+    "id": "PARA202",
+    "question": "In the Infineon graph, what is the shortage split (yes/no) for Tier1 companies?",
+    "query": "SELECT ?status (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:reportsShortage ?flag .\n                ?o a survey:Tier1_Survey .\n                BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n                } GROUP BY ?status ORDER BY ?status",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH5"
+  },
+  {
+    "id": "PARA203",
+    "question": "In the Infineon graph, what are total and average demand levels for Tier1 survey?",
+    "query": "SELECT (SUM(?units) AS ?totalDemand) (AVG(?units) AS ?avgDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey\n                }",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH6"
+  },
+  {
+    "id": "PARA204",
+    "question": "In the Infineon graph, how does OEM demand percentage change by quarter and region?",
+    "query": "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH7"
+  },
+  {
+    "id": "PARA205",
+    "question": "In the Infineon graph, what is the quarterly demand percentage trend for OEM survey?",
+    "query": "SELECT ?quarterLabel (AVG(?pct) AS ?avgPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:OEM_Survey .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ORDER BY ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH8"
+  },
+  {
+    "id": "PARA206",
+    "question": "In the Infineon graph, which region has the highest total demand in OEM survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH9"
+  },
+  {
+    "id": "PARA207",
+    "question": "In the Infineon graph, which region has the lowest total demand in OEM survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY ASC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH10"
+  },
+  {
+    "id": "PARA208",
+    "question": "In the Infineon graph, what is the shortage split (yes/no) for OEM companies?",
+    "query": "SELECT ?status (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:reportsShortage ?flag .\n                ?o a survey:OEM_Survey .\n                BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n                } GROUP BY ?status ORDER BY ?status",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH11"
+  },
+  {
+    "id": "PARA209",
+    "question": "In the Infineon graph, what are total and average demand levels for OEM survey?",
+    "query": "SELECT (SUM(?units) AS ?totalDemand) (AVG(?units) AS ?avgDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey\n                }",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH12"
+  },
+  {
+    "id": "PARA210",
+    "question": "In the Infineon graph, how does Semiconductor demand percentage change by quarter and region?",
+    "query": "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH13"
+  },
+  {
+    "id": "PARA211",
+    "question": "In the Infineon graph, what is the quarterly demand percentage trend for Semiconductor survey?",
+    "query": "SELECT ?quarterLabel (AVG(?pct) AS ?avgPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Semiconductor_Survey .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ORDER BY ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH14"
+  },
+  {
+    "id": "PARA212",
+    "question": "In the Infineon graph, which region has the highest total demand in Semiconductor survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH15"
+  },
+  {
+    "id": "PARA213",
+    "question": "In the Infineon graph, which region has the lowest total demand in Semiconductor survey?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY ASC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH16"
+  },
+  {
+    "id": "PARA214",
+    "question": "In the Infineon graph, what is the shortage split (yes/no) for Semiconductor companies?",
+    "query": "SELECT ?status (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:reportsShortage ?flag .\n                ?o a survey:Semiconductor_Survey .\n                BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n                } GROUP BY ?status ORDER BY ?status",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH17"
+  },
+  {
+    "id": "PARA215",
+    "question": "In the Infineon graph, what are total and average demand levels for Semiconductor survey?",
+    "query": "SELECT (SUM(?units) AS ?totalDemand) (AVG(?units) AS ?avgDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:totalDemand ?units .\n                ?o a survey:Semiconductor_Survey\n                }",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH18"
+  },
+  {
+    "id": "PARA216",
+    "question": "In the Infineon graph, what is the average autonomous-driving development for Tier1 by vehicle type, SAE level and year?",
+    "query": "SELECT ?vehicle ?sae ?year (AVG(?pct) AS ?avgPct) WHERE {\n                ?root a survey:AutonomousDrivingDevelopment_Tier1 ;\n                      survey:hasSurveyOrigin survey:Tier1_Survey ;\n                      survey:hasDetail ?entry .\n                ?entry a survey:AutonomousDrivingDevelopment ;\n                       survey:hasVehicleType ?vehicle ;\n                       survey:hasSAELevel ?sae ;\n                       survey:hasPercentage ?pct ;\n                       survey:hasYear ?year .\n                } GROUP BY ?vehicle ?sae ?year ORDER BY ?vehicle ?sae ?year",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH19"
+  },
+  {
+    "id": "PARA217",
+    "question": "In the Infineon graph, what is the average autonomous-driving development for OEM by vehicle type, SAE level and year?",
+    "query": "SELECT ?vehicle ?sae ?year (AVG(?pct) AS ?avgPct) WHERE {\n                ?root a survey:AutonomousDrivingDevelopment_OEM ;\n                      survey:hasSurveyOrigin survey:OEM_Survey ;\n                      survey:hasDetail ?entry .\n                ?entry a survey:AutonomousDrivingDevelopment ;\n                       survey:hasVehicleType ?vehicle ;\n                       survey:hasSAELevel ?sae ;\n                       survey:hasPercentage ?pct ;\n                       survey:hasYear ?year .\n                } GROUP BY ?vehicle ?sae ?year ORDER BY ?vehicle ?sae ?year",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH20"
+  },
+  {
+    "id": "PARA218",
+    "question": "In the Infineon graph, what are semiconductor order-cancellation response counts by technology category and response type?",
+    "query": "SELECT ?tech ?responseType (SUM(xsd:integer(?cnt)) AS ?responses) WHERE {\n            ?oc a survey:OrderCancellation ;\n                survey:forTechnologyCategory ?tech ;\n                survey:hasResponseType ?responseType ;\n                survey:participantCount ?cnt .\n            } GROUP BY ?tech ?responseType ORDER BY ?tech ?responseType",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH21"
+  },
+  {
+    "id": "PARA219",
+    "question": "In the Infineon graph, compare total demand across Tier1, OEM and Semiconductor by region?",
+    "query": "SELECT ?surveyType ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n            ?d a survey:DemandForRegion ;\n               survey:hasSurveyOrigin ?o ;\n               survey:inRegion ?r ;\n               survey:totalDemand ?units .\n            ?o a ?surveyType .\n            ?r survey:regionName ?regionName .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            } GROUP BY ?surveyType ?regionName ORDER BY ?surveyType ?regionName",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH22"
+  },
+  {
+    "id": "PARA220",
+    "question": "In the Infineon graph, compare company shortage status across Tier1, OEM and Semiconductor surveys?",
+    "query": "SELECT ?surveyType ?status (COUNT(?c) AS ?count) WHERE {\n            ?c a survey:Company ;\n               survey:hasSurveyOrigin ?o ;\n               survey:reportsShortage ?flag .\n            ?o a ?surveyType .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n            } GROUP BY ?surveyType ?status ORDER BY ?surveyType ?status",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH23"
+  },
+  {
+    "id": "PARA221",
+    "question": "In the Infineon graph, how many demand entries does each survey have per quarter label?",
+    "query": "SELECT ?surveyType ?quarterLabel (COUNT(?d) AS ?entries) WHERE {\n            ?d a survey:DemandForRegion ;\n               survey:hasSurveyOrigin ?o ;\n               survey:quarter ?q .\n            ?o a ?surveyType .\n            ?q survey:periodLabel ?quarterLabel .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            } GROUP BY ?surveyType ?quarterLabel ORDER BY ?surveyType ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH24"
+  },
+  {
+    "id": "PARA222",
+    "question": "In the Infineon graph, what is the average demand per survey type across all regions?",
+    "query": "SELECT ?surveyType (AVG(?units) AS ?avgDemand) WHERE {\n            ?d a survey:DemandForRegion ;\n               survey:hasSurveyOrigin ?o ;\n               survey:totalDemand ?units .\n            ?o a ?surveyType .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            } GROUP BY ?surveyType ORDER BY ?surveyType",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH25"
+  },
+  {
+    "id": "PARA223",
+    "question": "In the Infineon graph, what are Tier1 automotive percentage changes for baselines BL1 and BL2?",
+    "query": "SELECT ?baseline ?pct WHERE {\n            survey:Tier1CurrentDemand survey:hasAggregatedResult ?entry .\n            ?entry survey:baselineType ?baseline ;\n                   survey:percentageChange ?pct .\n            FILTER(?baseline IN (\"BL1\", \"BL2\"))\n            } ORDER BY ?baseline",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH26"
+  },
+  {
+    "id": "PARA224",
+    "question": "In the Infineon graph, what is the BL1-BL2 delta for Tier1 current demand percentage change?",
+    "query": "SELECT\n            (SUM(IF(?baseline = \"BL1\", ?pct, 0)) AS ?bl1)\n            (SUM(IF(?baseline = \"BL2\", ?pct, 0)) AS ?bl2)\n            ((SUM(IF(?baseline = \"BL1\", ?pct, 0)) - SUM(IF(?baseline = \"BL2\", ?pct, 0))) AS ?delta)\n            WHERE {\n            survey:Tier1CurrentDemand survey:hasAggregatedResult ?entry .\n            ?entry survey:baselineType ?baseline ;\n                   survey:percentageChange ?pct .\n            FILTER(?baseline IN (\"BL1\", \"BL2\"))\n            }",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH27"
+  },
+  {
+    "id": "PARA225",
+    "question": "In the Infineon graph, how are Tier1 inventory responses distributed by component and trend?",
+    "query": "SELECT ?component ?trend (SUM(xsd:integer(?cnt)) AS ?responses) WHERE {\n            ?entry a survey:InventoryDevelopment_Tier1 ;\n                   survey:forComponent ?component ;\n                   survey:inventoryTrend ?trend ;\n                   survey:participantCount ?cnt .\n            } GROUP BY ?component ?trend ORDER BY ?component ?trend",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH28"
+  },
+  {
+    "id": "PARA226",
+    "question": "In the Infineon graph, [Infineon benchmark variant 1] How is inventory distributed across EV, non-EV, and mixed components?",
+    "query": "SELECT ?category (COALESCE(SUM(IF(STR(?trend) = \"Increase\", xsd:integer(?cnt), 0)), 0) AS ?increase) (COALESCE(SUM(IF(STR(?trend) = \"Decrease\", xsd:integer(?cnt), 0)), 0) AS ?decrease) (COALESCE(SUM(IF(STR(?trend) = \"Stable\", xsd:integer(?cnt), 0)), 0) AS ?stable) (SUM(xsd:integer(?cnt)) AS ?total) WHERE { survey:AggregatedInventoryTrendSummary a survey:InventoryDevelopment_Tier1 ; survey:hasInventoryResponse ?agg . ?agg a survey:InventoryDevelopment_Tier1 ; survey:forComponent ?comp ; survey:inventoryTrend ?trend ; survey:participantCount ?cnt . BIND( IF( ?comp = survey:Component_EV, \"EV\", IF( ?comp = survey:Component_non_EV, \"non EV\", IF( ?comp = survey:Component_both, \"both\", REPLACE(STRAFTER(STR(?comp), \"Component_\"), \"_\", \" \") ) ) ) AS ?category ) BIND( IF( ?category = \"EV\", 1, IF(?category = \"non EV\", 2, IF(?category = \"both\", 3, 4) ) ) AS ?ord ) } GROUP BY ?category ?ord ORDER BY ?ord",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH29"
+  },
+  {
+    "id": "PARA227",
+    "question": "In the Infineon graph, [Infineon benchmark variant 2] How does future demand vary across regions and quarters for Tier1?",
+    "query": "SELECT ?quarterLabel ?regionName (ROUND(IF(?grandTotal > 0, ((SUM(?pct) / ?grandTotal) * 100), 0) * 100) / 100 AS ?percentShare) WHERE { BIND(survey:Tier1_Survey AS ?surveyType) ?origin a ?surveyType . ?entry a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:quarter ?q ; survey:totalDemandPercentageChange ?pct . ?q survey:periodLabel ?quarterLabel . ?region survey:regionName ?regionName . { SELECT ?origin ?quarterLabel (SUM(?v) AS ?grandTotal) WHERE { ?e a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:quarter ?qq ; survey:totalDemandPercentageChange ?v . ?qq survey:periodLabel ?quarterLabel . } GROUP BY ?origin ?quarterLabel } } GROUP BY ?quarterLabel ?regionName ?grandTotal ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH30"
+  },
+  {
+    "id": "PARA228",
+    "question": "In the Infineon graph, [Infineon benchmark variant 3] What is the average autonomous driving development by vehicle type and SAE level for Tier1?",
+    "query": "SELECT ?vehicle ?saeLabel ?year (AVG(?pct) AS ?avgPct) WHERE { ?oemClass a survey:AutonomousDrivingDevelopment_Tier1 ; survey:hasSurveyOrigin survey:Tier1_Survey ; survey:hasDetail ?entry . ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?veh ; survey:hasSAELevel ?sae ; survey:hasPercentage ?pct ; survey:hasYear ?year . BIND( IF(CONTAINS(STR(?veh), \"BEV\"), \"BEV\", IF(CONTAINS(STR(?veh), \"BEHV\"), \"BEHV\", IF(CONTAINS(STR(?veh), \"ICE\"), \"ICE\", \"OTHER\") ) ) AS ?vehicle ) FILTER(?vehicle != \"OTHER\") BIND(STRAFTER(STR(?sae), \"SAE_Level_\") AS ?saeLabel) } GROUP BY ?vehicle ?saeLabel ?year ORDER BY ?vehicle xsd:integer(?saeLabel) xsd:integer(?year)",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH31"
+  },
+  {
+    "id": "PARA229",
+    "question": "In the Infineon graph, [Infineon benchmark variant 4] How does semiconductor future demand evolve across technology categories and quarters?",
+    "query": "SELECT ?techLabel ?quarter (SUM(IF(?baseline = \"Option1\", ?pct, 0)) AS ?Option1) (SUM(IF(?baseline = \"Option2\", ?pct, 0)) AS ?Option2) (SUM(IF(?baseline = \"Option3\", ?pct, 0)) AS ?Option3) WHERE { { survey:SemiFutureDemand_Option1 a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin survey:Semiconductor_Survey ; survey:hasAggregatedResult ?e1 . ?e1 a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:forTimePeriod ?period ; survey:percentageChange ?pct . BIND(\"Option1\" AS ?baseline) } UNION { survey:SemiFutureDemand_Option2 a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin survey:Semiconductor_Survey ; survey:hasAggregatedResult ?e2 . ?e2 a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:forTimePeriod ?period ; survey:percentageChange ?pct . BIND(\"Option2\" AS ?baseline) } UNION { survey:SemiFutureDemand_Option3 a survey:FutureDemandAnalysis ; survey:hasSurveyOrigin survey:Semiconductor_Survey ; survey:hasAggregatedResult ?e3 . ?e3 a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:forTimePeriod ?period ; survey:percentageChange ?pct . BIND(\"Option3\" AS ?baseline) } FILTER(STRSTARTS(STR(?tech), STR(survey:TechCategory_))) OPTIONAL { ?period survey:periodLabel ?qLabelRaw . } BIND( REPLACE( COALESCE(?qLabelRaw, STRAFTER(STR(?period), \"survey:\")), \"_\", \" \" ) AS ?quarter ) BIND( REPLACE( REPLACE( REPLACE( REPLACE( REPLACE(STRAFTER(STR(?tech), \"TechCategory_\"), \"%3C%3D\", \"<=\") , \"_to_%3C\", \" to <\") , \"_or_greater\", \" or greater\") , \"_\", \" \") , \"lte 7nm\", \"<= 7nm\") AS ?techLabel ) } GROUP BY ?techLabel ?quarter ORDER BY ?techLabel ?quarter",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH32"
+  },
+  {
+    "id": "PARA230",
+    "question": "In the Infineon graph, [Infineon benchmark variant 5] What are the order cancellation trends across semiconductor technology categories?",
+    "query": "SELECT ?techLabel (SUM(IF(BOUND(?rtype) && ?rtype = survey:Increase, xsd:integer(?cnt), 0)) AS ?increaseCount) (SUM(IF(BOUND(?rtype) && ?rtype = survey:Decrease, xsd:integer(?cnt), 0)) AS ?decreaseCount) (SUM(IF(BOUND(?rtype) && ?rtype = survey:Stable, xsd:integer(?cnt), 0)) AS ?stableCount) (SUM(IF(BOUND(?cnt), xsd:integer(?cnt), 0)) AS ?totalResponses) WHERE { VALUES ?techCat { survey:OrderCancellationChange_Semi_lt%3D_7nm survey:OrderCancellationChange_Semi_10nm_to_lt28nm survey:OrderCancellationChange_Semi_28nm_to_lt45nm survey:OrderCancellationChange_Semi_55nm_to_180nm survey:OrderCancellationChange_Semi_180nm_or_greater } OPTIONAL { ?oc a survey:OrderCancellation ; survey:forTechnologyCategory ?techCat ; survey:hasResponseType ?rtype ; survey:participantCount ?cnt . } BIND( STRAFTER(STR(?techCat), \"OrderCancellationChange_Semi_\") AS ?suffix ) BIND( REPLACE( REPLACE( REPLACE( REPLACE( REPLACE( REPLACE( ?suffix, \"lt%3D_\", \"<= \" ), \"%3C\", \"<\" ), \"_to_lt\", \" to <\" ), \"_or_greater\", \" or greater\" ), \"_to_\", \" to \" ), \"_\", \" \" ) AS ?techLabel ) } GROUP BY ?techLabel ORDER BY ?techLabel",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "HIGH33"
+  },
+  {
+    "id": "PARA231",
+    "question": "In the Infineon graph, compare total demand across Tier1, OEM and Semiconductor by region?",
+    "query": "SELECT ?regionName ?surveyType (SUM(?unitsSold) AS ?totalDemand) WHERE { VALUES (?surveyClass ?surveyType) { (survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') (survey:Semiconductor_Survey 'Semiconductor') } ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:totalDemandPercentageChange ?unitsSold . ?origin a ?surveyClass . ?region a survey:Region ; survey:regionName ?regionName . } GROUP BY ?regionName ?surveyType ORDER BY ?regionName ?surveyType",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD101"
+  },
+  {
+    "id": "PARA232",
+    "question": "In the Infineon graph, which survey type has the highest total demand overall?",
+    "query": "SELECT ?surveyType (SUM(?unitsSold) AS ?totalDemand) WHERE { VALUES (?surveyClass ?surveyType) { (survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') (survey:Semiconductor_Survey 'Semiconductor') } ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:totalDemandPercentageChange ?unitsSold . ?origin a ?surveyClass . } GROUP BY ?surveyType ORDER BY DESC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD102"
+  },
+  {
+    "id": "PARA233",
+    "question": "In the Infineon graph, which region has the highest semiconductor demand?",
+    "query": "SELECT ?regionName (SUM(?unitsSold) AS ?semiconductorDemand) WHERE { ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:totalDemandPercentageChange ?unitsSold . ?origin a survey:Semiconductor_Survey . ?region a survey:Region ; survey:regionName ?regionName . } GROUP BY ?regionName ORDER BY DESC(?semiconductorDemand) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD103"
+  },
+  {
+    "id": "PARA234",
+    "question": "In the Infineon graph, show OEM demand by region and quarter?",
+    "query": "SELECT ?regionName ?quarterLabel (SUM(?unitsSold) AS ?oemDemand) WHERE { ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:quarter ?quarter ; survey:totalDemandPercentageChange ?unitsSold . ?origin a survey:OEM_Survey . ?region a survey:Region ; survey:regionName ?regionName . BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) } GROUP BY ?regionName ?quarterLabel ORDER BY ?regionName ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD104"
+  },
+  {
+    "id": "PARA235",
+    "question": "In the Infineon graph, for every region, compare Tier1 and OEM total demand?",
+    "query": "SELECT ?regionName (SUM(IF(?surveyClass = survey:Tier1_Survey, ?unitsSold, 0)) AS ?tier1Demand) (SUM(IF(?surveyClass = survey:OEM_Survey, ?unitsSold, 0)) AS ?oemDemand) WHERE { VALUES ?surveyClass { survey:Tier1_Survey survey:OEM_Survey } ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:totalDemandPercentageChange ?unitsSold . ?origin a ?surveyClass . ?region a survey:Region ; survey:regionName ?regionName . } GROUP BY ?regionName ORDER BY ?regionName",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD105"
+  },
+  {
+    "id": "PARA236",
+    "question": "In the Infineon graph, how many companies report shortage by survey type?",
+    "query": "SELECT ?surveyType ?shortageStatus (COUNT(?company) AS ?companyCount) WHERE { VALUES (?surveyClass ?surveyType) { (survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') (survey:Semiconductor_Survey 'Semiconductor') } ?company a survey:Company ; survey:hasSurveyOrigin ?origin ; survey:reportsShortage ?shortage . ?origin a ?surveyClass . BIND(IF(?shortage = true, 'yes', 'no') AS ?shortageStatus) } GROUP BY ?surveyType ?shortageStatus ORDER BY ?surveyType ?shortageStatus",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD106"
+  },
+  {
+    "id": "PARA237",
+    "question": "In the Infineon graph, list companies that reported semiconductor shortage?",
+    "query": "SELECT ?companyName ?surveyType WHERE { VALUES (?surveyClass ?surveyType) { (survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') (survey:Semiconductor_Survey 'Semiconductor') } ?company a survey:Company ; survey:companyName ?companyName ; survey:hasSurveyOrigin ?origin ; survey:reportsShortage true . ?origin a ?surveyClass . } ORDER BY ?surveyType ?companyName",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD107"
+  },
+  {
+    "id": "PARA238",
+    "question": "In the Infineon graph, which survey type has the most companies reporting shortage?",
+    "query": "SELECT ?surveyType (COUNT(?company) AS ?shortageCount) WHERE { VALUES (?surveyClass ?surveyType) { (survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') (survey:Semiconductor_Survey 'Semiconductor') } ?company a survey:Company ; survey:hasSurveyOrigin ?origin ; survey:reportsShortage true . ?origin a ?surveyClass . } GROUP BY ?surveyType ORDER BY DESC(?shortageCount) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD108"
+  },
+  {
+    "id": "PARA239",
+    "question": "In the Infineon graph, show Tier1 inventory trend distribution by component?",
+    "query": "SELECT ?componentLabel ?trend (COUNT(?entry) AS ?entryCount) WHERE { ?entry a survey:InventoryDevelopment_Tier1 ; survey:forComponent ?component ; survey:inventoryTrend ?trend . BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) } GROUP BY ?componentLabel ?trend ORDER BY ?componentLabel ?trend",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD109"
+  },
+  {
+    "id": "PARA240",
+    "question": "In the Infineon graph, for Tier1 companies, how many inventory entries are increase, stable, or decrease?",
+    "query": "SELECT ?trend (COUNT(?entry) AS ?entryCount) WHERE { ?entry a survey:InventoryDevelopment_Tier1 ; survey:inventoryTrend ?trend . } GROUP BY ?trend ORDER BY DESC(?entryCount)",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD110"
+  },
+  {
+    "id": "PARA241",
+    "question": "In the Infineon graph, show semiconductor inventory trends by technology category?",
+    "query": "SELECT ?technologyCategory ?trend (COUNT(?entry) AS ?entryCount) WHERE { ?entry a survey:InventoryDevelopment_Semi ; survey:forTechnologyCategory ?tech ; survey:hasInventoryTrend ?trend . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?trend ORDER BY ?technologyCategory ?trend",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD111"
+  },
+  {
+    "id": "PARA242",
+    "question": "In the Infineon graph, which semiconductor technology category and inventory trend combination appears most often?",
+    "query": "SELECT ?technologyCategory ?trend (COUNT(?entry) AS ?entryCount) WHERE { ?entry a survey:InventoryDevelopment_Semi ; survey:forTechnologyCategory ?tech ; survey:hasInventoryTrend ?trend . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?trend ORDER BY DESC(?entryCount) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD112"
+  },
+  {
+    "id": "PARA243",
+    "question": "In the Infineon graph, show order cancellation responses by semiconductor technology category?",
+    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD113"
+  },
+  {
+    "id": "PARA244",
+    "question": "In the Infineon graph, which order cancellation response type has the most participants overall?",
+    "query": "SELECT ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . } GROUP BY ?responseType ORDER BY DESC(?participantCount) LIMIT 1",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD114"
+  },
+  {
+    "id": "PARA245",
+    "question": "In the Infineon graph, how does autonomous driving development vary by vehicle type and SAE level?",
+    "query": "SELECT ?vehicleType ?saeLevel (AVG(?percentage) AS ?avgPercentage) WHERE { ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?vehicle ; survey:hasSAELevel ?sae ; survey:hasPercentage ?percentage . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) BIND(REPLACE(STR(?sae), '^.*/SAE_Level_', '') AS ?saeLevel) } GROUP BY ?vehicleType ?saeLevel ORDER BY ?vehicleType xsd:integer(?saeLevel)",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD115"
+  },
+  {
+    "id": "PARA246",
+    "question": "In the Infineon graph, for each year, what is the average autonomous driving development percentage?",
+    "query": "SELECT ?year (AVG(?percentage) AS ?avgPercentage) WHERE { ?entry a survey:AutonomousDrivingDevelopment ; survey:hasYear ?year ; survey:hasPercentage ?percentage . } GROUP BY ?year ORDER BY ?year",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD116"
+  },
+  {
+    "id": "PARA247",
+    "question": "In the Infineon graph, which vehicle type and SAE level has the highest autonomous driving percentage?",
+    "query": "SELECT ?vehicleType ?saeLevel (MAX(?percentage) AS ?maxPercentage) WHERE { ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?vehicle ; survey:hasSAELevel ?sae ; survey:hasPercentage ?percentage . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) BIND(REPLACE(STR(?sae), '^.*/SAE_Level_', '') AS ?saeLevel) } GROUP BY ?vehicleType ?saeLevel ORDER BY DESC(?maxPercentage) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD117"
+  },
+  {
+    "id": "PARA248",
+    "question": "In the Infineon graph, compare future demand percentage changes by technology category and quarter?",
+    "query": "SELECT ?techLabel ?quarterLabel (SUM(?pct) AS ?totalFutureChange) WHERE { ?entry a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:forTimePeriod ?quarter ; survey:percentageChange ?pct . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?techLabel) BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) } GROUP BY ?techLabel ?quarterLabel ORDER BY ?techLabel ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD118"
+  },
+  {
+    "id": "PARA249",
+    "question": "In the Infineon graph, which technology category has the highest average future demand percentage change?",
+    "query": "SELECT ?techLabel (AVG(?pct) AS ?avgFutureChange) WHERE { ?entry a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:percentageChange ?pct . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?techLabel) } GROUP BY ?techLabel ORDER BY DESC(?avgFutureChange) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD119"
+  },
+  {
+    "id": "PARA250",
+    "question": "In the Infineon graph, show future demand percentage change by vehicle type and quarter?",
+    "query": "SELECT ?vehicleType ?quarterLabel (AVG(?pct) AS ?avgChange) WHERE { ?entry a survey:FutureDemandAnalysis ; survey:analyzesVehicleType ?vehicle ; survey:forTimePeriod ?quarter ; survey:percentageChange ?pct . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) } GROUP BY ?vehicleType ?quarterLabel ORDER BY ?vehicleType ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD120"
+  },
+  {
+    "id": "PARA251",
+    "question": "In the Infineon graph, compare current demand BL1 and BL2 percentage changes for Tier1?",
+    "query": "SELECT ?baseline (SUM(?pct) AS ?totalChange) WHERE { survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; survey:hasAggregatedResult ?entry . ?entry a survey:CurrentDemandAnalysis ; survey:baselineType ?baseline ; survey:percentageChange ?pct . FILTER(?baseline IN ('BL1','BL2')) } GROUP BY ?baseline ORDER BY ?baseline",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD121"
+  },
+  {
+    "id": "PARA252",
+    "question": "In the Infineon graph, what is the BL1 minus BL2 current demand delta for Tier1?",
+    "query": "SELECT ((SUM(IF(?baseline = 'BL1', ?pct, 0)) - SUM(IF(?baseline = 'BL2', ?pct, 0))) AS ?deltaBL1BL2) WHERE { survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; survey:hasAggregatedResult ?entry . ?entry a survey:CurrentDemandAnalysis ; survey:baselineType ?baseline ; survey:percentageChange ?pct . FILTER(?baseline IN ('BL1','BL2')) }",
+    "ambiguity_label": "high",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD122"
+  },
+  {
+    "id": "PARA253",
+    "question": "In the Infineon graph, list technology categories with current demand and percent changes?",
+    "query": "SELECT ?technologyCategory ?currentDemand ?percentChangeB1 ?percentChangeB2 WHERE { ?tech a survey:TechnologyCategory ; survey:technologyCategoryName ?technologyCategory ; survey:currentDemand ?currentDemand ; survey:percentChangeB1 ?percentChangeB1 ; survey:percentChangeB2 ?percentChangeB2 . } ORDER BY ?technologyCategory",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD123"
+  },
+  {
+    "id": "PARA254",
+    "question": "In the Infineon graph, which technology category has the largest current demand?",
+    "query": "SELECT ?technologyCategory ?currentDemand WHERE { ?tech a survey:TechnologyCategory ; survey:technologyCategoryName ?technologyCategory ; survey:currentDemand ?currentDemand . } ORDER BY DESC(?currentDemand) LIMIT 1",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD124"
+  },
+  {
+    "id": "PARA255",
+    "question": "In the Infineon graph, show conversion factors by technology category and vehicle type?",
+    "query": "SELECT ?technologyCategory ?vehicleType ?conversionValue WHERE { ?tech a survey:TechnologyCategory ; survey:technologyCategoryName ?technologyCategory ; survey:hasConversionFactor ?factor . ?factor a survey:ConversionFactor ; survey:appliesToVehicleType ?vehicle ; survey:conversionValue ?conversionValue . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) } ORDER BY ?technologyCategory ?vehicleType",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD125"
+  },
+  {
+    "id": "PARA256",
+    "question": "In the Infineon graph, how many vehicle sales observations are actual versus forecast?",
+    "query": "SELECT ?dataType (COUNT(?obs) AS ?observationCount) WHERE { ?obs a survey:VehicleSalesObservation . OPTIONAL { ?obs survey:isActualData ?actual . } OPTIONAL { ?obs survey:isForecastData ?forecast . } BIND(IF(BOUND(?actual) && ?actual = true, 'actual', IF(BOUND(?forecast) && ?forecast = true, 'forecast', 'unknown')) AS ?dataType) } GROUP BY ?dataType ORDER BY ?dataType",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD126"
+  },
+  {
+    "id": "PARA257",
+    "question": "In the Infineon graph, show vehicle sales units by month for actual data?",
+    "query": "SELECT ?monthLabel (SUM(?units) AS ?unitsSold) WHERE { ?obs a survey:VehicleSalesObservation ; survey:forTimePeriod ?month ; survey:isActualData true ; survey:unitsSold ?units . BIND(REPLACE(STR(?month), '^.*/', '') AS ?monthLabel) } GROUP BY ?monthLabel ORDER BY ?monthLabel",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD127"
+  },
+  {
+    "id": "PARA258",
+    "question": "In the Infineon graph, compare yearly sales by vehicle type and year?",
+    "query": "SELECT ?vehicleType ?year (SUM(?sales) AS ?yearlySales) WHERE { ?entry a survey:YearlySalesData ; survey:analyzesVehicleType ?vehicle ; survey:forYear ?year ; survey:yearlySales ?sales . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) } GROUP BY ?vehicleType ?year ORDER BY ?vehicleType ?year",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD128"
+  },
+  {
+    "id": "PARA259",
+    "question": "In the Infineon graph, which vehicle type has the highest total yearly sales?",
+    "query": "SELECT ?vehicleType (SUM(?sales) AS ?totalSales) WHERE { ?entry a survey:YearlySalesData ; survey:analyzesVehicleType ?vehicle ; survey:yearlySales ?sales . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) } GROUP BY ?vehicleType ORDER BY DESC(?totalSales) LIMIT 1",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD129"
+  },
+  {
+    "id": "PARA260",
+    "question": "In the Infineon graph, how many active component share categories does each Tier1 company have?",
+    "query": "SELECT ?companyName (COUNT(?share) AS ?activeCategories) WHERE { ?share a survey:ComponentShare ; survey:forCompany ?company ; survey:isActiveInCategory true . ?company survey:companyName ?companyName . } GROUP BY ?companyName ORDER BY DESC(?activeCategories)",
+    "ambiguity_label": "mid",
+    "topic": "paraphrase_augmentation",
+    "source_id": "GOLD130"
+  },
+  {
+    "id": "PARA261",
+    "question": "Can you answer this from the graph: how many distinct regions exist in the Infineon survey graph?",
+    "query": "SELECT (COUNT(DISTINCT ?r) AS ?count) WHERE { ?r a survey:Region }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW1"
+  },
+  {
+    "id": "PARA262",
+    "question": "Please how many distinct regions exist in the Infineon survey graph.",
+    "query": "SELECT (COUNT(DISTINCT ?r) AS ?count) WHERE { ?r a survey:Region }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW1"
+  },
+  {
+    "id": "PARA263",
+    "question": "I need the graph result for this: how many distinct regions exist in the Infineon survey graph.",
+    "query": "SELECT (COUNT(DISTINCT ?r) AS ?count) WHERE { ?r a survey:Region }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW1"
+  },
+  {
+    "id": "PARA264",
+    "question": "Using the survey knowledge graph, how many distinct regions exist in the Infineon survey graph?",
+    "query": "SELECT (COUNT(DISTINCT ?r) AS ?count) WHERE { ?r a survey:Region }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW1"
+  },
+  {
+    "id": "PARA265",
+    "question": "count how many distinct regions exist in the Infineon survey graph?",
+    "query": "SELECT (COUNT(DISTINCT ?r) AS ?count) WHERE { ?r a survey:Region }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW1"
+  },
+  {
+    "id": "PARA266",
+    "question": "Can you answer this from the graph: list all region names in the Infineon graph?",
+    "query": "SELECT ?name WHERE { ?r a survey:Region ; survey:regionName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW2"
+  },
+  {
+    "id": "PARA267",
+    "question": "Please list all region names in the Infineon graph.",
+    "query": "SELECT ?name WHERE { ?r a survey:Region ; survey:regionName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW2"
+  },
+  {
+    "id": "PARA268",
+    "question": "I need the graph result for this: list all region names in the Infineon graph.",
+    "query": "SELECT ?name WHERE { ?r a survey:Region ; survey:regionName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW2"
+  },
+  {
+    "id": "PARA269",
+    "question": "Using the survey knowledge graph, list all region names in the Infineon graph?",
+    "query": "SELECT ?name WHERE { ?r a survey:Region ; survey:regionName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW2"
+  },
+  {
+    "id": "PARA270",
+    "question": "give me all region names in the Infineon graph?",
+    "query": "SELECT ?name WHERE { ?r a survey:Region ; survey:regionName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW2"
+  },
+  {
+    "id": "PARA271",
+    "question": "Can you answer this from the graph: how many DemandForRegion entries exist in total?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE { ?d a survey:DemandForRegion }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW3"
+  },
+  {
+    "id": "PARA272",
+    "question": "Please how many DemandForRegion entries exist in total.",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE { ?d a survey:DemandForRegion }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW3"
+  },
+  {
+    "id": "PARA273",
+    "question": "I need the graph result for this: how many DemandForRegion entries exist in total.",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE { ?d a survey:DemandForRegion }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW3"
+  },
+  {
+    "id": "PARA274",
+    "question": "Using the survey knowledge graph, how many DemandForRegion entries exist in total?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE { ?d a survey:DemandForRegion }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW3"
+  },
+  {
+    "id": "PARA275",
+    "question": "count how many DemandForRegion entries exist in total?",
+    "query": "SELECT (COUNT(?d) AS ?count) WHERE { ?d a survey:DemandForRegion }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW3"
+  },
+  {
+    "id": "PARA276",
+    "question": "Can you answer this from the graph: how many Company instances are present?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE { ?c a survey:Company }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW4"
+  },
+  {
+    "id": "PARA277",
+    "question": "Please how many Company instances are present.",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE { ?c a survey:Company }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW4"
+  },
+  {
+    "id": "PARA278",
+    "question": "I need the graph result for this: how many Company instances are present.",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE { ?c a survey:Company }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW4"
+  },
+  {
+    "id": "PARA279",
+    "question": "Using the survey knowledge graph, how many Company instances are present?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE { ?c a survey:Company }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW4"
+  },
+  {
+    "id": "PARA280",
+    "question": "count how many Company instances are present?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE { ?c a survey:Company }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW4"
+  },
+  {
+    "id": "PARA281",
+    "question": "Can you answer this from the graph: how many Quarter entities exist?",
+    "query": "SELECT (COUNT(?q) AS ?count) WHERE { ?q a survey:Quarter }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW5"
+  },
+  {
+    "id": "PARA282",
+    "question": "Please how many Quarter entities exist.",
+    "query": "SELECT (COUNT(?q) AS ?count) WHERE { ?q a survey:Quarter }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW5"
+  },
+  {
+    "id": "PARA283",
+    "question": "I need the graph result for this: how many Quarter entities exist.",
+    "query": "SELECT (COUNT(?q) AS ?count) WHERE { ?q a survey:Quarter }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW5"
+  },
+  {
+    "id": "PARA284",
+    "question": "Using the survey knowledge graph, how many Quarter entities exist?",
+    "query": "SELECT (COUNT(?q) AS ?count) WHERE { ?q a survey:Quarter }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW5"
+  },
+  {
+    "id": "PARA285",
+    "question": "count how many Quarter entities exist?",
+    "query": "SELECT (COUNT(?q) AS ?count) WHERE { ?q a survey:Quarter }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW5"
+  },
+  {
+    "id": "PARA286",
+    "question": "Can you answer this from the graph: how many FutureDemandAnalysis entries exist overall?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE { ?f a survey:FutureDemandAnalysis }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW6"
+  },
+  {
+    "id": "PARA287",
+    "question": "Please how many FutureDemandAnalysis entries exist overall.",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE { ?f a survey:FutureDemandAnalysis }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW6"
+  },
+  {
+    "id": "PARA288",
+    "question": "I need the graph result for this: how many FutureDemandAnalysis entries exist overall.",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE { ?f a survey:FutureDemandAnalysis }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW6"
+  },
+  {
+    "id": "PARA289",
+    "question": "Using the survey knowledge graph, how many FutureDemandAnalysis entries exist overall?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE { ?f a survey:FutureDemandAnalysis }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW6"
+  },
+  {
+    "id": "PARA290",
+    "question": "count how many FutureDemandAnalysis entries exist overall?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE { ?f a survey:FutureDemandAnalysis }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW6"
+  },
+  {
+    "id": "PARA291",
+    "question": "Can you answer this from the graph: how many OrderCancellation entries exist overall?",
+    "query": "SELECT (COUNT(?o) AS ?count) WHERE { ?o a survey:OrderCancellation }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW7"
+  },
+  {
+    "id": "PARA292",
+    "question": "Please how many OrderCancellation entries exist overall.",
+    "query": "SELECT (COUNT(?o) AS ?count) WHERE { ?o a survey:OrderCancellation }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW7"
+  },
+  {
+    "id": "PARA293",
+    "question": "I need the graph result for this: how many OrderCancellation entries exist overall.",
+    "query": "SELECT (COUNT(?o) AS ?count) WHERE { ?o a survey:OrderCancellation }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW7"
+  },
+  {
+    "id": "PARA294",
+    "question": "Using the survey knowledge graph, how many OrderCancellation entries exist overall?",
+    "query": "SELECT (COUNT(?o) AS ?count) WHERE { ?o a survey:OrderCancellation }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW7"
+  },
+  {
+    "id": "PARA295",
+    "question": "count how many OrderCancellation entries exist overall?",
+    "query": "SELECT (COUNT(?o) AS ?count) WHERE { ?o a survey:OrderCancellation }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW7"
+  },
+  {
+    "id": "PARA296",
+    "question": "Can you answer this from the graph: how many AutonomousDrivingDevelopment entries exist?",
+    "query": "SELECT (COUNT(?a) AS ?count) WHERE { ?a a survey:AutonomousDrivingDevelopment }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW8"
+  },
+  {
+    "id": "PARA297",
+    "question": "Please how many AutonomousDrivingDevelopment entries exist.",
+    "query": "SELECT (COUNT(?a) AS ?count) WHERE { ?a a survey:AutonomousDrivingDevelopment }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW8"
+  },
+  {
+    "id": "PARA298",
+    "question": "I need the graph result for this: how many AutonomousDrivingDevelopment entries exist.",
+    "query": "SELECT (COUNT(?a) AS ?count) WHERE { ?a a survey:AutonomousDrivingDevelopment }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW8"
+  },
+  {
+    "id": "PARA299",
+    "question": "Using the survey knowledge graph, how many AutonomousDrivingDevelopment entries exist?",
+    "query": "SELECT (COUNT(?a) AS ?count) WHERE { ?a a survey:AutonomousDrivingDevelopment }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW8"
+  },
+  {
+    "id": "PARA300",
+    "question": "count how many AutonomousDrivingDevelopment entries exist?",
+    "query": "SELECT (COUNT(?a) AS ?count) WHERE { ?a a survey:AutonomousDrivingDevelopment }",
+    "ambiguity_label": "low",
+    "topic": "paraphrase_augmentation",
+    "source_id": "LOW8"
   }
 ]
