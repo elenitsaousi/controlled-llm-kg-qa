@@ -361,3 +361,17 @@ def test_template_candidates_cover_hard_infineon_intents():
     assert order_cancel
     assert "OrderCancellation" in order_cancel[0]
     assert "hasResponseType" in order_cancel[0]
+
+
+def test_heldout_eval_dataset_is_separate_from_training_questions():
+    train = json.load(open("data/infineon/infineon_dataset_100.json", "r", encoding="utf-8"))
+    eval_rows = json.load(open("data/infineon/infineon_eval_50.json", "r", encoding="utf-8"))
+
+    train_questions = {str(row.get("question", "")).strip().lower() for row in train}
+    assert len(eval_rows) == 50
+    assert all(str(row.get("id", "")).startswith("EVAL") for row in eval_rows)
+    assert all(str(row.get("source_gold_id", "")).strip() for row in eval_rows)
+    assert not any(
+        str(row.get("question", "")).strip().lower() in train_questions
+        for row in eval_rows
+    )
