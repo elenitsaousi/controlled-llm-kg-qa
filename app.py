@@ -83,6 +83,28 @@ def _format_graph_value(value: object) -> str:
     return text
 
 
+def _format_sparql_for_display(query: str) -> str:
+    q = " ".join(str(query or "").split())
+    replacements = [
+        (" WHERE { ", " WHERE {\n  "),
+        (" ; ", " ;\n    "),
+        (" . ", " .\n  "),
+        (" FILTER", "\n  FILTER"),
+        (" VALUES", "\n  VALUES"),
+        (" BIND", "\n  BIND"),
+        (" OPTIONAL", "\n  OPTIONAL"),
+        (" UNION", "\n  UNION"),
+        (" } GROUP BY ", "\n} GROUP BY "),
+        (" } ORDER BY ", "\n} ORDER BY "),
+        (" GROUP BY ", "\nGROUP BY "),
+        (" ORDER BY ", "\nORDER BY "),
+        (" LIMIT ", "\nLIMIT "),
+    ]
+    for old, new in replacements:
+        q = q.replace(old, new)
+    return q
+
+
 def _load_schema_from_path(schema_path: str):
     cleaned = (schema_path or "").strip()
     if not cleaned:
@@ -337,7 +359,7 @@ if st.button("Ask", type="primary"):
 
         if selected_query:
             st.subheader("Selected Query")
-            st.code(selected_query, language="sparql")
+            st.code(_format_sparql_for_display(selected_query), language="sparql")
         else:
             st.warning("No selected query.")
 
@@ -385,7 +407,7 @@ if st.button("Ask", type="primary"):
                 for idx, item in enumerate(candidates, start=1):
                     source = item.get("source", "unknown")
                     st.caption(f"Candidate {idx} ({source})")
-                    st.code(str(item.get("query", "")), language="sparql")
+                    st.code(_format_sparql_for_display(str(item.get("query", ""))), language="sparql")
 
 st.divider()
 st.subheader("Interactive Graph Explorer")

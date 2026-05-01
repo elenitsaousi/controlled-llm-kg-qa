@@ -185,6 +185,7 @@ def build_candidate_prompt(
         "- If ?origin is typed with '?origin a ?surveyClass', compare ?surveyClass to survey:OEM_Survey/Tier1_Survey/Semiconductor_Survey.\n"
         "- If ?origin is directly one of survey:OEM_Survey/Tier1_Survey/Semiconductor_Survey, compare ?origin to those resources.\n"
         "- For survey comparison outputs, return a human-readable label like ?surveyType with BIND(IF(..., 'OEM', 'Tier1', 'Semiconductor')). Do not expose full survey class URIs to the user.\n"
+        "- Preferred survey comparison pattern: VALUES (?surveyClass ?surveyType) { (survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') (survey:Semiconductor_Survey 'Semiconductor') } then '?origin a ?surveyClass'.\n"
         "- Keep candidates meaningfully different; avoid trivial variable-renaming duplicates.\n\n"
 
         f"{hints_text}\n\n"
