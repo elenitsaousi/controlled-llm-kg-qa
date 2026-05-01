@@ -382,19 +382,47 @@ def _runtime_validate_query(query: str) -> List[Dict[str, str]]:
     return errors
 
 
+def _query_has_runtime_rows(query: str) -> Tuple[Optional[bool], Optional[str]]:
+    graph = _get_default_graph()
+    if graph is None:
+        return None, "graph_unavailable"
+    try:
+        results = graph.query(_ensure_prefixes(query))
+        iterator = iter(results)
+        try:
+            next(iterator)
+            return True, None
+        except StopIteration:
+            return False, None
+    except Exception as exc:
+        return None, str(exc)
+
+
 def _select_best_valid_query(
     ordered_queries: List[str],
 ) -> Tuple[Optional[str], List[Dict[str, str]], int]:
     if not ordered_queries:
         return None, [], -1
 
+    first_valid: Optional[Tuple[str, int]] = None
     first_errors: List[Dict[str, str]] = []
     for idx, query in enumerate(ordered_queries):
         errs = _runtime_validate_query(query)
-        if not errs:
+        if errs:
+            if idx == 0:
+                first_errors = errs
+            continue
+        if first_valid is None:
+            first_valid = (query, idx)
+        has_rows, exec_error = _query_has_runtime_rows(query)
+        if has_rows is True:
             return query, [], idx
-        if idx == 0:
-            first_errors = errs
+        if exec_error and idx == 0:
+            first_errors = [{"type": "execution", "message": exec_error}]
+
+    if first_valid is not None:
+        return first_valid[0], [], first_valid[1]
+
     return ordered_queries[0], first_errors, 0
 
 
@@ -436,6 +464,9 @@ def _build_selection_explanation(
         if selected_query
         else None
     )
+    selected_has_rows, selected_execution_error = (
+        _query_has_runtime_rows(selected_query or "") if selected_query else (None, None)
+    )
 
     rows: List[Dict[str, object]] = []
     for idx, cand in enumerate(candidates):
@@ -445,12 +476,17 @@ def _build_selection_explanation(
         ckey = _candidate_key(query)
         errs = _runtime_validate_query(query)
         coverage = semantic_coverage_report(effective_question, query)
+        has_rows, exec_error = (
+            _query_has_runtime_rows(query) if not errs else (None, None)
+        )
         rows.append(
             {
                 "candidate_index": idx + 1,
                 "is_selected": bool(selected_query and ckey == selected_key),
                 "is_valid": len(errs) == 0,
                 "error_count": len(errs),
+                "execution_has_rows": has_rows,
+                "execution_error": exec_error,
                 "coverage_score": coverage.get("coverage_score"),
                 "coverage_missing": ", ".join(coverage.get("missing", [])),
                 "schema_score": schema_scores.get(ckey),
@@ -478,6 +514,8 @@ def _build_selection_explanation(
         "selected_query_error_count": len(selected_errors or []),
         "selected_query_errors": list(selected_errors or []),
         "selected_coverage": selected_coverage,
+        "selected_execution_has_rows": selected_has_rows,
+        "selected_execution_error": selected_execution_error,
         "candidate_count": len(rows),
         "valid_candidate_count": valid_count,
         "invalid_candidate_count": max(0, len(rows) - valid_count),

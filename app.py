@@ -142,6 +142,10 @@ def _render_selection_explainability(result: Dict[str, Any]) -> None:
                 "Selected query is missing requested concepts: "
                 + ", ".join(map(str, missing))
             )
+    if "selected_execution_has_rows" in expl:
+        st.write(f"Execution returned rows during selection: `{expl.get('selected_execution_has_rows')}`")
+        if expl.get("selected_execution_error"):
+            st.warning(f"Selection execution check failed: {expl.get('selected_execution_error')}")
 
     selected_errors = expl.get("selected_query_errors") or []
     if selected_errors:

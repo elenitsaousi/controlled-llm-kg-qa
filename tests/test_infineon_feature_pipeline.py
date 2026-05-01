@@ -1,5 +1,10 @@
 import json
 
+from rdflib import Graph, URIRef
+from rdflib.namespace import RDF
+
+import pipeline.qa as qa_pipeline
+from kg.entity_linking import SURVEY_NS
 from ranking.feature_extraction import (
     extract_features,
     extract_query_labels,
@@ -153,3 +158,21 @@ def test_candidate_prompt_includes_required_question_concepts():
     assert "OEM_Survey" in prompt
     assert "Semiconductor_Survey" in prompt
     assert "DemandForRegion" in prompt
+
+
+def test_execution_aware_selection_skips_empty_valid_query(monkeypatch):
+    g = Graph()
+    company = URIRef(SURVEY_NS + "Company1")
+    g.add((company, RDF.type, URIRef(SURVEY_NS + "Company")))
+    monkeypatch.setattr(qa_pipeline, "_get_default_graph", lambda: g)
+
+    empty_query = "SELECT ?x WHERE { ?x a survey:Region }"
+    non_empty_query = "SELECT ?x WHERE { ?x a survey:Company }"
+
+    selected, errors, rank = qa_pipeline._select_best_valid_query(
+        [empty_query, non_empty_query]
+    )
+
+    assert selected == non_empty_query
+    assert errors == []
+    assert rank == 1
