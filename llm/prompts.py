@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 
 from kg.schema import KGSchema
 from ranking.feature_extraction import extract_question_entities, extract_question_relations
+from validation.semantic import semantic_coverage_report
 
 
 def _detect_query_pattern(question: str) -> str:
@@ -94,6 +95,10 @@ def build_candidate_prompt(
 
     # --- Dynamic query pattern hint ---
     pattern_hint = _detect_query_pattern(effective_question)
+    required_concepts = semantic_coverage_report(effective_question, "")
+    required_concepts_text = "\n".join(
+        f"- {concept}" for concept in required_concepts.get("required", [])
+    )
 
     entity_mapping_lines: List[str] = []
     for m in (entity_mappings or []):
@@ -121,6 +126,14 @@ def build_candidate_prompt(
         f"{schema_text}\n\n"
 
         + (f"QUERY PATTERN HINTS:\n{pattern_hint}\n\n" if pattern_hint else "")
+
+        + (
+            "REQUIRED QUESTION CONCEPTS:\n"
+            f"{required_concepts_text}\n"
+            "Every candidate must cover these concepts unless the question is ambiguous.\n\n"
+            if required_concepts_text
+            else ""
+        )
 
         + (
             "ENTITY CANONICALIZATION:\n"

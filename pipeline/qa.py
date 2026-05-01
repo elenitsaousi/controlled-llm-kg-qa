@@ -24,7 +24,7 @@ from ranking.ambiguity_policy import (
 )
 from ranking.feature_extraction import extract_features
 from ranking.ranker import rank_candidates as rank_schema_candidates
-from validation.semantic import validate_query_semantic
+from validation.semantic import semantic_coverage_report, validate_query_semantic
 from validation.syntax import validate_query_syntax
 from visualization.ambiguity_metrics import ambiguity_entropy
 
@@ -271,6 +271,31 @@ def _compute_entropy(ranked: List[Dict[str, object]]) -> float:
     return float(ambiguity_entropy(scores))
 
 
+def _rerank_with_semantic_coverage(
+    question: str,
+    ranked: List[Dict[str, object]],
+) -> List[Dict[str, object]]:
+    adjusted: List[Dict[str, object]] = []
+    for row in ranked:
+        query = str(row.get("query", "") or "")
+        report = semantic_coverage_report(question, query)
+        coverage = float(report.get("coverage_score", 1.0))
+        missing_count = int(report.get("missing_count", 0))
+        base_score = float(row.get("score", 0.0))
+        updated = dict(row)
+        updated["base_score"] = base_score
+        updated["coverage_score"] = coverage
+        updated["coverage_missing_count"] = missing_count
+        updated["coverage_missing"] = list(report.get("missing", []))
+        updated["coverage_required"] = list(report.get("required", []))
+        # Coverage is a hard semantic signal: valid-but-partial queries should
+        # lose to candidates that cover the requested business concepts.
+        updated["score"] = base_score + (2.0 * coverage) - (1.5 * missing_count)
+        adjusted.append(updated)
+    adjusted.sort(key=lambda x: x.get("score", float("-inf")), reverse=True)
+    return adjusted
+
+
 def _load_ambiguity_config_cached(path: Path) -> Optional[AmbiguityConfig]:
     key = str(path)
     cached = _AMBIGUITY_CONFIG_CACHE.get(key)
@@ -406,6 +431,11 @@ def _build_selection_explanation(
         for i, r in enumerate(learning_ranked)
     }
     selected_key = _candidate_key(selected_query or "")
+    selected_coverage = (
+        semantic_coverage_report(effective_question, selected_query or "")
+        if selected_query
+        else None
+    )
 
     rows: List[Dict[str, object]] = []
     for idx, cand in enumerate(candidates):
@@ -414,12 +444,15 @@ def _build_selection_explanation(
             continue
         ckey = _candidate_key(query)
         errs = _runtime_validate_query(query)
+        coverage = semantic_coverage_report(effective_question, query)
         rows.append(
             {
                 "candidate_index": idx + 1,
                 "is_selected": bool(selected_query and ckey == selected_key),
                 "is_valid": len(errs) == 0,
                 "error_count": len(errs),
+                "coverage_score": coverage.get("coverage_score"),
+                "coverage_missing": ", ".join(coverage.get("missing", [])),
                 "schema_score": schema_scores.get(ckey),
                 "schema_rank": schema_rank_pos.get(ckey),
                 "ml_score": learning_scores.get(ckey),
@@ -444,6 +477,7 @@ def _build_selection_explanation(
         ),
         "selected_query_error_count": len(selected_errors or []),
         "selected_query_errors": list(selected_errors or []),
+        "selected_coverage": selected_coverage,
         "candidate_count": len(rows),
         "valid_candidate_count": valid_count,
         "invalid_candidate_count": max(0, len(rows) - valid_count),
@@ -617,13 +651,19 @@ def answer_question(
             "selection_explanation": selection_explanation,
         }
 
-    schema_ranked = rank_schema_candidates(candidates, schema)
+    schema_ranked = _rerank_with_semantic_coverage(
+        effective_question,
+        rank_schema_candidates(candidates, schema),
+    )
     learning_ranked = (
-        _rank_learning_candidates(
+        _rerank_with_semantic_coverage(
             effective_question,
-            candidates,
-            schema,
-            model_path=resolved_model_path,
+            _rank_learning_candidates(
+                effective_question,
+                candidates,
+                schema,
+                model_path=resolved_model_path,
+            ),
         )
         if policy_mode != "off"
         else []

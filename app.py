@@ -132,6 +132,16 @@ def _render_selection_explainability(result: Dict[str, Any]) -> None:
         "Rank in preference order: "
         f"`{expl.get('selected_rank_in_preference_order', 'n/a')}`"
     )
+    selected_coverage = expl.get("selected_coverage")
+    if isinstance(selected_coverage, dict):
+        cov = float(selected_coverage.get("coverage_score", 1.0))
+        missing = selected_coverage.get("missing") or []
+        st.write(f"Semantic coverage: `{cov:.2f}`")
+        if missing:
+            st.warning(
+                "Selected query is missing requested concepts: "
+                + ", ".join(map(str, missing))
+            )
 
     selected_errors = expl.get("selected_query_errors") or []
     if selected_errors:
@@ -141,7 +151,7 @@ def _render_selection_explainability(result: Dict[str, Any]) -> None:
     rows = expl.get("candidates") or []
     if rows:
         st.caption("Candidate diagnostics")
-        st.dataframe(rows, use_container_width=True)
+        st.dataframe(rows, width="stretch")
 
 
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
@@ -332,7 +342,7 @@ if st.button("Ask", type="primary"):
                 if graph_exec_error:
                     st.error(f"Selected query execution failed: {graph_exec_error}")
                 elif graph_rows:
-                    st.dataframe(graph_rows, use_container_width=True)
+                    st.dataframe(graph_rows, width="stretch")
                     if graph_rows_truncated:
                         st.caption(f"Preview truncated at {int(max_preview_rows)} rows.")
                 else:

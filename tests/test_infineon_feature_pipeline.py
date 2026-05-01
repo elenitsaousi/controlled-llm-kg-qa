@@ -7,6 +7,10 @@ from ranking.feature_extraction import (
     extract_triples,
 )
 from ranking.np_tfidf_ranker import load_training_data
+from llm.prompts import build_candidate_prompt
+from kg.schema import load_schema
+from pipeline.qa import _rerank_with_semantic_coverage
+from validation.semantic import semantic_coverage_report
 
 
 SAMPLE_QUERY = (
@@ -81,3 +85,71 @@ def test_load_training_data_excludes_gold_by_default(tmp_path):
 
     data_with_gold = load_training_data(str(p), include_gold=True)
     assert len(data_with_gold["Q1"].candidates) == 2
+
+
+def test_semantic_coverage_detects_missing_requested_survey_origins():
+    question = "Compare total demand across Tier1, OEM and Semiconductor by region."
+    oem_only = (
+        "SELECT ?regionName (SUM(?unitsSold) AS ?OEMDemand) WHERE { "
+        "?demandForRegion a survey:DemandForRegion ; "
+        "survey:hasSurveyOrigin ?origin ; "
+        "survey:inRegion ?region ; "
+        "survey:totalDemand ?unitsSold . "
+        "?origin a survey:OEM_Survey . "
+        "?region a survey:Region ; survey:regionName ?regionName . "
+        "} GROUP BY ?regionName"
+    )
+
+    report = semantic_coverage_report(question, oem_only)
+    assert "Tier1_Survey" in report["missing"]
+    assert "Semiconductor_Survey" in report["missing"]
+    assert report["coverage_score"] < 1.0
+
+
+def test_semantic_coverage_rerank_prefers_more_complete_query():
+    question = "Compare total demand across Tier1, OEM and Semiconductor by region."
+    oem_only = (
+        "SELECT ?regionName (SUM(?unitsSold) AS ?OEMDemand) WHERE { "
+        "?demandForRegion a survey:DemandForRegion ; "
+        "survey:hasSurveyOrigin ?origin ; "
+        "survey:inRegion ?region ; "
+        "survey:totalDemand ?unitsSold . "
+        "?origin a survey:OEM_Survey . "
+        "?region a survey:Region ; survey:regionName ?regionName . "
+        "} GROUP BY ?regionName"
+    )
+    complete = (
+        "SELECT ?regionName ?originType (SUM(?unitsSold) AS ?totalDemand) WHERE { "
+        "?demandForRegion a survey:DemandForRegion ; "
+        "survey:hasSurveyOrigin ?origin ; "
+        "survey:inRegion ?region ; "
+        "survey:totalDemand ?unitsSold . "
+        "?origin a ?originType . "
+        "FILTER(?originType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey)) "
+        "?region a survey:Region ; survey:regionName ?regionName . "
+        "} GROUP BY ?regionName ?originType"
+    )
+
+    ranked = _rerank_with_semantic_coverage(
+        question,
+        [
+            {"query": oem_only, "score": 0.9},
+            {"query": complete, "score": 0.1},
+        ],
+    )
+    assert ranked[0]["query"] == complete
+    assert ranked[0]["coverage_score"] == 1.0
+
+
+def test_candidate_prompt_includes_required_question_concepts():
+    schema = load_schema("data/infineon/schema.json")
+    prompt = build_candidate_prompt(
+        "Compare total demand across Tier1, OEM and Semiconductor by region.",
+        schema,
+        k=3,
+    )
+    assert "REQUIRED QUESTION CONCEPTS" in prompt
+    assert "Tier1_Survey" in prompt
+    assert "OEM_Survey" in prompt
+    assert "Semiconductor_Survey" in prompt
+    assert "DemandForRegion" in prompt
