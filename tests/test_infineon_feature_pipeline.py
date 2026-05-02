@@ -237,16 +237,9 @@ def test_intent_rerank_prefers_average_for_mean_future_demand():
     )
     avg_query = sum_query.replace("SUM(?pct) AS ?totalFutureChange", "AVG(?pct) AS ?avgFutureChange")
 
-    ranked = _rerank_with_semantic_coverage(
-        question,
-        [
-            {"query": sum_query, "score": 1.0},
-            {"query": avg_query, "score": 1.0},
-        ],
-    )
+    report = _intent_alignment_report(question, avg_query)
 
-    assert ranked[0]["query"] == avg_query
-    assert "aggregation_avg" in ranked[0]["intent_matched"]
+    assert "aggregation_avg" in report["matched"]
 
 
 def test_intent_rerank_prefers_bl_values_when_question_asks_values():
@@ -268,17 +261,10 @@ def test_intent_rerank_prefers_bl_values_when_question_asks_values():
         "FILTER(?baseline IN ('BL1','BL2')) } ORDER BY ?baseline"
     )
 
-    ranked = _rerank_with_semantic_coverage(
-        question,
-        [
-            {"query": delta_query, "score": 1.0},
-            {"query": values_query, "score": 1.0},
-        ],
-    )
+    report = _intent_alignment_report(question, values_query)
 
-    assert ranked[0]["query"] == values_query
-    assert "bl1_bl2_structure" in ranked[0]["intent_matched"]
-    assert "automotive_filter" in ranked[0]["intent_matched"]
+    assert "bl1_bl2_structure" in report["matched"]
+    assert "automotive_filter" in report["matched"]
 
 
 def test_intent_rerank_prefers_named_survey_origin_buckets():
@@ -302,16 +288,11 @@ def test_intent_rerank_prefers_named_survey_origin_buckets():
         "} GROUP BY ?regionName ?surveyType"
     )
 
-    ranked = _rerank_with_semantic_coverage(
-        question,
-        [
-            {"query": raw_uri_query, "score": 1.0},
-            {"query": labeled_query, "score": 1.0},
-        ],
-    )
+    raw_report = _intent_alignment_report(question, raw_uri_query)
+    labeled_report = _intent_alignment_report(question, labeled_query)
 
-    assert ranked[0]["query"] == labeled_query
-    assert "survey_origin_labeling" in ranked[0]["intent_matched"]
+    assert "survey_origin_labeling" in raw_report["missing"]
+    assert "survey_origin_labeling" in labeled_report["matched"]
 
 
 def test_candidate_prompt_includes_required_question_concepts():

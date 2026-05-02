@@ -464,7 +464,7 @@ def evaluate(
     query_timeout: Optional[float] = None,
     generation_runs: int = 1,
     use_ml_ranking: bool = True,
-    use_schema_ranking: bool = True,
+    use_schema_ranking: bool = False,
     ml_model_path: str = "ranking/models/infineon_ranker.joblib",
     ml_ambiguity_regimes: Optional[List[str]] = None,
     ambiguity_config_path: Optional[str] = None,
@@ -900,9 +900,9 @@ def main() -> None:
     parser.add_argument("--no-ml-ranking", action="store_true",
                         help="Disable ML ranking")
     parser.add_argument(
-        "--no-schema-ranking",
+        "--use-schema-ranking",
         action="store_true",
-        help="Disable schema/intent candidate ranking when ML ranking is not applied.",
+        help="Enable schema/intent candidate ranking when ML ranking is not applied.",
     )
     parser.add_argument("--ml-model",
                         default="ranking/models/infineon_ranker.joblib",
@@ -943,7 +943,7 @@ def main() -> None:
         query_timeout=args.query_timeout,
         generation_runs=max(1, int(args.generation_runs)),
         use_ml_ranking=not args.no_ml_ranking,
-        use_schema_ranking=not args.no_schema_ranking,
+        use_schema_ranking=args.use_schema_ranking,
         ml_model_path=args.ml_model,
         ml_ambiguity_regimes=regimes,
         ambiguity_config_path=(args.ambiguity_config or None),

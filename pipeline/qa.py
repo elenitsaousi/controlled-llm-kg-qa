@@ -55,6 +55,7 @@ _QUERY_PLAN_PREDICTOR_CACHE: Dict[str, object] = {}
 _RUNTIME_PROFILE_CACHE: Dict[Tuple[int, str], Dict[str, object]] = {}
 
 NP_MODEL_TYPE = "np_tfidf_logreg_v1"
+INTENT_RANKING_WEIGHT = float(os.getenv("INFINEON_INTENT_RANKING_WEIGHT", "0") or 0)
 
 
 def _get_default_entity_alias_index():
@@ -550,6 +551,7 @@ def _rerank_with_semantic_coverage(
         missing_count = int(report.get("missing_count", 0))
         intent = _intent_alignment_report(question, query)
         intent_score = float(intent.get("score", 0.0))
+        intent_score_applied = intent_score * INTENT_RANKING_WEIGHT
         base_score = float(row.get("score", 0.0))
         updated = dict(row)
         updated["base_score"] = base_score
@@ -558,6 +560,8 @@ def _rerank_with_semantic_coverage(
         updated["coverage_missing"] = list(report.get("missing", []))
         updated["coverage_required"] = list(report.get("required", []))
         updated["intent_score"] = intent_score
+        updated["intent_score_applied"] = intent_score_applied
+        updated["intent_weight"] = INTENT_RANKING_WEIGHT
         updated["intent_matched"] = list(intent.get("matched", []))
         updated["intent_missing"] = list(intent.get("missing", []))
         # Coverage is a hard semantic signal: valid-but-partial queries should
@@ -566,7 +570,7 @@ def _rerank_with_semantic_coverage(
             base_score
             + (2.0 * coverage)
             - (1.5 * missing_count)
-            + intent_score
+            + intent_score_applied
         )
         adjusted.append(updated)
     adjusted.sort(key=lambda x: x.get("score", float("-inf")), reverse=True)
