@@ -362,6 +362,24 @@ def test_template_candidates_cover_hard_infineon_intents():
     assert "OrderCancellation" in order_cancel[0]
     assert "hasResponseType" in order_cancel[0]
 
+    yearly_sales = _template_candidate_queries(
+        "Which vehicle type leads total yearly sales?"
+    )
+    assert yearly_sales
+    assert "YearlySalesData" in yearly_sales[0]
+
+    current_demand = _template_candidate_queries(
+        "Compare Tier1 BL1 versus BL2 current-demand percentage changes."
+    )
+    assert current_demand
+    assert "Tier1CurrentDemand" in current_demand[0]
+
+    component_share = _template_candidate_queries(
+        "For each Tier1 company, count active component-share categories."
+    )
+    assert component_share
+    assert "ComponentShare" in component_share[0]
+
 
 def test_heldout_eval_dataset_is_separate_from_training_questions():
     train = json.load(open("data/infineon/infineon_dataset_100.json", "r", encoding="utf-8"))

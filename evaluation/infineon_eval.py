@@ -40,7 +40,11 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 """
 
 NP_MODEL_TYPE = "np_tfidf_logreg_v1"
+DEFAULT_QUERY_PLAN_MODEL = os.path.join(
+    PROJECT_ROOT, "ranking", "models", "infineon_query_plan_predictor.json"
+)
 _RANKER_CACHE: Dict[str, object] = {}
+_QUERY_PLAN_PREDICTOR_CACHE: Dict[str, object] = {}
 
 def _ensure_prefixes(query: str) -> str:
     if "PREFIX" in query.upper():
@@ -157,6 +161,21 @@ def _load_np_ranker(model_path: str):
     ranker = NPTfidfRanker.load(model_path)
     _RANKER_CACHE[model_path] = ranker
     return ranker
+
+
+def _load_query_plan_predictor(model_path: str = DEFAULT_QUERY_PLAN_MODEL):
+    if not model_path or not os.path.exists(model_path):
+        return None
+    cached = _QUERY_PLAN_PREDICTOR_CACHE.get(model_path)
+    if cached is not None:
+        return cached
+    try:
+        from ranking.np_tfidf_ranker import QueryPlanPredictor
+        predictor = QueryPlanPredictor.load(model_path)
+    except Exception:
+        return None
+    _QUERY_PLAN_PREDICTOR_CACHE[model_path] = predictor
+    return predictor
 
 
 def _ml_dependencies_available(model_path: str) -> bool:
@@ -421,6 +440,7 @@ def evaluate(
     repair_enabled = _env_bool("INFINEON_ENABLE_REPAIR", True)
     repair_max_candidates = _env_int("INFINEON_REPAIR_MAX_CANDIDATES", 2, min_value=0)
     repair_attempts = _env_int("INFINEON_REPAIR_ATTEMPTS", 1, min_value=0)
+    query_plan_predictor = _load_query_plan_predictor()
 
     summary = {
         "total": 0,
@@ -456,6 +476,7 @@ def evaluate(
         "entity_linking_enabled": bool(enable_entity_linking),
         "entity_link_max_matches": int(max(1, entity_link_max_matches)),
         "entity_linked_questions": 0,
+        "query_plan_predictor": bool(query_plan_predictor),
     }
 
     details = []
@@ -547,6 +568,7 @@ def evaluate(
                     llm_client=llm_client,
                     entity_alias_index=entity_alias_index,
                     max_entity_links=max(1, int(entity_link_max_matches)),
+                    query_plan_predictor=query_plan_predictor,
                 )
                 batch = generated.get("candidates", [])
                 metadata = generated.get("metadata", {})
