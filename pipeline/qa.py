@@ -808,19 +808,7 @@ def answer_question(
         effective_question,
         rank_schema_candidates(candidates, schema),
     )
-    learning_ranked = (
-        _rerank_with_semantic_coverage(
-            effective_question,
-            _rank_learning_candidates(
-                effective_question,
-                candidates,
-                schema,
-                model_path=resolved_model_path,
-            ),
-        )
-        if policy_mode != "off"
-        else []
-    )
+    learning_ranked: List[Dict[str, object]] = []
     entropy = _compute_entropy(schema_ranked)
     predicted_regime, predicted_entropy = _predict_runtime_regime(
         question=effective_question,
@@ -844,7 +832,7 @@ def answer_question(
             fallback_policy = AmbiguityGatedPolicy(mode="mid")
             fallback_decision = fallback_policy.select(
                 schema_ranked=schema_ranked,
-                learning_ranked=learning_ranked,
+                learning_ranked=[],
                 entropy=entropy,
             )
             use_learning = fallback_decision.type == "learning"
@@ -862,11 +850,22 @@ def answer_question(
             fallback_policy = AmbiguityGatedPolicy(mode="mid")
             fallback_decision = fallback_policy.select(
                 schema_ranked=schema_ranked,
-                learning_ranked=learning_ranked,
+                learning_ranked=[],
                 entropy=entropy,
             )
             use_learning = fallback_decision.type == "learning"
             selection_reason = f"{fallback_decision.reason}; auto_fallback=entropy_mid"
+
+    if use_learning:
+        learning_ranked = _rerank_with_semantic_coverage(
+            effective_question,
+            _rank_learning_candidates(
+                effective_question,
+                candidates,
+                schema,
+                model_path=resolved_model_path,
+            ),
+        )
 
     primary = learning_ranked if use_learning else schema_ranked
     fallback = schema_ranked if use_learning else learning_ranked
