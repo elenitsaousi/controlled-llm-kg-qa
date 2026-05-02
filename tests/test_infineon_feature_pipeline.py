@@ -23,9 +23,10 @@ from ranking.np_tfidf_ranker import (
 from llm.prompts import build_candidate_prompt
 from llm.answer_synthesis import synthesize_answer
 from kg.schema import load_schema
-from pipeline.qa import _rerank_with_semantic_coverage
+from pipeline.qa import _intent_alignment_report, _rerank_with_semantic_coverage
 from validation.semantic import semantic_coverage_report
 from llm.candidate_generation import _template_candidate_queries
+from evaluation.analyze_infineon_results import analyze_results, render_markdown
 
 
 SAMPLE_QUERY = (
@@ -222,6 +223,95 @@ def test_semantic_coverage_rerank_prefers_more_complete_query():
     )
     assert ranked[0]["query"] == complete
     assert ranked[0]["coverage_score"] == 1.0
+
+
+def test_intent_rerank_prefers_average_for_mean_future_demand():
+    question = "Return average future-demand change grouped by technology and quarter."
+    sum_query = (
+        "SELECT ?techLabel ?quarterLabel (SUM(?pct) AS ?totalFutureChange) WHERE { "
+        "?entry a survey:FutureDemandAnalysis ; "
+        "survey:analyzesTechnologyCategory ?tech ; "
+        "survey:forTimePeriod ?quarter ; "
+        "survey:percentageChange ?pct . "
+        "} GROUP BY ?techLabel ?quarterLabel"
+    )
+    avg_query = sum_query.replace("SUM(?pct) AS ?totalFutureChange", "AVG(?pct) AS ?avgFutureChange")
+
+    ranked = _rerank_with_semantic_coverage(
+        question,
+        [
+            {"query": sum_query, "score": 1.0},
+            {"query": avg_query, "score": 1.0},
+        ],
+    )
+
+    assert ranked[0]["query"] == avg_query
+    assert "aggregation_avg" in ranked[0]["intent_matched"]
+
+
+def test_intent_rerank_prefers_bl_values_when_question_asks_values():
+    question = "For Tier1 Automotive current demand, return the BL1 and BL2 percentage-change values."
+    delta_query = (
+        "SELECT ((SUM(IF(?baseline = 'BL1', ?pct, 0)) - "
+        "SUM(IF(?baseline = 'BL2', ?pct, 0))) AS ?deltaBL1BL2) WHERE { "
+        "survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; "
+        "survey:hasAggregatedResult ?entry . "
+        "?entry survey:baselineType ?baseline ; survey:percentageChange ?pct . "
+        "FILTER(?baseline IN ('BL1','BL2')) }"
+    )
+    values_query = (
+        "SELECT ?baseline ?pct WHERE { "
+        "survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; "
+        "survey:hasMarketSegment survey:Automotive ; "
+        "survey:hasAggregatedResult ?entry . "
+        "?entry survey:baselineType ?baseline ; survey:percentageChange ?pct . "
+        "FILTER(?baseline IN ('BL1','BL2')) } ORDER BY ?baseline"
+    )
+
+    ranked = _rerank_with_semantic_coverage(
+        question,
+        [
+            {"query": delta_query, "score": 1.0},
+            {"query": values_query, "score": 1.0},
+        ],
+    )
+
+    assert ranked[0]["query"] == values_query
+    assert "bl1_bl2_structure" in ranked[0]["intent_matched"]
+    assert "automotive_filter" in ranked[0]["intent_matched"]
+
+
+def test_intent_rerank_prefers_named_survey_origin_buckets():
+    question = "Break down total demand by region and by survey group: Tier1, OEM, and Semiconductor."
+    raw_uri_query = (
+        "SELECT ?surveyType ?regionName (SUM(?units) AS ?totalDemand) WHERE { "
+        "?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o ; "
+        "survey:inRegion ?r ; survey:totalDemand ?units . "
+        "?o a ?surveyType . ?r survey:regionName ?regionName . "
+        "FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey)) "
+        "} GROUP BY ?surveyType ?regionName"
+    )
+    labeled_query = (
+        "SELECT ?regionName ?surveyType (SUM(?units) AS ?totalDemand) WHERE { "
+        "VALUES (?surveyClass ?surveyType) { "
+        "(survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') "
+        "(survey:Semiconductor_Survey 'Semiconductor') } "
+        "?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; "
+        "survey:inRegion ?r ; survey:totalDemand ?units . "
+        "?origin a ?surveyClass . ?r survey:regionName ?regionName . "
+        "} GROUP BY ?regionName ?surveyType"
+    )
+
+    ranked = _rerank_with_semantic_coverage(
+        question,
+        [
+            {"query": raw_uri_query, "score": 1.0},
+            {"query": labeled_query, "score": 1.0},
+        ],
+    )
+
+    assert ranked[0]["query"] == labeled_query
+    assert "survey_origin_labeling" in ranked[0]["intent_matched"]
 
 
 def test_candidate_prompt_includes_required_question_concepts():
@@ -559,3 +649,60 @@ def test_infineon_answer_synthesis_summarizes_vehicle_sales_by_month():
     assert "Vehicle-sales results returned 2 monthly row(s)" in answer
     assert "Feb 2023" in answer
     assert "2,500" in answer
+
+
+def test_infineon_error_analysis_classifies_failures(tmp_path):
+    dataset = [
+        {
+            "id": "T1",
+            "question": "Compare total demand by region.",
+            "query": SAMPLE_QUERY,
+            "topic": "regional",
+            "ambiguity_label": "mid",
+        },
+        {
+            "id": "T2",
+            "question": "Show future demand by quarter.",
+            "query": "SELECT ?quarterLabel (SUM(?pct) AS ?totalFutureChange) WHERE { ?x a survey:FutureDemandAnalysis ; survey:forTimePeriod ?q ; survey:percentageChange ?pct . ?q survey:periodLabel ?quarterLabel . } GROUP BY ?quarterLabel",
+            "topic": "future",
+            "ambiguity_label": "high",
+        },
+    ]
+    results = {
+        "summary": {},
+        "details": [
+            {
+                "id": "T1",
+                "question": dataset[0]["question"],
+                "top1_correct": False,
+                "any_correct": True,
+                "candidates": [
+                    {"index": 0, "label": "valid_wrong", "query": "SELECT ?x WHERE { ?x a survey:Region }"},
+                    {"index": 1, "label": "correct", "query": SAMPLE_QUERY},
+                ],
+            },
+            {
+                "id": "T2",
+                "question": dataset[1]["question"],
+                "top1_correct": False,
+                "any_correct": False,
+                "candidates": [
+                    {"index": 0, "label": "valid_wrong", "query": "SELECT ?x WHERE { ?x a survey:Region }"},
+                ],
+            },
+        ],
+    }
+    dataset_path = tmp_path / "dataset.json"
+    results_path = tmp_path / "results.json"
+    dataset_path.write_text(json.dumps(dataset), encoding="utf-8")
+    results_path.write_text(json.dumps(results), encoding="utf-8")
+
+    report = analyze_results(
+        results_path=str(results_path),
+        dataset_path=str(dataset_path),
+        schema_path="data/infineon/schema.json",
+    )
+    assert report["summary"]["ranking_failures_with_correct_candidate"] == 1
+    assert report["summary"]["generation_failures_without_correct_candidate"] == 1
+    assert report["cases"][0]["first_correct_candidate_rank"] == 1
+    assert "ranking_failure_correct_candidate_not_top1" in render_markdown(report)

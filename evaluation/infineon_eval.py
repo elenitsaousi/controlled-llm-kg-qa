@@ -26,11 +26,13 @@ from kg.entity_linking import (
 )
 from llm.candidate_generation import generate_candidates, repair_candidate_query
 from llm.client import InfineonGPTClient
+from pipeline.qa import _rerank_with_semantic_coverage
 from ranking.ambiguity_policy import (
     AmbiguityConfig,
     load_ambiguity_config,
     predict_regime,
 )
+from ranking.ranker import rank_candidates as rank_schema_candidates
 
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -302,6 +304,46 @@ def _ml_rank_candidates(
         return candidates  # fallback to original order
 
 
+def _schema_intent_rank_candidates(
+    candidates: List[Dict],
+    question: str,
+    schema: KGSchema,
+) -> List[Dict]:
+    """Rank candidates with the same schema+intent ordering used by the UI."""
+    try:
+        ranked = _rerank_with_semantic_coverage(
+            question,
+            rank_schema_candidates(candidates, schema),
+        )
+    except Exception:
+        return candidates
+    by_key = {
+        " ".join(str(c.get("query", "")).split()).lower(): c
+        for c in candidates
+    }
+    ordered: List[Dict] = []
+    seen = set()
+    for row in ranked:
+        key = " ".join(str(row.get("query", "")).split()).lower()
+        original = by_key.get(key)
+        if original is None or key in seen:
+            continue
+        item = dict(original)
+        item["schema_intent_score"] = float(row.get("score", 0.0))
+        item["schema_score"] = float(row.get("base_score", row.get("score", 0.0)))
+        item["intent_score"] = float(row.get("intent_score", 0.0))
+        item["intent_matched"] = list(row.get("intent_matched", []))
+        item["intent_missing"] = list(row.get("intent_missing", []))
+        ordered.append(item)
+        seen.add(key)
+    for item in candidates:
+        key = " ".join(str(item.get("query", "")).split()).lower()
+        if key not in seen:
+            ordered.append(item)
+            seen.add(key)
+    return ordered
+
+
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.environ.get(name)
     if raw is None:
@@ -422,6 +464,7 @@ def evaluate(
     query_timeout: Optional[float] = None,
     generation_runs: int = 1,
     use_ml_ranking: bool = True,
+    use_schema_ranking: bool = True,
     ml_model_path: str = "ranking/models/infineon_ranker.joblib",
     ml_ambiguity_regimes: Optional[List[str]] = None,
     ambiguity_config_path: Optional[str] = None,
@@ -479,6 +522,7 @@ def evaluate(
 
     if progress:
         print(f"ML Ranking: {'✅ Enabled' if ml_ranking_enabled else '❌ Disabled'}")
+        print(f"Schema/intent Ranking: {'✅ Enabled' if use_schema_ranking else '❌ Disabled'}")
 
     llm_client = _build_llm_client(llm, temperature)
     if llm_client is None:
@@ -516,6 +560,7 @@ def evaluate(
         "schema_path": schema_path,
         "query_timeout": query_timeout,
         "ml_ranking": ml_ranking_enabled,
+        "schema_ranking": bool(use_schema_ranking),
         "ml_ambiguity_regimes": normalized_regimes,
         "ambiguity_config_path": ambiguity_config_path,
         "predicted_regime_counts": {},
@@ -719,6 +764,8 @@ def evaluate(
             candidates = _ml_rank_candidates(
                 candidates, ranking_question, schema_dict, ml_model_path
             )
+        elif use_schema_ranking and candidates:
+            candidates = _schema_intent_rank_candidates(candidates, ranking_question, schema)
 
         top1_correct = False
         any_correct = False
@@ -799,6 +846,7 @@ def evaluate(
             "predicted_regime": predicted_regime,
             "predicted_entropy": predicted_entropy,
             "ml_applied": apply_ml_ranking,
+            "schema_ranking_applied": bool(use_schema_ranking and not apply_ml_ranking),
             "top1_correct": top1_correct,
             "any_correct": any_correct,
             "candidates": candidate_results,
@@ -851,6 +899,11 @@ def main() -> None:
     parser.add_argument("--out", default="results/infineon_eval.json")
     parser.add_argument("--no-ml-ranking", action="store_true",
                         help="Disable ML ranking")
+    parser.add_argument(
+        "--no-schema-ranking",
+        action="store_true",
+        help="Disable schema/intent candidate ranking when ML ranking is not applied.",
+    )
     parser.add_argument("--ml-model",
                         default="ranking/models/infineon_ranker.joblib",
                         help="Path to ML ranking model")
@@ -890,6 +943,7 @@ def main() -> None:
         query_timeout=args.query_timeout,
         generation_runs=max(1, int(args.generation_runs)),
         use_ml_ranking=not args.no_ml_ranking,
+        use_schema_ranking=not args.no_schema_ranking,
         ml_model_path=args.ml_model,
         ml_ambiguity_regimes=regimes,
         ambiguity_config_path=(args.ambiguity_config or None),
@@ -901,6 +955,7 @@ def main() -> None:
     print("===== SUMMARY =====")
     print(f"Total: {summary['total']}")
     print(f"ML Ranking: {summary['ml_ranking']}")
+    print(f"Schema Ranking: {summary.get('schema_ranking')}")
     print(f"Gold invalid: {summary['gold_invalid']}")
     print(f"Gold timeout: {summary['gold_timeout']}")
     print(f"Top1 correct: {summary['top1_correct']} ({summary['top1_correct_rate']:.2%})")

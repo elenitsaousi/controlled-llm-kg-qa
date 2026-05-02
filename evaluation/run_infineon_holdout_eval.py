@@ -33,6 +33,11 @@ def main() -> None:
         help="Enable ML reranking. Query-plan guidance remains active through the pipeline.",
     )
     parser.add_argument(
+        "--no-schema-ranking",
+        action="store_true",
+        help="Disable schema/intent candidate ranking when ML ranking is not used.",
+    )
+    parser.add_argument(
         "--ml-model",
         default="ranking/models/infineon_np_tfidf_ranker.json",
     )
@@ -55,6 +60,7 @@ def main() -> None:
         query_timeout=args.query_timeout,
         generation_runs=max(1, int(args.generation_runs)),
         use_ml_ranking=args.use_ml_ranking,
+        use_schema_ranking=not args.no_schema_ranking,
         ml_model_path=args.ml_model,
         ambiguity_config_path=(args.ambiguity_config or None),
         enable_entity_linking=True,
