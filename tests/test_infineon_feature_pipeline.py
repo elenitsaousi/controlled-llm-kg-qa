@@ -414,21 +414,25 @@ def test_heldout_eval_dataset_is_separate_from_training_questions():
 def test_unseen_eval_dataset_has_no_family_overlap_with_train_or_eval50():
     train = json.load(open("data/infineon/infineon_dataset_100.json", "r", encoding="utf-8"))
     eval50 = json.load(open("data/infineon/infineon_eval_50.json", "r", encoding="utf-8"))
-    unseen = json.load(open("data/infineon/infineon_eval_unseen_12.json", "r", encoding="utf-8"))
+    unseen = json.load(open("data/infineon/infineon_eval_unseen_50.json", "r", encoding="utf-8"))
 
     train_families = {_query_family_signature(str(row.get("query", ""))) for row in train}
     eval50_families = {_query_family_signature(str(row.get("query", ""))) for row in eval50}
     unseen_families = [_query_family_signature(str(row.get("query", ""))) for row in unseen]
+    train_questions = {str(row.get("question", "")).strip().lower() for row in train}
+    eval50_questions = {str(row.get("question", "")).strip().lower() for row in eval50}
 
-    assert len(unseen) == 12
+    assert len(unseen) == 50
     assert all(str(row.get("id", "")).startswith("UNEVAL") for row in unseen)
-    assert len(set(unseen_families)) == len(unseen_families)
+    assert len(set(unseen_families)) == 12
     assert not any(fam in train_families for fam in unseen_families)
     assert not any(fam in eval50_families for fam in unseen_families)
+    assert not any(str(row.get("question", "")).strip().lower() in train_questions for row in unseen)
+    assert not any(str(row.get("question", "")).strip().lower() in eval50_questions for row in unseen)
 
 
 def test_unseen_eval_dataset_queries_execute_against_graph():
-    unseen = json.load(open("data/infineon/infineon_eval_unseen_12.json", "r", encoding="utf-8"))
+    unseen = json.load(open("data/infineon/infineon_eval_unseen_50.json", "r", encoding="utf-8"))
     graph = Graph()
     graph.parse("data/infineon/graph.ttl", format="turtle")
     prefix = (
