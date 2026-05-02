@@ -96,6 +96,61 @@ def _run_query(graph: Graph, query: str, timeout_s: Optional[float]) -> Counter:
         results = graph.query(query)
         return _result_signature(list(results))
 
+
+def _query_cache_key(query: str, timeout_s: Optional[float]) -> Tuple[Optional[float], str]:
+    return timeout_s, " ".join(_ensure_prefixes(_strip_comments(query)).split()).lower()
+
+
+def _run_query_cached(
+    graph: Graph,
+    query: str,
+    timeout_s: Optional[float],
+    cache: Optional[Dict[Tuple[Optional[float], str], Tuple[str, object]]] = None,
+) -> Counter:
+    if cache is None:
+        return _run_query(graph, query, timeout_s)
+
+    key = _query_cache_key(query, timeout_s)
+    cached = cache.get(key)
+    if cached is not None:
+        status, payload = cached
+        if status == "ok":
+            return Counter(payload)  # defensive copy
+        if status == "timeout":
+            raise QueryTimeout(str(payload))
+        raise RuntimeError(str(payload))
+
+    try:
+        result = _run_query(graph, query, timeout_s)
+    except QueryTimeout as exc:
+        cache[key] = ("timeout", str(exc))
+        raise
+    except Exception as exc:
+        cache[key] = ("error", str(exc))
+        raise
+
+    cache[key] = ("ok", Counter(result))
+    return Counter(result)
+
+
+def _dedupe_candidates(candidates: List[Dict]) -> Tuple[List[Dict], int]:
+    seen = set()
+    deduped: List[Dict] = []
+    duplicate_count = 0
+    for cand in candidates:
+        query = _strip_comments(str(cand.get("query", "")).strip())
+        if not query:
+            continue
+        key = " ".join(query.split()).lower()
+        if key in seen:
+            duplicate_count += 1
+            continue
+        seen.add(key)
+        item = dict(cand)
+        item["query"] = query
+        deduped.append(item)
+    return deduped, duplicate_count
+
 def _load_questions(path: str) -> List[Dict[str, str]]:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -269,9 +324,10 @@ def _validate_candidate_query(
     graph: Graph,
     query: str,
     timeout_s: Optional[float],
+    query_cache: Optional[Dict[Tuple[Optional[float], str], Tuple[str, object]]] = None,
 ) -> Tuple[bool, Optional[str]]:
     try:
-        _run_query(graph, _ensure_prefixes(query), timeout_s)
+        _run_query_cached(graph, _ensure_prefixes(query), timeout_s, query_cache)
         return True, None
     except QueryTimeout as exc:
         return False, f"timeout: {exc}"
@@ -286,6 +342,7 @@ def _repair_invalid_candidates(
     llm_client: object,
     graph: Graph,
     query_timeout: Optional[float],
+    query_cache: Optional[Dict[Tuple[Optional[float], str], Tuple[str, object]]],
     max_repaired_candidates: int,
     max_attempts_per_candidate: int,
 ) -> Tuple[List[Dict], int, int]:
@@ -301,7 +358,7 @@ def _repair_invalid_candidates(
         if not query:
             continue
 
-        is_valid, err = _validate_candidate_query(graph, query, query_timeout)
+        is_valid, err = _validate_candidate_query(graph, query, query_timeout, query_cache)
         if is_valid:
             c = dict(cand)
             c["query"] = query
@@ -335,7 +392,9 @@ def _repair_invalid_candidates(
                 break
 
             proposal = _strip_comments(proposal.strip())
-            valid_after, err_after = _validate_candidate_query(graph, proposal, query_timeout)
+            valid_after, err_after = _validate_candidate_query(
+                graph, proposal, query_timeout, query_cache
+            )
             if valid_after:
                 repaired_query = proposal
                 repaired_succeeded += 1
@@ -346,19 +405,7 @@ def _repair_invalid_candidates(
         c["query"] = repaired_query or query
         updated.append(c)
 
-    # Stable dedup after repair.
-    seen = set()
-    deduped: List[Dict] = []
-    for cand in updated:
-        q = str(cand.get("query", "")).strip()
-        if not q:
-            continue
-        key = " ".join(q.split()).lower()
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(cand)
-
+    deduped, _ = _dedupe_candidates(updated)
     return deduped, repaired_attempted, repaired_succeeded
 
 
@@ -477,10 +524,14 @@ def evaluate(
         "entity_link_max_matches": int(max(1, entity_link_max_matches)),
         "entity_linked_questions": 0,
         "query_plan_predictor": bool(query_plan_predictor),
+        "execution_cache_entries": 0,
+        "candidate_duplicates_removed": 0,
     }
 
     details = []
     total_questions = len(questions)
+    query_cache: Dict[Tuple[Optional[float], str], Tuple[str, object]] = {}
+    candidate_duplicates_removed = 0
 
     for idx, item in enumerate(questions):
         if progress:
@@ -522,7 +573,7 @@ def evaluate(
         gold_full = _ensure_prefixes(gold_query)
 
         try:
-            gold_sig = _run_query(g, gold_full, query_timeout)
+            gold_sig = _run_query_cached(g, gold_full, query_timeout, query_cache)
         except QueryTimeout as exc:
             summary["gold_timeout"] += 1
             if amb_summary is not None:
@@ -622,11 +673,14 @@ def evaluate(
                 llm_client=llm_client,
                 graph=g,
                 query_timeout=query_timeout,
+                query_cache=query_cache,
                 max_repaired_candidates=repair_max_candidates,
                 max_attempts_per_candidate=repair_attempts,
             )
             summary["repair_candidates_attempted"] += rep_attempted
             summary["repair_candidates_succeeded"] += rep_succeeded
+        candidates, duplicates_removed = _dedupe_candidates(candidates)
+        candidate_duplicates_removed += duplicates_removed
 
         predicted_regime = None
         predicted_entropy = None
@@ -677,7 +731,7 @@ def evaluate(
             cand_full = _ensure_prefixes(cand_query)
 
             try:
-                cand_sig = _run_query(g, cand_full, query_timeout)
+                cand_sig = _run_query_cached(g, cand_full, query_timeout, query_cache)
                 any_valid = True
                 is_correct = cand_sig == gold_sig
             except QueryTimeout as exc:
@@ -752,6 +806,9 @@ def evaluate(
 
     summary["top1_correct_rate"] = summary["top1_correct"] / summary["total"]
     summary["any_correct_rate"] = summary["any_correct"] / summary["total"]
+    summary["execution_cache_entries"] = len(query_cache)
+    summary["candidate_duplicates_removed"] = candidate_duplicates_removed
+
     if summary["total_candidates"] > 0:
         summary["candidate_correct_rate"] = (
             summary["correct_candidates"] / summary["total_candidates"]
@@ -857,6 +914,8 @@ def main() -> None:
     print(f"Valid wrong: {summary['valid_wrong_candidates']}")
     print(f"Invalid: {summary['invalid_candidates']}")
     print(f"Timeout: {summary['candidate_timeouts']}")
+    print(f"Execution cache entries: {summary.get('execution_cache_entries', 0)}")
+    print(f"Duplicate candidates removed: {summary.get('candidate_duplicates_removed', 0)}")
     print("\n===== TOP1 BEHAVIOR =====")
     print(f"Top1 correct: {summary['top1_correct']}")
     print(f"Top1 valid wrong: {summary['top1_valid_wrong']}")

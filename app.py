@@ -363,10 +363,11 @@ if st.button("Ask", type="primary"):
         else:
             st.warning("No selected query.")
 
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         col1.metric("Policy", str(result.get("policy", "unknown")))
-        col2.metric("Used ML", "yes" if result.get("used_ml") else "no")
-        col3.metric("Candidates", str(len(result.get("candidates", []))))
+        col2.metric("Query-plan ML", "yes" if result.get("query_plan_ml_used") else "no")
+        col3.metric("ML ranker", "yes" if result.get("ml_ranker_applied") else "no")
+        col4.metric("Candidates", str(len(result.get("candidates", []))))
         pred_regime = result.get("predicted_regime")
         pred_entropy = result.get("predicted_entropy")
         if pred_regime is not None:
@@ -382,6 +383,9 @@ if st.button("Ask", type="primary"):
             f"ML policy setting: {result.get('ml_policy', ml_policy)} | "
             f"Model: {result.get('ml_model_path', ml_model_path)}"
         )
+        removed = int(result.get("candidate_duplicates_removed") or 0)
+        if removed:
+            st.caption(f"Candidate deduplication removed {removed} duplicate query candidate(s).")
         _render_selection_explainability(result)
 
         if execute_selected and selected_query:

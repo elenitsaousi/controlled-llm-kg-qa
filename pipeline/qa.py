@@ -51,6 +51,7 @@ _DEFAULT_GRAPH_CACHE: Optional[Graph] = None
 _RANKER_CACHE: Dict[str, object] = {}
 _AMBIGUITY_CONFIG_CACHE: Dict[str, AmbiguityConfig] = {}
 _QUERY_PLAN_PREDICTOR_CACHE: Dict[str, object] = {}
+_RUNTIME_PROFILE_CACHE: Dict[Tuple[int, str], Dict[str, object]] = {}
 
 NP_MODEL_TYPE = "np_tfidf_logreg_v1"
 
@@ -388,6 +389,23 @@ def _candidate_key(query: str) -> str:
     return " ".join((query or "").split()).lower()
 
 
+def _dedupe_candidates(candidates: List[Dict[str, str]]) -> Tuple[List[Dict[str, str]], int]:
+    seen = set()
+    deduped: List[Dict[str, str]] = []
+    duplicate_count = 0
+    for cand in candidates:
+        query = str(cand.get("query", "")).strip()
+        if not query:
+            continue
+        key = _candidate_key(query)
+        if key in seen:
+            duplicate_count += 1
+            continue
+        seen.add(key)
+        deduped.append(dict(cand))
+    return deduped, duplicate_count
+
+
 def _runtime_validate_query(query: str) -> List[Dict[str, str]]:
     errors = []
     errors.extend(validate_query_syntax(query))
@@ -402,6 +420,12 @@ def _runtime_validate_query(query: str) -> List[Dict[str, str]]:
 
 
 def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
+    query_key = _candidate_key(_ensure_prefixes(query))
+    cache_key = (int(max_rows), query_key)
+    cached = _RUNTIME_PROFILE_CACHE.get(cache_key)
+    if cached is not None:
+        return dict(cached)
+
     graph = _get_default_graph()
     if graph is None:
         return {
@@ -431,19 +455,23 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
         unbound_vars = [
             var for var in vars_seen if row_count > 0 and bound_counts.get(var, 0) == 0
         ]
-        return {
+        profile = {
             "has_rows": row_count > 0,
             "row_count": row_count,
             "unbound_vars": unbound_vars,
             "error": None,
         }
+        _RUNTIME_PROFILE_CACHE[cache_key] = dict(profile)
+        return profile
     except Exception as exc:
-        return {
+        profile = {
             "has_rows": None,
             "row_count": 0,
             "unbound_vars": [],
             "error": str(exc),
         }
+        _RUNTIME_PROFILE_CACHE[cache_key] = dict(profile)
+        return profile
 
 
 def _query_has_runtime_rows(query: str) -> Tuple[Optional[bool], Optional[str]]:
@@ -699,8 +727,12 @@ def answer_question(
         entity_alias_index=alias_index,
         query_plan_predictor=query_plan_predictor,
     )
-    candidates = generation.get("candidates", [])
+    raw_candidates = generation.get("candidates", [])
+    candidates, duplicate_candidates_removed = _dedupe_candidates(raw_candidates)
     metadata = generation.get("metadata", {})
+    metadata["candidate_count_raw"] = len(raw_candidates)
+    metadata["candidate_duplicates_removed"] = duplicate_candidates_removed
+    metadata["candidate_count_deduped"] = len(candidates)
     prompt = generation.get("prompt", "")
     effective_question = str(metadata.get("effective_question", "")).strip() or question
     policy_mode = (ml_policy or "auto").strip().lower()
@@ -757,6 +789,9 @@ def answer_question(
                 else None
             ),
             "selection_explanation": selection_explanation,
+            "query_plan_ml_used": bool(metadata.get("query_plan_predictor_applied")),
+            "ml_ranker_applied": False,
+            "candidate_duplicates_removed": duplicate_candidates_removed,
         }
 
     schema_ranked = _rerank_with_semantic_coverage(
@@ -875,6 +910,9 @@ def answer_question(
                 else None
             ),
             "selection_explanation": selection_explanation,
+            "query_plan_ml_used": bool(metadata.get("query_plan_predictor_applied")),
+            "ml_ranker_applied": False,
+            "candidate_duplicates_removed": duplicate_candidates_removed,
         }
 
     ordered_queries = _ordered_candidate_queries(primary, fallback)
@@ -923,6 +961,9 @@ def answer_question(
                 else None
             ),
             "selection_explanation": selection_explanation,
+            "query_plan_ml_used": bool(metadata.get("query_plan_predictor_applied")),
+            "ml_ranker_applied": False,
+            "candidate_duplicates_removed": duplicate_candidates_removed,
         }
 
     selected_key = " ".join(selected_query.split()).lower()
@@ -976,6 +1017,9 @@ def answer_question(
         "entropy": entropy,
         "selection_reason": selection_reason,
         "used_ml": used_ml,
+        "query_plan_ml_used": bool(metadata.get("query_plan_predictor_applied")),
+        "ml_ranker_applied": used_ml,
+        "candidate_duplicates_removed": duplicate_candidates_removed,
         "raw_result": results,
         "effective_question": effective_question,
         "ml_policy": policy_mode,
