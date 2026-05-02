@@ -815,6 +815,8 @@ def evaluate(
                 "index": c_idx,
                 "label": label,
                 "query": cand_query,
+                "ml_score": c.get("ml_score"),
+                "source": c.get("source"),
             })
 
         if candidate_results:

@@ -18,6 +18,16 @@ VAR_RE = re.compile(r"\?[A-Za-z_][A-Za-z0-9_]*")
 SINGLE_QUOTE_STR_RE = re.compile(r"'[^']*'")
 DOUBLE_QUOTE_STR_RE = re.compile(r'"[^"]*"')
 NUMBER_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
+CAMEL_RE = re.compile(r"(?<!^)(?=[A-Z])")
+
+EXTRA_FEATURE_NAMES = [
+    "candidate_order_score",
+    "source_is_llm",
+    "source_is_template",
+    "source_is_gold",
+    "query_plan_label_count_log",
+    "query_plan_token_overlap",
+]
 
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
@@ -27,6 +37,64 @@ def _sigmoid(x: np.ndarray) -> np.ndarray:
 
 def _tokenize(text: str) -> List[str]:
     return [t.lower() for t in TOKEN_RE.findall(text.lower()) if len(t) > 1]
+
+
+def _label_tokens(labels: Sequence[str]) -> List[str]:
+    tokens: List[str] = []
+    for label in labels:
+        raw = str(label or "")
+        if ":" in raw:
+            raw = raw.split(":", 1)[1]
+        raw = raw.replace("_", " ").replace("-", " ")
+        raw = CAMEL_RE.sub(" ", raw)
+        tokens.extend(_tokenize(raw))
+    return tokens
+
+
+def _candidate_order_score(position: int) -> float:
+    return 1.0 / float(max(1, int(position) + 1))
+
+
+def _query_plan_token_overlap(question: str, labels: Sequence[str]) -> float:
+    q_tokens = set(_tokenize(question))
+    label_tokens = set(_label_tokens(labels))
+    if not q_tokens or not label_tokens:
+        return 0.0
+    return len(q_tokens & label_tokens) / float(len(label_tokens))
+
+
+def _extract_plan_labels_from_query(
+    query: str,
+    schema_dict: Dict[str, object] | None = None,
+) -> List[str]:
+    if schema_dict is None:
+        return []
+    try:
+        return list(extract_query_plan(query, schema_dict).get("labels", []))
+    except Exception:
+        return []
+
+
+def _extra_feature_values(
+    question: str,
+    query: str,
+    query_plan_labels: Sequence[str] | None,
+    source: str,
+    position: int,
+    schema_dict: Dict[str, object] | None = None,
+) -> List[float]:
+    labels = list(query_plan_labels or [])
+    if not labels:
+        labels = _extract_plan_labels_from_query(query, schema_dict)
+    source_norm = (source or "").strip().lower()
+    return [
+        _candidate_order_score(position),
+        1.0 if source_norm == "llm" else 0.0,
+        1.0 if source_norm == "template" else 0.0,
+        1.0 if source_norm == "gold" else 0.0,
+        math.log1p(float(len(labels))),
+        _query_plan_token_overlap(question, labels),
+    ]
 
 
 def _query_family_signature(query: str) -> str:
@@ -47,6 +115,7 @@ class QuestionCandidate:
     is_valid: int
     features: Dict[str, float]
     source: str = "llm"
+    query_plan_labels: List[str] | None = None
 
 
 @dataclass
@@ -92,6 +161,7 @@ def load_training_data(
                     is_valid=int(row.get("is_valid", 0)),
                     features={k: float(v) for k, v in row.get("features", {}).items()},
                     source=source or "llm",
+                    query_plan_labels=list(row.get("query_plan_labels", []) or []),
                 )
             )
 
@@ -166,16 +236,18 @@ class SimpleTfidf:
 
 
 def compose_feature_names(base_feature_names: Sequence[str] = FEATURE_NAMES) -> List[str]:
-    return list(base_feature_names) + ["tfidf_similarity"]
+    return list(base_feature_names) + ["tfidf_similarity"] + list(EXTRA_FEATURE_NAMES)
 
 
 def _build_feature_row(
     base_features: Dict[str, float],
     tfidf_similarity: float,
+    extra_features: Sequence[float] | None = None,
     base_feature_names: Sequence[str] = FEATURE_NAMES,
 ) -> List[float]:
     row = [float(base_features.get(name, 0.0)) for name in base_feature_names]
     row.append(float(tfidf_similarity))
+    row.extend(float(v) for v in (extra_features or [0.0] * len(EXTRA_FEATURE_NAMES)))
     return row
 
 
@@ -246,11 +318,33 @@ class NPTfidfRanker:
         question: str,
         candidate_queries: Sequence[str],
         candidate_base_features: Sequence[Dict[str, float]],
+        candidate_query_plan_labels: Sequence[Sequence[str]] | None = None,
+        candidate_sources: Sequence[str] | None = None,
+        schema_dict: Dict[str, object] | None = None,
     ) -> np.ndarray:
         rows = []
-        for query, base_features in zip(candidate_queries, candidate_base_features):
+        if candidate_query_plan_labels is None:
+            candidate_query_plan_labels = [[] for _ in candidate_queries]
+        if candidate_sources is None:
+            candidate_sources = ["llm" for _ in candidate_queries]
+        for position, (query, base_features, labels, source) in enumerate(
+            zip(
+                candidate_queries,
+                candidate_base_features,
+                candidate_query_plan_labels,
+                candidate_sources,
+            )
+        ):
             sim = self.vectorizer.similarity(question, query)
-            rows.append(_build_feature_row(base_features, sim, FEATURE_NAMES))
+            extra = _extra_feature_values(
+                question=question,
+                query=query,
+                query_plan_labels=labels,
+                source=source,
+                position=position,
+                schema_dict=schema_dict,
+            )
+            rows.append(_build_feature_row(base_features, sim, extra, FEATURE_NAMES))
         if not rows:
             return np.array([], dtype=float)
         X = np.array(rows, dtype=float)
@@ -308,9 +402,16 @@ def _build_rows_for_qids(
     for qid in qids:
         item = data[qid]
         any_correct[qid] = any(c.is_correct == 1 for c in item.candidates)
-        for cand in item.candidates:
+        for position, cand in enumerate(item.candidates):
             sim = vectorizer.similarity(item.question, cand.query)
-            rows.append(_build_feature_row(cand.features, sim, FEATURE_NAMES))
+            extra = _extra_feature_values(
+                question=item.question,
+                query=cand.query,
+                query_plan_labels=cand.query_plan_labels,
+                source=cand.source,
+                position=position,
+            )
+            rows.append(_build_feature_row(cand.features, sim, extra, FEATURE_NAMES))
             y.append(int(cand.is_correct))
             meta.append((qid, cand.query_id))
 
@@ -329,7 +430,15 @@ def _candidate_scores_by_question(
         item = data[qid]
         base_features = [c.features for c in item.candidates]
         queries = [c.query for c in item.candidates]
-        scores = model.score_question_candidates(item.question, queries, base_features)
+        labels = [c.query_plan_labels or [] for c in item.candidates]
+        sources = [c.source for c in item.candidates]
+        scores = model.score_question_candidates(
+            item.question,
+            queries,
+            base_features,
+            candidate_query_plan_labels=labels,
+            candidate_sources=sources,
+        )
         rows = []
         for cand, score in zip(item.candidates, scores):
             rows.append((cand.query_id, float(score), int(cand.is_correct)))
@@ -585,16 +694,33 @@ def rank_candidates_with_model(
 ) -> List[Dict[str, str]]:
     queries = [str(c.get("query", "")) for c in candidates]
     base_features = []
+    query_plan_labels = []
+    sources = []
     for query in queries:
         try:
             feats = extract_features(question, query, schema_dict)
         except Exception:
             feats = {name: 0.0 for name in FEATURE_NAMES}
         base_features.append(feats)
+        query_plan_labels.append(_extract_plan_labels_from_query(query, schema_dict))
+    for cand in candidates:
+        sources.append(str(cand.get("source", "llm") or "llm"))
 
-    scores = model.score_question_candidates(question, queries, base_features)
+    scores = model.score_question_candidates(
+        question,
+        queries,
+        base_features,
+        candidate_query_plan_labels=query_plan_labels,
+        candidate_sources=sources,
+        schema_dict=schema_dict,
+    )
     ranked = sorted(zip(scores, candidates), key=lambda x: x[0], reverse=True)
-    return [c for _, c in ranked]
+    out: List[Dict[str, str]] = []
+    for score, cand in ranked:
+        row = dict(cand)
+        row["ml_score"] = float(score)
+        out.append(row)
+    return out
 
 
 def _tfidf_matrix(vectorizer: SimpleTfidf, texts: Sequence[str], vocab: Sequence[str]) -> np.ndarray:

@@ -95,7 +95,16 @@ def _evaluate_split(
 
         queries = [c.query for c in candidates]
         base_features = [c.features for c in candidates]
-        scores = model.score_question_candidates(question, queries, base_features)
+        query_plan_labels = [c.query_plan_labels or [] for c in candidates]
+        sources = [c.source for c in candidates]
+        scores = model.score_question_candidates(
+            question,
+            queries,
+            base_features,
+            candidate_query_plan_labels=query_plan_labels,
+            candidate_sources=sources,
+            schema_dict=schema_dict,
+        )
         ml_idx = int(scores.argmax()) if len(scores) else 0
 
         no_ml_top1 = int(candidates[0].is_correct == 1)
@@ -209,7 +218,11 @@ def main() -> None:
     )
     parser.add_argument("--train-data", required=True)
     parser.add_argument("--dev-data", required=True)
-    parser.add_argument("--test-data", required=True)
+    parser.add_argument(
+        "--test-data",
+        default="",
+        help="Optional held-out candidate pool. Omit while tuning on dev.",
+    )
     parser.add_argument("--model-out", default="ranking/models/infineon_np_tfidf_ranker_split.json")
     parser.add_argument("--report-out", default="results/infineon_split_kpi_report.json")
     parser.add_argument("--ml-regimes", default="mid")
@@ -233,18 +246,20 @@ def main() -> None:
         include_gold=args.include_gold,
         min_candidates=args.min_candidates,
     )
-    test = load_training_data(
-        args.test_data,
-        include_gold=args.include_gold,
-        min_candidates=args.min_candidates,
+    test = (
+        load_training_data(
+            args.test_data,
+            include_gold=args.include_gold,
+            min_candidates=args.min_candidates,
+        )
+        if args.test_data
+        else {}
     )
 
     if not train:
         raise RuntimeError("Train split has no usable questions.")
     if not dev:
         raise RuntimeError("Dev split has no usable questions.")
-    if not test:
-        raise RuntimeError("Test split has no usable questions.")
 
     model = train_final_ranker(
         train,
@@ -296,20 +311,22 @@ def main() -> None:
         schema_dict=schema_dict,
         agreement_graph=agreement_graph,
     )
-    test_rep = _evaluate_split(
-        test,
-        model,
-        ml_regimes=ml_regimes,
-        ambiguity_config=ambiguity_config,
-        schema_dict=schema_dict,
-        agreement_graph=agreement_graph,
-    )
+    test_rep = None
+    if test:
+        test_rep = _evaluate_split(
+            test,
+            model,
+            ml_regimes=ml_regimes,
+            ambiguity_config=ambiguity_config,
+            schema_dict=schema_dict,
+            agreement_graph=agreement_graph,
+        )
 
     report = {
         "config": {
             "train_data": args.train_data,
             "dev_data": args.dev_data,
-            "test_data": args.test_data,
+            "test_data": args.test_data or None,
             "model_out": args.model_out,
             "ml_regimes": ml_regimes,
             "ambiguity_config": args.ambiguity_config or None,
@@ -330,7 +347,8 @@ def main() -> None:
 
     _print_split_report("train", train_rep)
     _print_split_report("dev", dev_rep)
-    _print_split_report("test", test_rep)
+    if test_rep is not None:
+        _print_split_report("test", test_rep)
     print(f"\nSaved model: {args.model_out}")
     print(f"Saved KPI report: {args.report_out}")
 

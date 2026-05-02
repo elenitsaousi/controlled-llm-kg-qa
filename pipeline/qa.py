@@ -257,10 +257,13 @@ def _rank_learning_candidates(
     try:
         if _is_np_model_file(resolved_model_path):
             queries = [str(c.get("query", "")) for c in candidates]
+            sources = [str(c.get("source", "llm") or "llm") for c in candidates]
             scores = ranker.score_question_candidates(
                 question,
                 queries,
                 feature_dicts,
+                candidate_sources=sources,
+                schema_dict=schema_dict,
             )
         else:
             # Logistic/XGB runtime rankers.
