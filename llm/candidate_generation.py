@@ -94,7 +94,11 @@ def _template_candidate_queries(question: str) -> List[str]:
         "} "
     )
 
-    if "region" in q and any(w in q for w in ["available", "names", "list", "give me"]):
+    if (
+        "region" in q
+        and "demand" not in q
+        and any(w in q for w in ["available", "names", "list", "give me"])
+    ):
         add(
             "SELECT ?name WHERE { "
             "?r a survey:Region ; survey:regionName ?name . "
@@ -109,6 +113,119 @@ def _template_candidate_queries(question: str) -> List[str]:
             "?s a ?type . "
             "FILTER(?type IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey)) "
             "} ORDER BY ?type"
+        )
+
+    if "tier1" in q and "automotive" in q and "current" in q and ("bl1" in q or "b1" in q) and ("bl2" in q or "b2" in q):
+        add(
+            "SELECT ?marketSegment "
+            "(SUM(IF(?baseline = \"BL1\", ?pct, 0)) AS ?changeBL1) "
+            "(SUM(IF(?baseline = \"BL2\", ?pct, 0)) AS ?changeBL2) WHERE { "
+            "survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; "
+            "survey:hasSurveyOrigin survey:Tier1_Survey ; "
+            "survey:hasMarketSegment survey:Automotive ; "
+            "survey:hasAggregatedResult ?entry . "
+            "?entry a survey:CurrentDemandAnalysis ; "
+            "survey:hasMarketSegment survey:Automotive ; "
+            "survey:baselineType ?baseline ; "
+            "survey:percentageChange ?pct . "
+            "FILTER(?baseline IN (\"BL1\", \"BL2\")) "
+            "BIND(\"Automotive\" AS ?marketSegment) "
+            "} GROUP BY ?marketSegment"
+        )
+
+    if (
+        "automotive" in q
+        and "future" in q
+        and "demand" in q
+        and ("option" in q or "options" in q)
+        and "quarter" in q
+    ):
+        add(
+            "SELECT ?quarter "
+            "(SUM(IF(?baseline = \"Option1\", ?pct, 0)) AS ?Option1) "
+            "(SUM(IF(?baseline = \"Option2\", ?pct, 0)) AS ?Option2) "
+            "(SUM(IF(?baseline = \"Option3\", ?pct, 0)) AS ?Option3) WHERE { "
+            "?entry a survey:FutureDemandAnalysis ; "
+            "survey:hasMarketSegment survey:Automotive ; "
+            "survey:baselineType ?baseline ; "
+            "survey:forTimePeriod ?quarter ; "
+            "survey:percentageChange ?pct . "
+            "FILTER(?baseline IN (\"Option1\", \"Option2\", \"Option3\")) "
+            "} GROUP BY ?quarter ORDER BY ?quarter"
+        )
+
+    if (
+        "oem" in q
+        and "current" in q
+        and "demand" in q
+        and "percentage" in q
+        and ("vehicle" in q or "bev" in q or "behv" in q or "ice" in q)
+    ):
+        add(
+            "SELECT ?vehicle ?pct WHERE { "
+            "?agg a survey:AggregatedDemand ; "
+            "survey:hasSurveyOrigin survey:OEM_Survey_Instance ; "
+            "survey:isAggregatedResult true ; "
+            "survey:forVehicleType ?veh ; "
+            "survey:percentageChange ?pct . "
+            "BIND(IF(?veh = survey:BEV, \"BEV\", IF(?veh = survey:BEHV, \"BEHV\", IF(?veh = survey:ICE, \"ICE\", \"\"))) AS ?vehicle) "
+            "FILTER(?vehicle != \"\") "
+            "BIND(IF(?vehicle = \"BEV\", 1, IF(?vehicle = \"BEHV\", 2, IF(?vehicle = \"ICE\", 3, 4))) AS ?ord) "
+            "} ORDER BY ?ord"
+        )
+
+    if (
+        "oem" in q
+        and "autonomous" in q
+        and "vehicle" in q
+        and "sae" in q
+        and "year" in q
+    ):
+        add(
+            "SELECT ?vehicle ?saeLabel ?year (AVG(?pct) AS ?avgPct) WHERE { "
+            "?oemClass a survey:AutonomousDrivingDevelopment_OEM ; "
+            "survey:hasSurveyOrigin survey:OEM_Survey ; "
+            "survey:hasDetail ?entry . "
+            "?entry a survey:AutonomousDrivingDevelopment ; "
+            "survey:hasVehicleType ?veh ; "
+            "survey:hasSAELevel ?sae ; "
+            "survey:hasPercentage ?pct ; "
+            "survey:hasYear ?year . "
+            "BIND(IF(CONTAINS(STR(?veh), \"BEV\"), \"BEV\", IF(CONTAINS(STR(?veh), \"BEHV\"), \"BEHV\", IF(CONTAINS(STR(?veh), \"ICE\"), \"ICE\", \"OTHER\"))) AS ?vehicle) "
+            "FILTER(?vehicle != \"OTHER\") "
+            "BIND(STRAFTER(STR(?sae), \"SAE_Level_\") AS ?saeLabel) "
+            "} GROUP BY ?vehicle ?saeLabel ?year ORDER BY ?vehicle xsd:integer(?saeLabel) xsd:integer(?year)"
+        )
+
+    if (
+        "future" in q
+        and "demand" in q
+        and "share" in q
+        and "quarter" in q
+        and "region" in q
+        and ("oem" in q or "semiconductor" in q or "semi" in q)
+    ):
+        origin = "survey:OEM_Survey" if "oem" in q else "survey:Semiconductor_Survey"
+        add(
+            "SELECT ?quarterLabel ?regionName "
+            "(ROUND(((SUM(?pct) / ?grandTotal) * 100) * 100) / 100 AS ?percentShare) WHERE { "
+            f"BIND({origin} AS ?surveyType) "
+            "?origin a ?surveyType . "
+            "?entry a survey:DemandForRegion ; "
+            "survey:hasSurveyOrigin ?origin ; "
+            "survey:inRegion ?region ; "
+            "survey:quarter ?q ; "
+            "survey:totalDemandPercentageChange ?pct . "
+            "?q survey:periodLabel ?quarterLabel . "
+            "?region survey:regionName ?regionName . "
+            "{ SELECT ?origin ?quarterLabel (SUM(?v) AS ?grandTotal) WHERE { "
+            "?e a survey:DemandForRegion ; "
+            "survey:hasSurveyOrigin ?origin ; "
+            "survey:quarter ?qq ; "
+            "survey:totalDemandPercentageChange ?v . "
+            "?qq survey:periodLabel ?quarterLabel . "
+            "} GROUP BY ?origin ?quarterLabel } "
+            "} GROUP BY ?quarterLabel ?regionName ?grandTotal ORDER BY ?quarterLabel ?regionName"
         )
 
     if "shortage" in q and "group" in q and "survey origin" in q:
@@ -138,6 +255,27 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} GROUP BY ?status ORDER BY ?status"
         )
 
+    if (
+        "shortage" in q
+        and any(w in q for w in ["versus", "no shortage", "yes or no", "each shortage response", "by shortage"])
+        and any(w in q for w in ["semiconductor", "semi", "oem", "tier1", "tier 1"])
+    ):
+        if "oem" in q:
+            origin = "survey:OEM_Survey"
+        elif "tier1" in q or "tier 1" in q:
+            origin = "survey:Tier1_Survey"
+        else:
+            origin = "survey:Semiconductor_Survey"
+        add(
+            "SELECT ?ShortageStatus (COUNT(?Company) AS ?Count) WHERE { "
+            "?Company a survey:Company ; "
+            "survey:hasSurveyOrigin ?origin ; "
+            "survey:reportsShortage ?Shortage . "
+            f"?origin a {origin} . "
+            "BIND(IF(?Shortage = true, \"yes\", \"no\") AS ?ShortageStatus) "
+            "} GROUP BY ?ShortageStatus"
+        )
+
     if "shortage" in q and any(w in q for w in ["compare", "status"]) and "group" not in q:
         add(
             "SELECT ?surveyType ?status (COUNT(?c) AS ?count) WHERE { "
@@ -148,7 +286,12 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} GROUP BY ?surveyType ?status ORDER BY ?surveyType ?status"
         )
 
-    if "shortage" in q and any(w in q for w in ["how many", "count"]) and "group" not in q:
+    if (
+        "shortage" in q
+        and any(w in q for w in ["how many", "count"])
+        and "group" not in q
+        and not any(w in q for w in ["versus", "no shortage", "yes or no", "each shortage response", "by shortage"])
+    ):
         origin = None
         if "oem" in q:
             origin = "survey:OEM_Survey"
@@ -230,7 +373,11 @@ def _template_candidate_queries(question: str) -> List[str]:
                 "?region a survey:Region ; survey:regionName ?regionName . "
                 "} GROUP BY ?regionName ORDER BY ?regionName"
             )
-        elif ("semiconductor" in q or "semi" in q) and any(w in q for w in ["top", "highest", "largest"]):
+        elif (
+            ("semiconductor" in q or "semi" in q)
+            and any(w in q for w in ["top", "highest", "largest"])
+            and not any(w in q for w in ["total demand", "current demand", "demand totals"])
+        ):
             add(
                 "SELECT ?regionName (SUM(?unitsSold) AS ?semiconductorDemand) WHERE { "
                 "?demandForRegion a survey:DemandForRegion ; "
@@ -241,6 +388,26 @@ def _template_candidate_queries(question: str) -> List[str]:
                 "?region a survey:Region ; survey:regionName ?regionName . "
                 "} GROUP BY ?regionName ORDER BY DESC(?semiconductorDemand) LIMIT 1"
             )
+        elif any(w in q for w in ["total demand", "current demand", "aggregate total demand", "demand totals"]):
+            if "oem" in q:
+                origin = "survey:OEM_Survey"
+            elif "tier1" in q or "tier 1" in q:
+                origin = "survey:Tier1_Survey"
+            elif "semiconductor" in q or "semi" in q:
+                origin = "survey:Semiconductor_Survey"
+            else:
+                origin = None
+            if origin:
+                add(
+                    "SELECT ?regionName (SUM(?unitsSold) AS ?totalDemand) WHERE { "
+                    "?demandForRegion a survey:DemandForRegion ; "
+                    "survey:hasSurveyOrigin ?origin ; "
+                    "survey:inRegion ?region ; "
+                    "survey:totalDemand ?unitsSold . "
+                    f"?origin a {origin} . "
+                    "?region a survey:Region ; survey:regionName ?regionName . "
+                    "} GROUP BY ?regionName ORDER BY DESC(?totalDemand)"
+                )
 
     if "origin type" in q and "demand" in q:
         add(
