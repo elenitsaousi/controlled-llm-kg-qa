@@ -7,7 +7,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from evaluation.infineon_eval import evaluate
+from evaluation.infineon_eval import evaluate, _parse_amb_regimes
 
 
 def main() -> None:
@@ -42,6 +42,11 @@ def main() -> None:
         default="ranking/models/infineon_np_tfidf_ranker.json",
     )
     parser.add_argument(
+        "--ml-ambiguity-regimes",
+        default="",
+        help="Comma-separated ambiguity labels where ML ranking is used, e.g. low,mid.",
+    )
+    parser.add_argument(
         "--ambiguity-config",
         default="",
         help="Optional ambiguity config JSON for runtime regime prediction.",
@@ -62,6 +67,7 @@ def main() -> None:
         use_ml_ranking=args.use_ml_ranking,
         use_schema_ranking=args.use_schema_ranking,
         ml_model_path=args.ml_model,
+        ml_ambiguity_regimes=_parse_amb_regimes(args.ml_ambiguity_regimes),
         ambiguity_config_path=(args.ambiguity_config or None),
         enable_entity_linking=True,
     )
