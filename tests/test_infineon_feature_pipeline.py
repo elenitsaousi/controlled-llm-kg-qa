@@ -1,4 +1,6 @@
 import json
+import hashlib
+import re
 
 from rdflib import Graph, URIRef
 from rdflib.namespace import RDF
@@ -35,6 +37,20 @@ SAMPLE_QUERY = (
     "?r a survey:Region ; survey:regionName ?regionName . "
     "} GROUP BY ?regionName ORDER BY DESC(?totalDemand)"
 )
+
+VAR_RE = re.compile(r"\?[A-Za-z_][A-Za-z0-9_]*")
+SINGLE_QUOTE_STR_RE = re.compile(r"'[^']*'")
+DOUBLE_QUOTE_STR_RE = re.compile(r'"[^"]*"')
+NUMBER_RE = re.compile(r"\b\d+(?:\.\d+)?\b")
+
+
+def _query_family_signature(query: str) -> str:
+    q = " ".join(query.strip().split())
+    q = SINGLE_QUOTE_STR_RE.sub("'STR'", q)
+    q = DOUBLE_QUOTE_STR_RE.sub('"STR"', q)
+    q = NUMBER_RE.sub("NUM", q)
+    q = VAR_RE.sub("?VAR", q)
+    return "fam_" + hashlib.md5(q.encode("utf-8")).hexdigest()[:16]
 
 
 def test_extract_triples_handles_semicolon_chains():
@@ -393,3 +409,33 @@ def test_heldout_eval_dataset_is_separate_from_training_questions():
         str(row.get("question", "")).strip().lower() in train_questions
         for row in eval_rows
     )
+
+
+def test_unseen_eval_dataset_has_no_family_overlap_with_train_or_eval50():
+    train = json.load(open("data/infineon/infineon_dataset_100.json", "r", encoding="utf-8"))
+    eval50 = json.load(open("data/infineon/infineon_eval_50.json", "r", encoding="utf-8"))
+    unseen = json.load(open("data/infineon/infineon_eval_unseen_12.json", "r", encoding="utf-8"))
+
+    train_families = {_query_family_signature(str(row.get("query", ""))) for row in train}
+    eval50_families = {_query_family_signature(str(row.get("query", ""))) for row in eval50}
+    unseen_families = [_query_family_signature(str(row.get("query", ""))) for row in unseen]
+
+    assert len(unseen) == 12
+    assert all(str(row.get("id", "")).startswith("UNEVAL") for row in unseen)
+    assert len(set(unseen_families)) == len(unseen_families)
+    assert not any(fam in train_families for fam in unseen_families)
+    assert not any(fam in eval50_families for fam in unseen_families)
+
+
+def test_unseen_eval_dataset_queries_execute_against_graph():
+    unseen = json.load(open("data/infineon/infineon_eval_unseen_12.json", "r", encoding="utf-8"))
+    graph = Graph()
+    graph.parse("data/infineon/graph.ttl", format="turtle")
+    prefix = (
+        "PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>\n"
+        "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n"
+    )
+
+    for row in unseen:
+        results = list(graph.query(prefix + str(row["query"])))
+        assert results, row["id"]

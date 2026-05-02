@@ -1,0 +1,110 @@
+[
+  {
+    "id": "UNEVAL001",
+    "question": "Compare Tier1 BL1 and BL2 current-demand percentage changes for the automotive market segment.",
+    "query": "SELECT ?marketSegment (SUM(IF(?baseline = \"BL1\", ?pct, 0)) AS ?changeBL1) (SUM(IF(?baseline = \"BL2\", ?pct, 0)) AS ?changeBL2) WHERE { survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin survey:Tier1_Survey ; survey:hasMarketSegment survey:Automotive ; survey:hasAggregatedResult ?entry . ?entry a survey:CurrentDemandAnalysis ; survey:hasMarketSegment survey:Automotive ; survey:baselineType ?baseline ; survey:percentageChange ?pct . FILTER(?baseline IN (\"BL1\", \"BL2\")) BIND(\"Automotive\" AS ?marketSegment) } GROUP BY ?marketSegment",
+    "ambiguity_label": "high",
+    "topic": "current_demand",
+    "source_raw_index": 1,
+    "source_title": "TIER-1 Monthly Current Demand"
+  },
+  {
+    "id": "UNEVAL002",
+    "question": "Show expected future-demand percentage changes by quarter for the automotive segment across Options 1, 2, and 3.",
+    "query": "SELECT ?quarter (SUM(IF(?baseline = \"Option1\", ?pct, 0)) AS ?Option1) (SUM(IF(?baseline = \"Option2\", ?pct, 0)) AS ?Option2) (SUM(IF(?baseline = \"Option3\", ?pct, 0)) AS ?Option3) WHERE { ?entry a survey:FutureDemandAnalysis ; survey:hasMarketSegment survey:Automotive ; survey:baselineType ?baseline ; survey:forTimePeriod ?quarter ; survey:percentageChange ?pct . FILTER(?baseline IN (\"Option1\", \"Option2\", \"Option3\")) } GROUP BY ?quarter ORDER BY ?quarter",
+    "ambiguity_label": "high",
+    "topic": "future_demand",
+    "source_raw_index": 2,
+    "source_title": "Expected Future Demand"
+  },
+  {
+    "id": "UNEVAL003",
+    "question": "Split Tier1 companies by shortage status.",
+    "query": "SELECT ?ShortageStatus (COUNT(?Company) AS ?Count) WHERE { ?Company a survey:Company ; survey:hasSurveyOrigin ?origin ; survey:reportsShortage ?Shortage . ?origin a survey:Tier1_Survey . BIND(IF(?Shortage = true, \"yes\", \"no\") AS ?ShortageStatus) } GROUP BY ?ShortageStatus",
+    "ambiguity_label": "mid",
+    "topic": "shortage",
+    "source_raw_index": 4,
+    "source_title": "Component Share Semiconductor Shortage"
+  },
+  {
+    "id": "UNEVAL004",
+    "question": "Show total current demand by region for Tier1.",
+    "query": "SELECT ?regionName (SUM(?unitsSold) AS ?totalDemand) WHERE { ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:totalDemand ?unitsSold . ?origin a survey:Tier1_Survey . ?region a survey:Region ; survey:regionName ?regionName . } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "current_demand",
+    "source_raw_index": 5,
+    "source_title": "Yearly Current Demand Regional Split"
+  },
+  {
+    "id": "UNEVAL005",
+    "question": "Split semiconductor companies by shortage status.",
+    "query": "SELECT ?ShortageStatus (COUNT(?Company) AS ?Count) WHERE { ?Company a survey:Company ; survey:hasSurveyOrigin ?origin ; survey:reportsShortage ?Shortage . ?origin a survey:Semiconductor_Survey . BIND(IF(?Shortage = true, \"yes\", \"no\") AS ?ShortageStatus) } GROUP BY ?ShortageStatus",
+    "ambiguity_label": "mid",
+    "topic": "shortage",
+    "source_raw_index": 10,
+    "source_title": "Semiconductor Shortage"
+  },
+  {
+    "id": "UNEVAL006",
+    "question": "Show total current demand by region for semiconductor survey results.",
+    "query": "SELECT ?regionName (SUM(?unitsSold) AS ?totalDemand) WHERE { ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:totalDemand ?unitsSold . ?origin a survey:Semiconductor_Survey . ?region a survey:Region ; survey:regionName ?regionName . } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "current_demand",
+    "source_raw_index": 11,
+    "source_title": "Yearly Current Demand Regional Split"
+  },
+  {
+    "id": "UNEVAL007",
+    "question": "Show semiconductor future-demand percentage share by quarter and region.",
+    "query": "SELECT ?quarterLabel ?regionName (ROUND(((SUM(?pct) / ?grandTotal) * 100) * 100) / 100 AS ?percentShare) WHERE { BIND(survey:Semiconductor_Survey AS ?surveyType) ?origin a ?surveyType . ?entry a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:quarter ?q ; survey:totalDemandPercentageChange ?pct . ?q survey:periodLabel ?quarterLabel . ?region survey:regionName ?regionName . { SELECT ?origin ?quarterLabel (SUM(?v) AS ?grandTotal) WHERE { ?e a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:quarter ?qq ; survey:totalDemandPercentageChange ?v . ?qq survey:periodLabel ?quarterLabel . } GROUP BY ?origin ?quarterLabel } } GROUP BY ?quarterLabel ?regionName ?grandTotal ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "future_demand",
+    "source_raw_index": 12,
+    "source_title": "Expected Future Demand Regional Split"
+  },
+  {
+    "id": "UNEVAL008",
+    "question": "Show OEM monthly current-demand percentage change by vehicle type.",
+    "query": "SELECT ?vehicle ?pct WHERE { ?agg a survey:AggregatedDemand ; survey:hasSurveyOrigin survey:OEM_Survey_Instance ; survey:isAggregatedResult true ; survey:forVehicleType ?veh ; survey:percentageChange ?pct . BIND( IF(?veh = survey:BEV, \"BEV\", IF(?veh = survey:BEHV, \"BEHV\", IF(?veh = survey:ICE, \"ICE\", \"\") ) ) AS ?vehicle ) FILTER(?vehicle != \"\") BIND( IF(?vehicle = \"BEV\", 1, IF(?vehicle = \"BEHV\", 2, IF(?vehicle = \"ICE\", 3, 4) ) ) AS ?ord ) } ORDER BY ?ord",
+    "ambiguity_label": "mid",
+    "topic": "current_demand",
+    "source_raw_index": 13,
+    "source_title": "OEM Monthly Current Demand"
+  },
+  {
+    "id": "UNEVAL009",
+    "question": "Split OEM companies by shortage status.",
+    "query": "SELECT ?ShortageStatus (COUNT(?Company) AS ?Count) WHERE { ?Company a survey:Company ; survey:hasSurveyOrigin ?origin ; survey:reportsShortage ?Shortage . ?origin a survey:OEM_Survey . BIND(IF(?Shortage = true, \"yes\", \"no\") AS ?ShortageStatus) } GROUP BY ?ShortageStatus",
+    "ambiguity_label": "mid",
+    "topic": "shortage",
+    "source_raw_index": 14,
+    "source_title": "Expected Future Demand Semiconductor Shortage"
+  },
+  {
+    "id": "UNEVAL010",
+    "question": "Show OEM autonomous-driving percentages by vehicle type, SAE level, and year.",
+    "query": "SELECT ?vehicle ?saeLabel ?year (AVG(?pct) AS ?avgPct) WHERE { ?oemClass a survey:AutonomousDrivingDevelopment_OEM ; survey:hasSurveyOrigin survey:OEM_Survey ; survey:hasDetail ?entry . ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?veh ; survey:hasSAELevel ?sae ; survey:hasPercentage ?pct ; survey:hasYear ?year . BIND( IF(CONTAINS(STR(?veh), \"BEV\"), \"BEV\", IF(CONTAINS(STR(?veh), \"BEHV\"), \"BEHV\", IF(CONTAINS(STR(?veh), \"ICE\"), \"ICE\", \"OTHER\") ) ) AS ?vehicle ) FILTER(?vehicle != \"OTHER\") BIND(STRAFTER(STR(?sae), \"SAE_Level_\") AS ?saeLabel) } GROUP BY ?vehicle ?saeLabel ?year ORDER BY ?vehicle xsd:integer(?saeLabel) xsd:integer(?year)",
+    "ambiguity_label": "high",
+    "topic": "autonomous",
+    "source_raw_index": 15,
+    "source_title": "Yearly Autonomous Driving"
+  },
+  {
+    "id": "UNEVAL011",
+    "question": "Show total current demand by region for OEM survey results.",
+    "query": "SELECT ?regionName (SUM(?unitsSold) AS ?totalDemand) WHERE { ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:totalDemand ?unitsSold . ?origin a survey:OEM_Survey . ?region a survey:Region ; survey:regionName ?regionName . } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "current_demand",
+    "source_raw_index": 16,
+    "source_title": "Current Demand Regional Split"
+  },
+  {
+    "id": "UNEVAL012",
+    "question": "Show OEM future-demand percentage share by quarter and region.",
+    "query": "SELECT ?quarterLabel ?regionName (ROUND(((SUM(?pct) / ?grandTotal) * 100) * 100) / 100 AS ?percentShare) WHERE { BIND(survey:OEM_Survey AS ?surveyType) ?origin a ?surveyType . ?entry a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:quarter ?q ; survey:totalDemandPercentageChange ?pct . ?q survey:periodLabel ?quarterLabel . ?region survey:regionName ?regionName . { SELECT ?origin ?quarterLabel (SUM(?v) AS ?grandTotal) WHERE { ?e a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:quarter ?qq ; survey:totalDemandPercentageChange ?v . ?qq survey:periodLabel ?quarterLabel . } GROUP BY ?origin ?quarterLabel } } GROUP BY ?quarterLabel ?regionName ?grandTotal ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "future_demand",
+    "source_raw_index": 17,
+    "source_title": "Expected Future Demand Regional Split"
+  }
+]
