@@ -23,7 +23,7 @@ INFINEON_CHAT_ENDPOINT=/chat/completions
 
 ```bash
 python data/infineon/generate_infineon_dataset_500.py \
-  --seed data/infineon/infineon_dataset_100.json \
+  --seed data/infineon/infineon_train.json \
   --out data/infineon/infineon_dataset_500.json \
   --target 500
 ```
@@ -137,7 +137,7 @@ Outputs:
 
 ```bash
 python evaluation/run_infineon_100_eval.py \
-  --dataset data/infineon/infineon_dataset_100.json \
+  --dataset data/infineon/infineon_train.json \
   --use-ml-ranking \
   --ml-model ranking/models/infineon_np_tfidf_ranker_500.json \
   --ambiguity-config ranking/models/infineon_ambiguity_config_500.json \

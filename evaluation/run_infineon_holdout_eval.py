@@ -16,11 +16,11 @@ def main() -> None:
     )
     parser.add_argument(
         "--dataset",
-        default="data/infineon/infineon_eval_50.json",
+        default="data/infineon/infineon_test_final.json",
     )
     parser.add_argument("--graph", default="data/infineon/graph.ttl")
     parser.add_argument("--schema", default="data/infineon/schema.json")
-    parser.add_argument("--out", default="results/infineon_holdout_eval_50.json")
+    parser.add_argument("--out", default="results/infineon_test_final_eval.json")
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--llm", default="auto", choices=["auto", "infineon"])
     parser.add_argument("--temperature", type=float, default=0.2)

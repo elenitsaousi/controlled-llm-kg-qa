@@ -781,7 +781,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Evaluate Infineon questions."
     )
-    parser.add_argument("--dataset", default="data/infineon/infineon_dataset_30.json")
+    parser.add_argument("--dataset", default="data/infineon/infineon_test_final.json")
     parser.add_argument("--graph", default="data/infineon/graph.ttl")
     parser.add_argument("--k", type=int, default=3)
     parser.add_argument("--schema", default="data/infineon/schema.json")

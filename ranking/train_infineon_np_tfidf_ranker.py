@@ -61,7 +61,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--query-plan-data",
-        default="data/infineon/infineon_dataset_100.json",
+        default="data/infineon/infineon_train.json",
         help="Gold question/SPARQL dataset for query-plan predictor.",
     )
     parser.add_argument(

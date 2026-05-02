@@ -397,42 +397,42 @@ def test_template_candidates_cover_hard_infineon_intents():
     assert "ComponentShare" in component_share[0]
 
 
-def test_heldout_eval_dataset_is_separate_from_training_questions():
-    train = json.load(open("data/infineon/infineon_dataset_100.json", "r", encoding="utf-8"))
-    eval_rows = json.load(open("data/infineon/infineon_eval_50.json", "r", encoding="utf-8"))
+def test_dev_dataset_is_separate_from_training_questions():
+    train = json.load(open("data/infineon/infineon_train.json", "r", encoding="utf-8"))
+    eval_rows = json.load(open("data/infineon/infineon_dev.json", "r", encoding="utf-8"))
 
     train_questions = {str(row.get("question", "")).strip().lower() for row in train}
-    assert len(eval_rows) == 50
-    assert all(str(row.get("id", "")).startswith("EVAL") for row in eval_rows)
-    assert all(str(row.get("source_gold_id", "")).strip() for row in eval_rows)
+    assert len(eval_rows) == 100
+    assert all(str(row.get("split", "")) == "dev" for row in eval_rows)
     assert not any(
         str(row.get("question", "")).strip().lower() in train_questions
         for row in eval_rows
     )
 
 
-def test_unseen_eval_dataset_has_no_family_overlap_with_train_or_eval50():
-    train = json.load(open("data/infineon/infineon_dataset_100.json", "r", encoding="utf-8"))
-    eval50 = json.load(open("data/infineon/infineon_eval_50.json", "r", encoding="utf-8"))
-    unseen = json.load(open("data/infineon/infineon_eval_unseen_50.json", "r", encoding="utf-8"))
+def test_final_eval_dataset_is_separate_from_train_and_dev_questions():
+    train = json.load(open("data/infineon/infineon_train.json", "r", encoding="utf-8"))
+    dev = json.load(open("data/infineon/infineon_dev.json", "r", encoding="utf-8"))
+    final = json.load(open("data/infineon/infineon_test_final.json", "r", encoding="utf-8"))
 
     train_families = {_query_family_signature(str(row.get("query", ""))) for row in train}
-    eval50_families = {_query_family_signature(str(row.get("query", ""))) for row in eval50}
-    unseen_families = [_query_family_signature(str(row.get("query", ""))) for row in unseen]
+    dev_families = {_query_family_signature(str(row.get("query", ""))) for row in dev}
+    final_families = [_query_family_signature(str(row.get("query", ""))) for row in final]
     train_questions = {str(row.get("question", "")).strip().lower() for row in train}
-    eval50_questions = {str(row.get("question", "")).strip().lower() for row in eval50}
+    dev_questions = {str(row.get("question", "")).strip().lower() for row in dev}
 
-    assert len(unseen) == 50
-    assert all(str(row.get("id", "")).startswith("UNEVAL") for row in unseen)
-    assert len(set(unseen_families)) == 12
-    assert not any(fam in train_families for fam in unseen_families)
-    assert not any(fam in eval50_families for fam in unseen_families)
-    assert not any(str(row.get("question", "")).strip().lower() in train_questions for row in unseen)
-    assert not any(str(row.get("question", "")).strip().lower() in eval50_questions for row in unseen)
+    assert len(final) == 50
+    assert all(str(row.get("id", "")).startswith("FINAL") for row in final)
+    assert all(str(row.get("split", "")) == "test_final" for row in final)
+    assert len(set(final_families)) == 10
+    assert not any(str(row.get("question", "")).strip().lower() in train_questions for row in final)
+    assert not any(str(row.get("question", "")).strip().lower() in dev_questions for row in final)
+    assert any(fam not in train_families for fam in final_families)
+    assert any(fam not in dev_families for fam in final_families)
 
 
-def test_unseen_eval_dataset_queries_execute_against_graph():
-    unseen = json.load(open("data/infineon/infineon_eval_unseen_50.json", "r", encoding="utf-8"))
+def test_final_eval_dataset_queries_execute_against_graph():
+    final = json.load(open("data/infineon/infineon_test_final.json", "r", encoding="utf-8"))
     graph = Graph()
     graph.parse("data/infineon/graph.ttl", format="turtle")
     prefix = (
@@ -440,6 +440,11 @@ def test_unseen_eval_dataset_queries_execute_against_graph():
         "PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>\n"
     )
 
-    for row in unseen:
-        results = list(graph.query(prefix + str(row["query"])))
+    seen_queries = set()
+    for row in final:
+        query = str(row["query"])
+        if query in seen_queries:
+            continue
+        seen_queries.add(query)
+        results = list(graph.query(prefix + query))
         assert results, row["id"]

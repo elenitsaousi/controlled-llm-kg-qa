@@ -29,7 +29,7 @@ def main() -> None:
         description="Run Infineon 500 pipeline (steps 1-5)."
     )
     parser.add_argument("--python", default=sys.executable)
-    parser.add_argument("--dataset-100", default="data/infineon/infineon_dataset_100.json")
+    parser.add_argument("--dataset-100", default="data/infineon/infineon_train.json")
     parser.add_argument("--dataset-500", default="data/infineon/infineon_dataset_500.json")
     parser.add_argument("--splits-dir", default="data/infineon/splits/infineon_500")
     parser.add_argument("--schema", default="data/infineon/schema.json")

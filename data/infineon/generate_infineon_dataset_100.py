@@ -26,8 +26,8 @@ PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 GRAPH_PATH = BASE_DIR / "data" / "infineon" / "graph.ttl"
-SEED_DATASET_PATH = BASE_DIR / "data" / "infineon" / "infineon_dataset_30.json"
-OUT_PATH = BASE_DIR / "data" / "infineon" / "infineon_dataset_100.json"
+SEED_DATASET_PATH = BASE_DIR / "data" / "infineon" / "archive" / "infineon_dataset_30.json"
+OUT_PATH = BASE_DIR / "data" / "infineon" / "infineon_train_generated.json"
 
 TARGET_BY_LABEL = {"low": 34, "mid": 33, "high": 33}
 

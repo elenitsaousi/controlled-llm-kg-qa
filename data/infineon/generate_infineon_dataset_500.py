@@ -34,7 +34,7 @@ PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 """
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-DEFAULT_SEED = BASE_DIR / "data" / "infineon" / "infineon_dataset_100.json"
+DEFAULT_SEED = BASE_DIR / "data" / "infineon" / "infineon_train.json"
 DEFAULT_GRAPH = BASE_DIR / "data" / "infineon" / "graph.ttl"
 DEFAULT_OUT = BASE_DIR / "data" / "infineon" / "infineon_dataset_500.json"
 

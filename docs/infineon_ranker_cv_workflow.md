@@ -25,7 +25,7 @@ python -c "import os; from dotenv import load_dotenv; load_dotenv('.env'); print
 
 ```bash
 python ranking/build_infineon_training_data.py \
-  --dataset data/infineon/infineon_dataset_100.json \
+  --dataset data/infineon/infineon_train.json \
   --graph data/infineon/graph.ttl \
   --schema data/infineon/schema.json \
   --out ranking/infineon_training_data_100.json \
@@ -66,7 +66,7 @@ What this does:
 
 ```bash
 python evaluation/run_infineon_100_eval.py \
-  --dataset data/infineon/infineon_dataset_100.json \
+  --dataset data/infineon/infineon_train.json \
   --use-ml-ranking \
   --ml-model ranking/models/infineon_np_tfidf_ranker.json \
   --ml-ambiguity-regimes mid \

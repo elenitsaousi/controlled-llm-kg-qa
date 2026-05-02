@@ -16,11 +16,11 @@ def main() -> None:
     )
     parser.add_argument(
         "--dataset",
-        default="data/infineon/infineon_dataset_100.json",
+        default="data/infineon/infineon_train.json",
     )
     parser.add_argument("--graph", default="data/infineon/graph.ttl")
     parser.add_argument("--schema", default="data/infineon/schema.json")
-    parser.add_argument("--out", default="results/infineon_eval_100.json")
+    parser.add_argument("--out", default="results/infineon_train_eval.json")
     parser.add_argument("--k", type=int, default=3)
     parser.add_argument(
         "--llm",

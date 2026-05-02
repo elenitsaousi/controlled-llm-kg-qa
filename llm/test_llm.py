@@ -12,7 +12,7 @@ print(f"Graph loaded: {len(g)} triples")
 
 schema = load_schema("data/infineon/schema.json")
 
-with open("data/infineon/infineon_dataset_30.json", "r") as f:
+with open("data/infineon/infineon_train.json", "r") as f:
     dataset = json.load(f)
 
 item = dataset[0]

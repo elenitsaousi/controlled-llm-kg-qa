@@ -438,14 +438,14 @@ def main() -> None:
     )
     parser.add_argument(
         "--dataset",
-        default="data/infineon/infineon_dataset_100.json",
+        default="data/infineon/infineon_train.json",
         help="Benchmark dataset with question/query/ambiguity_label.",
     )
     parser.add_argument("--graph", default="data/infineon/graph.ttl")
     parser.add_argument("--schema", default="data/infineon/schema.json")
     parser.add_argument(
         "--out",
-        default="ranking/infineon_training_data_100.json",
+        default="ranking/infineon_training_data_train.json",
     )
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--n-runs", type=int, default=3)

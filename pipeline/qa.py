@@ -1019,7 +1019,7 @@ def run_ambiguity_experiment(
     qpath = (
         Path(questions_path)
         if questions_path
-        else BASE / "data" / "infineon" / "infineon_dataset_100.json"
+        else BASE / "data" / "infineon" / "infineon_train.json"
     )
     questions = _load_questions(qpath)
 
