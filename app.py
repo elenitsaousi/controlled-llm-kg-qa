@@ -8,6 +8,7 @@ import streamlit.components.v1 as components
 from rdflib import Graph
 
 from kg.schema import load_schema
+from llm.answer_synthesis import synthesize_answer
 from llm.candidate_generation import generate_candidate_prompt
 from llm.client import InfineonGPTClient, LLMClientError
 from pipeline.qa import answer_question
@@ -344,6 +345,7 @@ if st.button("Ask", type="primary"):
         graph_rows: List[Dict[str, str]] = []
         graph_rows_truncated = False
         graph_exec_error = ""
+        graph_answer = ""
         if execute_selected and selected_query and os.path.exists(graph_path):
             try:
                 graph = _load_graph_cached(graph_path)
@@ -351,6 +353,16 @@ if st.button("Ask", type="primary"):
                     graph,
                     selected_query,
                     max_rows=int(max_preview_rows),
+                )
+                graph_answer = synthesize_answer(
+                    question,
+                    selected_query,
+                    {
+                        "rows": graph_rows,
+                        "matched_question_id": None,
+                        "error": None,
+                    },
+                    result.get("errors") or None,
                 )
             except Exception as exc:
                 graph_exec_error = str(exc)
@@ -366,8 +378,10 @@ if st.button("Ask", type="primary"):
         elif execute_selected and selected_query:
             if graph_rows:
                 st.success(f"Returned {len(graph_rows)} rows from Infineon graph.")
+                st.write(graph_answer)
             else:
                 st.warning("Selected query returned 0 rows from Infineon graph.")
+                st.write(graph_answer or "No results were found for this question.")
         else:
             st.write(result.get("answer", "No answer."))
 

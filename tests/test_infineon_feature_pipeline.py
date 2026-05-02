@@ -21,6 +21,7 @@ from ranking.np_tfidf_ranker import (
     train_query_plan_predictor,
 )
 from llm.prompts import build_candidate_prompt
+from llm.answer_synthesis import synthesize_answer
 from kg.schema import load_schema
 from pipeline.qa import _rerank_with_semantic_coverage
 from validation.semantic import semantic_coverage_report
@@ -448,3 +449,113 @@ def test_final_eval_dataset_queries_execute_against_graph():
         seen_queries.add(query)
         results = list(graph.query(prefix + query))
         assert results, row["id"]
+
+
+def test_infineon_answer_synthesis_summarizes_regional_demand():
+    answer = synthesize_answer(
+        "Compare demand by region.",
+        "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE { ?d a survey:DemandForRegion }",
+        {
+            "rows": [
+                {"regionName": "Europe", "totalDemand": "10"},
+                {"regionName": "Japan", "totalDemand": "20"},
+            ]
+        },
+    )
+
+    assert "Regional demand returned 2 row(s)" in answer
+    assert "Japan" in answer
+    assert "20" in answer
+
+
+def test_infineon_answer_synthesis_summarizes_future_demand():
+    answer = synthesize_answer(
+        "Compare future demand by technology and quarter.",
+        "SELECT ?techLabel ?quarterLabel WHERE { ?entry a survey:FutureDemandAnalysis }",
+        {
+            "rows": [
+                {"techLabel": "Tech A", "quarterLabel": "Q1", "totalFutureChange": "1.5"},
+                {"techLabel": "Tech B", "quarterLabel": "Q2", "totalFutureChange": "4.25"},
+            ]
+        },
+    )
+
+    assert "Future demand returned 2 grouped row(s)" in answer
+    assert "Tech B" in answer
+    assert "Q2" in answer
+
+
+def test_infineon_answer_synthesis_summarizes_autonomous_max():
+    answer = synthesize_answer(
+        "Highest autonomous driving percentage.",
+        "SELECT ?vehicleType ?saeLevel WHERE { ?entry a survey:AutonomousDrivingDevelopment }",
+        {
+            "rows": [
+                {"vehicleType": "BEV", "saeLevel": "5", "maxPercentage": "102.0"},
+            ]
+        },
+    )
+
+    assert "Autonomous-driving development returned 1 row(s)" in answer
+    assert "BEV" in answer
+    assert "SAE level 5" in answer
+
+
+def test_infineon_answer_synthesis_summarizes_bl_comparison():
+    answer = synthesize_answer(
+        "Compare BL1 and BL2.",
+        "SELECT ?baseline WHERE { ?entry a survey:CurrentDemandAnalysis }",
+        {
+            "rows": [
+                {"baseline": "BL1", "pct": "11.04"},
+                {"baseline": "BL2", "pct": "-9.03"},
+            ]
+        },
+    )
+
+    assert "Current-demand BL comparison returned 2 row(s)" in answer
+    assert "BL1" in answer
+    assert "BL2" in answer
+    assert "20.07" in answer
+
+
+def test_infineon_answer_synthesis_summarizes_order_cancellation():
+    answer = synthesize_answer(
+        "Show order cancellation responses by technology category.",
+        "SELECT ?technologyCategory ?responseType WHERE { ?entry a survey:OrderCancellation }",
+        {
+            "rows": [
+                {
+                    "technologyCategory": "OrderCancellationChange_Semi_10nm_to_lt28nm",
+                    "responseType": "Increase",
+                    "participantCount": "2",
+                },
+                {
+                    "technologyCategory": "OrderCancellationChange_Semi_10nm_to_lt28nm",
+                    "responseType": "Stable",
+                    "participantCount": "1",
+                },
+            ]
+        },
+    )
+
+    assert "Order-cancellation results returned 2 row(s)" in answer
+    assert "Increase" in answer
+    assert "10nm to <28nm" in answer
+
+
+def test_infineon_answer_synthesis_summarizes_vehicle_sales_by_month():
+    answer = synthesize_answer(
+        "Aggregate vehicle sales by month.",
+        "SELECT ?monthLabel WHERE { ?obs a survey:VehicleSalesObservation }",
+        {
+            "rows": [
+                {"monthLabel": "Jan_2023", "unitsSold": "1000"},
+                {"monthLabel": "Feb_2023", "unitsSold": "2500"},
+            ]
+        },
+    )
+
+    assert "Vehicle-sales results returned 2 monthly row(s)" in answer
+    assert "Feb 2023" in answer
+    assert "2,500" in answer
