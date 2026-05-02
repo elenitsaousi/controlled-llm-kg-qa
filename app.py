@@ -1,4 +1,5 @@
 import os
+import time
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
@@ -202,6 +203,8 @@ def _render_selection_explainability(result: Dict[str, Any]) -> None:
     if rows:
         st.caption("Candidate diagnostics")
         st.dataframe(rows, width="stretch")
+    elif not expl.get("candidate_diagnostics_included", True):
+        st.caption("Candidate diagnostics skipped. Enable 'Run candidate diagnostics' for per-candidate execution checks.")
 
 
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
@@ -246,6 +249,14 @@ with st.sidebar:
     st.subheader("Display")
     show_prompt = st.checkbox("Show candidate prompt", value=False)
     show_candidates = st.checkbox("Show candidates", value=True)
+    show_candidate_diagnostics = st.checkbox(
+        "Run candidate diagnostics",
+        value=False,
+        help=(
+            "Runs graph execution checks for every candidate. Useful for debugging, "
+            "but slower on large graph slices."
+        ),
+    )
     execute_selected = st.checkbox("Execute selected query on graph", value=True)
     max_preview_rows = st.number_input("Max preview rows", min_value=10, max_value=1000, value=200, step=10)
 
@@ -297,6 +308,7 @@ if st.button("Ask", type="primary"):
             st.subheader("Candidate Generation Prompt")
             st.code(prompt, language="text")
 
+        request_started = time.perf_counter()
         try:
             os.environ["INFINEON_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
             client = InfineonGPTClient(
@@ -314,6 +326,7 @@ if st.button("Ask", type="primary"):
                 ml_policy=ml_policy,
                 ml_model_path=ml_model_path.strip() or None,
                 ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
+                include_candidate_diagnostics=bool(show_candidate_diagnostics),
             )
         except LLMClientError as exc:
             st.error(f"LLM error: {exc}")
@@ -321,6 +334,7 @@ if st.button("Ask", type="primary"):
         except Exception as exc:
             st.error(f"Request failed: {exc}")
             st.stop()
+        request_elapsed = time.perf_counter() - request_started
 
         effective_question = str(result.get("effective_question", "")).strip()
         if effective_question and effective_question != question.strip():
@@ -383,6 +397,7 @@ if st.button("Ask", type="primary"):
             f"ML policy setting: {result.get('ml_policy', ml_policy)} | "
             f"Model: {result.get('ml_model_path', ml_model_path)}"
         )
+        st.caption(f"Pipeline time before graph preview: {request_elapsed:.2f}s")
         removed = int(result.get("candidate_duplicates_removed") or 0)
         if removed:
             st.caption(f"Candidate deduplication removed {removed} duplicate query candidate(s).")

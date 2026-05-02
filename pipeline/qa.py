@@ -531,6 +531,7 @@ def _build_selection_explanation(
     candidates: List[Dict[str, str]],
     schema_ranked: List[Dict[str, object]],
     learning_ranked: List[Dict[str, object]],
+    include_candidate_diagnostics: bool = True,
 ) -> Dict[str, object]:
     schema_scores = {
         _candidate_key(str(r.get("query", ""))): float(r.get("score", 0.0))
@@ -560,12 +561,19 @@ def _build_selection_explanation(
     selected_profile = _query_runtime_profile(selected_query or "") if selected_query else {}
 
     rows: List[Dict[str, object]] = []
+    valid_count = 0
+    invalid_count = 0
     for idx, cand in enumerate(candidates):
         query = str(cand.get("query", "")).strip()
         if not query:
             continue
         ckey = _candidate_key(query)
         errs = _runtime_validate_query(query)
+        is_valid = len(errs) == 0
+        valid_count += int(is_valid)
+        invalid_count += int(not is_valid)
+        if not include_candidate_diagnostics:
+            continue
         coverage = semantic_coverage_report(effective_question, query)
         has_rows, exec_error = (
             _query_has_runtime_rows(query) if not errs else (None, None)
@@ -592,7 +600,6 @@ def _build_selection_explanation(
             }
         )
 
-    valid_count = sum(1 for r in rows if bool(r.get("is_valid")))
     return {
         "question": question,
         "effective_question": effective_question,
@@ -612,9 +619,10 @@ def _build_selection_explanation(
         "selected_execution_has_rows": selected_has_rows,
         "selected_execution_error": selected_execution_error,
         "selected_execution_unbound_vars": list(selected_profile.get("unbound_vars") or []),
-        "candidate_count": len(rows),
+        "candidate_diagnostics_included": bool(include_candidate_diagnostics),
+        "candidate_count": len(candidates),
         "valid_candidate_count": valid_count,
-        "invalid_candidate_count": max(0, len(rows) - valid_count),
+        "invalid_candidate_count": invalid_count,
         "candidates": rows,
     }
 
@@ -717,6 +725,7 @@ def answer_question(
     ml_policy: str = "auto",
     ml_model_path: Optional[str] = None,
     ml_ambiguity_config_path: Optional[str] = None,
+    include_candidate_diagnostics: bool = True,
 ) -> Dict[str, object]:
     alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
     query_plan_predictor = _load_query_plan_predictor_cached()
@@ -764,6 +773,7 @@ def answer_question(
             candidates=[],
             schema_ranked=[],
             learning_ranked=[],
+            include_candidate_diagnostics=include_candidate_diagnostics,
         )
         return {
             "answer": "I could not generate any valid query candidates.",
@@ -882,6 +892,7 @@ def answer_question(
             candidates=candidates,
             schema_ranked=schema_ranked,
             learning_ranked=learning_ranked,
+            include_candidate_diagnostics=include_candidate_diagnostics,
         )
         return {
             "answer": (
@@ -933,6 +944,7 @@ def answer_question(
             candidates=candidates,
             schema_ranked=schema_ranked,
             learning_ranked=learning_ranked,
+            include_candidate_diagnostics=include_candidate_diagnostics,
         )
         return {
             "answer": (
@@ -1002,6 +1014,7 @@ def answer_question(
         candidates=candidates,
         schema_ranked=schema_ranked,
         learning_ranked=learning_ranked,
+        include_candidate_diagnostics=include_candidate_diagnostics,
     )
 
     return {
