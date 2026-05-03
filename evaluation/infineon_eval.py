@@ -261,20 +261,48 @@ def _ml_rank_candidates(
     schema_dict: dict,
     model_path: str
 ) -> List[Dict]:
-    """Rank candidates using ML model. Returns reranked candidates."""
+    """Rank candidates using ML model and attach ml_score."""
+
+    if not candidates:
+        return candidates
+
+    # -----------------------------
+    # NP TF-IDF MODEL
+    # -----------------------------
     if _is_np_model_file(model_path):
         try:
             from ranking.np_tfidf_ranker import rank_candidates_with_model
             ranker = _load_np_ranker(model_path)
-            return rank_candidates_with_model(
+
+            ranked = rank_candidates_with_model(
                 ranker,
                 question,
                 candidates,
                 schema_dict,
             )
+
+            output = []
+            for i, c in enumerate(ranked):
+                c = dict(c)
+
+                # ⚠️ depending on implementation, score may or may not exist
+                score = c.get("score")
+
+                if score is None:
+                    # fallback: use ranking position
+                    score = 1.0 / (i + 1)
+
+                c["ml_score"] = float(score)
+                output.append(c)
+
+            return output
+
         except Exception:
             return candidates
 
+    # -----------------------------
+    # LOGISTIC / XGB MODEL
+    # -----------------------------
     try:
         from ranking.runtime_ranker import LogisticRanker
         from ranking.feature_extraction import extract_features
@@ -283,6 +311,7 @@ def _ml_rank_candidates(
         if ranker is None:
             ranker = LogisticRanker(model_path)
             _RANKER_CACHE[model_path] = ranker
+
         feature_dicts = []
         for c in candidates:
             try:
@@ -295,6 +324,7 @@ def _ml_rank_candidates(
             return candidates
 
         scores = ranker.score(feature_dicts)
+
         ranked = sorted(
             zip(scores, candidates),
             key=lambda x: x[0],
@@ -303,13 +333,14 @@ def _ml_rank_candidates(
 
         output = []
         for score, c in ranked:
-            c = dict(c)  # copy
-            c["ml_score"] = float(score)   
+            c = dict(c)
+            c["ml_score"] = float(score)
             output.append(c)
 
         return output
+
     except Exception:
-        return candidates  # fallback to original order
+        return candidates
 
 
 def _schema_intent_rank_candidates(
