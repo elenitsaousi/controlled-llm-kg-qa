@@ -793,6 +793,49 @@ def _select_best_valid_query(
 
     return ordered_queries[0], first_errors, 0
 
+def _select_best_candidate_semantic(candidates: List[Dict[str, object]], question: str):
+    best = None
+    best_score = float("-inf")
+
+    for cand in candidates:
+        query = str(cand.get("query", ""))
+        base_score = float(cand.get("score", 0.0))
+        semantic_score = float(cand.get("semantic_judge_score", 0.0))
+
+        score = base_score + 1.5 * semantic_score
+
+        # ❌ WRONG METRIC
+        if "percentagechange" in query.lower() and "demand" in question.lower():
+            score -= 5
+
+        # ❌ MISSING AUTOMOTIVE
+        if "automotive" in question.lower() and "automotive" not in query.lower():
+            score -= 3
+
+        # ❌ BAD SHAPE
+        if "rdf:type" in query.lower():
+            score -= 2.5
+
+        # ❌ PIVOT
+        if "bl1" in query.lower() and "bl2" in query.lower() and "baseline" not in question.lower():
+            score -= 2
+
+        # ❌ NO ROWS
+        has_rows, _ = _query_has_runtime_rows(query)
+        if has_rows is False:
+            score -= 4
+
+        # ❌ UNBOUND VARS
+        profile = _query_runtime_profile(query)
+        if profile.get("unbound_vars"):
+            score -= 2
+
+        if score > best_score:
+            best = cand
+            best_score = score
+
+    return best
+
 
 def _build_selection_explanation(
     question: str,
@@ -1208,8 +1251,17 @@ def answer_question(
             "candidate_duplicates_removed": duplicate_candidates_removed,
         }
 
-    ordered_queries = _ordered_candidate_queries(primary, fallback)
-    selected_query, errors, selected_rank = _select_best_valid_query(ordered_queries)
+    ordered_candidates = primary + fallback
+
+    selected = _select_best_candidate_semantic(
+        ordered_candidates,
+        effective_question
+    )
+
+    selected_query = selected.get("query") if selected else None
+    errors = _runtime_validate_query(selected_query) if selected_query else []
+    selected_rank = None
+    
     if selected_query is None:
         selection_explanation = _build_selection_explanation(
             question=question,
