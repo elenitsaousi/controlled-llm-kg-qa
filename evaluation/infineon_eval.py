@@ -813,22 +813,37 @@ def evaluate(
                 predicted_regime = None
                 predicted_entropy = None
 
-        # ML Ranking (all, label-gated, or config-gated)
-        apply_ml_ranking = ml_ranking_enabled
-        if apply_ml_ranking and normalized_regimes:
-            apply_ml_ranking = regime_for_policy in set(normalized_regimes)
-
-        if apply_ml_ranking and candidates:
-            candidates = _ml_rank_candidates(
-                candidates, ranking_question, schema_dict, ml_model_path
-            )
-        elif use_schema_ranking and candidates:
-            candidates = _schema_intent_rank_candidates(candidates, ranking_question, schema)
-        elif use_semantic_selection and candidates:
+        # ----------------------------------
+        # 1️⃣ ALWAYS compute semantic scores
+        # ----------------------------------
+        if candidates:
             candidates = rank_candidates_by_semantic_judge(
                 ranking_question,
                 candidates,
                 min_margin=semantic_selection_margin,
+            )
+
+        # ----------------------------------
+        # 2️⃣ Decide if ML should apply
+        # ----------------------------------
+        apply_ml_ranking = ml_ranking_enabled
+        if apply_ml_ranking and normalized_regimes:
+            apply_ml_ranking = regime_for_policy in set(normalized_regimes)
+
+        # ----------------------------------
+        # 3️⃣ Apply ML (OPTIONAL)
+        # ----------------------------------
+        if apply_ml_ranking and candidates:
+            candidates = _ml_rank_candidates(
+                candidates, ranking_question, schema_dict, ml_model_path
+            )
+
+        # ----------------------------------
+        # 4️⃣ Schema fallback (optional)
+        # ----------------------------------
+        elif use_schema_ranking and candidates:
+            candidates = _schema_intent_rank_candidates(
+                candidates, ranking_question, schema
             )
 
         top1_correct = False
@@ -929,9 +944,7 @@ def evaluate(
             "predicted_entropy": predicted_entropy,
             "ml_applied": apply_ml_ranking,
             "schema_ranking_applied": bool(use_schema_ranking and not apply_ml_ranking),
-            "semantic_selection_applied": bool(
-                use_semantic_selection and not apply_ml_ranking and not use_schema_ranking
-            ),
+            "semantic_selection_applied": bool(use_semantic_selection),
             "top1_correct": top1_correct,
             "any_correct": any_correct,
             "candidates": candidate_results,
