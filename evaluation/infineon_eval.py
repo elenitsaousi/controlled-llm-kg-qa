@@ -783,6 +783,20 @@ def evaluate(
         any_valid = False
         candidate_results = []
 
+        from pipeline.qa import _select_best_candidate_semantic
+
+        if use_semantic_selection and candidates:
+            best = _select_best_candidate_semantic(candidates, ranking_question)
+
+            if best:
+                best_query = best.get("query")
+                # Βάζουμε το best πρώτο
+                candidates = [best] + [
+                    c for c in candidates
+                    if str(c.get("query")).strip() != best_query
+                ]
+
+
         for c_idx, c in enumerate(candidates):
             summary["total_candidates"] += 1
             cand_query = _strip_comments(str(c.get("query", "")).strip())
