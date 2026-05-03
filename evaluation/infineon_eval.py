@@ -33,6 +33,7 @@ from ranking.ambiguity_policy import (
     predict_regime,
 )
 from ranking.ranker import rank_candidates as rank_schema_candidates
+from validation.semantic import rank_candidates_by_semantic_judge
 
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -465,6 +466,8 @@ def evaluate(
     generation_runs: int = 1,
     use_ml_ranking: bool = True,
     use_schema_ranking: bool = False,
+    use_semantic_selection: bool = False,
+    semantic_selection_margin: float = 1.25,
     ml_model_path: str = "ranking/models/infineon_ranker.joblib",
     ml_ambiguity_regimes: Optional[List[str]] = None,
     ambiguity_config_path: Optional[str] = None,
@@ -561,6 +564,8 @@ def evaluate(
         "query_timeout": query_timeout,
         "ml_ranking": ml_ranking_enabled,
         "schema_ranking": bool(use_schema_ranking),
+        "semantic_selection": bool(use_semantic_selection),
+        "semantic_selection_margin": float(semantic_selection_margin),
         "ml_ambiguity_regimes": normalized_regimes,
         "ambiguity_config_path": ambiguity_config_path,
         "predicted_regime_counts": {},
@@ -766,6 +771,12 @@ def evaluate(
             )
         elif use_schema_ranking and candidates:
             candidates = _schema_intent_rank_candidates(candidates, ranking_question, schema)
+        elif use_semantic_selection and candidates:
+            candidates = rank_candidates_by_semantic_judge(
+                ranking_question,
+                candidates,
+                min_margin=semantic_selection_margin,
+            )
 
         top1_correct = False
         any_correct = False
@@ -816,6 +827,8 @@ def evaluate(
                 "label": label,
                 "query": cand_query,
                 "ml_score": c.get("ml_score"),
+                "semantic_judge_score": c.get("semantic_judge_score"),
+                "semantic_judge_report": c.get("semantic_judge_report"),
                 "source": c.get("source"),
             })
 
@@ -849,6 +862,9 @@ def evaluate(
             "predicted_entropy": predicted_entropy,
             "ml_applied": apply_ml_ranking,
             "schema_ranking_applied": bool(use_schema_ranking and not apply_ml_ranking),
+            "semantic_selection_applied": bool(
+                use_semantic_selection and not apply_ml_ranking and not use_schema_ranking
+            ),
             "top1_correct": top1_correct,
             "any_correct": any_correct,
             "candidates": candidate_results,
@@ -906,6 +922,17 @@ def main() -> None:
         action="store_true",
         help="Enable schema/intent candidate ranking when ML ranking is not applied.",
     )
+    parser.add_argument(
+        "--use-semantic-selection",
+        action="store_true",
+        help="Enable conservative semantic candidate selection when ML/schema ranking is not applied.",
+    )
+    parser.add_argument(
+        "--semantic-selection-margin",
+        type=float,
+        default=1.25,
+        help="Minimum semantic score margin required to override the first candidate.",
+    )
     parser.add_argument("--ml-model",
                         default="ranking/models/infineon_ranker.joblib",
                         help="Path to ML ranking model")
@@ -946,6 +973,8 @@ def main() -> None:
         generation_runs=max(1, int(args.generation_runs)),
         use_ml_ranking=not args.no_ml_ranking,
         use_schema_ranking=args.use_schema_ranking,
+        use_semantic_selection=args.use_semantic_selection,
+        semantic_selection_margin=args.semantic_selection_margin,
         ml_model_path=args.ml_model,
         ml_ambiguity_regimes=regimes,
         ambiguity_config_path=(args.ambiguity_config or None),
@@ -958,6 +987,7 @@ def main() -> None:
     print(f"Total: {summary['total']}")
     print(f"ML Ranking: {summary['ml_ranking']}")
     print(f"Schema Ranking: {summary.get('schema_ranking')}")
+    print(f"Semantic Selection: {summary.get('semantic_selection')}")
     print(f"Gold invalid: {summary['gold_invalid']}")
     print(f"Gold timeout: {summary['gold_timeout']}")
     print(f"Top1 correct: {summary['top1_correct']} ({summary['top1_correct_rate']:.2%})")

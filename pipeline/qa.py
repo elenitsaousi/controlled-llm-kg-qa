@@ -25,7 +25,11 @@ from ranking.ambiguity_policy import (
 )
 from ranking.feature_extraction import extract_features
 from ranking.ranker import rank_candidates as rank_schema_candidates
-from validation.semantic import semantic_coverage_report, validate_query_semantic
+from validation.semantic import (
+    semantic_coverage_report,
+    semantic_judge_report,
+    validate_query_semantic,
+)
 from validation.syntax import validate_query_syntax
 from visualization.ambiguity_metrics import ambiguity_entropy
 
@@ -56,6 +60,7 @@ _RUNTIME_PROFILE_CACHE: Dict[Tuple[int, str], Dict[str, object]] = {}
 
 NP_MODEL_TYPE = "np_tfidf_logreg_v1"
 INTENT_RANKING_WEIGHT = float(os.getenv("INFINEON_INTENT_RANKING_WEIGHT", "0") or 0)
+SEMANTIC_JUDGE_WEIGHT = float(os.getenv("INFINEON_SEMANTIC_JUDGE_WEIGHT", "0") or 0)
 
 
 def _get_default_entity_alias_index():
@@ -555,6 +560,9 @@ def _rerank_with_semantic_coverage(
         intent = _intent_alignment_report(question, query)
         intent_score = float(intent.get("score", 0.0))
         intent_score_applied = intent_score * INTENT_RANKING_WEIGHT
+        judge = semantic_judge_report(question, query)
+        semantic_judge_score = float(judge.get("score", 0.0))
+        semantic_judge_score_applied = semantic_judge_score * SEMANTIC_JUDGE_WEIGHT
         base_score = float(row.get("score", 0.0))
         updated = dict(row)
         updated["base_score"] = base_score
@@ -567,6 +575,11 @@ def _rerank_with_semantic_coverage(
         updated["intent_weight"] = INTENT_RANKING_WEIGHT
         updated["intent_matched"] = list(intent.get("matched", []))
         updated["intent_missing"] = list(intent.get("missing", []))
+        updated["semantic_judge_score"] = semantic_judge_score
+        updated["semantic_judge_score_applied"] = semantic_judge_score_applied
+        updated["semantic_judge_weight"] = SEMANTIC_JUDGE_WEIGHT
+        updated["semantic_judge_penalties"] = ", ".join(judge.get("penalties", []))
+        updated["semantic_judge_rewards"] = ", ".join(judge.get("rewards", []))
         # Coverage is a hard semantic signal: valid-but-partial queries should
         # lose to candidates that cover the requested business concepts.
         updated["score"] = (
@@ -574,6 +587,7 @@ def _rerank_with_semantic_coverage(
             + (2.0 * coverage)
             - (1.5 * missing_count)
             + intent_score_applied
+            + semantic_judge_score_applied
         )
         adjusted.append(updated)
     adjusted.sort(key=lambda x: x.get("score", float("-inf")), reverse=True)
@@ -813,6 +827,10 @@ def _build_selection_explanation(
         _candidate_key(str(r.get("query", ""))): i + 1
         for i, r in enumerate(learning_ranked)
     }
+    semantic_judge_scores = {
+        _candidate_key(str(r.get("query", ""))): float(r.get("semantic_judge_score", 0.0))
+        for r in list(schema_ranked) + list(learning_ranked)
+    }
     selected_key = _candidate_key(selected_query or "")
     selected_coverage = (
         semantic_coverage_report(effective_question, selected_query or "")
@@ -860,6 +878,7 @@ def _build_selection_explanation(
                 "schema_rank": schema_rank_pos.get(ckey),
                 "ml_score": learning_scores.get(ckey),
                 "ml_rank": learning_rank_pos.get(ckey),
+                "semantic_judge_score": semantic_judge_scores.get(ckey),
                 "query_preview": (query[:180] + "...") if len(query) > 180 else query,
             }
         )

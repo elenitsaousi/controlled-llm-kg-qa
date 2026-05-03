@@ -24,7 +24,11 @@ from llm.prompts import build_candidate_prompt
 from llm.answer_synthesis import synthesize_answer
 from kg.schema import load_schema
 from pipeline.qa import _intent_alignment_report, _rerank_with_semantic_coverage
-from validation.semantic import semantic_coverage_report
+from validation.semantic import (
+    rank_candidates_by_semantic_judge,
+    semantic_coverage_report,
+    semantic_judge_report,
+)
 from llm.candidate_generation import _template_candidate_queries
 from evaluation.analyze_infineon_results import analyze_results, render_markdown
 
@@ -188,6 +192,86 @@ def test_semantic_coverage_detects_missing_requested_survey_origins():
     assert "Tier1_Survey" in report["missing"]
     assert "Semiconductor_Survey" in report["missing"]
     assert report["coverage_score"] < 1.0
+
+
+def test_semantic_judge_prefers_average_for_mean_question():
+    question = "Return average future-demand change grouped by technology and quarter."
+    sum_query = (
+        "SELECT ?techLabel ?quarterLabel (SUM(?pct) AS ?totalFutureChange) WHERE { "
+        "?entry a survey:FutureDemandAnalysis ; "
+        "survey:analyzesTechnologyCategory ?tech ; "
+        "survey:forTimePeriod ?quarter ; "
+        "survey:percentageChange ?pct . "
+        "} GROUP BY ?techLabel ?quarterLabel"
+    )
+    avg_query = sum_query.replace("SUM(?pct) AS ?totalFutureChange", "AVG(?pct) AS ?avgFutureChange")
+
+    assert semantic_judge_report(question, avg_query)["score"] > semantic_judge_report(question, sum_query)["score"]
+
+
+def test_semantic_judge_prefers_literal_survey_bucket_labels():
+    question = "Break down total demand by region and by survey group: Tier1, OEM, and Semiconductor."
+    uri_query = (
+        "SELECT ?surveyType ?regionName (SUM(?units) AS ?totalDemand) WHERE { "
+        "?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o ; "
+        "survey:inRegion ?r ; survey:totalDemand ?units . "
+        "?o a ?surveyType . "
+        "?r survey:regionName ?regionName . "
+        "FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey)) "
+        "} GROUP BY ?surveyType ?regionName"
+    )
+    literal_query = (
+        "SELECT ?regionName ?surveyType (SUM(?units) AS ?totalDemand) WHERE { "
+        "VALUES (?surveyClass ?surveyType) { "
+        "(survey:OEM_Survey \"OEM\") "
+        "(survey:Tier1_Survey \"Tier1\") "
+        "(survey:Semiconductor_Survey \"Semiconductor\") } "
+        "?d a survey:DemandForRegion ; survey:hasSurveyOrigin ?o ; "
+        "survey:inRegion ?r ; survey:totalDemand ?units . "
+        "?o a ?surveyClass . "
+        "?r survey:regionName ?regionName . "
+        "} GROUP BY ?regionName ?surveyType"
+    )
+
+    assert semantic_judge_report(question, literal_query)["score"] > semantic_judge_report(question, uri_query)["score"]
+
+
+def test_semantic_judge_penalizes_bl_pivot_when_values_requested():
+    question = "Give baseline-level current-demand percentages for Tier1 Automotive, limited to BL1 and BL2."
+    pivot_query = (
+        "SELECT ?marketSegment (SUM(IF(?baseline = \"BL1\", ?pct, 0)) AS ?changeBL1) "
+        "(SUM(IF(?baseline = \"BL2\", ?pct, 0)) AS ?changeBL2) WHERE { "
+        "?root a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin survey:Tier1_Survey ; "
+        "survey:hasMarketSegment survey:Automotive ; survey:hasAggregatedResult ?entry . "
+        "?entry survey:baselineType ?baseline ; survey:percentageChange ?pct . "
+        "FILTER(?baseline IN (\"BL1\", \"BL2\")) } GROUP BY ?marketSegment"
+    )
+    row_query = (
+        "SELECT ?baseline ?pct WHERE { "
+        "?root a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin survey:Tier1_Survey ; "
+        "survey:hasMarketSegment survey:Automotive ; survey:hasAggregatedResult ?entry . "
+        "?entry survey:baselineType ?baseline ; survey:percentageChange ?pct . "
+        "FILTER(?baseline IN (\"BL1\", \"BL2\")) } ORDER BY ?baseline"
+    )
+
+    assert semantic_judge_report(question, row_query)["score"] > semantic_judge_report(question, pivot_query)["score"]
+
+
+def test_semantic_selector_conservative_override():
+    question = "Return average future-demand change grouped by technology and quarter."
+    wrong = (
+        "SELECT ?techLabel ?quarterLabel (SUM(?pct) AS ?totalFutureChange) WHERE { "
+        "?entry a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; "
+        "survey:forTimePeriod ?quarter ; survey:percentageChange ?pct . "
+        "} GROUP BY ?techLabel ?quarterLabel"
+    )
+    right = wrong.replace("SUM(?pct) AS ?totalFutureChange", "AVG(?pct) AS ?avgFutureChange")
+    ranked = rank_candidates_by_semantic_judge(
+        question,
+        [{"query": wrong}, {"query": right}],
+        min_margin=1.0,
+    )
+    assert ranked[0]["query"] == right
 
 
 def test_semantic_coverage_rerank_prefers_more_complete_query():

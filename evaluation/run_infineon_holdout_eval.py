@@ -38,6 +38,17 @@ def main() -> None:
         help="Enable schema/intent candidate ranking when ML ranking is not used.",
     )
     parser.add_argument(
+        "--use-semantic-selection",
+        action="store_true",
+        help="Enable conservative semantic candidate selection when ML/schema ranking is not used.",
+    )
+    parser.add_argument(
+        "--semantic-selection-margin",
+        type=float,
+        default=1.25,
+        help="Minimum semantic score margin required to override the first candidate.",
+    )
+    parser.add_argument(
         "--ml-model",
         default="ranking/models/infineon_np_tfidf_ranker.json",
     )
@@ -66,6 +77,8 @@ def main() -> None:
         generation_runs=max(1, int(args.generation_runs)),
         use_ml_ranking=args.use_ml_ranking,
         use_schema_ranking=args.use_schema_ranking,
+        use_semantic_selection=args.use_semantic_selection,
+        semantic_selection_margin=args.semantic_selection_margin,
         ml_model_path=args.ml_model,
         ml_ambiguity_regimes=_parse_amb_regimes(args.ml_ambiguity_regimes),
         ambiguity_config_path=(args.ambiguity_config or None),
