@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+import signal
 
 import numpy as np
 from rdflib import Graph
@@ -696,6 +697,24 @@ def _runtime_validate_query(query: str) -> List[Dict[str, str]]:
         errors.append({"type": "syntax", "message": str(exc)})
     return errors
 
+class TimeoutException(Exception):
+    pass
+
+def _timeout_handler(signum, frame):
+    raise TimeoutException()
+
+def _safe_graph_query(graph, query, timeout=2):
+    signal.signal(signal.SIGALRM, _timeout_handler)
+    signal.alarm(timeout)
+
+    try:
+        results = graph.query(query)
+        signal.alarm(0)
+        return results, None
+    except TimeoutException:
+        return None, "timeout"
+    except Exception as e:
+        return None, str(e)
 
 def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
     query_key = _candidate_key(_ensure_prefixes(query))
@@ -713,7 +732,18 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
             "error": "graph_unavailable",
         }
     try:
-        results = graph.query(_ensure_prefixes(query))
+        results, error = _safe_graph_query(graph, _ensure_prefixes(query))
+
+        if error:
+            profile = {
+                "has_rows": False,   # treat timeout σαν empty
+                "row_count": 0,
+                "unbound_vars": [],
+                "error": error,
+            }
+            _RUNTIME_PROFILE_CACHE[cache_key] = dict(profile)
+            return profile
+        
         vars_seen = [str(v) for v in getattr(results, "vars", [])]
         bound_counts = {v: 0 for v in vars_seen}
         row_count = 0
