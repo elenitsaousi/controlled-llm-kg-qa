@@ -797,32 +797,52 @@ def _select_best_candidate_semantic(candidates, question):
     best = None
     best_score = float("-inf")
 
+    # πρώτα βρίσκουμε το max semantic
+    semantic_scores = [
+        float(c.get("semantic_judge_score", 0.0)) for c in candidates
+    ]
+    max_semantic = max(semantic_scores) if semantic_scores else 0.0
+
     for cand in candidates:
+        print(cand.keys())
         query = str(cand.get("query", ""))
         base_score = float(cand.get("score", 0.0))
         semantic_score = float(cand.get("semantic_judge_score", 0.0))
+        ml_score = float(cand.get("ml_score", 0.0))
 
+        # 👉 BASE SCORE: semantic dominates
         score = base_score + 1.5 * semantic_score
 
+        # 👉 ONLY USE ML WHEN AMBIGUOUS
+        if max_semantic - semantic_score < 2.0:
+            score += 0.5 * ml_score
+
+        # ❌ WRONG METRIC
         if "percentagechange" in query.lower() and "demand" in question.lower():
             score -= 5
 
+        # ❌ MISSING AUTOMOTIVE
         if "automotive" in question.lower() and "automotive" not in query.lower():
             score -= 3
 
+        # ❌ BAD SHAPE
         if "rdf:type" in query.lower():
             score -= 2.5
 
+        # ❌ PIVOT
         if "bl1" in query.lower() and "bl2" in query.lower() and "baseline" not in question.lower():
             score -= 2
 
+        # ❌ NO ROWS
         has_rows, _ = _query_has_runtime_rows(query)
         if has_rows is False:
             score -= 4
 
+        # ❌ UNBOUND VARS
         profile = _query_runtime_profile(query)
         if profile.get("unbound_vars"):
             score -= 2
+
 
         # 🔥 ΒΑΛΤΟ ΑΚΡΙΒΩΣ ΕΔΩ
         print("----")

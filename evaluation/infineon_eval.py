@@ -300,7 +300,14 @@ def _ml_rank_candidates(
             key=lambda x: x[0],
             reverse=True
         )
-        return [c for _, c in ranked]
+
+        output = []
+        for score, c in ranked:
+            c = dict(c)  # copy
+            c["ml_score"] = float(score)   
+            output.append(c)
+
+        return output
     except Exception:
         return candidates  # fallback to original order
 
