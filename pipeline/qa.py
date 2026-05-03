@@ -793,7 +793,7 @@ def _select_best_valid_query(
 
     return ordered_queries[0], first_errors, 0
 
-def _select_best_candidate_semantic(candidates: List[Dict[str, object]], question: str):
+def _select_best_candidate_semantic(candidates, question):
     best = None
     best_score = float("-inf")
 
@@ -804,31 +804,32 @@ def _select_best_candidate_semantic(candidates: List[Dict[str, object]], questio
 
         score = base_score + 1.5 * semantic_score
 
-        # ❌ WRONG METRIC
         if "percentagechange" in query.lower() and "demand" in question.lower():
             score -= 5
 
-        # ❌ MISSING AUTOMOTIVE
         if "automotive" in question.lower() and "automotive" not in query.lower():
             score -= 3
 
-        # ❌ BAD SHAPE
         if "rdf:type" in query.lower():
             score -= 2.5
 
-        # ❌ PIVOT
         if "bl1" in query.lower() and "bl2" in query.lower() and "baseline" not in question.lower():
             score -= 2
 
-        # ❌ NO ROWS
         has_rows, _ = _query_has_runtime_rows(query)
         if has_rows is False:
             score -= 4
 
-        # ❌ UNBOUND VARS
         profile = _query_runtime_profile(query)
         if profile.get("unbound_vars"):
             score -= 2
+
+        # 🔥 ΒΑΛΤΟ ΑΚΡΙΒΩΣ ΕΔΩ
+        print("----")
+        print(query[:100])
+        print("base:", base_score)
+        print("semantic:", semantic_score)
+        print("FINAL:", score)
 
         if score > best_score:
             best = cand
@@ -1261,7 +1262,7 @@ def answer_question(
     selected_query = selected.get("query") if selected else None
     errors = _runtime_validate_query(selected_query) if selected_query else []
     selected_rank = None
-    
+
     if selected_query is None:
         selection_explanation = _build_selection_explanation(
             question=question,
