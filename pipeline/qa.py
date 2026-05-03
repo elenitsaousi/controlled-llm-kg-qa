@@ -847,7 +847,7 @@ def _select_best_candidate_semantic(candidates, question):
         if has_rows is True:
             score += 6    # strong boost
         elif has_rows is False:
-            score -= 6    # hard penalty
+            score -= 2   # hard penalty
 
         profile = _query_runtime_profile(query)
         if profile.get("unbound_vars"):
@@ -856,7 +856,7 @@ def _select_best_candidate_semantic(candidates, question):
         # =====================================
         # 🔥 2. SEMANTIC SCORE
         # =====================================
-        score += 1.2 * semantic_score
+        score += 1.8 * semantic_score
 
         # =====================================
         # 🔥 3. ML (light influence only)
