@@ -261,10 +261,16 @@ def _ml_rank_candidates(
     schema_dict: dict,
     model_path: str
 ) -> List[Dict]:
-    """Rank candidates using ML model and attach ml_score."""
+    """Rank candidates using ML model and PRESERVE all original fields."""
 
     if not candidates:
         return candidates
+
+    # 👉 map original candidates by query
+    by_query = {
+        " ".join(str(c.get("query", "")).split()).lower(): c
+        for c in candidates
+    }
 
     # -----------------------------
     # NP TF-IDF MODEL
@@ -283,17 +289,20 @@ def _ml_rank_candidates(
 
             output = []
             for i, c in enumerate(ranked):
-                c = dict(c)
+                key = " ".join(str(c.get("query", "")).split()).lower()
 
-                # ⚠️ depending on implementation, score may or may not exist
-                score = c.get("score")
+                orig = by_query.get(key, {})
+                merged = dict(orig)   # 🔥 KEEP semantic etc
+                merged.update(c)      # add ML outputs
 
+                # score fallback
+                score = merged.get("score")
                 if score is None:
-                    # fallback: use ranking position
                     score = 1.0 / (i + 1)
 
-                c["ml_score"] = float(score)
-                output.append(c)
+                merged["ml_score"] = float(score)
+
+                output.append(merged)
 
             return output
 
@@ -333,9 +342,15 @@ def _ml_rank_candidates(
 
         output = []
         for score, c in ranked:
-            c = dict(c)
-            c["ml_score"] = float(score)
-            output.append(c)
+            key = " ".join(str(c.get("query", "")).split()).lower()
+
+            orig = by_query.get(key, {})
+            merged = dict(orig)   # 🔥 KEEP semantic etc
+            merged.update(c)
+
+            merged["ml_score"] = float(score)
+
+            output.append(merged)
 
         return output
 
