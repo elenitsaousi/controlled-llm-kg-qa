@@ -798,6 +798,7 @@ def _select_best_candidate_semantic(candidates, question):
     best_score = float("-inf")
 
     for cand in candidates:
+        print(cand["query"])
         query = str(cand.get("query", ""))
 
         semantic_score = float(cand.get("semantic_judge_score", 0.0))
