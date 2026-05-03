@@ -797,9 +797,11 @@ def _select_best_candidate_semantic(candidates, question):
     best = None
     best_score = float("-inf")
 
+    q = question.lower()
+
     for cand in candidates:
-        print(cand["query"])
         query = str(cand.get("query", ""))
+        query_lower = query.lower()
 
         semantic_score = float(cand.get("semantic_judge_score", 0.0))
         ml_score = float(cand.get("ml_score", 0.0))
@@ -807,47 +809,100 @@ def _select_best_candidate_semantic(candidates, question):
 
         score = 0
 
-        # -------------------------
-        # 🔥 1. EXECUTION FIRST
-        # -------------------------
+        # =====================================
+        # 🔥 1. EXECUTION SIGNAL (MOST IMPORTANT)
+        # =====================================
         has_rows, _ = _query_has_runtime_rows(query)
 
         if has_rows is True:
-            score += 5   # 🔥 BIG BOOST
+            score += 6    # strong boost
         elif has_rows is False:
-            score -= 5   # 🔥 HARD PENALTY
+            score -= 6    # hard penalty
 
         profile = _query_runtime_profile(query)
         if profile.get("unbound_vars"):
             score -= 2
 
-        # -------------------------
-        # 🔥 2. SEMANTIC SECOND
-        # -------------------------
+        # =====================================
+        # 🔥 2. SEMANTIC SCORE
+        # =====================================
         score += 1.2 * semantic_score
 
-        # -------------------------
-        # 🔥 3. ML ONLY AS TIE-BREAK
-        # -------------------------
+        # =====================================
+        # 🔥 3. ML (light influence only)
+        # =====================================
         score += 0.3 * ml_score
 
-        # -------------------------
-        # 🔥 4. DOMAIN RULES
-        # -------------------------
-        if "automotive" in question.lower() and "automotive" not in query.lower():
+        # =====================================
+        # 🔥 4. AGGREGATION INTENT (CRITICAL)
+        # =====================================
+        if "average" in q or "avg" in q or "mean" in q:
+            if "avg(" in query_lower:
+                score += 3
+            else:
+                score -= 3
+
+        if "total" in q or "sum" in q:
+            if "sum(" in query_lower:
+                score += 3
+            else:
+                score -= 1
+
+        if "how many" in q or "count" in q:
+            if "count(" in query_lower:
+                score += 3
+            else:
+                score -= 3
+
+        # =====================================
+        # 🔥 5. DIMENSION CHECKS
+        # =====================================
+        if "vehicle" in q and not any(x in query_lower for x in ["vehicletype", "hasvehicletype", "analyzesvehicletype"]):
+
             score -= 3
 
-        if "percentagechange" in query.lower() and "demand" in question.lower():
-            score -= 4
-
-        if "rdf:type" in query.lower():
+        if "technology" in q and "technologycategory" not in query_lower:
             score -= 2
 
-        # -------------------------
-        # DEBUG
-        # -------------------------
+        if "response" in q and "responsetype" not in query_lower:
+            score -= 2
+
+        if "month" in q and not any(x in query_lower for x in ["month", "period"]):
+            score -= 2
+
+        # =====================================
+        # 🔥 6. FILTER BUGS (VERY IMPORTANT)
+        # =====================================
+        # wrong extra constraint (kills rows)
+        if "surveyorigin" in query_lower and "survey" not in q:
+            score -= 2
+
+        # actual vs forecast mismatch
+        if "actual" in q and "isactualdata true" not in query_lower:
+            score -= 3
+
+        if "forecast" in q and "isforecastdata true" not in query_lower:
+            score -= 3
+
+        # =====================================
+        # 🔥 7. STRUCTURE PENALTIES
+        # =====================================
+        if "rdf:type" in query_lower:
+            score -= 2
+
+        if "percentagechange" in query_lower and "demand" in q:
+            score -= 4
+
+        # over-grouping (very common mistake)
+        if "summarize" in q or "for all" in q:
+            if "technologycategory" in query_lower:
+                score -= 2
+
+        # =====================================
+        # DEBUG (keep this for now)
+        # =====================================
         print("----")
-        print(query[:80])
+        print(query[:100])
         print("rows:", has_rows)
         print("semantic:", semantic_score)
         print("ml:", ml_score)
