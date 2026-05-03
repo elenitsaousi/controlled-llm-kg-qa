@@ -845,7 +845,7 @@ def _select_best_candidate_semantic(candidates, question):
         has_rows, _ = _query_has_runtime_rows(query)
 
         if has_rows is True:
-            score += 6    # strong boost
+            score += 3    # strong boost
         elif has_rows is False:
             score -= 2   # hard penalty
 
@@ -856,7 +856,7 @@ def _select_best_candidate_semantic(candidates, question):
         # =====================================
         # 🔥 2. SEMANTIC SCORE
         # =====================================
-        score += 1.8 * semantic_score
+        score += 2.0 * semantic_score
 
         # =====================================
         # 🔥 3. ML (light influence only)
