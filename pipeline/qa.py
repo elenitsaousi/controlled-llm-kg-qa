@@ -797,52 +797,59 @@ def _select_best_candidate_semantic(candidates, question):
     best = None
     best_score = float("-inf")
 
-    semantic_scores = [
-        float(c.get("semantic_judge_score", 0.0)) for c in candidates
-    ]
-    max_semantic = max(semantic_scores) if semantic_scores else 0.0
-
     for cand in candidates:
-        print(cand.keys())
-
         query = str(cand.get("query", ""))
+
         semantic_score = float(cand.get("semantic_judge_score", 0.0))
-
         ml_score = float(cand.get("ml_score", 0.0))
-        ml_score = ml_score / (1 + abs(ml_score))  # ✅ normalize
+        ml_score = ml_score / (1 + abs(ml_score))  # normalize
 
-        # semantic dominates
-        score = 1.5 * semantic_score
+        score = 0
 
-        # ML only in ambiguity
-        if max_semantic - semantic_score < 2.0:
-            score += 0.5 * ml_score
+        # -------------------------
+        # 🔥 1. EXECUTION FIRST
+        # -------------------------
+        has_rows, _ = _query_has_runtime_rows(query)
 
-        # penalties
-        if "percentagechange" in query.lower() and "demand" in question.lower():
-            score -= 5
+        if has_rows is True:
+            score += 5   # 🔥 BIG BOOST
+        elif has_rows is False:
+            score -= 5   # 🔥 HARD PENALTY
 
+        profile = _query_runtime_profile(query)
+        if profile.get("unbound_vars"):
+            score -= 2
+
+        # -------------------------
+        # 🔥 2. SEMANTIC SECOND
+        # -------------------------
+        score += 1.2 * semantic_score
+
+        # -------------------------
+        # 🔥 3. ML ONLY AS TIE-BREAK
+        # -------------------------
+        score += 0.3 * ml_score
+
+        # -------------------------
+        # 🔥 4. DOMAIN RULES
+        # -------------------------
         if "automotive" in question.lower() and "automotive" not in query.lower():
             score -= 3
 
-        if "rdf:type" in query.lower():
-            score -= 2.5
+        if "percentagechange" in query.lower() and "demand" in question.lower():
+            score -= 4
 
-        if "bl1" in query.lower() and "bl2" in query.lower() and "baseline" not in question.lower():
+        if "rdf:type" in query.lower():
             score -= 2
 
+        # -------------------------
+        # DEBUG
+        # -------------------------
         print("----")
-        print(query[:100])
+        print(query[:80])
+        print("rows:", has_rows)
         print("semantic:", semantic_score)
         print("ml:", ml_score)
-        print("FINAL:", score)
-
-
-        # 🔥 ΒΑΛΤΟ ΑΚΡΙΒΩΣ ΕΔΩ
-        print("----")
-        print(query[:100])
-        # print("base:", base_score)
-        print("semantic:", semantic_score)
         print("FINAL:", score)
 
         if score > best_score:
