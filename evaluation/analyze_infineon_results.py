@@ -469,6 +469,25 @@ def main() -> None:
         "Generation failures without correct candidate: "
         f"{summary['generation_failures_without_correct_candidate']}"
     )
+    print("Oracle first-correct rank counts:")
+    for rank, count in sorted(
+        (summary.get("oracle_first_correct_rank_counts") or {}).items(),
+        key=lambda item: int(item[0]),
+    ):
+        print(f"  rank {rank}: {count}")
+    print("Selection failure pattern counts:")
+    pattern_counts = summary.get("selection_failure_pattern_counts") or {}
+    if pattern_counts:
+        for pattern, count in sorted(pattern_counts.items()):
+            print(f"  {pattern}: {count}")
+    else:
+        print("  none")
+    failure_ids = [
+        str(row.get("id"))
+        for row in report.get("selection_failures") or []
+        if row.get("id")
+    ]
+    print(f"Selection failure IDs: {', '.join(failure_ids) if failure_ids else 'none'}")
     print(f"JSON report: {args.out_json}")
     print(f"Markdown report: {args.out_md}")
 
