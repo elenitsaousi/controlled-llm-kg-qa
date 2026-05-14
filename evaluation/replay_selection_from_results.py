@@ -21,7 +21,11 @@ def _query_key(query: str) -> str:
     return " ".join(str(query or "").split()).lower()
 
 
-def replay_selection(results_path: str, use_stored_features: bool = False) -> Dict[str, object]:
+def replay_selection(
+    results_path: str,
+    use_stored_features: bool = False,
+    include_failure_diagnostics: bool = False,
+) -> Dict[str, object]:
     results = _load_json(results_path)
     details = list(results.get("details") or [])
 
@@ -30,6 +34,7 @@ def replay_selection(results_path: str, use_stored_features: bool = False) -> Di
     replay_top1 = 0
     any_correct = 0
     changed: List[Dict[str, object]] = []
+    failure_diagnostics: List[Dict[str, object]] = []
 
     for detail in details:
         candidates = list(detail.get("candidates") or [])
@@ -69,6 +74,48 @@ def replay_selection(results_path: str, use_stored_features: bool = False) -> Di
         replay_label = str(selected_original.get("label", "")).lower()
         replay_top1 += int(replay_label == "correct")
 
+        if include_failure_diagnostics and any(
+            str(c.get("label", "")).lower() == "correct" for c in candidates
+        ) and original_label != "correct":
+            top_scored = max(
+                replay_candidates,
+                key=lambda row: float(row.get("selection_score", float("-inf"))),
+            )
+            top_scored_original = by_key.get(_query_key(str(top_scored.get("query", ""))), {})
+            first_correct_original = next(
+                (c for c in candidates if str(c.get("label", "")).lower() == "correct"),
+                {},
+            )
+            first_correct_replay = next(
+                (
+                    row for row in replay_candidates
+                    if _query_key(str(row.get("query", "")))
+                    == _query_key(str(first_correct_original.get("query", "")))
+                ),
+                {},
+            )
+            failure_diagnostics.append(
+                {
+                    "id": detail.get("id"),
+                    "question": detail.get("question"),
+                    "original_label": original_label,
+                    "replay_label": replay_label,
+                    "selected_index": selected_original.get("index"),
+                    "selected_score": (selected or {}).get("selection_score"),
+                    "selected_shape_reasons": (selected or {}).get("selection_shape_reasons"),
+                    "top_scored_label": str(top_scored_original.get("label", "")).lower(),
+                    "top_scored_index": top_scored_original.get("index"),
+                    "top_scored_score": top_scored.get("selection_score"),
+                    "top_scored_shape_reasons": top_scored.get("selection_shape_reasons"),
+                    "first_correct_index": first_correct_original.get("index"),
+                    "first_correct_score": first_correct_replay.get("selection_score"),
+                    "first_correct_shape_reasons": first_correct_replay.get("selection_shape_reasons"),
+                    "first_correct_penalties": (
+                        first_correct_replay.get("semantic_judge_report") or {}
+                    ).get("penalties"),
+                }
+            )
+
         if _query_key(str(candidates[0].get("query", ""))) != selected_key:
             changed.append(
                 {
@@ -96,6 +143,7 @@ def replay_selection(results_path: str, use_stored_features: bool = False) -> Di
         "any_correct": any_correct,
         "changed_count": len(changed),
         "changed": changed,
+        "failure_diagnostics": failure_diagnostics,
     }
 
 
@@ -115,12 +163,21 @@ def main() -> None:
         action="store_true",
         help="Use semantic/coverage reports stored in the results file instead of recomputing current features.",
     )
+    parser.add_argument(
+        "--failure-diagnostics",
+        action="store_true",
+        help="Print selector diagnostics for questions where a correct candidate exists but original top1 is wrong.",
+    )
     args = parser.parse_args()
 
     if args.enable_targeted_rescue:
         os.environ["INFINEON_ENABLE_TARGETED_SELECTION_RESCUE"] = "1"
 
-    report = replay_selection(args.results, use_stored_features=args.use_stored_features)
+    report = replay_selection(
+        args.results,
+        use_stored_features=args.use_stored_features,
+        include_failure_diagnostics=args.failure_diagnostics,
+    )
     print("===== SELECTION REPLAY =====")
     print(f"Results: {report['results_path']}")
     print(f"Total: {report['total']}")
@@ -138,6 +195,16 @@ def main() -> None:
             print(
                 f"  {row['id']}: {row['original_label']} -> {row['replay_label']} "
                 f"(candidate index {row['original_index']} -> {row['replay_index']})"
+            )
+    if args.failure_diagnostics:
+        print("Failure diagnostics:")
+        for row in report.get("failure_diagnostics") or []:
+            print(
+                f"  {row['id']}: replay={row['replay_label']} idx={row['selected_index']} "
+                f"score={row['selected_score']} | top_scored={row['top_scored_label']} "
+                f"idx={row['top_scored_index']} score={row['top_scored_score']} | "
+                f"first_correct idx={row['first_correct_index']} "
+                f"score={row['first_correct_score']} reasons={row['first_correct_shape_reasons']}"
             )
     if args.out:
         os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
