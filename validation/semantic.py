@@ -188,7 +188,10 @@ def _question_expected_aggregation(question: str) -> Optional[str]:
         return "COUNT"
     if _has_word(q, "lowest", "smallest", "minimum", "min", "least"):
         return "MIN_OR_BOTTOM"
-    if _has_word(q, "highest", "largest", "maximum", "max", "top", "strongest", "leads"):
+    if (
+        _has_word(q, "highest", "largest", "maximum", "max", "top", "strongest", "leads", "leading")
+        or "top-ranked" in q
+    ):
         return "MAX_OR_TOP"
     if (
         _has_word(q, "total", "totals", "sum", "aggregate", "aggregated")

@@ -973,6 +973,7 @@ def _select_best_candidate_semantic(candidates, question):
         p.startswith("wrong_or_missing_aggregation") or "used_for" in p
         for p in first_penalties
     )
+    best_penalties = {str(p) for p in best_report.get("penalties", [])}
 
     # Keep ML/top-order stable unless the rule-based selector has a clear,
     # structured reason to override it. This prevents coverage/execution noise
@@ -989,7 +990,7 @@ def _select_best_candidate_semantic(candidates, question):
             "month_label_bound_from_uri",
         }
     )
-    first_has_structural_defect = bool(first_penalties or first_missing or first_exec_error)
+    first_has_structural_defect = bool(first_penalties or first_missing)
     fixes_bad_first = (
         first_exec_error
         or first_missing > best_missing
@@ -1004,6 +1005,28 @@ def _select_best_candidate_semantic(candidates, question):
     ):
         return best
     if fixes_bad_first and best_score >= first_score + 2.0 and coverage_not_worse:
+        return best
+    shape_defect_fixed = (
+        "answer_shape_missing_expected_columns" in first_penalties
+        and "answer_shape_missing_expected_columns" not in best_penalties
+    )
+    clean_low_margin_win = (
+        best_score >= first_score + 0.35
+        and coverage_not_worse
+        and not best_exec_error
+        and (
+            semantic_not_worse
+            or critical_shape_fix
+            or shape_defect_fixed
+            or (first_aggregation_mismatch and best_aggregation_match)
+        )
+        and (
+            first_has_structural_defect
+            or critical_shape_fix
+            or shape_defect_fixed
+        )
+    )
+    if clean_low_margin_win:
         return best
     targeted_rescue_enabled = (
         os.getenv("INFINEON_ENABLE_TARGETED_SELECTION_RESCUE", "0").strip().lower()
