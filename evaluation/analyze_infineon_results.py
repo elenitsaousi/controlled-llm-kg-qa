@@ -30,7 +30,7 @@ def _candidate_label(candidate: Dict[str, object]) -> str:
 def _first_correct_rank(candidates: List[Dict[str, object]]) -> Optional[int]:
     for idx, candidate in enumerate(candidates):
         if _candidate_label(candidate) == "correct":
-            return idx + 1
+            return idx
     return None
 
 
@@ -158,7 +158,7 @@ def analyze_results(
         if first_correct_rank is None:
             correct_rank_text = "missing"
         else:
-            correct_rank_text = str(first_correct_rank)
+            correct_rank_text = str(first_correct_rank + 1)
 
         selected_semantic = semantic_coverage_report(question, selected) if selected else {
             "required": [],
@@ -216,6 +216,9 @@ def analyze_results(
                 "any_correct": bool(detail.get("any_correct")),
                 "failure_category": failure_category,
                 "first_correct_candidate_rank": first_correct_rank,
+                "first_correct_candidate_position": (
+                    first_correct_rank + 1 if first_correct_rank is not None else None
+                ),
                 "candidate_count": len(candidates),
                 "candidate_label_counts": dict(candidate_label_counts),
                 "selected_semantic_coverage": selected_semantic,
@@ -239,6 +242,9 @@ def analyze_results(
                         row["rank"] for row in enriched_candidates if row["is_correct"]
                     ],
                     "first_correct_candidate_rank": first_correct_rank,
+                    "first_correct_candidate_position": (
+                        first_correct_rank + 1 if first_correct_rank is not None else None
+                    ),
                     "error_patterns": _selection_error_patterns(question, selected_candidate),
                     "selected_semantic_coverage": selected_semantic,
                     "gold_semantic_coverage": gold_semantic,
@@ -256,7 +262,7 @@ def analyze_results(
         1 for case in cases if case["failure_category"] == "ranking_failure_correct_candidate_not_top1"
     )
     oracle_rank_counts = Counter(
-        str(case["first_correct_candidate_rank"])
+        str(int(case["first_correct_candidate_rank"]) + 1)
         for case in cases
         if case.get("any_correct") and case.get("first_correct_candidate_rank") is not None
     )
@@ -445,7 +451,7 @@ def render_selection_failure_brief(report: Dict[str, object]) -> str:
         )
         lines.append("")
         lines.append(
-            f"{failure.get('id')} | correct_rank={failure.get('first_correct_candidate_rank')} "
+            f"{failure.get('id')} | correct_rank={failure.get('first_correct_candidate_position')} "
             f"| feature_tie={feature_tie} "
             f"| patterns={','.join(map(str, failure.get('error_patterns') or []))}"
         )

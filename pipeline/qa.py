@@ -57,7 +57,7 @@ _DEFAULT_GRAPH_CACHE: Optional[Graph] = None
 _RANKER_CACHE: Dict[str, object] = {}
 _AMBIGUITY_CONFIG_CACHE: Dict[str, AmbiguityConfig] = {}
 _QUERY_PLAN_PREDICTOR_CACHE: Dict[str, object] = {}
-_RUNTIME_PROFILE_CACHE: Dict[Tuple[int, str], Dict[str, object]] = {}
+_RUNTIME_PROFILE_CACHE: Dict[Tuple[int, int, str], Dict[str, object]] = {}
 
 NP_MODEL_TYPE = "np_tfidf_logreg_v1"
 INTENT_RANKING_WEIGHT = float(os.getenv("INFINEON_INTENT_RANKING_WEIGHT", "0") or 0)
@@ -704,6 +704,12 @@ def _timeout_handler(signum, frame):
     raise TimeoutException()
 
 def _safe_graph_query(graph, query, timeout=2):
+    if not hasattr(signal, "SIGALRM"):
+        try:
+            return graph.query(query), None
+        except Exception as e:
+            return None, str(e)
+
     signal.signal(signal.SIGALRM, _timeout_handler)
     signal.alarm(timeout)
 
@@ -717,12 +723,6 @@ def _safe_graph_query(graph, query, timeout=2):
         return None, str(e)
 
 def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
-    query_key = _candidate_key(_ensure_prefixes(query))
-    cache_key = (int(max_rows), query_key)
-    cached = _RUNTIME_PROFILE_CACHE.get(cache_key)
-    if cached is not None:
-        return dict(cached)
-
     graph = _get_default_graph()
     if graph is None:
         return {
@@ -731,6 +731,11 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
             "unbound_vars": [],
             "error": "graph_unavailable",
         }
+    query_key = _candidate_key(_ensure_prefixes(query))
+    cache_key = (id(graph), int(max_rows), query_key)
+    cached = _RUNTIME_PROFILE_CACHE.get(cache_key)
+    if cached is not None:
+        return dict(cached)
     try:
         results, error = _safe_graph_query(graph, _ensure_prefixes(query))
 
