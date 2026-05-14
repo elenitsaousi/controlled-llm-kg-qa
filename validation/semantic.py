@@ -121,8 +121,15 @@ def _question_dimensions(question: str) -> Set[str]:
         dims.add("vehicle_type")
     if _has_word(q, "baseline", "bl1", "bl2"):
         dims.add("baseline")
-    if "response type" in q or "response label" in q or _has_word(q, "increase", "decrease", "stable"):
-        if "order cancellation" in q or "responses" in q:
+    if (
+        "response type" in q
+        or "response label" in q
+        or "response direction" in q
+        or "cancellation response" in q
+        or "cancellation responses" in q
+        or _has_word(q, "increase", "decrease", "stable")
+    ):
+        if "order cancellation" in q or "cancellation" in q or "responses" in q:
             dims.add("response_type")
     if _has_word(q, "month", "months", "monthly"):
         dims.add("month")
@@ -161,6 +168,21 @@ def _query_origins(query: str) -> Set[str]:
 def _question_expected_aggregation(question: str) -> Optional[str]:
     q = (question or "").lower()
     if _has_word(q, "average", "avg", "mean"):
+        return "AVG"
+    if _has_word(q, "participant", "participants") and (
+        _has_word(q, "count", "counts") or "how many" in q or "number of" in q
+    ):
+        return "SUM"
+    if (
+        ("percentage change" in q or "percentage changes" in q or _has_word(q, "percentages"))
+        and (
+            _has_word(q, "matrix", "table", "view", "grouped", "group", "groups")
+            or " by " in q
+            or " across " in q
+            or " over " in q
+            or _has_word(q, "quarter", "quarters", "technology", "technologies", "vehicle")
+        )
+    ):
         return "AVG"
     if _has_word(q, "count", "counts") or "how many" in q or "number of" in q:
         return "COUNT"
@@ -240,7 +262,7 @@ def _question_filters(question: str) -> Set[str]:
         filters.add("future_demand")
     if "current demand" in q:
         filters.add("current_demand")
-    if "order cancellation" in q or "order cancellations" in q:
+    if "order cancellation" in q or "order cancellations" in q or "cancellation response" in q:
         filters.add("order_cancellation")
     if "autonomous" in q or "sae" in q:
         filters.add("autonomous")

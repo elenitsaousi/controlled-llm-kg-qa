@@ -823,6 +823,52 @@ def _select_best_valid_query(
 
     return ordered_queries[0], first_errors, 0
 
+
+def _candidate_shape_score(question: str, query: str, profile: Dict[str, object]) -> Tuple[float, List[str]]:
+    q = (question or "").lower()
+    sparql = (query or "").lower()
+    score = 0.0
+    reasons: List[str] = []
+
+    if _has_word(q, "participant", "participants"):
+        if "participantcount" in sparql and "sum(" in sparql:
+            score += 2.5
+            reasons.append("participant_count_sum")
+        if "count(?entry" in sparql or "count( ?entry" in sparql:
+            score -= 2.5
+            reasons.append("participant_count_counts_rows")
+
+    grouped_percentage = (
+        ("percentage change" in q or "percentage changes" in q or _has_word(q, "percentages"))
+        and (
+            " by " in q
+            or " across " in q
+            or " over " in q
+            or _has_word(q, "matrix", "table", "view", "quarter", "quarters", "technology", "technologies", "vehicle")
+        )
+    )
+    if grouped_percentage:
+        if "avg(" in sparql and "percentagechange" in sparql:
+            score += 2.0
+            reasons.append("grouped_percentage_avg")
+        elif "sum(" in sparql and "percentagechange" in sparql:
+            score -= 1.2
+            reasons.append("grouped_percentage_sum")
+        elif re.search(r"select\b(?:(?!where).)*\?pct\b", sparql, flags=re.DOTALL):
+            score -= 1.4
+            reasons.append("grouped_percentage_raw_rows")
+
+    if _has_word(q, "month", "monthly") and ("total" in q or "aggregate" in q or "sum" in q):
+        if "bind(replace(str(?month" in sparql and "?monthlabel" in sparql:
+            score += 0.45
+            reasons.append("month_label_bound_from_uri")
+        if "survey:monthlabel ?monthlabel" in sparql:
+            score += 0.15
+            reasons.append("month_label_property")
+
+    return float(score), reasons
+
+
 def _select_best_candidate_semantic(candidates, question):
     scored: List[Dict[str, object]] = []
 
@@ -846,13 +892,14 @@ def _select_best_candidate_semantic(candidates, question):
 
         execution_component = 0.0
         if has_rows is True:
-            execution_component += 0.75
+            execution_component += 0.2
         elif has_rows is False:
-            execution_component -= 0.5
+            execution_component += 0.0
         if execution_error:
-            execution_component -= 1.0
+            execution_component -= 0.75
         if unbound_vars:
-            execution_component -= 1.25
+            execution_component -= 1.0
+        shape_component, shape_reasons = _candidate_shape_score(question, query, profile)
 
         semantic_component = 1.35 * semantic_score
         coverage_component = (8.0 * coverage_score) - (2.5 * missing_coverage)
@@ -862,6 +909,7 @@ def _select_best_candidate_semantic(candidates, question):
             semantic_component
             + coverage_component
             + execution_component
+            + shape_component
             + ml_component
             + order_component
         )
@@ -871,9 +919,11 @@ def _select_best_candidate_semantic(candidates, question):
             "semantic_component": float(semantic_component),
             "coverage_component": float(coverage_component),
             "execution_component": float(execution_component),
+            "shape_component": float(shape_component),
             "ml_component": float(ml_component),
             "order_component": float(order_component),
         }
+        cand["selection_shape_reasons"] = shape_reasons
         cand["coverage_score"] = coverage_score
         cand["coverage_missing"] = list(coverage.get("missing", []))
         cand["coverage_required"] = list(coverage.get("required", []))
@@ -915,6 +965,7 @@ def _select_best_candidate_semantic(candidates, question):
     first_report = first.get("semantic_judge_report") or {}
     best_report = best.get("semantic_judge_report") or {}
     first_penalties = {str(p) for p in first_report.get("penalties", [])}
+    best_shape_reasons = {str(r) for r in best.get("selection_shape_reasons", [])}
     first_extra_filters = len(first_report.get("extra_filters") or [])
     best_extra_filters = len(best_report.get("extra_filters") or [])
     best_aggregation_match = bool(best_report.get("aggregation_match"))
@@ -930,13 +981,27 @@ def _select_best_candidate_semantic(candidates, question):
     clear_score_win = best_score >= first_score + override_margin
     coverage_not_worse = best_coverage >= first_coverage and best_missing <= first_missing
     semantic_not_worse = best_semantic >= first_semantic
+    critical_shape_fix = bool(
+        best_shape_reasons
+        & {
+            "participant_count_sum",
+            "grouped_percentage_avg",
+            "month_label_bound_from_uri",
+        }
+    )
+    first_has_structural_defect = bool(first_penalties or first_missing or first_exec_error)
     fixes_bad_first = (
         first_exec_error
         or first_missing > best_missing
         or first_semantic < 0.0
     )
 
-    if clear_score_win and coverage_not_worse and (semantic_not_worse or fixes_bad_first):
+    if (
+        clear_score_win
+        and coverage_not_worse
+        and (semantic_not_worse or fixes_bad_first)
+        and (first_has_structural_defect or critical_shape_fix)
+    ):
         return best
     if fixes_bad_first and best_score >= first_score + 2.0 and coverage_not_worse:
         return best

@@ -69,19 +69,10 @@ def _selected_query(detail: Dict[str, object]) -> str:
 
 
 def _candidate_semantic(question: str, candidate: Dict[str, object]) -> Dict[str, object]:
-    report = candidate.get("semantic_judge_report")
-    if isinstance(report, dict):
-        return report
     return semantic_judge_report(question, str(candidate.get("query", "") or ""))
 
 
 def _candidate_coverage(question: str, candidate: Dict[str, object]) -> Dict[str, object]:
-    if "coverage_score" in candidate:
-        return {
-            "coverage_score": candidate.get("coverage_score"),
-            "missing": list(candidate.get("coverage_missing") or []),
-            "required": list(candidate.get("coverage_required") or []),
-        }
     return semantic_coverage_report(question, str(candidate.get("query", "") or ""))
 
 

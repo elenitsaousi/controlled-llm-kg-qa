@@ -21,7 +21,7 @@ def _query_key(query: str) -> str:
     return " ".join(str(query or "").split()).lower()
 
 
-def replay_selection(results_path: str) -> Dict[str, object]:
+def replay_selection(results_path: str, use_stored_features: bool = False) -> Dict[str, object]:
     results = _load_json(results_path)
     details = list(results.get("details") or [])
 
@@ -49,12 +49,17 @@ def replay_selection(results_path: str) -> Dict[str, object]:
             row = {
                 "query": query,
                 "ml_score": cand.get("ml_score"),
-                "semantic_judge_score": cand.get("semantic_judge_score"),
-                "semantic_judge_report": cand.get("semantic_judge_report"),
-                "coverage_score": cand.get("coverage_score"),
-                "coverage_missing": cand.get("coverage_missing"),
-                "coverage_required": cand.get("coverage_required"),
             }
+            if use_stored_features:
+                row.update(
+                    {
+                        "semantic_judge_score": cand.get("semantic_judge_score"),
+                        "semantic_judge_report": cand.get("semantic_judge_report"),
+                        "coverage_score": cand.get("coverage_score"),
+                        "coverage_missing": cand.get("coverage_missing"),
+                        "coverage_required": cand.get("coverage_required"),
+                    }
+                )
             replay_candidates.append(row)
             by_key[_query_key(query)] = cand
 
@@ -105,12 +110,17 @@ def main() -> None:
         action="store_true",
         help="Enable experimental targeted rescue rules during replay only.",
     )
+    parser.add_argument(
+        "--use-stored-features",
+        action="store_true",
+        help="Use semantic/coverage reports stored in the results file instead of recomputing current features.",
+    )
     args = parser.parse_args()
 
     if args.enable_targeted_rescue:
         os.environ["INFINEON_ENABLE_TARGETED_SELECTION_RESCUE"] = "1"
 
-    report = replay_selection(args.results)
+    report = replay_selection(args.results, use_stored_features=args.use_stored_features)
     print("===== SELECTION REPLAY =====")
     print(f"Results: {report['results_path']}")
     print(f"Total: {report['total']}")
