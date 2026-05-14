@@ -174,9 +174,15 @@ def _question_expected_aggregation(question: str) -> Optional[str]:
     ):
         return "SUM"
     if (
-        ("percentage change" in q or "percentage changes" in q or _has_word(q, "percentages"))
+        (
+            "percentage change" in q
+            or "percentage changes" in q
+            or "future-demand percentages" in q
+            or _has_word(q, "percentages")
+        )
         and (
             _has_word(q, "matrix", "table", "view", "grouped", "group", "groups")
+            or _has_word(q, "differ", "differs")
             or " by " in q
             or " across " in q
             or " over " in q
