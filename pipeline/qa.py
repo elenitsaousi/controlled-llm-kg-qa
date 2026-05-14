@@ -883,6 +883,7 @@ def _select_best_candidate_semantic(candidates, question):
         cand["execution_error"] = execution_error
         cand["execution_row_count"] = profile.get("row_count")
         cand["execution_unbound_vars"] = unbound_vars
+        cand["selection_original_rank"] = original_rank
 
         scored.append(cand)
 
@@ -909,6 +910,18 @@ def _select_best_candidate_semantic(candidates, question):
     first_missing = len(first.get("coverage_missing") or [])
     best_missing = len(best.get("coverage_missing") or [])
     first_exec_error = bool(first.get("execution_error") or first.get("execution_unbound_vars"))
+    best_exec_error = bool(best.get("execution_error") or best.get("execution_unbound_vars"))
+    best_rank = int(best.get("selection_original_rank", 99))
+    first_report = first.get("semantic_judge_report") or {}
+    best_report = best.get("semantic_judge_report") or {}
+    first_penalties = {str(p) for p in first_report.get("penalties", [])}
+    first_extra_filters = len(first_report.get("extra_filters") or [])
+    best_extra_filters = len(best_report.get("extra_filters") or [])
+    best_aggregation_match = bool(best_report.get("aggregation_match"))
+    first_aggregation_mismatch = any(
+        p.startswith("wrong_or_missing_aggregation") or "used_for" in p
+        for p in first_penalties
+    )
 
     # Keep ML/top-order stable unless the rule-based selector has a clear,
     # structured reason to override it. This prevents coverage/execution noise
@@ -927,6 +940,16 @@ def _select_best_candidate_semantic(candidates, question):
         return best
     if fixes_bad_first and best_score >= first_score + 2.0 and coverage_not_worse:
         return best
+    near_top_candidate = best_rank <= 2
+    if near_top_candidate and not best_exec_error:
+        fixes_missing_required = first_missing > best_missing and best_coverage > first_coverage
+        fixes_over_filtering = first_extra_filters > best_extra_filters
+        fixes_aggregation = first_aggregation_mismatch and best_aggregation_match
+        targeted_score_win = best_score >= first_score + 0.75
+        if targeted_score_win and coverage_not_worse and (
+            fixes_missing_required or fixes_over_filtering or fixes_aggregation
+        ):
+            return best
     return first
 
 
