@@ -11,7 +11,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from ranking.feature_extraction import extract_query_plan
-from validation.semantic import semantic_coverage_report
+from validation.semantic import semantic_coverage_report, semantic_judge_report
 
 
 def _load_json(path: str) -> object:
@@ -30,7 +30,7 @@ def _candidate_label(candidate: Dict[str, object]) -> str:
 def _first_correct_rank(candidates: List[Dict[str, object]]) -> Optional[int]:
     for idx, candidate in enumerate(candidates):
         if _candidate_label(candidate) == "correct":
-            return idx
+            return idx + 1
     return None
 
 
@@ -68,6 +68,59 @@ def _selected_query(detail: Dict[str, object]) -> str:
     return str(candidates[0].get("query", "") or "")
 
 
+def _candidate_semantic(question: str, candidate: Dict[str, object]) -> Dict[str, object]:
+    report = candidate.get("semantic_judge_report")
+    if isinstance(report, dict):
+        return report
+    return semantic_judge_report(question, str(candidate.get("query", "") or ""))
+
+
+def _candidate_coverage(question: str, candidate: Dict[str, object]) -> Dict[str, object]:
+    if "coverage_score" in candidate:
+        return {
+            "coverage_score": candidate.get("coverage_score"),
+            "missing": list(candidate.get("coverage_missing") or []),
+            "required": list(candidate.get("coverage_required") or []),
+        }
+    return semantic_coverage_report(question, str(candidate.get("query", "") or ""))
+
+
+def _candidate_execution(candidate: Dict[str, object]) -> Dict[str, object]:
+    label = _candidate_label(candidate)
+    return {
+        "label": label,
+        "has_rows": candidate.get("execution_has_rows"),
+        "row_count": candidate.get("execution_row_count"),
+        "error": candidate.get("execution_error") or candidate.get("error"),
+        "unbound_vars": list(candidate.get("execution_unbound_vars") or []),
+    }
+
+
+def _selection_error_patterns(
+    question: str,
+    selected_candidate: Dict[str, object],
+) -> List[str]:
+    patterns = []
+    semantic = _candidate_semantic(question, selected_candidate)
+    penalties = [str(p) for p in semantic.get("penalties", [])]
+    coverage = _candidate_coverage(question, selected_candidate)
+    if any("wrong_or_missing_aggregation" in p or "used_for" in p for p in penalties):
+        patterns.append("aggregation_mismatch")
+    if any(p.startswith("missing_dimension:") or p.startswith("wrong_dimension:") for p in penalties):
+        patterns.append("missing_or_wrong_dimension")
+    if "missing_group_by_for_grouped_request" in penalties:
+        patterns.append("missing_grouping")
+    if any("missing_origin" in p or "too_narrow_origin_scope" in p for p in penalties):
+        patterns.append("origin_scope_mismatch")
+    if any(p.startswith("over_specific_filter:") for p in penalties):
+        patterns.append("over_filtering")
+    if coverage.get("missing"):
+        patterns.append("missing_required_concepts")
+    if _candidate_label(selected_candidate) in {"invalid", "timeout", "error"}:
+        patterns.append("execution_invalid_or_timeout")
+    return sorted(set(patterns)) or ["uncategorized_selection_error"]
+
+
 def _gold_for_detail(
     detail: Dict[str, object],
     dataset_by_id: Dict[str, Dict[str, object]],
@@ -94,6 +147,7 @@ def analyze_results(
     dataset_by_id = {str(row.get("id", "")): row for row in dataset if isinstance(row, dict)}
 
     cases: List[Dict[str, object]] = []
+    selection_failures: List[Dict[str, object]] = []
     family_counts: Dict[str, Counter] = defaultdict(Counter)
     category_counts: Counter = Counter()
     correct_rank_counts: Counter = Counter()
@@ -131,6 +185,29 @@ def analyze_results(
             missing_concept_counts[str(concept)] += 1
 
         candidate_label_counts = Counter(_candidate_label(c) or "unknown" for c in candidates)
+        selected_candidate = candidates[0] if candidates else {}
+        enriched_candidates: List[Dict[str, object]] = []
+        for cand_idx, candidate in enumerate(candidates):
+            candidate_semantic = _candidate_semantic(question, candidate)
+            enriched_candidates.append(
+                {
+                    "rank": cand_idx + 1,
+                    "label": _candidate_label(candidate),
+                    "is_correct": _candidate_label(candidate) == "correct",
+                    "query": candidate.get("query"),
+                    "semantic_score": candidate.get(
+                        "semantic_judge_score",
+                        candidate_semantic.get("score"),
+                    ),
+                    "semantic_report": candidate_semantic,
+                    "coverage": _candidate_coverage(question, candidate),
+                    "selection_score": candidate.get("selection_score"),
+                    "selection_score_breakdown": candidate.get("selection_score_breakdown"),
+                    "ml_score": candidate.get("ml_score"),
+                    "execution": _candidate_execution(candidate),
+                    "source": candidate.get("source"),
+                }
+            )
         category_counts[failure_category] += 1
         correct_rank_counts[correct_rank_text] += 1
         family_counts[family]["total"] += 1
@@ -158,6 +235,25 @@ def analyze_results(
                 "gold_query": gold_query,
             }
         )
+        if bool(detail.get("any_correct")) and not bool(detail.get("top1_correct")):
+            selection_failures.append(
+                {
+                    "id": detail.get("id"),
+                    "family": family,
+                    "ambiguity_label": detail.get("ambiguity_label") or gold.get("ambiguity_label"),
+                    "question": question,
+                    "gold_query": gold_query,
+                    "selected_query": selected,
+                    "correct_candidate_ranks": [
+                        row["rank"] for row in enriched_candidates if row["is_correct"]
+                    ],
+                    "first_correct_candidate_rank": first_correct_rank,
+                    "error_patterns": _selection_error_patterns(question, selected_candidate),
+                    "selected_semantic_coverage": selected_semantic,
+                    "gold_semantic_coverage": gold_semantic,
+                    "candidates": enriched_candidates,
+                }
+            )
 
     total = len(cases)
     top1_correct = sum(1 for case in cases if case["top1_correct"])
@@ -167,6 +263,16 @@ def analyze_results(
     )
     ranking_failures = sum(
         1 for case in cases if case["failure_category"] == "ranking_failure_correct_candidate_not_top1"
+    )
+    oracle_rank_counts = Counter(
+        str(case["first_correct_candidate_rank"])
+        for case in cases
+        if case.get("any_correct") and case.get("first_correct_candidate_rank") is not None
+    )
+    selection_pattern_counts = Counter(
+        pattern
+        for failure in selection_failures
+        for pattern in failure.get("error_patterns", [])
     )
 
     families = []
@@ -204,6 +310,8 @@ def analyze_results(
             "generation_failures_without_correct_candidate": generation_failures,
             "failure_category_counts": dict(category_counts),
             "first_correct_candidate_rank_counts": dict(correct_rank_counts),
+            "oracle_first_correct_rank_counts": dict(oracle_rank_counts),
+            "selection_failure_pattern_counts": dict(selection_pattern_counts),
             "selected_missing_concept_counts": dict(missing_concept_counts),
         },
         "families": sorted(
@@ -211,6 +319,7 @@ def analyze_results(
             key=lambda row: (row["top1_correct_rate"], row["any_correct_rate"], row["family"]),
         ),
         "cases": cases,
+        "selection_failures": selection_failures,
     }
 
 
@@ -249,6 +358,22 @@ def render_markdown(report: Dict[str, object]) -> str:
     lines.append("| Category | Count |")
     lines.append("|---|---:|")
     for key, value in sorted((summary.get("failure_category_counts") or {}).items()):
+        lines.append(f"| `{key}` | {value} |")
+    lines.append("")
+
+    lines.append("## Oracle Rank Distribution")
+    lines.append("")
+    lines.append("| First correct rank | Count |")
+    lines.append("|---:|---:|")
+    for key, value in sorted((summary.get("oracle_first_correct_rank_counts") or {}).items(), key=lambda kv: int(kv[0])):
+        lines.append(f"| {key} | {value} |")
+    lines.append("")
+
+    lines.append("## Selection Failure Patterns")
+    lines.append("")
+    lines.append("| Pattern | Count |")
+    lines.append("|---|---:|")
+    for key, value in sorted((summary.get("selection_failure_pattern_counts") or {}).items()):
         lines.append(f"| `{key}` | {value} |")
     lines.append("")
 

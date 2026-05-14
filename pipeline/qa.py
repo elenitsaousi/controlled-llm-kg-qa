@@ -827,116 +827,63 @@ def _select_best_candidate_semantic(candidates, question):
     best = None
     best_score = float("-inf")
 
-    q = question.lower()
-
-    for cand in candidates:
+    for original_rank, cand in enumerate(candidates):
         query = str(cand.get("query", ""))
-        query_lower = query.lower()
 
-        semantic_score = float(cand.get("semantic_judge_score", 0.0))
+        judge = cand.get("semantic_judge_report")
+        if not isinstance(judge, dict):
+            judge = semantic_judge_report(question, query)
+        semantic_score = float(judge.get("score", cand.get("semantic_judge_score", 0.0)))
+        coverage = semantic_coverage_report(question, query)
+        coverage_score = float(coverage.get("coverage_score", 0.0))
+        missing_coverage = int(coverage.get("missing_count", 0))
         ml_score = float(cand.get("ml_score", 0.0))
         ml_score = ml_score / (1 + abs(ml_score))  # normalize
 
-        score = 0
-
-        # =====================================
-        # 🔥 1. EXECUTION SIGNAL (MOST IMPORTANT)
-        # =====================================
-        has_rows, _ = _query_has_runtime_rows(query)
-
-        if has_rows is True:
-            score += 3    # strong boost
-        elif has_rows is False:
-            score -= 2   # hard penalty
-
         profile = _query_runtime_profile(query)
-        if profile.get("unbound_vars"):
-            score -= 2
+        has_rows = profile.get("has_rows")
+        execution_error = profile.get("error")
+        unbound_vars = list(profile.get("unbound_vars") or [])
 
-        # =====================================
-        # 🔥 2. SEMANTIC SCORE
-        # =====================================
-        score += 2.0 * semantic_score
+        execution_component = 0.0
+        if has_rows is True:
+            execution_component += 0.75
+        elif has_rows is False:
+            execution_component -= 0.5
+        if execution_error:
+            execution_component -= 1.0
+        if unbound_vars:
+            execution_component -= 1.25
 
-        # =====================================
-        # 🔥 3. ML (light influence only)
-        # =====================================
-        score += 0.3 * ml_score
+        semantic_component = 1.35 * semantic_score
+        coverage_component = (8.0 * coverage_score) - (2.5 * missing_coverage)
+        ml_component = 0.20 * ml_score
+        order_component = -0.03 * original_rank
+        score = (
+            semantic_component
+            + coverage_component
+            + execution_component
+            + ml_component
+            + order_component
+        )
 
-        # =====================================
-        # 🔥 4. AGGREGATION INTENT (CRITICAL)
-        # =====================================
-        if "average" in q or "avg" in q or "mean" in q:
-            if "avg(" in query_lower:
-                score += 3
-            else:
-                score -= 3
-
-        if "total" in q or "sum" in q:
-            if "sum(" in query_lower:
-                score += 3
-            else:
-                score -= 1
-
-        if "how many" in q or "count" in q:
-            if "count(" in query_lower:
-                score += 3
-            else:
-                score -= 3
-
-        # =====================================
-        # 🔥 5. DIMENSION CHECKS
-        # =====================================
-        if "vehicle" in q and not any(x in query_lower for x in ["vehicletype", "hasvehicletype", "analyzesvehicletype"]):
-
-            score -= 3
-
-        if "technology" in q and "technologycategory" not in query_lower:
-            score -= 2
-
-        if "response" in q and "responsetype" not in query_lower:
-            score -= 2
-
-        if "month" in q and not any(x in query_lower for x in ["month", "period"]):
-            score -= 2
-
-        # =====================================
-        # 🔥 6. FILTER BUGS (VERY IMPORTANT)
-        # =====================================
-        # wrong extra constraint (kills rows)
-        if "surveyorigin" in query_lower and "survey" not in q:
-            score -= 2
-
-        # actual vs forecast mismatch
-        if "actual" in q and "isactualdata true" not in query_lower:
-            score -= 3
-
-        if "forecast" in q and "isforecastdata true" not in query_lower:
-            score -= 3
-
-        # =====================================
-        # 🔥 7. STRUCTURE PENALTIES
-        # =====================================
-        if "rdf:type" in query_lower:
-            score -= 2
-
-        if "percentagechange" in query_lower and "demand" in q:
-            score -= 4
-
-        # over-grouping (very common mistake)
-        if "summarize" in q or "for all" in q:
-            if "technologycategory" in query_lower:
-                score -= 2
-
-        # =====================================
-        # DEBUG (keep this for now)
-        # =====================================
-        print("----")
-        print(query[:100])
-        print("rows:", has_rows)
-        print("semantic:", semantic_score)
-        print("ml:", ml_score)
-        print("FINAL:", score)
+        cand["selection_score"] = float(score)
+        cand["selection_score_breakdown"] = {
+            "semantic_component": float(semantic_component),
+            "coverage_component": float(coverage_component),
+            "execution_component": float(execution_component),
+            "ml_component": float(ml_component),
+            "order_component": float(order_component),
+        }
+        cand["coverage_score"] = coverage_score
+        cand["coverage_missing"] = list(coverage.get("missing", []))
+        cand["coverage_required"] = list(coverage.get("required", []))
+        cand["semantic_judge_score"] = semantic_score
+        cand["semantic_judge_report"] = judge
+        cand["execution_has_rows"] = has_rows
+        cand["execution_error"] = execution_error
+        cand["execution_row_count"] = profile.get("row_count")
+        cand["execution_unbound_vars"] = unbound_vars
 
         if score > best_score:
             best = cand

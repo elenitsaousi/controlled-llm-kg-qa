@@ -335,16 +335,16 @@ def semantic_judge_report(question: str, query: str) -> Dict[str, object]:
         else:
             aggregation_match = q_aggr in aggrs
         if aggregation_match:
-            score += 2.0
+            score += 3.0
             rewards.append(f"aggregation:{q_aggr}")
         else:
-            score -= 2.5
+            score -= 3.5
             penalties.append(f"wrong_or_missing_aggregation:{q_aggr}")
             if q_aggr == "AVG" and "SUM" in aggrs:
-                score -= 1.0
+                score -= 1.3
                 penalties.append("sum_used_for_average")
             if q_aggr == "SUM" and "AVG" in aggrs:
-                score -= 0.8
+                score -= 1.1
                 penalties.append("avg_used_for_total")
     elif aggrs and _question_wants_raw_values(question):
         score -= 1.75
@@ -354,11 +354,11 @@ def semantic_judge_report(question: str, query: str) -> Dict[str, object]:
     extra_dims = sorted(c_dims - q_dims)
     if q_dims:
         matched_dims = q_dims & c_dims
-        score += 1.15 * len(matched_dims)
+        score += 1.4 * len(matched_dims)
         if matched_dims:
             rewards.extend(f"dimension:{d}" for d in sorted(matched_dims))
         if missing_dims:
-            score -= 1.65 * len(missing_dims)
+            score -= 2.1 * len(missing_dims)
             penalties.extend(f"missing_dimension:{d}" for d in missing_dims)
         wrong_pairs = [
             ("quarter", "year"),
@@ -372,9 +372,20 @@ def semantic_judge_report(question: str, query: str) -> Dict[str, object]:
                 penalties.append(f"wrong_dimension:{wrong}_instead_of_{expected}")
         for dim in extra_dims:
             if dim not in {"baseline"}:
-                score -= 0.25
+                score -= 0.4
+                penalties.append(f"extra_dimension:{dim}")
+
+    grouped_vars = _group_vars(query)
+    if q_aggr and q_dims:
+        if grouped_vars:
+            score += 0.8
+            rewards.append("grouping_present")
+        else:
+            score -= 2.0
+            penalties.append("missing_group_by_for_grouped_request")
 
     missing_filters = sorted(q_filters - c_filters)
+    extra_filters = sorted(c_filters - q_filters)
     if q_filters:
         matched_filters = q_filters & c_filters
         score += 1.25 * len(matched_filters)
@@ -383,17 +394,22 @@ def semantic_judge_report(question: str, query: str) -> Dict[str, object]:
         if missing_filters:
             score -= 1.75 * len(missing_filters)
             penalties.extend(f"missing_filter:{f}" for f in missing_filters)
+    if extra_filters:
+        # Extra filters are often over-specific constraints that make an otherwise
+        # structurally aligned candidate too narrow for the question.
+        score -= 0.85 * len(extra_filters)
+        penalties.extend(f"over_specific_filter:{f}" for f in extra_filters)
 
     missing_origins = sorted(q_origins - c_origins)
     extra_origins = sorted(c_origins - q_origins)
     if q_origins:
         score += 1.35 * len(q_origins & c_origins)
         if missing_origins:
-            score -= 1.9 * len(missing_origins)
+            score -= 2.4 * len(missing_origins)
             penalties.extend(f"missing_origin:{o}" for o in missing_origins)
         # If all three origins are requested, an origin-only query is too narrow.
         if len(q_origins) >= 2 and missing_origins:
-            score -= 1.0
+            score -= 1.25
             penalties.append("too_narrow_origin_scope")
         # If one origin is requested and the query explicitly spans other origins, it is too broad.
         if len(q_origins) == 1 and extra_origins:
@@ -453,6 +469,7 @@ def semantic_judge_report(question: str, query: str) -> Dict[str, object]:
         "expected_filters": sorted(q_filters),
         "candidate_filters": sorted(c_filters),
         "missing_filters": missing_filters,
+        "extra_filters": extra_filters,
         "expected_origins": sorted(q_origins),
         "candidate_origins": sorted(c_origins),
         "missing_origins": missing_origins,

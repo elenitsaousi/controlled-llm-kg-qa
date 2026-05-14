@@ -33,7 +33,11 @@ from ranking.ambiguity_policy import (
     predict_regime,
 )
 from ranking.ranker import rank_candidates as rank_schema_candidates
-from validation.semantic import rank_candidates_by_semantic_judge
+from validation.semantic import (
+    rank_candidates_by_semantic_judge,
+    semantic_coverage_report,
+    semantic_judge_report,
+)
 
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -869,11 +873,18 @@ def evaluate(
             summary["total_candidates"] += 1
             cand_query = _strip_comments(str(c.get("query", "")).strip())
             cand_full = _ensure_prefixes(cand_query)
+            coverage_report = c.get("semantic_coverage_report")
+            if not isinstance(coverage_report, dict):
+                coverage_report = semantic_coverage_report(ranking_question, cand_query)
+            judge_report = c.get("semantic_judge_report")
+            if not isinstance(judge_report, dict):
+                judge_report = semantic_judge_report(ranking_question, cand_query)
 
             try:
                 cand_sig = _run_query_cached(g, cand_full, query_timeout, query_cache)
                 any_valid = True
                 is_correct = cand_sig == gold_sig
+                execution_error = None
             except QueryTimeout as exc:
                 summary["invalid_candidates"] += 1
                 summary["candidate_timeouts"] += 1
@@ -882,6 +893,19 @@ def evaluate(
                     "label": "timeout",
                     "error": str(exc),
                     "query": cand_query,
+                    "ml_score": c.get("ml_score"),
+                    "semantic_judge_score": c.get("semantic_judge_score"),
+                    "semantic_judge_report": judge_report,
+                    "coverage_score": c.get("coverage_score", coverage_report.get("coverage_score")),
+                    "coverage_missing": c.get("coverage_missing", coverage_report.get("missing")),
+                    "coverage_required": c.get("coverage_required", coverage_report.get("required")),
+                    "selection_score": c.get("selection_score"),
+                    "selection_score_breakdown": c.get("selection_score_breakdown"),
+                    "execution_has_rows": c.get("execution_has_rows"),
+                    "execution_row_count": c.get("execution_row_count"),
+                    "execution_error": c.get("execution_error", str(exc)),
+                    "execution_unbound_vars": c.get("execution_unbound_vars", []),
+                    "source": c.get("source"),
                 })
                 continue
             except Exception as exc:
@@ -891,6 +915,19 @@ def evaluate(
                     "label": "invalid",
                     "error": str(exc),
                     "query": cand_query,
+                    "ml_score": c.get("ml_score"),
+                    "semantic_judge_score": c.get("semantic_judge_score"),
+                    "semantic_judge_report": judge_report,
+                    "coverage_score": c.get("coverage_score", coverage_report.get("coverage_score")),
+                    "coverage_missing": c.get("coverage_missing", coverage_report.get("missing")),
+                    "coverage_required": c.get("coverage_required", coverage_report.get("required")),
+                    "selection_score": c.get("selection_score"),
+                    "selection_score_breakdown": c.get("selection_score_breakdown"),
+                    "execution_has_rows": c.get("execution_has_rows"),
+                    "execution_row_count": c.get("execution_row_count"),
+                    "execution_error": c.get("execution_error", str(exc)),
+                    "execution_unbound_vars": c.get("execution_unbound_vars", []),
+                    "source": c.get("source"),
                 })
                 continue
 
@@ -910,7 +947,16 @@ def evaluate(
                 "query": cand_query,
                 "ml_score": c.get("ml_score"),
                 "semantic_judge_score": c.get("semantic_judge_score"),
-                "semantic_judge_report": c.get("semantic_judge_report"),
+                "semantic_judge_report": judge_report,
+                "coverage_score": c.get("coverage_score", coverage_report.get("coverage_score")),
+                "coverage_missing": c.get("coverage_missing", coverage_report.get("missing")),
+                "coverage_required": c.get("coverage_required", coverage_report.get("required")),
+                "selection_score": c.get("selection_score"),
+                "selection_score_breakdown": c.get("selection_score_breakdown"),
+                "execution_has_rows": c.get("execution_has_rows", bool(cand_sig)),
+                "execution_row_count": c.get("execution_row_count", sum(cand_sig.values())),
+                "execution_error": c.get("execution_error", execution_error),
+                "execution_unbound_vars": c.get("execution_unbound_vars", []),
                 "source": c.get("source"),
             })
 
