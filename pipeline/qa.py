@@ -859,9 +859,17 @@ def _candidate_shape_score(question: str, query: str, profile: Dict[str, object]
         elif "sum(" in sparql and "percentagechange" in sparql:
             score -= 1.2
             reasons.append("grouped_percentage_sum")
-        elif re.search(r"select\b(?:(?!where).)*\?pct\b", sparql, flags=re.DOTALL):
+        elif re.search(r"select\b(?:(?!where).)*\?(pct|percentage)\b", sparql, flags=re.DOTALL):
             score -= 1.4
             reasons.append("grouped_percentage_raw_rows")
+        if _has_word(q, "technology", "technologies") and (
+            "?techlabel" in sparql or "?technologycategory" in sparql
+        ):
+            score += 0.35
+            reasons.append("technology_label_shape")
+        if _has_word(q, "quarter", "quarters") and "?quarterlabel" in sparql:
+            score += 0.35
+            reasons.append("quarter_label_shape")
 
     if _has_word(q, "month", "monthly") and ("total" in q or "aggregate" in q or "sum" in q):
         if "bind(replace(str(?month" in sparql and "?monthlabel" in sparql:
@@ -870,6 +878,24 @@ def _candidate_shape_score(question: str, query: str, profile: Dict[str, object]
         if "survey:monthlabel ?monthlabel" in sparql:
             score += 0.15
             reasons.append("month_label_property")
+
+    vehicle_sales_time_period = (
+        ("time period" in q or "time periods" in q)
+        and (
+            "vehicle-sales" in q
+            or "vehicle sales" in q
+            or "sold units" in q
+            or "units sold" in q
+            or _has_word(q, "actual", "forecast", "forecasted")
+        )
+    )
+    if vehicle_sales_time_period:
+        if "?periodlabel" in sparql or "?timelabel" in sparql:
+            score += 0.35
+            reasons.append("time_period_label_shape")
+        if re.search(r"select\b(?:(?!where).)*\?timeperiod\b", sparql, flags=re.DOTALL):
+            score -= 0.35
+            reasons.append("raw_time_period_output")
 
     return float(score), reasons
 
@@ -1006,6 +1032,9 @@ def _select_best_candidate_semantic(candidates, question):
             "participant_count_sum",
             "grouped_percentage_avg",
             "month_label_bound_from_uri",
+            "technology_label_shape",
+            "quarter_label_shape",
+            "time_period_label_shape",
         }
     )
     first_has_structural_defect = bool(first_penalties or first_missing)
@@ -1045,6 +1074,14 @@ def _select_best_candidate_semantic(candidates, question):
         )
     )
     if clean_low_margin_win:
+        return best
+    critical_shape_low_margin_win = (
+        best_score >= first_score + 0.2
+        and coverage_not_worse
+        and not best_exec_error
+        and critical_shape_fix
+    )
+    if critical_shape_low_margin_win:
         return best
     targeted_rescue_enabled = (
         os.getenv("INFINEON_ENABLE_TARGETED_SELECTION_RESCUE", "0").strip().lower()
