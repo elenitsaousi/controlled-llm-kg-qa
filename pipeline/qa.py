@@ -832,11 +832,11 @@ def _select_best_candidate_semantic(candidates, question):
         judge = cand.get("semantic_judge_report")
         if not isinstance(judge, dict):
             judge = semantic_judge_report(question, query)
-        semantic_score = float(judge.get("score", cand.get("semantic_judge_score", 0.0)))
+        semantic_score = float(judge.get("score", cand.get("semantic_judge_score") or 0.0))
         coverage = semantic_coverage_report(question, query)
         coverage_score = float(coverage.get("coverage_score", 0.0))
         missing_coverage = int(coverage.get("missing_count", 0))
-        ml_score = float(cand.get("ml_score", 0.0))
+        ml_score = float(cand.get("ml_score") or 0.0)
         ml_score = ml_score / (1 + abs(ml_score))  # normalize
 
         profile = _query_runtime_profile(query)
@@ -940,8 +940,12 @@ def _select_best_candidate_semantic(candidates, question):
         return best
     if fixes_bad_first and best_score >= first_score + 2.0 and coverage_not_worse:
         return best
+    targeted_rescue_enabled = (
+        os.getenv("INFINEON_ENABLE_TARGETED_SELECTION_RESCUE", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
     near_top_candidate = best_rank <= 2
-    if near_top_candidate and not best_exec_error:
+    if targeted_rescue_enabled and near_top_candidate and not best_exec_error:
         fixes_missing_required = first_missing > best_missing and best_coverage > first_coverage
         fixes_over_filtering = first_extra_filters > best_extra_filters
         fixes_aggregation = first_aggregation_mismatch and best_aggregation_match
