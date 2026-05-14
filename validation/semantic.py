@@ -553,7 +553,7 @@ _DOMAIN_REQUIREMENTS = [
     },
     {
         "id": "FutureDemandAnalysis",
-        "keywords": ["future demand", "forecast", "projection", "projected"],
+        "keywords": ["future demand", "future-demand", "demand forecast", "demand projection"],
         "query_terms": ["FutureDemandAnalysis", "FutureDemand", "Option1", "Option2", "Option3"],
     },
     {
@@ -599,7 +599,7 @@ _DOMAIN_REQUIREMENTS = [
     },
     {
         "id": "VehicleType",
-        "keywords": ["vehicle", "vehicle type", "bev", "behv", "ice"],
+        "keywords": ["vehicle type", "vehicle category", "bev", "behv", "ice"],
         "query_terms": ["hasVehicleType", "forVehicleType", "BEV", "BEHV", "ICE"],
     },
     {

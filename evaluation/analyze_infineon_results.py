@@ -444,9 +444,18 @@ def render_selection_failure_brief(report: Dict[str, object]) -> str:
         correct_sem = first_correct.get("semantic_report") or {}
         selected_cov = selected.get("coverage") or {}
         correct_cov = first_correct.get("coverage") or {}
+        selected_semantic_score = selected.get("semantic_score")
+        correct_semantic_score = first_correct.get("semantic_score")
+        feature_tie = (
+            selected_semantic_score == correct_semantic_score
+            and selected_cov.get("coverage_score") == correct_cov.get("coverage_score")
+            and selected_cov.get("missing") == correct_cov.get("missing")
+            and selected_sem.get("penalties") == correct_sem.get("penalties")
+        )
         lines.append("")
         lines.append(
             f"{failure.get('id')} | correct_rank={failure.get('first_correct_candidate_rank')} "
+            f"| feature_tie={feature_tie} "
             f"| patterns={','.join(map(str, failure.get('error_patterns') or []))}"
         )
         lines.append(f"Q: {failure.get('question')}")
