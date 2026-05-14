@@ -100,7 +100,15 @@ def main() -> None:
     )
     parser.add_argument("--results", required=True)
     parser.add_argument("--out", default="")
+    parser.add_argument(
+        "--enable-targeted-rescue",
+        action="store_true",
+        help="Enable experimental targeted rescue rules during replay only.",
+    )
     args = parser.parse_args()
+
+    if args.enable_targeted_rescue:
+        os.environ["INFINEON_ENABLE_TARGETED_SELECTION_RESCUE"] = "1"
 
     report = replay_selection(args.results)
     print("===== SELECTION REPLAY =====")
@@ -108,6 +116,10 @@ def main() -> None:
     print(f"Total: {report['total']}")
     print(f"Original top1 correct: {report['original_top1_correct']}")
     print(f"Replay top1 correct: {report['replay_top1_correct']}")
+    print(
+        "Replay delta: "
+        f"{int(report['replay_top1_correct']) - int(report['original_top1_correct']):+d}"
+    )
     print(f"Any correct: {report['any_correct']}")
     print(f"Changed selections: {report['changed_count']}")
     if report["changed"]:
