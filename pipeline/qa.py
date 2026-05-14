@@ -876,6 +876,10 @@ def _candidate_shape_score(question: str, query: str, profile: Dict[str, object]
 
 def _select_best_candidate_semantic(candidates, question):
     scored: List[Dict[str, object]] = []
+    runtime_profile_enabled = (
+        os.getenv("INFINEON_ENABLE_SELECTION_RUNTIME_PROFILE", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
 
     for original_rank, cand in enumerate(candidates):
         query = str(cand.get("query", ""))
@@ -890,7 +894,16 @@ def _select_best_candidate_semantic(candidates, question):
         ml_score = float(cand.get("ml_score") or 0.0)
         ml_score = ml_score / (1 + abs(ml_score))  # normalize
 
-        profile = _query_runtime_profile(query)
+        profile = (
+            _query_runtime_profile(query)
+            if runtime_profile_enabled
+            else {
+                "has_rows": None,
+                "row_count": 0,
+                "unbound_vars": [],
+                "error": None,
+            }
+        )
         has_rows = profile.get("has_rows")
         execution_error = profile.get("error")
         unbound_vars = list(profile.get("unbound_vars") or [])
