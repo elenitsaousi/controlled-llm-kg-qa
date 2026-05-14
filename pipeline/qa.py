@@ -824,8 +824,7 @@ def _select_best_valid_query(
     return ordered_queries[0], first_errors, 0
 
 def _select_best_candidate_semantic(candidates, question):
-    best = None
-    best_score = float("-inf")
+    scored: List[Dict[str, object]] = []
 
     for original_rank, cand in enumerate(candidates):
         query = str(cand.get("query", ""))
@@ -885,11 +884,50 @@ def _select_best_candidate_semantic(candidates, question):
         cand["execution_row_count"] = profile.get("row_count")
         cand["execution_unbound_vars"] = unbound_vars
 
-        if score > best_score:
-            best = cand
-            best_score = score
+        scored.append(cand)
 
-    return best
+    if not scored:
+        return None
+
+    first = scored[0]
+    best = max(
+        scored,
+        key=lambda row: (
+            float(row.get("selection_score", float("-inf"))),
+            -int(row.get("semantic_judge_original_rank", 0)),
+        ),
+    )
+    if best is first:
+        return first
+
+    first_score = float(first.get("selection_score", float("-inf")))
+    best_score = float(best.get("selection_score", float("-inf")))
+    first_semantic = float(first.get("semantic_judge_score", 0.0))
+    best_semantic = float(best.get("semantic_judge_score", 0.0))
+    first_coverage = float(first.get("coverage_score", 0.0))
+    best_coverage = float(best.get("coverage_score", 0.0))
+    first_missing = len(first.get("coverage_missing") or [])
+    best_missing = len(best.get("coverage_missing") or [])
+    first_exec_error = bool(first.get("execution_error") or first.get("execution_unbound_vars"))
+
+    # Keep ML/top-order stable unless the rule-based selector has a clear,
+    # structured reason to override it. This prevents coverage/execution noise
+    # from degrading already-good top candidates.
+    override_margin = float(os.getenv("INFINEON_SELECTION_OVERRIDE_MARGIN", "5.0") or 5.0)
+    clear_score_win = best_score >= first_score + override_margin
+    coverage_not_worse = best_coverage >= first_coverage and best_missing <= first_missing
+    semantic_not_worse = best_semantic >= first_semantic
+    fixes_bad_first = (
+        first_exec_error
+        or first_missing > best_missing
+        or first_semantic < 0.0
+    )
+
+    if clear_score_win and coverage_not_worse and (semantic_not_worse or fixes_bad_first):
+        return best
+    if fixes_bad_first and best_score >= first_score + 2.0 and coverage_not_worse:
+        return best
+    return first
 
 
 def _build_selection_explanation(
