@@ -425,6 +425,57 @@ def render_markdown(report: Dict[str, object]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_selection_failure_brief(report: Dict[str, object]) -> str:
+    lines: List[str] = []
+    lines.append("===== SELECTION FAILURE BRIEF =====")
+    failures = list(report.get("selection_failures") or [])
+    if not failures:
+        lines.append("No selection failures.")
+        return "\n".join(lines)
+
+    for failure in failures:
+        candidates = list(failure.get("candidates") or [])
+        selected = candidates[0] if candidates else {}
+        first_correct = next(
+            (candidate for candidate in candidates if candidate.get("is_correct")),
+            {},
+        )
+        selected_sem = selected.get("semantic_report") or {}
+        correct_sem = first_correct.get("semantic_report") or {}
+        selected_cov = selected.get("coverage") or {}
+        correct_cov = first_correct.get("coverage") or {}
+        lines.append("")
+        lines.append(
+            f"{failure.get('id')} | correct_rank={failure.get('first_correct_candidate_rank')} "
+            f"| patterns={','.join(map(str, failure.get('error_patterns') or []))}"
+        )
+        lines.append(f"Q: {failure.get('question')}")
+        lines.append(
+            "SELECTED "
+            f"score={selected.get('selection_score')} "
+            f"semantic={selected.get('semantic_score')} "
+            f"coverage={selected_cov.get('coverage_score')} "
+            f"missing={selected_cov.get('missing')} "
+            f"extra_filters={selected_sem.get('extra_filters')} "
+            f"penalties={selected_sem.get('penalties')}"
+        )
+        lines.append(
+            "CORRECT  "
+            f"rank={first_correct.get('rank')} "
+            f"score={first_correct.get('selection_score')} "
+            f"semantic={first_correct.get('semantic_score')} "
+            f"coverage={correct_cov.get('coverage_score')} "
+            f"missing={correct_cov.get('missing')} "
+            f"extra_filters={correct_sem.get('extra_filters')} "
+            f"penalties={correct_sem.get('penalties')}"
+        )
+        selected_query = str(selected.get("query") or "").replace("\n", " ")
+        correct_query = str(first_correct.get("query") or "").replace("\n", " ")
+        lines.append(f"SELECTED_QUERY: {selected_query[:220]}")
+        lines.append(f"CORRECT_QUERY:  {correct_query[:220]}")
+    return "\n".join(lines)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Analyze Infineon held-out KGQA results without rerunning LLM generation."
@@ -434,6 +485,11 @@ def main() -> None:
     parser.add_argument("--schema", default="data/infineon/schema.json")
     parser.add_argument("--out-json", default="results/infineon_test_final_error_analysis.json")
     parser.add_argument("--out-md", default="results/infineon_test_final_error_analysis.md")
+    parser.add_argument(
+        "--print-selection-failures",
+        action="store_true",
+        help="Print selected-vs-correct diagnostics for ranking failures.",
+    )
     args = parser.parse_args()
 
     report = analyze_results(
@@ -488,6 +544,8 @@ def main() -> None:
         if row.get("id")
     ]
     print(f"Selection failure IDs: {', '.join(failure_ids) if failure_ids else 'none'}")
+    if args.print_selection_failures:
+        print(render_selection_failure_brief(report))
     print(f"JSON report: {args.out_json}")
     print(f"Markdown report: {args.out_md}")
 
