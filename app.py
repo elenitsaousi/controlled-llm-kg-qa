@@ -208,6 +208,54 @@ def _render_selection_explainability(result: Dict[str, Any]) -> None:
         st.caption("Candidate diagnostics skipped. Enable 'Run candidate diagnostics' for per-candidate execution checks.")
 
 
+def _render_clarification(
+    clarification: Dict[str, Any],
+    *,
+    execute_selected: bool,
+    graph_path: str,
+    max_preview_rows: int,
+) -> None:
+    st.subheader("Clarify Interpretation")
+    st.write(str(clarification.get("reason", "Candidates disagree on the intended query plan.")))
+    st.write(str(clarification.get("question", "Which interpretation matches what you want?")))
+    options = list(clarification.get("options") or [])
+    for option in options:
+        cols = st.columns([3, 1])
+        cols[0].write(str(option.get("label", "Interpretation")))
+        if cols[1].button(
+            "Use",
+            key=f"clarify_{option.get('id')}",
+            use_container_width=True,
+        ):
+            chosen_query = str(option.get("query", "") or "").strip()
+            st.session_state["last_selected_query"] = chosen_query
+            st.session_state["clarification_choice_id"] = option.get("id")
+            if execute_selected and chosen_query and os.path.exists(graph_path):
+                try:
+                    graph = _load_graph_cached(graph_path)
+                    rows, _truncated = _execute_query_preview(
+                        graph,
+                        chosen_query,
+                        max_rows=int(max_preview_rows),
+                    )
+                    st.session_state["last_graph_rows"] = rows
+                except Exception:
+                    st.session_state["last_graph_rows"] = []
+
+    chosen_id = st.session_state.get("clarification_choice_id")
+    if chosen_id:
+        chosen = next((opt for opt in options if opt.get("id") == chosen_id), None)
+        if chosen is not None:
+            st.success(f"Using clarified interpretation: {chosen.get('label')}")
+            st.code(
+                _format_sparql_for_display(str(st.session_state.get("last_selected_query", ""))),
+                language="sparql",
+            )
+            rows = st.session_state.get("last_graph_rows") or []
+            if rows:
+                st.dataframe(rows, width="stretch")
+
+
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
 
 st.title("Infineon KG QA")
@@ -296,7 +344,10 @@ if "last_question" not in st.session_state:
 if "clarification_choice_id" not in st.session_state:
     st.session_state["clarification_choice_id"] = None
 
-if st.button("Ask", type="primary"):
+asked = st.button("Ask", type="primary")
+clarification_rendered = False
+
+if asked:
     if not question.strip():
         st.warning("Please enter a question.")
     elif not api_url.strip() or not api_key.strip():
@@ -377,6 +428,16 @@ if st.button("Ask", type="primary"):
         st.session_state["last_question"] = question
         st.session_state["clarification_choice_id"] = None
 
+        clarification = result.get("clarification")
+        if isinstance(clarification, dict) and clarification.get("needs_clarification"):
+            _render_clarification(
+                clarification,
+                execute_selected=bool(execute_selected),
+                graph_path=graph_path,
+                max_preview_rows=int(max_preview_rows),
+            )
+            clarification_rendered = True
+
         st.subheader("Answer")
         if graph_exec_error:
             st.error(f"Query execution error: {graph_exec_error}")
@@ -448,48 +509,16 @@ if st.button("Ask", type="primary"):
                     st.caption(f"Candidate {idx} ({source})")
                     st.code(_format_sparql_for_display(str(item.get("query", ""))), language="sparql")
 
-last_result = st.session_state.get("last_qa_result")
-clarification = (last_result or {}).get("clarification") if isinstance(last_result, dict) else None
-if isinstance(clarification, dict) and clarification.get("needs_clarification"):
-    st.subheader("Clarify Interpretation")
-    st.write(str(clarification.get("reason", "Candidates disagree on the intended query plan.")))
-    st.write(str(clarification.get("question", "Which interpretation matches what you want?")))
-    options = list(clarification.get("options") or [])
-    for option in options:
-        cols = st.columns([3, 1])
-        cols[0].write(str(option.get("label", "Interpretation")))
-        if cols[1].button(
-            "Use",
-            key=f"clarify_{option.get('id')}",
-            use_container_width=True,
-        ):
-            chosen_query = str(option.get("query", "") or "").strip()
-            st.session_state["last_selected_query"] = chosen_query
-            st.session_state["clarification_choice_id"] = option.get("id")
-            if execute_selected and chosen_query and os.path.exists(graph_path):
-                try:
-                    graph = _load_graph_cached(graph_path)
-                    rows, _truncated = _execute_query_preview(
-                        graph,
-                        chosen_query,
-                        max_rows=int(max_preview_rows),
-                    )
-                    st.session_state["last_graph_rows"] = rows
-                except Exception:
-                    st.session_state["last_graph_rows"] = []
-
-    chosen_id = st.session_state.get("clarification_choice_id")
-    if chosen_id:
-        chosen = next((opt for opt in options if opt.get("id") == chosen_id), None)
-        if chosen is not None:
-            st.success(f"Using clarified interpretation: {chosen.get('label')}")
-            st.code(
-                _format_sparql_for_display(str(st.session_state.get("last_selected_query", ""))),
-                language="sparql",
-            )
-            rows = st.session_state.get("last_graph_rows") or []
-            if rows:
-                st.dataframe(rows, width="stretch")
+if not clarification_rendered:
+    last_result = st.session_state.get("last_qa_result")
+    clarification = (last_result or {}).get("clarification") if isinstance(last_result, dict) else None
+    if isinstance(clarification, dict) and clarification.get("needs_clarification"):
+        _render_clarification(
+            clarification,
+            execute_selected=bool(execute_selected),
+            graph_path=graph_path,
+            max_preview_rows=int(max_preview_rows),
+        )
 
 st.divider()
 st.subheader("Interactive Graph Explorer")

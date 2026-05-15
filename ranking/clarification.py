@@ -74,6 +74,8 @@ def _dimension_hints(plan: Dict[str, object], semantic_dimensions: Iterable[str]
     ):
         if token in vars_seen:
             dimensions.add(dim)
+    if dimensions & {"quarter", "month", "year"}:
+        dimensions.discard("time_period")
     return tuple(sorted(dimensions))
 
 
@@ -100,29 +102,84 @@ def _signature_key(signature: Dict[str, object]) -> Tuple[object, ...]:
 
 
 def _display_name(value: str) -> str:
-    return value.replace("_", " ")
+    names = {
+        "technology": "technology",
+        "vehicle_type": "vehicle type",
+        "region": "region",
+        "response_type": "response type",
+        "time_period": "time",
+        "quarter": "quarter",
+        "month": "month",
+        "year": "year",
+        "future_demand": "future demand",
+        "actual_data": "actual data",
+        "forecast_data": "forecast data",
+    }
+    return names.get(value, value.replace("_", " "))
 
 
-def _describe_signature(signature: Dict[str, object]) -> str:
+def _metric_phrase(question: str, signature: Dict[str, object]) -> str:
+    q = (question or "").lower()
+    if "future" in q and "demand" in q and ("percent" in q or "change" in q):
+        return "future-demand percentage"
+    if "percentage" in q or "percent" in q:
+        return "percentage"
+    if "participant" in q:
+        return "participant count"
+    if "units" in q or "sales" in q:
+        return "vehicle units"
+    if "demand" in q:
+        return "demand"
+    return "values"
+
+
+def _dimension_phrase(dimensions: Tuple[str, ...]) -> str:
+    if not dimensions:
+        return ""
+    specific_time = next((d for d in ("quarter", "month", "year") if d in dimensions), None)
+    non_time = [d for d in dimensions if d not in {"time_period", "quarter", "month", "year"}]
+    parts = [_display_name(d) for d in non_time]
+    if specific_time:
+        parts.append(specific_time)
+    elif "time_period" in dimensions:
+        parts.append("time")
+    return " and ".join(parts)
+
+
+def _describe_signature(question: str, signature: Dict[str, object]) -> str:
     aggregation = str(signature["aggregation"])
     shape = str(signature["answer_shape"])
     dimensions = tuple(signature["dimensions"])
-    filters = tuple(signature["filters"])
+    metric = _metric_phrase(question, signature)
+    dimension_text = _dimension_phrase(dimensions)
 
     if shape == "raw_values":
-        prefix = "Raw values"
-    elif aggregation == "NONE":
-        prefix = "Grouped result"
+        prefix = f"Individual {metric} observations"
     elif shape == "top_or_ranked":
-        prefix = "Top-ranked result"
+        prefix = f"Top {metric}"
+    elif aggregation == "AVG":
+        prefix = f"Average {metric}"
+    elif aggregation == "SUM":
+        prefix = f"Total {metric}"
+    elif aggregation == "COUNT":
+        prefix = f"Count of {metric}"
+    elif aggregation == "MAX":
+        prefix = f"Maximum {metric}"
+    elif aggregation == "MIN":
+        prefix = f"Minimum {metric}"
+    elif aggregation == "NONE":
+        prefix = f"Grouped {metric}"
     else:
-        prefix = f"{aggregation} summary"
+        prefix = f"{aggregation} {metric}"
 
     parts = [prefix]
-    if dimensions:
-        parts.append("by " + " and ".join(_display_name(x) for x in dimensions))
-    if filters:
-        parts.append("filtered to " + " and ".join(_display_name(x) for x in filters))
+    if dimension_text:
+        if "time" == dimension_text:
+            parts.append("over time")
+        elif dimension_text.endswith(" and time"):
+            parts.append("by " + dimension_text[:-9] + " over time")
+        else:
+            parts.append("by " + dimension_text)
     return " ".join(parts)
 
 
@@ -195,7 +252,7 @@ def build_clarification_payload(
         options.append(
             {
                 "id": f"plan_{index}",
-                "label": _describe_signature(signature),
+                "label": _describe_signature(question, signature),
                 "query": row["query"],
                 "candidate_rank": row["rank"],
                 "support": len(grouped[row["key"]]),
