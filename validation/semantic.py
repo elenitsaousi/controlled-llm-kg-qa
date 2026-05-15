@@ -197,6 +197,7 @@ def _question_expected_aggregation(question: str) -> Optional[str]:
     if (
         _has_word(q, "highest", "largest", "maximum", "max", "top", "strongest", "leads", "leading")
         or "top-ranked" in q
+        or "most common" in q
     ):
         return "MAX_OR_TOP"
     if (
@@ -328,10 +329,21 @@ def question_intent_report(question: str) -> Dict[str, object]:
         time_dimension = "period"
     else:
         time_dimension = None
+    q_lower = (question or "").lower()
+    wants_bl_comparison = (
+        {"bl1", "bl2"} <= q_filters
+        and (
+            _has_word(q_lower, "compare", "versus", "vs")
+            or "percentage change" in q_lower
+            or "percentage changes" in q_lower
+        )
+    )
     if _question_wants_raw_values(question):
         answer_shape = "raw_values"
     elif q_aggr in {"MAX_OR_TOP", "MIN_OR_BOTTOM"}:
         answer_shape = "top_or_ranked"
+    elif wants_bl_comparison:
+        answer_shape = "baseline_comparison"
     elif q_aggr and q_dims:
         answer_shape = "grouped_summary"
     elif q_aggr:
@@ -345,6 +357,7 @@ def question_intent_report(question: str) -> Dict[str, object]:
         "origins": sorted(q_origins),
         "time_dimension": time_dimension,
         "answer_shape": answer_shape,
+        "baseline_comparison": wants_bl_comparison,
     }
 
 

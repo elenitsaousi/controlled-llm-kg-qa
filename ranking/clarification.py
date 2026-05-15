@@ -121,6 +121,10 @@ def _display_name(value: str) -> str:
 
 def _metric_phrase(question: str, signature: Dict[str, object]) -> str:
     q = (question or "").lower()
+    if "shortage" in q:
+        return "shortage response"
+    if "cancellation response" in q or "response type" in q:
+        return "cancellation response"
     if "future" in q and "demand" in q and ("percent" in q or "change" in q):
         return "future-demand percentage"
     if "percentage" in q or "percent" in q:
@@ -245,6 +249,21 @@ def _conflict_is_resolved_by_question(intent: Dict[str, object], conflict: Dict[
     return False
 
 
+def _drop_resolved_comparison_conflicts(
+    intent: Dict[str, object],
+    conflicts: Sequence[Dict[str, object]],
+) -> List[Dict[str, object]]:
+    if not intent.get("baseline_comparison"):
+        return list(conflicts)
+    # For explicit BL1/BL2 comparison questions, SUM vs AVG alternatives are
+    # implementation noise. The question already asks for the baseline values.
+    return [
+        conflict
+        for conflict in conflicts
+        if conflict.get("axis") not in {"aggregation", "answer_shape"}
+    ]
+
+
 def build_clarification_payload(
     question: str,
     ranked_candidates: Sequence[Dict[str, object]],
@@ -285,6 +304,7 @@ def build_clarification_payload(
     conflicts = _conflicts(signatures)
     meaningful = _meaningful_conflicts(conflicts)
     intent = question_intent_report(question)
+    meaningful = _drop_resolved_comparison_conflicts(intent, meaningful)
     meaningful = [
         conflict
         for conflict in meaningful

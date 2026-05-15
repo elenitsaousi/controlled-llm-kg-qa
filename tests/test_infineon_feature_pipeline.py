@@ -301,6 +301,23 @@ def test_question_intent_report_resolves_multiple_explicit_axes():
     assert "actual" in intent["filters"]
 
 
+def test_question_intent_report_resolves_bl_comparison_shape():
+    intent = question_intent_report(
+        "Compare BL1 and BL2 current-demand changes for Tier1 Automotive."
+    )
+
+    assert intent["baseline_comparison"] is True
+    assert intent["answer_shape"] == "baseline_comparison"
+
+
+def test_question_intent_report_resolves_most_common_as_top_intent():
+    intent = question_intent_report(
+        "Which cancellation response is most common by technology category?"
+    )
+
+    assert intent["aggregation"] == "MAX_OR_TOP"
+
+
 def test_build_clarification_payload_skips_explicit_dimension_and_time_conflicts():
     question = "Return average future-demand change grouped by technology and quarter."
     quarter_query = (
@@ -316,6 +333,24 @@ def test_build_clarification_payload_skips_explicit_dimension_and_time_conflicts
     payload = build_clarification_payload(
         question,
         [{"query": period_query}, {"query": quarter_query}],
+    )
+
+    assert payload is None
+
+
+def test_build_clarification_payload_skips_explicit_bl_comparison_conflicts():
+    question = "Compare BL1 and BL2 current-demand changes for Tier1 Automotive."
+    total_query = (
+        "SELECT ?baseline (SUM(?pct) AS ?totalChange) WHERE { "
+        "?entry a survey:CurrentDemandAnalysis ; survey:baselineType ?baseline ; "
+        "survey:percentageChange ?pct . FILTER(?baseline IN ('BL1', 'BL2')) "
+        "} GROUP BY ?baseline"
+    )
+    avg_query = total_query.replace("SUM(?pct) AS ?totalChange", "AVG(?pct) AS ?avgChange")
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": total_query}, {"query": avg_query}],
     )
 
     assert payload is None
