@@ -265,6 +265,29 @@ def test_build_clarification_payload_detects_structural_disagreement():
     assert len(payload["options"]) == 3
 
 
+def test_build_clarification_payload_skips_explicit_average_question():
+    question = "Return average future-demand change grouped by technology and quarter."
+    avg_query = (
+        "SELECT ?technologyCategory ?quarterLabel (AVG(?percentageChange) AS ?avgChange) WHERE { "
+        "?entry a survey:FutureDemandAnalysis ; "
+        "survey:analyzesTechnologyCategory ?tech ; "
+        "survey:forTimePeriod ?quarter ; "
+        "survey:percentageChange ?percentageChange . "
+        "} GROUP BY ?technologyCategory ?quarterLabel"
+    )
+    sum_query = avg_query.replace(
+        "AVG(?percentageChange) AS ?avgChange",
+        "SUM(?percentageChange) AS ?totalChange",
+    )
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": sum_query}, {"query": avg_query}],
+    )
+
+    assert payload is None
+
+
 def test_semantic_judge_prefers_literal_survey_bucket_labels():
     question = "Break down total demand by region and by survey group: Tier1, OEM, and Semiconductor."
     uri_query = (

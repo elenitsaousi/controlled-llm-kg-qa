@@ -196,6 +196,31 @@ def _meaningful_conflicts(conflicts: Sequence[Dict[str, object]]) -> List[Dict[s
     return [c for c in conflicts if c.get("axis") in {"aggregation", "answer_shape", "time_dimension", "dimensions"}]
 
 
+def _explicit_aggregation(question: str) -> Optional[str]:
+    q = (question or "").lower()
+    if any(token in q for token in ("average", "mean", "avg")):
+        return "AVG"
+    if any(token in q for token in ("total", "sum", "aggregate")):
+        return "SUM"
+    if any(token in q for token in ("how many", "count")):
+        return "COUNT"
+    if any(token in q for token in ("largest", "highest", "maximum", "top-ranked", "leading")):
+        return "MAX_OR_TOP"
+    return None
+
+
+def _conflict_is_resolved_by_question(question: str, conflict: Dict[str, object]) -> bool:
+    if conflict.get("axis") != "aggregation":
+        return False
+    expected = _explicit_aggregation(question)
+    values = set(conflict.get("values") or [])
+    if expected is None:
+        return False
+    if expected == "MAX_OR_TOP":
+        return bool(values & {"MAX", "NONE", "SUM", "AVG"})
+    return expected in values
+
+
 def build_clarification_payload(
     question: str,
     ranked_candidates: Sequence[Dict[str, object]],
@@ -235,6 +260,11 @@ def build_clarification_payload(
     signatures = [row["signature"] for row in representatives]
     conflicts = _conflicts(signatures)
     meaningful = _meaningful_conflicts(conflicts)
+    meaningful = [
+        conflict
+        for conflict in meaningful
+        if not _conflict_is_resolved_by_question(question, conflict)
+    ]
     if not meaningful:
         return None
 
