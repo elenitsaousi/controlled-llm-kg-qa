@@ -25,6 +25,7 @@ from llm.answer_synthesis import synthesize_answer
 from kg.schema import load_schema
 from pipeline.qa import _intent_alignment_report, _rerank_with_semantic_coverage
 from validation.semantic import (
+    question_intent_report,
     rank_candidates_by_semantic_judge,
     semantic_coverage_report,
     semantic_judge_report,
@@ -283,6 +284,38 @@ def test_build_clarification_payload_skips_explicit_average_question():
     payload = build_clarification_payload(
         question,
         [{"query": sum_query}, {"query": avg_query}],
+    )
+
+    assert payload is None
+
+
+def test_question_intent_report_resolves_multiple_explicit_axes():
+    intent = question_intent_report(
+        "Return monthly totals for actual vehicle-sales observations."
+    )
+
+    assert intent["aggregation"] == "SUM"
+    assert intent["time_dimension"] == "month"
+    assert intent["answer_shape"] == "grouped_summary"
+    assert "month" in intent["dimensions"]
+    assert "actual" in intent["filters"]
+
+
+def test_build_clarification_payload_skips_explicit_dimension_and_time_conflicts():
+    question = "Return average future-demand change grouped by technology and quarter."
+    quarter_query = (
+        "SELECT ?technologyCategory ?quarterLabel (AVG(?percentageChange) AS ?avgChange) WHERE { "
+        "?entry a survey:FutureDemandAnalysis ; "
+        "survey:analyzesTechnologyCategory ?tech ; "
+        "survey:forTimePeriod ?quarter ; "
+        "survey:percentageChange ?percentageChange . "
+        "} GROUP BY ?technologyCategory ?quarterLabel"
+    )
+    period_query = quarter_query.replace("?quarterLabel", "?timePeriod")
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": period_query}, {"query": quarter_query}],
     )
 
     assert payload is None
@@ -717,6 +750,23 @@ def test_infineon_answer_synthesis_summarizes_future_demand():
     assert "Future demand returned 2 grouped row(s)" in answer
     assert "Tech B" in answer
     assert "Q2" in answer
+
+
+def test_infineon_answer_synthesis_summarizes_future_demand_time_period_labels():
+    answer = synthesize_answer(
+        "How do future-demand percentages differ across technologies over time?",
+        "SELECT ?techLabel ?timePeriod WHERE { ?entry a survey:FutureDemandAnalysis }",
+        {
+            "rows": [
+                {"techLabel": "Tech A", "timePeriod": "Quarter_Q1_2025", "avgPercentage": "1.5"},
+                {"techLabel": "Tech B", "timePeriod": "Quarter_Q2_2025", "avgPercentage": "4.25"},
+            ]
+        },
+    )
+
+    assert "Future demand returned 2 grouped row(s)" in answer
+    assert "Tech B" in answer
+    assert "Quarter Q2 2025" in answer
 
 
 def test_infineon_answer_synthesis_summarizes_autonomous_max():

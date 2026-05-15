@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from ranking.feature_extraction import extract_query_plan
-from validation.semantic import semantic_judge_report
+from validation.semantic import question_intent_report, semantic_judge_report
 
 
 CRITICAL_AXES = (
@@ -13,6 +13,7 @@ CRITICAL_AXES = (
     "time_dimension",
     "dimensions",
     "filters",
+    "origins",
 )
 
 
@@ -98,7 +99,7 @@ def plan_signature(question: str, query: str, schema_dict: Optional[Dict[str, ob
 
 
 def _signature_key(signature: Dict[str, object]) -> Tuple[object, ...]:
-    return tuple(signature.get(axis) for axis in CRITICAL_AXES) + (signature.get("origins"),)
+    return tuple(signature.get(axis) for axis in CRITICAL_AXES)
 
 
 def _display_name(value: str) -> str:
@@ -193,32 +194,44 @@ def _conflicts(signatures: Sequence[Dict[str, object]]) -> List[Dict[str, object
 
 
 def _meaningful_conflicts(conflicts: Sequence[Dict[str, object]]) -> List[Dict[str, object]]:
-    return [c for c in conflicts if c.get("axis") in {"aggregation", "answer_shape", "time_dimension", "dimensions"}]
+    return [
+        c
+        for c in conflicts
+        if c.get("axis")
+        in {"aggregation", "answer_shape", "time_dimension", "dimensions", "filters", "origins"}
+    ]
 
 
-def _explicit_aggregation(question: str) -> Optional[str]:
-    q = (question or "").lower()
-    if any(token in q for token in ("average", "mean", "avg")):
-        return "AVG"
-    if any(token in q for token in ("total", "sum", "aggregate")):
-        return "SUM"
-    if any(token in q for token in ("how many", "count")):
-        return "COUNT"
-    if any(token in q for token in ("largest", "highest", "maximum", "top-ranked", "leading")):
-        return "MAX_OR_TOP"
-    return None
-
-
-def _conflict_is_resolved_by_question(question: str, conflict: Dict[str, object]) -> bool:
-    if conflict.get("axis") != "aggregation":
-        return False
-    expected = _explicit_aggregation(question)
+def _conflict_is_resolved_by_question(intent: Dict[str, object], conflict: Dict[str, object]) -> bool:
+    axis = str(conflict.get("axis"))
     values = set(conflict.get("values") or [])
-    if expected is None:
-        return False
-    if expected == "MAX_OR_TOP":
-        return bool(values & {"MAX", "NONE", "SUM", "AVG"})
-    return expected in values
+    if axis == "aggregation":
+        expected = intent.get("aggregation")
+        if expected is None:
+            return False
+        if expected == "MAX_OR_TOP":
+            return "MAX" in values or "NONE" in values
+        if expected == "MIN_OR_BOTTOM":
+            return "MIN" in values or "NONE" in values
+        return expected in values
+    if axis == "answer_shape":
+        expected = intent.get("answer_shape")
+        return expected is not None and expected in values
+    if axis == "time_dimension":
+        expected = intent.get("time_dimension")
+        return expected is not None and expected in values
+    if axis == "dimensions":
+        expected_dims = set(intent.get("dimensions") or [])
+        if not expected_dims:
+            return False
+        return any(expected_dims <= set(value or ()) for value in values)
+    if axis == "filters":
+        expected_filters = set(intent.get("filters") or [])
+        return bool(expected_filters) and any(expected_filters <= set(value or ()) for value in values)
+    if axis == "origins":
+        expected_origins = set(intent.get("origins") or [])
+        return bool(expected_origins) and any(expected_origins <= set(value or ()) for value in values)
+    return False
 
 
 def build_clarification_payload(
@@ -260,10 +273,11 @@ def build_clarification_payload(
     signatures = [row["signature"] for row in representatives]
     conflicts = _conflicts(signatures)
     meaningful = _meaningful_conflicts(conflicts)
+    intent = question_intent_report(question)
     meaningful = [
         conflict
         for conflict in meaningful
-        if not _conflict_is_resolved_by_question(question, conflict)
+        if not _conflict_is_resolved_by_question(intent, conflict)
     ]
     if not meaningful:
         return None
@@ -300,6 +314,7 @@ def build_clarification_payload(
         "question": "Which interpretation matches what you want?",
         "options": options,
         "conflicts": conflicts,
+        "resolved_intent": intent,
         "plan_cluster_count": len(grouped),
         "top_plan_support": Counter(row["key"] for row in rows).most_common(1)[0][1],
     }

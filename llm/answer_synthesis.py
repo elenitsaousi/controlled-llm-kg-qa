@@ -157,7 +157,7 @@ def _format_total_demand_by_region(rows: List[Dict[str, object]]) -> str:
 def _format_future_demand_by_tech_quarter(rows: List[Dict[str, object]]) -> str:
     if not _has_any_key(rows, ["techLabel", "technologyCategory", "vehicleType"]):
         return ""
-    if not _has_any_key(rows, ["quarterLabel", "quarter"]):
+    if not _has_any_key(rows, ["quarterLabel", "quarter", "timePeriod", "periodLabel"]):
         return ""
     if not _has_any_key(
         rows,
@@ -166,6 +166,7 @@ def _format_future_demand_by_tech_quarter(rows: List[Dict[str, object]]) -> str:
             "avgFutureChange",
             "avgChange",
             "avgPctChange",
+            "avgPercentage",
             "pct",
             "Option1",
             "Option2",
@@ -179,6 +180,7 @@ def _format_future_demand_by_tech_quarter(rows: List[Dict[str, object]]) -> str:
         "avgFutureChange",
         "avgChange",
         "avgPctChange",
+        "avgPercentage",
         "pct",
         "Option1",
         "Option2",
@@ -193,11 +195,11 @@ def _format_future_demand_by_tech_quarter(rows: List[Dict[str, object]]) -> str:
     category = _clean_value(
         _row_get(top_row, "techLabel", "technologyCategory", "vehicleType")
     )
-    quarter = _clean_value(_row_get(top_row, "quarterLabel", "quarter"))
+    quarter = _clean_value(_row_get(top_row, "quarterLabel", "quarter", "timePeriod", "periodLabel"))
     low_category = _clean_value(
         _row_get(low_row, "techLabel", "technologyCategory", "vehicleType")
     )
-    low_quarter = _clean_value(_row_get(low_row, "quarterLabel", "quarter"))
+    low_quarter = _clean_value(_row_get(low_row, "quarterLabel", "quarter", "timePeriod", "periodLabel"))
     return (
         f"Future demand returned {len(rows)} grouped row(s). "
         f"The strongest returned {_humanize_key(metric_key)} is {category} in {quarter} "

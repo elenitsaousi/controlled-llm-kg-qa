@@ -312,6 +312,42 @@ def _query_filters(query: str) -> Set[str]:
     return filters
 
 
+def question_intent_report(question: str) -> Dict[str, object]:
+    """Return deterministic intent signals that are explicit in the question."""
+    q_dims = _question_dimensions(question)
+    q_filters = _question_filters(question)
+    q_origins = _question_origins(question)
+    q_aggr = _question_expected_aggregation(question)
+    if "quarter" in q_dims:
+        time_dimension = "quarter"
+    elif "month" in q_dims:
+        time_dimension = "month"
+    elif "year" in q_dims:
+        time_dimension = "year"
+    elif "over time" in (question or "").lower() or "time period" in (question or "").lower():
+        time_dimension = "period"
+    else:
+        time_dimension = None
+    if _question_wants_raw_values(question):
+        answer_shape = "raw_values"
+    elif q_aggr in {"MAX_OR_TOP", "MIN_OR_BOTTOM"}:
+        answer_shape = "top_or_ranked"
+    elif q_aggr and q_dims:
+        answer_shape = "grouped_summary"
+    elif q_aggr:
+        answer_shape = "summary"
+    else:
+        answer_shape = None
+    return {
+        "aggregation": q_aggr,
+        "dimensions": sorted(q_dims),
+        "filters": sorted(q_filters),
+        "origins": sorted(q_origins),
+        "time_dimension": time_dimension,
+        "answer_shape": answer_shape,
+    }
+
+
 def _dimension_shape_score(expected_dims: Set[str], query: str) -> float:
     if not expected_dims:
         return 1.0
