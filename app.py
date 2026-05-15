@@ -208,6 +208,106 @@ def _render_selection_explainability(result: Dict[str, Any]) -> None:
         st.caption("Candidate diagnostics skipped. Enable 'Run candidate diagnostics' for per-candidate execution checks.")
 
 
+def _confidence_summary(result: Dict[str, Any]) -> Tuple[str, str]:
+    expl = result.get("selection_explanation")
+    clarification = result.get("clarification")
+    if not isinstance(expl, dict):
+        return "Unknown", "No selection diagnostics are available."
+
+    coverage = 0.0
+    selected_coverage = expl.get("selected_coverage")
+    if isinstance(selected_coverage, dict):
+        coverage = float(selected_coverage.get("coverage_score", 0.0))
+    valid = bool(expl.get("selected_query_valid"))
+    has_rows = expl.get("selected_execution_has_rows")
+    entropy = expl.get("predicted_entropy")
+    clarification_needed = bool(
+        isinstance(clarification, dict) and clarification.get("needs_clarification")
+    )
+    clarified = bool(st.session_state.get("clarification_choice_id"))
+
+    if clarification_needed and not clarified:
+        return (
+            "Low",
+            "The candidates express materially different interpretations, so the system needs clarification before it can answer confidently.",
+        )
+    if valid and coverage >= 0.99 and has_rows is not False and clarified:
+        return (
+            "High",
+            "You selected the intended interpretation, and the chosen query is valid, covers the requested concepts, and returned results.",
+        )
+    if valid and coverage >= 0.99 and has_rows is not False:
+        if entropy is not None and float(entropy) >= 0.66:
+            return (
+                "Medium",
+                "The selected query is valid and covers the request, but candidate uncertainty is still elevated.",
+            )
+        return (
+            "High",
+            "The selected query is valid, covers the requested concepts, and returned results.",
+        )
+    if valid and coverage >= 0.75:
+        return (
+            "Medium",
+            "The selected query is valid, but some requested concepts are only partially covered.",
+        )
+    return (
+        "Low",
+        "The selected query has limited support from the available selection signals.",
+    )
+
+
+def _render_compact_explainability(result: Dict[str, Any]) -> None:
+    expl = result.get("selection_explanation")
+    if not isinstance(expl, dict):
+        return
+    confidence, confidence_reason = _confidence_summary(result)
+    selected_coverage = expl.get("selected_coverage") or {}
+    coverage = float(selected_coverage.get("coverage_score", 0.0))
+    reason_parts = []
+    if bool(expl.get("selected_query_valid")):
+        reason_parts.append("it is structurally valid")
+    if coverage >= 0.99:
+        reason_parts.append("it covers the requested concepts")
+    elif coverage > 0:
+        reason_parts.append(f"semantic coverage is {coverage:.2f}")
+    if expl.get("selected_execution_has_rows") is True:
+        reason_parts.append("it returned graph results")
+
+    st.subheader("Why This Answer")
+    left, right = st.columns([1, 3])
+    left.metric("Confidence", confidence)
+    right.write(
+        "Selected because "
+        + (", ".join(reason_parts) if reason_parts else "it ranked highest among the available candidates")
+        + "."
+    )
+    st.caption(confidence_reason)
+
+
+def _render_answer_block(
+    *,
+    answer_text: str,
+    selected_query: str,
+    graph_rows: List[Dict[str, str]],
+    graph_exec_error: str,
+    execute_selected: bool,
+) -> None:
+    st.subheader("Answer")
+    if graph_exec_error:
+        st.error(f"Query execution error: {graph_exec_error}")
+        st.write(answer_text or "No answer.")
+    elif execute_selected and selected_query:
+        if graph_rows:
+            st.success(f"Returned {len(graph_rows)} rows from Infineon graph.")
+            st.write(answer_text)
+        else:
+            st.warning("Selected query returned 0 rows from Infineon graph.")
+            st.write(answer_text or "No results were found for this question.")
+    else:
+        st.write(answer_text or "No answer.")
+
+
 def _render_clarification(
     clarification: Dict[str, Any],
     *,
@@ -239,8 +339,19 @@ def _render_clarification(
                         max_rows=int(max_preview_rows),
                     )
                     st.session_state["last_graph_rows"] = rows
+                    st.session_state["last_graph_answer"] = synthesize_answer(
+                        str(st.session_state.get("last_question", "")),
+                        chosen_query,
+                        {
+                            "rows": rows,
+                            "matched_question_id": None,
+                            "error": None,
+                        },
+                        None,
+                    )
                 except Exception:
                     st.session_state["last_graph_rows"] = []
+                    st.session_state["last_graph_answer"] = ""
 
     chosen_id = st.session_state.get("clarification_choice_id")
     if chosen_id:
@@ -297,10 +408,12 @@ with st.sidebar:
 
     st.subheader("Display")
     show_prompt = st.checkbox("Show candidate prompt", value=False)
-    show_candidates = st.checkbox("Show candidates", value=True)
+    developer_mode = st.checkbox("Developer mode", value=False)
+    show_candidates = st.checkbox("Show candidates", value=False, disabled=not developer_mode)
     show_candidate_diagnostics = st.checkbox(
         "Run candidate diagnostics",
         value=False,
+        disabled=not developer_mode,
         help=(
             "Runs graph execution checks for every candidate. Useful for debugging, "
             "but slower on large graph slices."
@@ -339,6 +452,8 @@ if "last_graph_rows" not in st.session_state:
     st.session_state["last_graph_rows"] = []
 if "last_selected_query" not in st.session_state:
     st.session_state["last_selected_query"] = ""
+if "last_graph_answer" not in st.session_state:
+    st.session_state["last_graph_answer"] = ""
 if "last_question" not in st.session_state:
     st.session_state["last_question"] = ""
 if "clarification_choice_id" not in st.session_state:
@@ -425,11 +540,15 @@ if asked:
         st.session_state["last_qa_result"] = result
         st.session_state["last_graph_rows"] = graph_rows
         st.session_state["last_selected_query"] = selected_query
+        st.session_state["last_graph_answer"] = graph_answer
         st.session_state["last_question"] = question
         st.session_state["clarification_choice_id"] = None
 
         clarification = result.get("clarification")
-        if isinstance(clarification, dict) and clarification.get("needs_clarification"):
+        needs_clarification = bool(
+            isinstance(clarification, dict) and clarification.get("needs_clarification")
+        )
+        if needs_clarification:
             _render_clarification(
                 clarification,
                 execute_selected=bool(execute_selected),
@@ -438,76 +557,74 @@ if asked:
             )
             clarification_rendered = True
 
-        st.subheader("Answer")
-        if graph_exec_error:
-            st.error(f"Query execution error: {graph_exec_error}")
-            st.write(result.get("answer", "No answer."))
-        elif execute_selected and selected_query:
-            if graph_rows:
-                st.success(f"Returned {len(graph_rows)} rows from Infineon graph.")
-                st.write(graph_answer)
-            else:
-                st.warning("Selected query returned 0 rows from Infineon graph.")
-                st.write(graph_answer or "No results were found for this question.")
-        else:
-            st.write(result.get("answer", "No answer."))
-
-        if selected_query:
-            st.subheader("Selected Query")
-            st.code(_format_sparql_for_display(selected_query), language="sparql")
-        else:
-            st.warning("No selected query.")
-
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Policy", str(result.get("policy", "unknown")))
-        col2.metric("Query-plan ML", "yes" if result.get("query_plan_ml_used") else "no")
-        col3.metric("ML ranker", "yes" if result.get("ml_ranker_applied") else "no")
-        col4.metric("Candidates", str(len(result.get("candidates", []))))
-        pred_regime = result.get("predicted_regime")
-        pred_entropy = result.get("predicted_entropy")
-        if pred_regime is not None:
-            st.caption(
-                f"Predicted ambiguity regime: {pred_regime}"
-                + (
-                    f" (entropy={float(pred_entropy):.3f})"
-                    if pred_entropy is not None
-                    else ""
-                )
+        if not needs_clarification:
+            _render_answer_block(
+                answer_text=graph_answer or str(result.get("answer", "")),
+                selected_query=selected_query,
+                graph_rows=graph_rows,
+                graph_exec_error=graph_exec_error,
+                execute_selected=bool(execute_selected),
             )
-        st.caption(
-            f"ML policy setting: {result.get('ml_policy', ml_policy)} | "
-            f"Model: {result.get('ml_model_path', ml_model_path)}"
-        )
-        st.caption(f"Pipeline time before graph preview: {request_elapsed:.2f}s")
-        removed = int(result.get("candidate_duplicates_removed") or 0)
-        if removed:
-            st.caption(f"Candidate deduplication removed {removed} duplicate query candidate(s).")
-        _render_selection_explainability(result)
+            _render_compact_explainability(result)
 
-        if execute_selected and selected_query:
-            if not os.path.exists(graph_path):
-                st.error(f"Graph path not found: {graph_path}")
-            else:
-                st.subheader("Graph Result Rows")
-                if graph_exec_error:
-                    st.error(f"Selected query execution failed: {graph_exec_error}")
-                elif graph_rows:
-                    st.dataframe(graph_rows, width="stretch")
-                    if graph_rows_truncated:
-                        st.caption(f"Preview truncated at {int(max_preview_rows)} rows.")
+        if developer_mode:
+            with st.expander("Technical details", expanded=False):
+                if selected_query:
+                    st.subheader("Selected Query")
+                    st.code(_format_sparql_for_display(selected_query), language="sparql")
                 else:
-                    st.write("No rows returned.")
+                    st.warning("No selected query.")
 
-        if show_candidates:
-            st.subheader("Candidates")
-            candidates = result.get("candidates", [])
-            if not candidates:
-                st.write("No candidates returned.")
-            else:
-                for idx, item in enumerate(candidates, start=1):
-                    source = item.get("source", "unknown")
-                    st.caption(f"Candidate {idx} ({source})")
-                    st.code(_format_sparql_for_display(str(item.get("query", ""))), language="sparql")
+                col1, col2, col3, col4 = st.columns(4)
+                col1.metric("Policy", str(result.get("policy", "unknown")))
+                col2.metric("Query-plan ML", "yes" if result.get("query_plan_ml_used") else "no")
+                col3.metric("ML ranker", "yes" if result.get("ml_ranker_applied") else "no")
+                col4.metric("Candidates", str(len(result.get("candidates", []))))
+                pred_regime = result.get("predicted_regime")
+                pred_entropy = result.get("predicted_entropy")
+                if pred_regime is not None:
+                    st.caption(
+                        f"Predicted ambiguity regime: {pred_regime}"
+                        + (
+                            f" (entropy={float(pred_entropy):.3f})"
+                            if pred_entropy is not None
+                            else ""
+                        )
+                    )
+                st.caption(
+                    f"ML policy setting: {result.get('ml_policy', ml_policy)} | "
+                    f"Model: {result.get('ml_model_path', ml_model_path)}"
+                )
+                st.caption(f"Pipeline time before graph preview: {request_elapsed:.2f}s")
+                removed = int(result.get("candidate_duplicates_removed") or 0)
+                if removed:
+                    st.caption(f"Candidate deduplication removed {removed} duplicate query candidate(s).")
+                _render_selection_explainability(result)
+
+                if execute_selected and selected_query:
+                    if not os.path.exists(graph_path):
+                        st.error(f"Graph path not found: {graph_path}")
+                    else:
+                        st.subheader("Graph Result Rows")
+                        if graph_exec_error:
+                            st.error(f"Selected query execution failed: {graph_exec_error}")
+                        elif graph_rows:
+                            st.dataframe(graph_rows, width="stretch")
+                            if graph_rows_truncated:
+                                st.caption(f"Preview truncated at {int(max_preview_rows)} rows.")
+                        else:
+                            st.write("No rows returned.")
+
+                if show_candidates:
+                    st.subheader("Candidates")
+                    candidates = result.get("candidates", [])
+                    if not candidates:
+                        st.write("No candidates returned.")
+                    else:
+                        for idx, item in enumerate(candidates, start=1):
+                            source = item.get("source", "unknown")
+                            st.caption(f"Candidate {idx} ({source})")
+                            st.code(_format_sparql_for_display(str(item.get("query", ""))), language="sparql")
 
 if not clarification_rendered:
     last_result = st.session_state.get("last_qa_result")
@@ -519,13 +636,24 @@ if not clarification_rendered:
             graph_path=graph_path,
             max_preview_rows=int(max_preview_rows),
         )
+        if st.session_state.get("clarification_choice_id"):
+            _render_answer_block(
+                answer_text=str(st.session_state.get("last_graph_answer", "")),
+                selected_query=str(st.session_state.get("last_selected_query", "")),
+                graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                graph_exec_error="",
+                execute_selected=bool(execute_selected),
+            )
+            if isinstance(last_result, dict):
+                _render_compact_explainability(last_result)
 
-st.divider()
-st.subheader("Interactive Graph Explorer")
+if developer_mode:
+    st.divider()
+    st.subheader("Interactive Graph Explorer")
 
-if not os.path.exists(graph_path):
+if developer_mode and not os.path.exists(graph_path):
     st.warning(f"Graph path not found: {graph_path}")
-else:
+elif developer_mode:
     tab_full, tab_question = st.tabs(["Full Graph", "Question Subgraph"])
 
     with tab_full:
