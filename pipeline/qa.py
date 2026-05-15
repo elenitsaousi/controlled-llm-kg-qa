@@ -25,6 +25,7 @@ from ranking.ambiguity_policy import (
     predict_regime,
 )
 from ranking.clarification import build_clarification_payload
+from pipeline.request_routing import route_request
 from ranking.feature_extraction import extract_features
 from ranking.ranker import rank_candidates as rank_schema_candidates
 from validation.semantic import (
@@ -1337,6 +1338,36 @@ def answer_question(
     ml_ambiguity_config_path: Optional[str] = None,
     include_candidate_diagnostics: bool = True,
 ) -> Dict[str, object]:
+    request_route = route_request(question)
+    if request_route.get("route") != "kg_query":
+        return {
+            "answer": request_route.get("answer", ""),
+            "selected_query": None,
+            "candidates": [],
+            "schema_ranked": [],
+            "learning_ranked": [],
+            "metadata": {},
+            "errors": [],
+            "prompt": "",
+            "policy": str(request_route.get("route")),
+            "entropy": 0.0,
+            "selection_reason": str(request_route.get("reason", request_route.get("route"))),
+            "used_ml": False,
+            "effective_question": question,
+            "ml_policy": (ml_policy or "auto").strip().lower(),
+            "ml_model_path": None,
+            "predicted_regime": None,
+            "predicted_entropy": None,
+            "ambiguity_config_path": None,
+            "selection_explanation": None,
+            "query_plan_ml_used": False,
+            "ml_ranker_applied": False,
+            "candidate_duplicates_removed": 0,
+            "request_route": request_route,
+            "request_clarification": request_route.get("request_clarification"),
+            "clarification": None,
+        }
+
     alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
     query_plan_predictor = _load_query_plan_predictor_cached()
     generation = generate_candidates(
@@ -1671,6 +1702,8 @@ def answer_question(
         "selected_query_from": selected_from,
         "selection_explanation": selection_explanation,
         "clarification": clarification,
+        "request_route": request_route,
+        "request_clarification": None,
     }
 
 

@@ -258,6 +258,14 @@ def _confidence_summary(result: Dict[str, Any]) -> Tuple[str, str]:
 
 
 def _render_compact_explainability(result: Dict[str, Any]) -> None:
+    request_route = result.get("request_route")
+    if isinstance(request_route, dict) and request_route.get("route") != "kg_query":
+        st.subheader("Why This Answer")
+        left, right = st.columns([1, 3])
+        left.metric("Confidence", str(request_route.get("confidence", "Unknown")))
+        right.write(str(request_route.get("reason", "The request was handled before graph querying.")))
+        return
+
     expl = result.get("selection_explanation")
     if not isinstance(expl, dict):
         return
@@ -360,6 +368,18 @@ def _render_clarification(
             st.success(f"Using clarified interpretation: {chosen.get('label')}")
 
 
+def _render_request_clarification(clarification: Dict[str, Any]) -> None:
+    st.subheader("Clarify Request")
+    st.write(str(clarification.get("reason", "The requested task is not specific enough yet.")))
+    st.write(str(clarification.get("question", "What do you want to know?")))
+    for option in list(clarification.get("options") or []):
+        cols = st.columns([3, 1])
+        cols[0].write(str(option.get("label", "Option")))
+        if cols[1].button("Use", key=f"request_clarify_{option.get('id')}", use_container_width=True):
+            st.session_state["question_input"] = str(option.get("rewritten_question", ""))
+            st.rerun()
+
+
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
 
 st.title("Infineon KG QA")
@@ -433,10 +453,14 @@ with st.sidebar:
     subgraph_hops = st.slider("Question subgraph hops", min_value=1, max_value=3, value=1, step=1)
     graph_height = st.slider("Graph canvas height (px)", min_value=400, max_value=1200, value=760, step=20)
 
+if "question_input" not in st.session_state:
+    st.session_state["question_input"] = ""
+
 question = st.text_area(
     "Your question",
     placeholder="e.g., How does semiconductor future demand evolve across technology categories and quarters?",
     height=120,
+    key="question_input",
 )
 
 if "last_qa_result" not in st.session_state:
@@ -538,10 +562,18 @@ if asked:
         st.session_state["clarification_choice_id"] = None
 
         clarification = result.get("clarification")
+        request_clarification = result.get("request_clarification")
+        needs_request_clarification = bool(
+            isinstance(request_clarification, dict)
+            and request_clarification.get("needs_clarification")
+        )
         needs_clarification = bool(
             isinstance(clarification, dict) and clarification.get("needs_clarification")
         )
-        if needs_clarification:
+        if needs_request_clarification:
+            _render_request_clarification(request_clarification)
+            clarification_rendered = True
+        elif needs_clarification:
             _render_clarification(
                 clarification,
                 execute_selected=bool(execute_selected),
@@ -559,7 +591,7 @@ if asked:
                 )
                 _render_compact_explainability(result)
 
-        if not needs_clarification:
+        if not needs_request_clarification and not needs_clarification:
             _render_answer_block(
                 answer_text=graph_answer or str(result.get("answer", "")),
                 selected_query=selected_query,
@@ -630,8 +662,16 @@ if asked:
 
 if not clarification_rendered:
     last_result = st.session_state.get("last_qa_result")
+    request_clarification = (
+        (last_result or {}).get("request_clarification")
+        if isinstance(last_result, dict)
+        else None
+    )
+    if isinstance(request_clarification, dict) and request_clarification.get("needs_clarification"):
+        _render_request_clarification(request_clarification)
+        clarification_rendered = True
     clarification = (last_result or {}).get("clarification") if isinstance(last_result, dict) else None
-    if isinstance(clarification, dict) and clarification.get("needs_clarification"):
+    if not clarification_rendered and isinstance(clarification, dict) and clarification.get("needs_clarification"):
         _render_clarification(
             clarification,
             execute_selected=bool(execute_selected),

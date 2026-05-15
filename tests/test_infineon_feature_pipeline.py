@@ -33,6 +33,7 @@ from validation.semantic import (
 from llm.candidate_generation import _template_candidate_queries
 from evaluation.analyze_infineon_results import analyze_results, render_markdown
 from ranking.clarification import build_clarification_payload, plan_signature
+from pipeline.request_routing import route_request
 
 
 SAMPLE_QUERY = (
@@ -66,6 +67,30 @@ def test_extract_triples_handles_semicolon_chains():
     assert len(triples) >= 6
     assert ("?d", "survey:hasSurveyOrigin", "?o") in triples
     assert ("?d", "survey:inRegion", "?r") in triples
+
+
+def test_route_request_answers_definition_questions():
+    route = route_request("What is the battery electric vehicle?")
+    assert route["route"] == "definition"
+    assert "battery electric vehicle" in route["answer"].lower()
+
+
+def test_route_request_clarifies_underspecified_entity_questions():
+    route = route_request("What about BEV?")
+    assert route["route"] == "clarification_needed"
+    clarification = route["request_clarification"]
+    assert clarification["needs_clarification"] is True
+    assert len(clarification["options"]) >= 2
+
+
+def test_route_request_abstains_out_of_domain_questions():
+    route = route_request("What is the weather tomorrow?")
+    assert route["route"] == "out_of_domain"
+
+
+def test_route_request_keeps_kg_questions_on_existing_path():
+    route = route_request("Return average future-demand change grouped by technology and quarter.")
+    assert route["route"] == "kg_query"
 
 
 def test_extract_query_labels_relations_for_survey_prefix():
