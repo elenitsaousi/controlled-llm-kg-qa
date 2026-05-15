@@ -147,10 +147,21 @@ def _dimension_phrase(dimensions: Tuple[str, ...]) -> str:
     return " and ".join(parts)
 
 
+def _display_dimensions(question: str, signature: Dict[str, object]) -> Tuple[str, ...]:
+    intent = question_intent_report(question)
+    explicit_dims = tuple(intent.get("dimensions") or [])
+    candidate_dims = tuple(signature["dimensions"])
+    if explicit_dims:
+        return explicit_dims
+    # survey origin is often an implementation detail; do not foreground it
+    # unless the user asked for it explicitly.
+    return tuple(dim for dim in candidate_dims if dim != "survey_origin")
+
+
 def _describe_signature(question: str, signature: Dict[str, object]) -> str:
     aggregation = str(signature["aggregation"])
     shape = str(signature["answer_shape"])
-    dimensions = tuple(signature["dimensions"])
+    dimensions = _display_dimensions(question, signature)
     metric = _metric_phrase(question, signature)
     dimension_text = _dimension_phrase(dimensions)
 
@@ -291,12 +302,18 @@ def build_clarification_payload(
         return None
 
     options: List[Dict[str, object]] = []
+    seen_labels = set()
     for index, row in enumerate(representatives[:max_options], start=1):
         signature = row["signature"]
+        label = _describe_signature(question, signature)
+        label_key = label.strip().lower()
+        if label_key in seen_labels:
+            continue
+        seen_labels.add(label_key)
         options.append(
             {
                 "id": f"plan_{index}",
-                "label": _describe_signature(question, signature),
+                "label": label,
                 "query": row["query"],
                 "candidate_rank": row["rank"],
                 "support": len(grouped[row["key"]]),
@@ -306,6 +323,8 @@ def build_clarification_payload(
                 },
             }
         )
+    if len(options) < 2:
+        return None
 
     conflict_axes = ", ".join(_display_name(str(c["axis"])) for c in meaningful)
     return {

@@ -200,11 +200,16 @@ def _format_future_demand_by_tech_quarter(rows: List[Dict[str, object]]) -> str:
         _row_get(low_row, "techLabel", "technologyCategory", "vehicleType")
     )
     low_quarter = _clean_value(_row_get(low_row, "quarterLabel", "quarter", "timePeriod", "periodLabel"))
+    metric_text = _humanize_key(metric_key)
+    if metric_text in {"avg percentage", "avg future change", "avg change", "avg pct change"}:
+        metric_text = "average future-demand percentage change"
+    elif metric_text == "total future change":
+        metric_text = "total future-demand change"
     return (
-        f"Future demand returned {len(rows)} grouped row(s). "
-        f"The strongest returned {_humanize_key(metric_key)} is {category} in {quarter} "
+        f"Future-demand results returned {len(rows)} grouped row(s). "
+        f"The highest {metric_text} is {category} in {quarter} "
         f"with {_format_number(top_value)}. "
-        f"The lowest returned value is {low_category} in {low_quarter} "
+        f"The lowest is {low_category} in {low_quarter} "
         f"with {_format_number(low_value)}."
     )
 
@@ -349,9 +354,9 @@ def _format_vehicle_sales_by_month(rows: List[Dict[str, object]]) -> str:
     low_month = _clean_value(_row_get(low_row, "monthLabel", "month"))
     return (
         f"Vehicle-sales results returned {len(rows)} monthly row(s). "
-        f"The highest returned {_humanize_key(metric_key)} is {top_month} "
+        f"The highest monthly total is {top_month} "
         f"with {_format_number(top_value)}. "
-        f"The lowest returned value is {low_month} with {_format_number(low_value)}."
+        f"The lowest monthly total is {low_month} with {_format_number(low_value)}."
     )
 
 

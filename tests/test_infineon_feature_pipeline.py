@@ -747,7 +747,7 @@ def test_infineon_answer_synthesis_summarizes_future_demand():
         },
     )
 
-    assert "Future demand returned 2 grouped row(s)" in answer
+    assert "Future-demand results returned 2 grouped row(s)" in answer
     assert "Tech B" in answer
     assert "Q2" in answer
 
@@ -764,7 +764,7 @@ def test_infineon_answer_synthesis_summarizes_future_demand_time_period_labels()
         },
     )
 
-    assert "Future demand returned 2 grouped row(s)" in answer
+    assert "Future-demand results returned 2 grouped row(s)" in answer
     assert "Tech B" in answer
     assert "Quarter Q2 2025" in answer
 
@@ -843,6 +843,27 @@ def test_infineon_answer_synthesis_summarizes_vehicle_sales_by_month():
     assert "Vehicle-sales results returned 2 monthly row(s)" in answer
     assert "Feb 2023" in answer
     assert "2,500" in answer
+
+
+def test_clarification_options_dedupe_duplicate_display_labels():
+    question = "What does future demand look like across technologies?"
+    avg_query = (
+        "SELECT ?technologyCategory (AVG(?pct) AS ?avgDemand) WHERE { "
+        "?entry a survey:FutureDemandAnalysis ; "
+        "survey:analyzesTechnologyCategory ?tech ; "
+        "survey:percentageChange ?pct . "
+        "} GROUP BY ?technologyCategory"
+    )
+    total_query_a = avg_query.replace("AVG(?pct) AS ?avgDemand", "SUM(?pct) AS ?totalDemand")
+    total_query_b = total_query_a.replace("?technologyCategory", "?techLabel")
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": avg_query}, {"query": total_query_a}, {"query": total_query_b}],
+    )
+
+    labels = [option["label"] for option in payload["options"]]
+    assert labels == ["Average demand by technology", "Total demand by technology"]
 
 
 def test_infineon_error_analysis_classifies_failures(tmp_path):
