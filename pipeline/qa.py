@@ -24,6 +24,7 @@ from ranking.ambiguity_policy import (
     load_ambiguity_config,
     predict_regime,
 )
+from ranking.clarification import build_clarification_payload
 from ranking.feature_extraction import extract_features
 from ranking.ranker import rank_candidates as rank_schema_candidates
 from validation.semantic import (
@@ -1540,6 +1541,11 @@ def answer_question(
         ordered_candidates,
         effective_question
     )
+    clarification = build_clarification_payload(
+        effective_question,
+        ordered_candidates,
+        schema_dict=_load_schema_dict_for_ranking(schema),
+    )
 
     selected_query = selected.get("query") if selected else None
     errors = _runtime_validate_query(selected_query) if selected_query else []
@@ -1664,6 +1670,7 @@ def answer_question(
         "selected_query_rank": selected_rank,
         "selected_query_from": selected_from,
         "selection_explanation": selection_explanation,
+        "clarification": clarification,
     }
 
 

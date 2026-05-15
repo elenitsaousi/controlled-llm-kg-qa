@@ -31,6 +31,7 @@ from validation.semantic import (
 )
 from llm.candidate_generation import _template_candidate_queries
 from evaluation.analyze_infineon_results import analyze_results, render_markdown
+from ranking.clarification import build_clarification_payload, plan_signature
 
 
 SAMPLE_QUERY = (
@@ -207,6 +208,61 @@ def test_semantic_judge_prefers_average_for_mean_question():
     avg_query = sum_query.replace("SUM(?pct) AS ?totalFutureChange", "AVG(?pct) AS ?avgFutureChange")
 
     assert semantic_judge_report(question, avg_query)["score"] > semantic_judge_report(question, sum_query)["score"]
+
+
+def test_plan_signature_distinguishes_grouped_summary_from_raw_values():
+    question = "How do future-demand percentages differ across technologies over time?"
+    raw_query = (
+        "SELECT ?technologyCategory ?periodLabel ?percentage WHERE { "
+        "?entry a survey:FutureDemandAnalysis ; "
+        "survey:analyzesTechnologyCategory ?tech ; "
+        "survey:forTimePeriod ?period ; "
+        "survey:percentageChange ?percentage . "
+        "} "
+    )
+    avg_query = raw_query.replace(
+        "SELECT ?technologyCategory ?periodLabel ?percentage",
+        "SELECT ?technologyCategory ?periodLabel (AVG(?percentage) AS ?avgPercentage)",
+    ) + " GROUP BY ?technologyCategory ?periodLabel"
+
+    raw_signature = plan_signature(question, raw_query)
+    avg_signature = plan_signature(question, avg_query)
+
+    assert raw_signature["aggregation"] == "NONE"
+    assert raw_signature["answer_shape"] == "raw_values"
+    assert avg_signature["aggregation"] == "AVG"
+    assert avg_signature["answer_shape"] == "grouped_summary"
+
+
+def test_build_clarification_payload_detects_structural_disagreement():
+    question = "How do future-demand percentages differ across technologies over time?"
+    raw_query = (
+        "SELECT ?technologyCategory ?periodLabel ?percentage WHERE { "
+        "?entry a survey:FutureDemandAnalysis ; "
+        "survey:analyzesTechnologyCategory ?tech ; "
+        "survey:forTimePeriod ?period ; "
+        "survey:percentageChange ?percentage . "
+        "} "
+    )
+    avg_query = raw_query.replace(
+        "SELECT ?technologyCategory ?periodLabel ?percentage",
+        "SELECT ?technologyCategory ?periodLabel (AVG(?percentage) AS ?avgPercentage)",
+    ) + " GROUP BY ?technologyCategory ?periodLabel"
+    sum_query = raw_query.replace(
+        "SELECT ?technologyCategory ?periodLabel ?percentage",
+        "SELECT ?technologyCategory ?periodLabel (SUM(?percentage) AS ?totalPercentage)",
+    ) + " GROUP BY ?technologyCategory ?periodLabel"
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": avg_query}, {"query": raw_query}, {"query": sum_query}],
+    )
+
+    assert payload is not None
+    assert payload["needs_clarification"] is True
+    assert payload["plan_cluster_count"] == 3
+    assert any(c["axis"] == "aggregation" for c in payload["conflicts"])
+    assert len(payload["options"]) == 3
 
 
 def test_semantic_judge_prefers_literal_survey_bucket_labels():

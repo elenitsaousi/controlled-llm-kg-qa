@@ -291,6 +291,10 @@ if "last_graph_rows" not in st.session_state:
     st.session_state["last_graph_rows"] = []
 if "last_selected_query" not in st.session_state:
     st.session_state["last_selected_query"] = ""
+if "last_question" not in st.session_state:
+    st.session_state["last_question"] = ""
+if "clarification_choice_id" not in st.session_state:
+    st.session_state["clarification_choice_id"] = None
 
 if st.button("Ask", type="primary"):
     if not question.strip():
@@ -370,6 +374,8 @@ if st.button("Ask", type="primary"):
         st.session_state["last_qa_result"] = result
         st.session_state["last_graph_rows"] = graph_rows
         st.session_state["last_selected_query"] = selected_query
+        st.session_state["last_question"] = question
+        st.session_state["clarification_choice_id"] = None
 
         st.subheader("Answer")
         if graph_exec_error:
@@ -441,6 +447,49 @@ if st.button("Ask", type="primary"):
                     source = item.get("source", "unknown")
                     st.caption(f"Candidate {idx} ({source})")
                     st.code(_format_sparql_for_display(str(item.get("query", ""))), language="sparql")
+
+last_result = st.session_state.get("last_qa_result")
+clarification = (last_result or {}).get("clarification") if isinstance(last_result, dict) else None
+if isinstance(clarification, dict) and clarification.get("needs_clarification"):
+    st.subheader("Clarify Interpretation")
+    st.write(str(clarification.get("reason", "Candidates disagree on the intended query plan.")))
+    st.write(str(clarification.get("question", "Which interpretation matches what you want?")))
+    options = list(clarification.get("options") or [])
+    for option in options:
+        cols = st.columns([3, 1])
+        cols[0].write(str(option.get("label", "Interpretation")))
+        if cols[1].button(
+            "Use",
+            key=f"clarify_{option.get('id')}",
+            use_container_width=True,
+        ):
+            chosen_query = str(option.get("query", "") or "").strip()
+            st.session_state["last_selected_query"] = chosen_query
+            st.session_state["clarification_choice_id"] = option.get("id")
+            if execute_selected and chosen_query and os.path.exists(graph_path):
+                try:
+                    graph = _load_graph_cached(graph_path)
+                    rows, _truncated = _execute_query_preview(
+                        graph,
+                        chosen_query,
+                        max_rows=int(max_preview_rows),
+                    )
+                    st.session_state["last_graph_rows"] = rows
+                except Exception:
+                    st.session_state["last_graph_rows"] = []
+
+    chosen_id = st.session_state.get("clarification_choice_id")
+    if chosen_id:
+        chosen = next((opt for opt in options if opt.get("id") == chosen_id), None)
+        if chosen is not None:
+            st.success(f"Using clarified interpretation: {chosen.get('label')}")
+            st.code(
+                _format_sparql_for_display(str(st.session_state.get("last_selected_query", ""))),
+                language="sparql",
+            )
+            rows = st.session_state.get("last_graph_rows") or []
+            if rows:
+                st.dataframe(rows, width="stretch")
 
 st.divider()
 st.subheader("Interactive Graph Explorer")
