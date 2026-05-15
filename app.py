@@ -358,13 +358,6 @@ def _render_clarification(
         chosen = next((opt for opt in options if opt.get("id") == chosen_id), None)
         if chosen is not None:
             st.success(f"Using clarified interpretation: {chosen.get('label')}")
-            st.code(
-                _format_sparql_for_display(str(st.session_state.get("last_selected_query", ""))),
-                language="sparql",
-            )
-            rows = st.session_state.get("last_graph_rows") or []
-            if rows:
-                st.dataframe(rows, width="stretch")
 
 
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
@@ -556,6 +549,15 @@ if asked:
                 max_preview_rows=int(max_preview_rows),
             )
             clarification_rendered = True
+            if st.session_state.get("clarification_choice_id"):
+                _render_answer_block(
+                    answer_text=str(st.session_state.get("last_graph_answer", "")),
+                    selected_query=str(st.session_state.get("last_selected_query", "")),
+                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                    graph_exec_error="",
+                    execute_selected=bool(execute_selected),
+                )
+                _render_compact_explainability(result)
 
         if not needs_clarification:
             _render_answer_block(
