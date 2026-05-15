@@ -33,7 +33,7 @@ from validation.semantic import (
 from llm.candidate_generation import _template_candidate_queries
 from evaluation.analyze_infineon_results import analyze_results, render_markdown
 from ranking.clarification import build_clarification_payload, plan_signature
-from pipeline.request_routing import route_request
+from pipeline.request_routing import build_domain_glossary, route_request
 
 
 SAMPLE_QUERY = (
@@ -91,6 +91,20 @@ def test_route_request_abstains_out_of_domain_questions():
 def test_route_request_keeps_kg_questions_on_existing_path():
     route = route_request("Return average future-demand change grouped by technology and quarter.")
     assert route["route"] == "kg_query"
+
+
+def test_build_domain_glossary_includes_schema_terms():
+    schema = load_schema("data/infineon/schema.json")
+    glossary = build_domain_glossary(schema, alias_index=None)
+    assert "ordercancellation" in glossary
+    assert glossary["ordercancellation"]["kind"] == "class"
+
+
+def test_route_request_answers_schema_term_definitions():
+    schema = load_schema("data/infineon/schema.json")
+    route = route_request("What is OrderCancellation?", schema=schema)
+    assert route["route"] == "definition"
+    assert "class used in the infineon knowledge graph" in route["answer"].lower()
 
 
 def test_extract_query_labels_relations_for_survey_prefix():

@@ -1338,7 +1338,8 @@ def answer_question(
     ml_ambiguity_config_path: Optional[str] = None,
     include_candidate_diagnostics: bool = True,
 ) -> Dict[str, object]:
-    request_route = route_request(question)
+    alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
+    request_route = route_request(question, schema=schema, alias_index=alias_index)
     if request_route.get("route") != "kg_query":
         return {
             "answer": request_route.get("answer", ""),
@@ -1368,7 +1369,6 @@ def answer_question(
             "clarification": None,
         }
 
-    alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
     query_plan_predictor = _load_query_plan_predictor_cached()
     generation = generate_candidates(
         question,
