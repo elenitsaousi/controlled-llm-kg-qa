@@ -1,5 +1,7 @@
 import os
 import time
+import json
+from html import escape
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
@@ -426,12 +428,164 @@ def _set_question_input(value: str) -> None:
     st.session_state["question_input"] = value
 
 
+def _overview_topic_groups(schema_dict: Dict[str, Any]) -> List[Tuple[str, List[str]]]:
+    classes = set(schema_dict.get("classes") or [])
+    groups = [
+        ("Demand analysis", ["CurrentDemandAnalysis", "FutureDemandAnalysis", "DemandForRegion"]),
+        ("Vehicle sales", ["VehicleSalesObservation", "YearlySalesData"]),
+        ("Autonomous driving", ["AutonomousDrivingDevelopment"]),
+        ("Order cancellation", ["OrderCancellation"]),
+        ("Inventory", ["InventoryDevelopment", "Inventory"]),
+        ("Shortages and companies", ["Company", "Shortage"]),
+    ]
+    return [(label, [name for name in names if name in classes]) for label, names in groups]
+
+
+def _overview_relationship_triples(schema_dict: Dict[str, Any]) -> List[Tuple[str, str, str]]:
+    triples: List[Tuple[str, str, str]] = []
+    seen = set()
+    for rel in list(schema_dict.get("relationships") or []):
+        predicate = str(rel.get("type") or "").strip()
+        from_nodes = list(rel.get("from") or [])
+        to_nodes = list(rel.get("to") or [])
+        if not predicate or not from_nodes or not to_nodes:
+            continue
+        for source in from_nodes:
+            for target in to_nodes:
+                triple = (str(source), predicate, str(target))
+                if triple in seen:
+                    continue
+                seen.add(triple)
+                triples.append(triple)
+    return triples
+
+
+def _graph_overview_report(schema_dict: Dict[str, Any]) -> str:
+    groups = _overview_topic_groups(schema_dict)
+    predicates = list(schema_dict.get("predicates") or [])
+    properties = list(schema_dict.get("properties") or [])
+    relationships = list(schema_dict.get("relationships") or [])
+    topic_lines = "\n".join(
+        f"- **{label}:** {', '.join(items)}"
+        for label, items in groups
+        if items
+    )
+    examples = [
+        "Return monthly totals for actual vehicle-sales observations.",
+        "Compare BL1 and BL2 current-demand changes for Tier1 Automotive.",
+        "Group order-cancellation participant counts by technology category and response type.",
+        "Which month has the highest actual vehicle sales?",
+        "Break down total regional demand by survey origin.",
+        "Show inventory trends by component.",
+    ]
+    example_lines = "\n".join(f"- {item}" for item in examples)
+    return f"""# Infineon Knowledge Graph Overview
+
+## One-page summary
+This knowledge graph describes survey and analytical data around semiconductor and automotive demand. It connects regional demand, current- and future-demand analyses, vehicle sales, autonomous-driving development, order-cancellation responses, shortages, inventory trends, technology categories, vehicle types, companies, components, survey origins, and time periods. The graph is designed to support structured questions over business measures such as demand, percentage change, participant counts, sales units, shortage values, inventory trends, and autonomous-driving percentages.
+
+## What the graph contains
+{topic_lines}
+
+## Main dimensions users can ask about
+- **Time:** month, quarter, year, time period
+- **Technology:** technology category / technology node
+- **Vehicle:** BEV, BEHV, ICE, SAE level
+- **Business grouping:** survey origin, region, company, component, response type, baseline, market segment
+
+## Main measures users can ask about
+- Demand and total demand
+- Percentage change and current/future demand changes
+- Units sold and yearly sales
+- Participant counts and shortage values
+- Inventory trend / target status
+- Autonomous-driving percentages
+
+## Graph scale
+- Classes: {len(schema_dict.get("classes") or [])}
+- Predicates: {len(predicates)}
+- Properties: {len(properties)}
+- Declared relationships: {len(relationships)}
+
+## Example questions
+{example_lines}
+
+## How to use it
+Use precise wording when you know the intended calculation, such as **average**, **total**, **count**, **highest**, **by month**, or **by technology category**. If a question leaves the intended interpretation open, the QA system may ask for clarification before answering.
+"""
+
+
+def _report_html(markdown_report: str) -> str:
+    # Small self-contained HTML document so the user can download and print it
+    # without requiring a server-side PDF dependency.
+    escaped = escape(markdown_report)
+    body = escaped.replace("\n", "<br>")
+    return f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Infineon Knowledge Graph Overview</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; color: #1f2937; margin: 40px auto; max-width: 900px; line-height: 1.5; }}
+    button {{ margin-bottom: 20px; padding: 10px 14px; }}
+    .report {{ white-space: normal; }}
+    @media print {{ button {{ display: none; }} body {{ margin: 0; max-width: none; }} }}
+  </style>
+</head>
+<body>
+  <button onclick="window.print()">Print / Save as PDF</button>
+  <div class="report">{body}</div>
+</body>
+</html>"""
+
+
+def _render_graph_overview(schema_path: str) -> None:
+    try:
+        raw_schema = json.loads(Path(schema_path).read_text(encoding="utf-8"))
+    except Exception as exc:
+        st.error(f"Schema load failed: {exc}")
+        return
+
+    report = _graph_overview_report(raw_schema)
+    html_report = _report_html(report)
+
+    st.title("Infineon Knowledge Graph Overview")
+    st.caption("A compact guide to what the graph contains and what users can ask.")
+    col1, col2 = st.columns([1, 1])
+    col1.download_button(
+        "Download report (.md)",
+        data=report,
+        file_name="infineon_kg_overview.md",
+        mime="text/markdown",
+        use_container_width=True,
+    )
+    col2.download_button(
+        "Download printable report (.html)",
+        data=html_report,
+        file_name="infineon_kg_overview.html",
+        mime="text/html",
+        use_container_width=True,
+    )
+    st.caption("Open the downloaded HTML report and use its `Print / Save as PDF` button for a PDF copy.")
+
+    st.markdown(report)
+
+    triples = _overview_relationship_triples(raw_schema)
+    if triples:
+        st.subheader("High-level graph structure")
+        st.caption("Core class-to-class relationships declared by the ontology.")
+        html = build_graph_html(
+            triples[:80],
+            height_px=620,
+            heading="Schema Relationship Graph",
+        )
+        components.html(html, height=660, scrolling=True)
+
+
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
 
-st.title("Infineon KG QA")
-st.caption("Ask a natural-language question and inspect generated SPARQL plus graph results.")
-
 with st.sidebar:
+    page = st.radio("Page", ["Ask", "Graph Overview"])
     st.subheader("Backend")
     default_url = os.environ.get("INFINEON_API_URL", "https://gpt4ifx.icp.infineon.com")
     default_model = os.environ.get("INFINEON_MODEL", "gpt-4o")
@@ -498,6 +652,13 @@ with st.sidebar:
     )
     subgraph_hops = st.slider("Question subgraph hops", min_value=1, max_value=3, value=1, step=1)
     graph_height = st.slider("Graph canvas height (px)", min_value=400, max_value=1200, value=760, step=20)
+
+if page == "Graph Overview":
+    _render_graph_overview(schema_path)
+    st.stop()
+
+st.title("Infineon KG QA")
+st.caption("Ask a natural-language question and inspect generated SPARQL plus graph results.")
 
 if "question_input" not in st.session_state:
     st.session_state["question_input"] = ""
