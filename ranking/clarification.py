@@ -258,6 +258,10 @@ def _conflict_is_resolved_by_question(intent: Dict[str, object], conflict: Dict[
     if axis == "origins":
         expected_origins = set(intent.get("origins") or [])
         expected_dims = set(intent.get("dimensions") or [])
+        if intent.get("answer_shape") == "raw_values" and not expected_origins:
+            # For explicit raw/list requests, an unasked origin split is an
+            # over-specific candidate variant, not a user-facing ambiguity.
+            return True
         if "survey_origin" in expected_dims and not expected_origins:
             # When the user asks for a breakdown by survey origin, candidates
             # that enumerate all origins explicitly are equivalent to queries

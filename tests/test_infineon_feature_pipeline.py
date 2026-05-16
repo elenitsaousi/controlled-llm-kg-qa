@@ -489,6 +489,36 @@ def test_build_clarification_payload_skips_unasked_time_for_explicit_raw_values(
     assert payload is None
 
 
+def test_build_clarification_payload_skips_unasked_origin_for_explicit_raw_values():
+    question = "List inventory trend values for each component."
+    raw_query = (
+        "SELECT ?component ?trend WHERE { "
+        "?entry a survey:InventoryDevelopment ; "
+        "survey:forComponent ?component ; "
+        "survey:inventoryTrend ?trend . "
+        "}"
+    )
+    origin_query = (
+        "SELECT ?component ?surveyType ?trend WHERE { "
+        "VALUES (?origin ?surveyType) { "
+        "(survey:OEM_Survey 'OEM') "
+        "(survey:Tier1_Survey 'Tier1') "
+        "(survey:Semiconductor_Survey 'Semiconductor') } "
+        "?entry a survey:InventoryDevelopment ; "
+        "survey:forComponent ?component ; "
+        "survey:hasSurveyOrigin ?origin ; "
+        "survey:inventoryTrend ?trend . "
+        "}"
+    )
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": origin_query}, {"query": raw_query}],
+    )
+
+    assert payload is None
+
+
 def test_question_intent_report_resolves_multiple_explicit_axes():
     intent = question_intent_report(
         "Return monthly totals for actual vehicle-sales observations."
