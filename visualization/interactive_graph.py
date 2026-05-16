@@ -159,7 +159,116 @@ def build_graph_html(
         }
         """
     )
-    return net.generate_html(notebook=False)
+    html = net.generate_html(notebook=False)
+    return _inject_graph_shell(html, heading=heading, edge_count=len(seen_edges), node_count=len(seen_nodes))
+
+
+def _graph_overlay_markup(*, edge_count: int, node_count: int) -> str:
+    return f"""
+    <style>
+      html, body {{
+        background: #101719 !important;
+        color: #edf4f3 !important;
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }}
+      #mynetwork {{
+        border: 1px solid #26373a !important;
+        border-radius: 14px !important;
+        background:
+          radial-gradient(circle at 42% 35%, #14384a 0%, #0f1f28 56%, #0b151a 100%) !important;
+      }}
+      .kg-graph-legend {{
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        width: 220px;
+        background: rgba(11, 28, 40, 0.88);
+        border: 1px solid rgba(25, 214, 198, 0.48);
+        border-radius: 12px;
+        color: #edf4f3;
+        padding: 16px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+        backdrop-filter: blur(8px);
+        z-index: 5;
+      }}
+      .kg-graph-legend h5 {{
+        color: #f5d96c;
+        font-size: 13px;
+        margin: 0 0 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }}
+      .kg-legend-section {{
+        border-top: 1px solid rgba(25, 214, 198, 0.2);
+        margin-top: 12px;
+        padding-top: 12px;
+      }}
+      .kg-legend-title {{
+        color: #f5d96c;
+        font-weight: 600;
+        font-size: 12px;
+        margin-bottom: 8px;
+      }}
+      .kg-legend-row {{
+        align-items: center;
+        display: flex;
+        gap: 9px;
+        color: #d7e4e4;
+        font-size: 12px;
+        margin: 7px 0;
+      }}
+      .kg-dot {{
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        display: inline-block;
+        border: 2px solid #7de4df;
+        background: #b9f2f2;
+      }}
+      .kg-dot.literal {{
+        border-color: #70838b;
+        background: #54656d;
+      }}
+      .kg-line {{
+        width: 26px;
+        height: 0;
+        border-top: 2px solid #6a8a8f;
+        display: inline-block;
+      }}
+      .kg-stat {{
+        color: #91a4a4;
+        font-size: 12px;
+        line-height: 1.5;
+      }}
+      @media (max-width: 900px) {{
+        .kg-graph-legend {{
+          position: static;
+          width: auto;
+          margin: 12px 0 0;
+        }}
+      }}
+    </style>
+    <aside class="kg-graph-legend">
+      <h5>Legend</h5>
+      <div class="kg-legend-title">Nodes</div>
+      <div class="kg-legend-row"><span class="kg-dot"></span> Classes / graph entities</div>
+      <div class="kg-legend-row"><span class="kg-dot literal"></span> Literal / value nodes</div>
+      <div class="kg-legend-section">
+        <div class="kg-legend-title">Connections</div>
+        <div class="kg-legend-row"><span class="kg-line"></span> Declared relationship</div>
+      </div>
+      <div class="kg-legend-section">
+        <div class="kg-legend-title">Quick facts</div>
+        <div class="kg-stat">Nodes shown: {node_count}<br>Edges shown: {edge_count}<br>Drag to move. Scroll to zoom.</div>
+      </div>
+    </aside>
+    """
+
+
+def _inject_graph_shell(html: str, *, heading: str, edge_count: int, node_count: int) -> str:
+    overlay = _graph_overlay_markup(edge_count=edge_count, node_count=node_count)
+    return html.replace("</body>", overlay + "</body>")
 
 
 def _build_svg_graph_html(
@@ -249,13 +358,16 @@ def _build_svg_graph_html(
         ".toolbar button{background:#172124;color:#edf4f3;border:1px solid #26373a;"
         "border-radius:6px;padding:7px 10px;cursor:pointer;}"
         ".toolbar button:hover{border-color:#19d6c6;}"
-        "</style>"
+        ".kg-graph-stage{position:relative;}"
+        + _graph_overlay_css()
+        + "</style>"
         f"<h4>{escape(heading)}</h4>"
         "<div class='toolbar'>"
         "<button onclick='zoomGraph(1.2)'>Zoom in</button>"
         "<button onclick='zoomGraph(0.83)'>Zoom out</button>"
         "<button onclick='resetGraph()'>Reset</button>"
         "</div>"
+        "<div class='kg-graph-stage'>"
         "<div id='graphWrap' style='overflow:hidden; border:1px solid #26373a; border-radius:14px;"
         "background:radial-gradient(circle at 50% 35%, #123342 0%, #0f1f28 58%, #0b151a 100%); cursor:grab'>"
         f"<svg id='graphSvg' viewBox='0 0 {width} {height}' width='100%' height='{height}' "
@@ -267,6 +379,8 @@ def _build_svg_graph_html(
         + "".join(edge_labels)
         + "".join(node_markup)
         + "</g></svg></div>"
+        + _graph_overlay_markup(edge_count=len(edges), node_count=len(node_terms))
+        + "</div>"
         "<script>"
         "const svg=document.getElementById('graphSvg');"
         "const viewport=document.getElementById('graphViewport');"
@@ -281,6 +395,23 @@ def _build_svg_graph_html(
         "window.addEventListener('mousemove',(e)=>{if(!dragging)return;tx+=(e.clientX-sx)/scale;ty+=(e.clientY-sy)/scale;sx=e.clientX;sy=e.clientY;applyGraph();});"
         "</script>"
     )
+
+
+def _graph_overlay_css() -> str:
+    return """
+        .kg-graph-legend{position:absolute;top:18px;right:18px;width:220px;background:rgba(11,28,40,.88);
+        border:1px solid rgba(25,214,198,.48);border-radius:12px;color:#edf4f3;padding:16px;
+        box-shadow:0 18px 40px rgba(0,0,0,.22);backdrop-filter:blur(8px);z-index:5}
+        .kg-graph-legend h5{color:#f5d96c;font-size:13px;margin:0 0 14px;text-transform:uppercase;letter-spacing:.06em}
+        .kg-legend-section{border-top:1px solid rgba(25,214,198,.2);margin-top:12px;padding-top:12px}
+        .kg-legend-title{color:#f5d96c;font-weight:600;font-size:12px;margin-bottom:8px}
+        .kg-legend-row{align-items:center;display:flex;gap:9px;color:#d7e4e4;font-size:12px;margin:7px 0}
+        .kg-dot{width:12px;height:12px;border-radius:999px;display:inline-block;border:2px solid #7de4df;background:#b9f2f2}
+        .kg-dot.literal{border-color:#70838b;background:#54656d}
+        .kg-line{width:26px;height:0;border-top:2px solid #6a8a8f;display:inline-block}
+        .kg-stat{color:#91a4a4;font-size:12px;line-height:1.5}
+        @media(max-width:900px){.kg-graph-legend{position:static;width:auto;margin:12px 0 0}}
+    """
 
 
 def _apply_force_layout(

@@ -652,7 +652,7 @@ def _inject_app_styles() -> None:
         }
         .block-container {
             max-width: 1180px;
-            padding-top: 2rem;
+            padding-top: 3.75rem;
             padding-bottom: 3rem;
         }
         h1, h2, h3 {
