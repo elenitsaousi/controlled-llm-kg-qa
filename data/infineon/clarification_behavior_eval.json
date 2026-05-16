@@ -1,0 +1,50 @@
+[
+  {
+    "id": "CLAR001",
+    "question": "Summarize cancellation responses across technology categories.",
+    "expected_needs_clarification": true,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR002",
+    "question": "What do shortage responses look like across survey origins?",
+    "expected_needs_clarification": true,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR003",
+    "question": "Show inventory trends by component.",
+    "expected_needs_clarification": true,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR004",
+    "question": "Group order-cancellation participant counts by technology category and response type.",
+    "expected_needs_clarification": false,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR005",
+    "question": "Return monthly totals for actual vehicle-sales observations.",
+    "expected_needs_clarification": false,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR006",
+    "question": "Which month has the highest actual vehicle sales?",
+    "expected_needs_clarification": false,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR007",
+    "question": "Compare BL1 and BL2 current-demand changes for Tier1 Automotive.",
+    "expected_needs_clarification": false,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR008",
+    "question": "Which cancellation response is most common by technology category?",
+    "expected_needs_clarification": false,
+    "topic": "order_cancellation"
+  }
+]

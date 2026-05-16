@@ -1,0 +1,42 @@
+[
+  {
+    "id": "ROUTE001",
+    "question": "What is OrderCancellation?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE002",
+    "question": "What does BL1 mean?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE003",
+    "question": "What is a manufacturer?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE004",
+    "question": "What about OrderCancellation?",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE005",
+    "question": "What is the weather tomorrow?",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE006",
+    "question": "Return monthly totals for actual vehicle-sales observations.",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE007",
+    "question": "Which month has the highest actual vehicle sales?",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE008",
+    "question": "Show yearly autonomous-driving averages by vehicle type.",
+    "expected_route": "kg_query"
+  }
+]
