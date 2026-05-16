@@ -1,4 +1,4 @@
-from evaluation.build_kgqa_seed_bank import build_seed_bank
+from evaluation.build_kgqa_seed_bank import build_seed_bank, summarize_seed_bank
 
 
 def test_build_seed_bank_deduplicates_templates_and_maps_families(tmp_path):
@@ -17,3 +17,17 @@ def test_build_seed_bank_deduplicates_templates_and_maps_families(tmp_path):
     assert len(rows) == 2
     assert {row["family"] for row in rows} == {"future_demand", "shortage"}
     assert {row["answer_shape"] for row in rows} == {"average", "count"}
+
+
+def test_summarize_seed_bank_builds_family_shape_matrix():
+    rows = [
+        {"family": "future_demand", "answer_shape": "average"},
+        {"family": "future_demand", "answer_shape": "sum"},
+        {"family": "shortage", "answer_shape": "count"},
+    ]
+
+    summary = summarize_seed_bank(rows)
+
+    assert summary["families"] == {"future_demand": 2, "shortage": 1}
+    assert summary["family_shape_matrix"]["future_demand"]["average"] == 1
+    assert summary["family_shape_matrix"]["future_demand"]["sum"] == 1

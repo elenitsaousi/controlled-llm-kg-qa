@@ -96,6 +96,28 @@ def _print_summary(rows: List[Dict[str, object]]) -> None:
         print(f"  {key}: {value}")
 
 
+def summarize_seed_bank(rows: List[Dict[str, object]]) -> Dict[str, object]:
+    families = sorted({str(row["family"]) for row in rows})
+    shapes = sorted({str(row["answer_shape"]) for row in rows})
+    matrix = {
+        family: {
+            shape: sum(
+                1
+                for row in rows
+                if row["family"] == family and row["answer_shape"] == shape
+            )
+            for shape in shapes
+        }
+        for family in families
+    }
+    return {
+        "unique_templates": len(rows),
+        "families": dict(Counter(str(row["family"]) for row in rows)),
+        "answer_shapes": dict(Counter(str(row["answer_shape"]) for row in rows)),
+        "family_shape_matrix": matrix,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build a normalized KGQA seed-template bank.")
     parser.add_argument("datasets", nargs="+")
