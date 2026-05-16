@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Any
 
 import streamlit as st
 import streamlit.components.v1 as components
-from rdflib import Graph
+from rdflib import Graph, BNode, URIRef
 
 from kg.schema import load_schema
 from llm.answer_synthesis import synthesize_answer
@@ -460,7 +460,26 @@ def _overview_relationship_triples(schema_dict: Dict[str, Any]) -> List[Tuple[st
     return triples
 
 
-def _graph_overview_report(schema_dict: Dict[str, Any]) -> str:
+def _graph_data_stats(graph_path: str) -> Dict[str, int]:
+    if not graph_path or not os.path.exists(graph_path):
+        return {}
+    graph = _load_graph_cached(graph_path)
+    resources = set()
+    subjects = set()
+    for s, _p, o in graph:
+        if isinstance(s, (URIRef, BNode)):
+            subjects.add(s)
+            resources.add(s)
+        if isinstance(o, (URIRef, BNode)):
+            resources.add(o)
+    return {
+        "triples": len(graph),
+        "resource_nodes": len(resources),
+        "subject_entities": len(subjects),
+    }
+
+
+def _graph_overview_report(schema_dict: Dict[str, Any], graph_stats: Dict[str, int]) -> str:
     groups = _overview_topic_groups(schema_dict)
     predicates = list(schema_dict.get("predicates") or [])
     properties = list(schema_dict.get("properties") or [])
@@ -479,6 +498,13 @@ def _graph_overview_report(schema_dict: Dict[str, Any]) -> str:
         "Show inventory trends by component.",
     ]
     example_lines = "\n".join(f"- {item}" for item in examples)
+    triples_text = f"{graph_stats['triples']:,}" if "triples" in graph_stats else "Unavailable"
+    resource_nodes_text = (
+        f"{graph_stats['resource_nodes']:,}" if "resource_nodes" in graph_stats else "Unavailable"
+    )
+    subject_entities_text = (
+        f"{graph_stats['subject_entities']:,}" if "subject_entities" in graph_stats else "Unavailable"
+    )
     return f"""# Infineon Knowledge Graph Overview
 
 ## One-page summary
@@ -501,7 +527,12 @@ This knowledge graph describes survey and analytical data around semiconductor a
 - Inventory trend / target status
 - Autonomous-driving percentages
 
-## Graph scale
+## Data graph scale
+- RDF triples: {triples_text}
+- Resource nodes / entities: {resource_nodes_text}
+- Subject entities: {subject_entities_text}
+
+## Schema scale
 - Classes: {len(schema_dict.get("classes") or [])}
 - Predicates: {len(predicates)}
 - Properties: {len(properties)}
@@ -539,14 +570,19 @@ def _report_html(markdown_report: str) -> str:
 </html>"""
 
 
-def _render_graph_overview(schema_path: str) -> None:
+def _render_graph_overview(schema_path: str, graph_path: str) -> None:
     try:
         raw_schema = json.loads(Path(schema_path).read_text(encoding="utf-8"))
     except Exception as exc:
         st.error(f"Schema load failed: {exc}")
         return
 
-    report = _graph_overview_report(raw_schema)
+    try:
+        with st.spinner("Reading graph statistics..."):
+            graph_stats = _graph_data_stats(graph_path)
+    except Exception:
+        graph_stats = {}
+    report = _graph_overview_report(raw_schema, graph_stats)
     html_report = _report_html(report)
 
     st.title("Infineon Knowledge Graph Overview")
@@ -654,7 +690,7 @@ with st.sidebar:
     graph_height = st.slider("Graph canvas height (px)", min_value=400, max_value=1200, value=760, step=20)
 
 if page == "Graph Overview":
-    _render_graph_overview(schema_path)
+    _render_graph_overview(schema_path, graph_path)
     st.stop()
 
 st.title("Infineon KG QA")
