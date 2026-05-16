@@ -69,7 +69,13 @@ def build_graph_html(
             max_edges=max_edges,
         )
 
-    net = Network(height=f"{max(300, int(height_px))}px", width="100%", directed=True)
+    net = Network(
+        height=f"{max(300, int(height_px))}px",
+        width="100%",
+        directed=True,
+        bgcolor="#0f1f28",
+        font_color="#edf4f3",
+    )
     net.barnes_hut()
     net.heading = heading
     seen_nodes = set()
@@ -83,7 +89,14 @@ def build_graph_html(
                 sid,
                 label=_short_term(s),
                 title=_short_term(s),
-                color="#1f77b4" if _is_entity(s) else "#7f7f7f",
+                color={
+                    "background": "#b9f2f2" if _is_entity(s) else "#54656d",
+                    "border": "#7de4df" if _is_entity(s) else "#70838b",
+                    "highlight": {
+                        "background": "#d8ffff" if _is_entity(s) else "#738891",
+                        "border": "#19d6c6",
+                    },
+                },
                 shape="dot" if _is_entity(s) else "box",
             )
             seen_nodes.add(sid)
@@ -92,7 +105,14 @@ def build_graph_html(
                 oid,
                 label=_short_term(o),
                 title=_short_term(o),
-                color="#ff7f0e" if _is_entity(o) else "#7f7f7f",
+                color={
+                    "background": "#b9f2f2" if _is_entity(o) else "#54656d",
+                    "border": "#7de4df" if _is_entity(o) else "#70838b",
+                    "highlight": {
+                        "background": "#d8ffff" if _is_entity(o) else "#738891",
+                        "border": "#19d6c6",
+                    },
+                },
                 shape="dot" if _is_entity(o) else "box",
             )
             seen_nodes.add(oid)
@@ -108,7 +128,13 @@ def build_graph_html(
         {
           "physics": {
             "enabled": true,
-            "stabilization": {"iterations": 300}
+            "stabilization": {"iterations": 260},
+            "barnesHut": {
+              "gravitationalConstant": -4200,
+              "springLength": 180,
+              "springConstant": 0.035,
+              "damping": 0.22
+            }
           },
           "interaction": {
             "hover": true,
@@ -119,14 +145,16 @@ def build_graph_html(
             "dragView": true
           },
           "nodes": {
-            "borderWidth": 1,
-            "size": 16,
-            "font": {"size": 14}
+            "borderWidth": 1.5,
+            "size": 22,
+            "shadow": {"enabled": true, "color": "rgba(25,214,198,0.18)", "size": 18, "x": 0, "y": 0},
+            "font": {"size": 14, "color": "#edf4f3", "face": "Arial"}
           },
           "edges": {
-            "smooth": {"type": "dynamic"},
-            "font": {"size": 10, "align": "middle"},
-            "color": {"opacity": 0.7}
+            "smooth": {"type": "curvedCW", "roundness": 0.18},
+            "font": {"size": 10, "align": "middle", "color": "#91a4a4"},
+            "color": {"color": "#6a8a8f", "opacity": 0.6},
+            "width": 1.2
           }
         }
         """
@@ -187,40 +215,53 @@ def _build_svg_graph_html(
             continue
         x1, y1 = positions[s]
         x2, y2 = positions[o]
+        control_x = (x1 + x2) / 2 + ((y2 - y1) * 0.10)
+        control_y = (y1 + y2) / 2 - ((x2 - x1) * 0.10)
         edge_markup.append(
-            f"<line x1='{x1:.1f}' y1='{y1:.1f}' x2='{x2:.1f}' y2='{y2:.1f}' "
-            "stroke='#9aa4b2' stroke-width='1.2' marker-end='url(#arrow)' />"
+            f"<path d='M {x1:.1f} {y1:.1f} Q {control_x:.1f} {control_y:.1f} {x2:.1f} {y2:.1f}' "
+            "fill='none' stroke='#6a8a8f' stroke-opacity='0.72' stroke-width='1.25' marker-end='url(#arrow)' />"
         )
         mx = (x1 + x2) / 2
         my = (y1 + y2) / 2
         edge_labels.append(
-            f"<text x='{mx:.1f}' y='{my - 4:.1f}' fill='#5b6472' font-size='10' "
+            f"<text x='{mx:.1f}' y='{my - 4:.1f}' fill='#91a4a4' font-size='10' "
             f"text-anchor='middle'>{escape(_short_term(p))}</text>"
         )
 
     node_markup = []
     for term, (x, y) in positions.items():
         is_entity = _is_entity(term)
-        fill = "#2563eb" if is_entity else "#64748b"
+        fill = "#b9f2f2" if is_entity else "#54656d"
+        stroke = "#7de4df" if is_entity else "#70838b"
         label = escape(_short_term(term))
         node_markup.append(
-            f"<circle cx='{x:.1f}' cy='{y:.1f}' r='16' fill='{fill}' opacity='0.92' />"
-            f"<text x='{x:.1f}' y='{y + 31:.1f}' fill='#111827' font-size='11' "
+            f"<circle cx='{x:.1f}' cy='{y:.1f}' r='21' fill='{fill}' stroke='{stroke}' "
+            "stroke-width='2' opacity='0.95' />"
+            f"<text x='{x:.1f}' y='{y + 31:.1f}' fill='#edf4f3' font-size='11' "
             f"text-anchor='middle'>{label}</text>"
         )
 
     return (
-        f"<h4 style='font-family: sans-serif'>{escape(heading)}</h4>"
-        "<div style='font-family:sans-serif; margin-bottom:8px'>"
-        "<button onclick='zoomGraph(1.2)'>Zoom in</button> "
-        "<button onclick='zoomGraph(0.83)'>Zoom out</button> "
+        "<style>"
+        "html,body{margin:0;background:#101719;color:#edf4f3;font-family:Arial,sans-serif;}"
+        "h4{margin:0 0 12px;color:#edf4f3;font-family:Arial,sans-serif;}"
+        ".toolbar{display:flex;gap:8px;margin-bottom:12px;}"
+        ".toolbar button{background:#172124;color:#edf4f3;border:1px solid #26373a;"
+        "border-radius:6px;padding:7px 10px;cursor:pointer;}"
+        ".toolbar button:hover{border-color:#19d6c6;}"
+        "</style>"
+        f"<h4>{escape(heading)}</h4>"
+        "<div class='toolbar'>"
+        "<button onclick='zoomGraph(1.2)'>Zoom in</button>"
+        "<button onclick='zoomGraph(0.83)'>Zoom out</button>"
         "<button onclick='resetGraph()'>Reset</button>"
         "</div>"
-        "<div id='graphWrap' style='overflow:hidden; border:1px solid #e5e7eb; background:#fff; cursor:grab'>"
+        "<div id='graphWrap' style='overflow:hidden; border:1px solid #26373a; border-radius:14px;"
+        "background:radial-gradient(circle at 50% 35%, #123342 0%, #0f1f28 58%, #0b151a 100%); cursor:grab'>"
         f"<svg id='graphSvg' viewBox='0 0 {width} {height}' width='100%' height='{height}' "
         "xmlns='http://www.w3.org/2000/svg' role='img'>"
         "<defs><marker id='arrow' markerWidth='8' markerHeight='8' refX='7' refY='3' "
-        "orient='auto'><path d='M0,0 L0,6 L8,3 z' fill='#9aa4b2'/></marker></defs>"
+        "orient='auto'><path d='M0,0 L0,6 L8,3 z' fill='#5f7477'/></marker></defs>"
         "<g id='graphViewport'>"
         + "".join(edge_markup)
         + "".join(edge_labels)

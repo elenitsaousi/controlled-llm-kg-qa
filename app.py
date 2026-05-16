@@ -624,6 +624,16 @@ def _inject_app_styles() -> None:
                 linear-gradient(180deg, #111719 0%, #101719 100%);
             color: var(--kg-text);
         }
+        html, body,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stHeader"],
+        [data-testid="stToolbar"],
+        [data-testid="stDecoration"] {
+            background: var(--kg-bg) !important;
+        }
+        [data-testid="stHeader"] {
+            border-bottom: 1px solid var(--kg-border);
+        }
         [data-testid="stSidebar"] {
             background: #070a0b;
             border-right: 1px solid var(--kg-border);
@@ -694,6 +704,9 @@ def _inject_app_styles() -> None:
         pre {
             border: 1px solid var(--kg-border);
             border-radius: 8px;
+        }
+        iframe {
+            border-radius: 14px;
         }
         .kg-hero {
             padding: 0.2rem 0 1rem;
