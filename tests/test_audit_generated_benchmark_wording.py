@@ -50,3 +50,19 @@ def test_audit_rows_flags_added_and_lost_calendar_dimensions():
 
     assert "added_quarter_dimension" in report["cases"][0]["warnings"]
     assert "lost_month_dimension" in report["cases"][1]["warnings"]
+
+
+def test_audit_rows_skips_source_dependent_checks_when_source_missing():
+    rows = [
+        {
+            "id": "A",
+            "family": "regional_demand",
+            "answer_shape": "sum",
+            "source_question": "",
+            "question": "How much demand did OEMs generate by quarter?",
+        }
+    ]
+
+    report = audit_rows(rows)
+
+    assert report["summary"]["flagged"] == 0
