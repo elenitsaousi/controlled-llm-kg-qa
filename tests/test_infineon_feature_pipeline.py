@@ -328,6 +328,47 @@ def test_build_clarification_payload_detects_structural_disagreement():
     assert len(payload["options"]) == 3
 
 
+def test_build_clarification_payload_prefers_nonempty_runtime_plans():
+    question = "Describe actual vehicle-sales observations."
+    month_total_query = (
+        "SELECT ?monthLabel (SUM(?unitsSold) AS ?totalUnits) WHERE { "
+        "?obs a survey:VehicleSalesObservation ; "
+        "survey:isActualData true ; "
+        "survey:forTimePeriod ?month ; "
+        "survey:unitsSold ?unitsSold . "
+        "} GROUP BY ?monthLabel"
+    )
+    month_raw_query = (
+        "SELECT ?monthLabel ?unitsSold WHERE { "
+        "?obs a survey:VehicleSalesObservation ; "
+        "survey:isActualData true ; "
+        "survey:forTimePeriod ?month ; "
+        "survey:unitsSold ?unitsSold . "
+        "}"
+    )
+    empty_vehicle_query = (
+        "SELECT ?vehicleType (SUM(?unitsSold) AS ?totalUnits) WHERE { "
+        "?obs a survey:VehicleSalesObservation ; "
+        "survey:isActualData true ; "
+        "survey:forVehicleType ?vehicle ; "
+        "survey:unitsSold ?unitsSold . "
+        "} GROUP BY ?vehicleType"
+    )
+
+    payload = build_clarification_payload(
+        question,
+        [
+            {"query": empty_vehicle_query, "execution_has_rows": False},
+            {"query": month_total_query, "execution_has_rows": True},
+            {"query": month_raw_query, "execution_has_rows": True},
+        ],
+    )
+
+    assert payload is not None
+    assert len(payload["options"]) == 2
+    assert all("vehicle type" not in option["label"].lower() for option in payload["options"])
+
+
 def test_build_clarification_payload_skips_explicit_average_question():
     question = "Return average future-demand change grouped by technology and quarter."
     avg_query = (

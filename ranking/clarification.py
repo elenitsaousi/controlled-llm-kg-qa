@@ -314,6 +314,16 @@ def build_clarification_payload(
     if len(rows) < 2:
         return None
 
+    # If runtime profiling is available, do not ask users to choose between
+    # empty plans when at least two non-empty interpretations are available.
+    # Unknown execution state is kept for callers that have not profiled yet.
+    nonempty_rows = [
+        row for row in rows
+        if row["candidate"].get("execution_has_rows") is True
+    ]
+    if len(nonempty_rows) >= 2:
+        rows = nonempty_rows
+
     grouped: Dict[Tuple[object, ...], List[Dict[str, object]]] = defaultdict(list)
     for row in rows:
         grouped[row["key"]].append(row)

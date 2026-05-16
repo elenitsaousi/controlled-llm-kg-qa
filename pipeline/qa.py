@@ -1589,6 +1589,35 @@ def answer_question(
         ordered_candidates,
         schema_dict=_load_schema_dict_for_ranking(schema),
     )
+    if clarification is not None:
+        # Clarification is rare enough that profiling only the displayed plan
+        # neighborhood is a worthwhile guardrail: users should not be offered
+        # empty interpretations when viable alternatives already exist.
+        for candidate in ordered_candidates[:6]:
+            query = str(candidate.get("query", "") or "").strip()
+            if not query:
+                continue
+            profile = _query_runtime_profile(query)
+            candidate["execution_has_rows"] = profile.get("has_rows")
+            candidate["execution_error"] = profile.get("error")
+            candidate["execution_row_count"] = profile.get("row_count")
+            candidate["execution_unbound_vars"] = list(profile.get("unbound_vars") or [])
+        clarification = build_clarification_payload(
+            effective_question,
+            ordered_candidates,
+            schema_dict=_load_schema_dict_for_ranking(schema),
+        )
+        if selected and selected.get("execution_has_rows") is False:
+            nonempty_candidates = [
+                candidate
+                for candidate in ordered_candidates[:6]
+                if candidate.get("execution_has_rows") is True
+            ]
+            if nonempty_candidates:
+                selected = _select_best_candidate_semantic(
+                    nonempty_candidates,
+                    effective_question,
+                )
 
     selected_query = selected.get("query") if selected else None
     errors = _runtime_validate_query(selected_query) if selected_query else []
