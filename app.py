@@ -316,6 +316,45 @@ def _render_answer_block(
         st.write(answer_text or "No answer.")
 
 
+def _render_answer_subgraph(
+    *,
+    selected_query: str,
+    graph_rows: List[Dict[str, str]],
+    graph_path: str,
+) -> None:
+    if not selected_query or not graph_path or not os.path.exists(graph_path):
+        return
+    try:
+        graph = _load_graph_cached(graph_path)
+        triples, meta = collect_query_subgraph_triples(
+            graph=graph,
+            query=selected_query,
+            result_rows=graph_rows,
+            hops=1,
+            limit=180,
+        )
+    except Exception:
+        return
+    if not triples:
+        return
+
+    st.subheader("Relevant Graph")
+    st.caption(
+        "The graph fragment used to support this answer. "
+        f"Seeds: {meta.get('seed_count', 0)} | Edges shown: {meta.get('edge_count', 0)}"
+    )
+    html = build_graph_html(
+        triples,
+        height_px=520,
+        heading="Answer Evidence Graph",
+    )
+    components.html(
+        html,
+        height=560,
+        scrolling=True,
+    )
+
+
 def _render_clarification(
     clarification: Dict[str, Any],
     *,
@@ -598,6 +637,11 @@ if asked:
                     execute_selected=bool(execute_selected),
                 )
                 _render_compact_explainability(result)
+                _render_answer_subgraph(
+                    selected_query=str(st.session_state.get("last_selected_query", "")),
+                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                    graph_path=graph_path,
+                )
 
         if not needs_request_clarification and not needs_clarification:
             _render_answer_block(
@@ -608,6 +652,11 @@ if asked:
                 execute_selected=bool(execute_selected),
             )
             _render_compact_explainability(result)
+            _render_answer_subgraph(
+                selected_query=selected_query,
+                graph_rows=graph_rows,
+                graph_path=graph_path,
+            )
 
         if developer_mode:
             with st.expander("Technical details", expanded=False):
@@ -696,6 +745,11 @@ if not clarification_rendered:
             )
             if isinstance(last_result, dict):
                 _render_compact_explainability(last_result)
+                _render_answer_subgraph(
+                    selected_query=str(st.session_state.get("last_selected_query", "")),
+                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                    graph_path=graph_path,
+                )
 
 if developer_mode:
     st.divider()
