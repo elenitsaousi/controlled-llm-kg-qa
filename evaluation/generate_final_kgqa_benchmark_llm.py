@@ -6,9 +6,10 @@ import json
 import os
 import re
 import sys
+import time
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol
+from typing import Callable, Dict, List, Optional, Protocol
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -90,6 +91,8 @@ def generate_rows(
     limit: Optional[int] = None,
     existing_rows: Optional[List[Dict[str, object]]] = None,
     progress: bool = False,
+    request_pause_sec: float = 0.0,
+    on_row: Optional[Callable[[List[Dict[str, object]]], None]] = None,
 ) -> List[Dict[str, object]]:
     out = list(existing_rows or [])
     start = len(out)
@@ -106,6 +109,8 @@ def generate_rows(
         warnings: List[str] = []
         source_question = _clean_question(str(row["example_question"]))
         for _attempt in range(3):
+            if request_pause_sec:
+                time.sleep(request_pause_sec)
             question = _parse_question(client.generate_text(_prompt(row, previous_questions)))
             candidate = {
                 "question": question,
@@ -133,6 +138,8 @@ def generate_rows(
                 "wording_warnings": warnings,
             }
         )
+        if on_row is not None:
+            on_row(out)
         if progress:
             print(f"[{idx + 1}/{stop}] {out[-1]['id']} - {question}", flush=True)
     return out
@@ -156,6 +163,12 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--progress", action="store_true")
+    parser.add_argument(
+        "--request-pause-sec",
+        type=float,
+        default=float(os.environ.get("BENCHMARK_REWRITE_PAUSE_SEC", "2.1")),
+        help="Pause before each LLM rewrite request to respect gateway rate limits.",
+    )
     args = parser.parse_args()
 
     plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
@@ -167,12 +180,18 @@ def main() -> None:
     from llm.client import InfineonGPTClient
 
     client = InfineonGPTClient(temperature=0.2, max_tokens=300)
+
+    def _save_progress(current_rows: List[Dict[str, object]]) -> None:
+        out_path.write_text(json.dumps(current_rows, indent=2) + "\n", encoding="utf-8")
+
     rows = generate_rows(
         plan,
         client=client,
         limit=(args.limit or None),
         existing_rows=existing_rows,
         progress=args.progress,
+        request_pause_sec=args.request_pause_sec,
+        on_row=_save_progress,
     )
     out_path.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
     summary = summarize(rows)

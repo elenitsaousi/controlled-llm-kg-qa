@@ -66,3 +66,26 @@ def test_generate_rows_retries_when_wording_audit_detects_drift():
 
     assert rows[0]["question"] == "What is the total OEM demand by region and quarter?"
     assert rows[0]["wording_warnings"] == []
+
+
+def test_generate_rows_calls_progress_hook_after_each_row():
+    plan = {
+        "rows": [
+            {
+                "template_id": "t1",
+                "family": "regional_demand",
+                "answer_shape": "sum",
+                "target_ambiguity_label": "high",
+                "seed_ambiguity_label": "low",
+                "source_id": "S1",
+                "example_question": "Return total demand by region.",
+                "query": "SELECT ...",
+            }
+        ]
+    }
+    snapshots = []
+
+    generate_rows(plan, client=_FakeClient(), on_row=lambda rows: snapshots.append(list(rows)))
+
+    assert len(snapshots) == 1
+    assert snapshots[0][0]["id"] == "FINALKGQA001"
