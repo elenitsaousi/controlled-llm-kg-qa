@@ -45,3 +45,17 @@ def test_ranking_query_takes_priority_over_inner_count_shape(tmp_path):
     rows = build_seed_bank([str(dataset)])
 
     assert rows[0]["answer_shape"] == "ranking_top"
+
+
+def test_future_demand_takes_family_priority_over_option_baseline_terms(tmp_path):
+    dataset = tmp_path / "dataset.json"
+    dataset.write_text(
+        """[
+          {"id":"A","question":"Compare future demand Option1 and Option2 by quarter.","query":"SELECT ?q WHERE { ?x a survey:FutureDemandAnalysis ; survey:baselineType ?b . }"}
+        ]""",
+        encoding="utf-8",
+    )
+
+    rows = build_seed_bank([str(dataset)])
+
+    assert rows[0]["family"] == "future_demand"

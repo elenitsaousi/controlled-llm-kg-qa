@@ -26,7 +26,8 @@ def _clean_question(question: str) -> str:
     return BENCHMARK_VARIANT_RE.sub("", str(question or "").strip())
 
 
-def _prompt(row: Dict[str, object]) -> str:
+def _prompt(row: Dict[str, object], previous_questions: Optional[List[str]] = None) -> str:
+    previous = "\n".join(f"- {question}" for question in (previous_questions or [])) or "- none"
     return f"""Rewrite one graph-question for a benchmark.
 
 Return ONLY JSON in this exact form:
@@ -38,16 +39,24 @@ Goal:
 - Do not mention SPARQL, RDF, graph internals, or "Infineon benchmark".
 - Do not add facts that are not present in the source question.
 - Keep the same business topic and requested dimensions.
+- Preserve the core answer intent of the gold query:
+  - ranking_top must still ask for highest / largest / top / maximum.
+  - count must still ask how many / count / number.
+  - average must still ask for average / mean.
+  - sum must still ask for total / sum.
+  - raw_or_lookup must still ask for raw values / list / lookup values.
 
 Target ambiguity:
 - low: explicit about aggregation / requested result shape.
-- mid: realistic business wording; some interpretation remains, but still fairly guided.
-- high: genuinely plausible ambiguity; omit the aggregation or exact answer shape when natural, while keeping the topic and dimensions recognizable.
+- mid: realistic business wording; retain the core answer shape but allow some business shorthand.
+- high: genuinely plausible business wording; preserve the core answer shape, but allow ambiguity in secondary dimensions, filters, or phrasing when natural.
 
 Family: {row["family"]}
 Answer shape intended by the gold query: {row["answer_shape"]}
 Target ambiguity label: {row["target_ambiguity_label"]}
 Source question: {_clean_question(str(row["example_question"]))}
+Avoid exact reuse of these previous rewrites for this same template:
+{previous}
 """
 
 
@@ -78,9 +87,19 @@ def generate_rows(
     start = len(out)
     plan_rows = list(plan["rows"])
     stop = len(plan_rows) if limit is None else min(len(plan_rows), limit)
+    by_template_questions: Dict[str, List[str]] = {}
+    for existing in out:
+        by_template_questions.setdefault(str(existing["template_id"]), []).append(str(existing["question"]))
     for idx in range(start, stop):
         row = plan_rows[idx]
-        question = _parse_question(client.generate_text(_prompt(row)))
+        template_id = str(row["template_id"])
+        previous_questions = by_template_questions.setdefault(template_id, [])
+        question = ""
+        for _attempt in range(3):
+            question = _parse_question(client.generate_text(_prompt(row, previous_questions)))
+            if question.strip().lower() not in {item.strip().lower() for item in previous_questions}:
+                break
+        previous_questions.append(question)
         out.append(
             {
                 "id": f"FINALKGQA{idx + 1:03d}",

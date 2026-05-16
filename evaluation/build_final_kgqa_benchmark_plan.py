@@ -58,15 +58,26 @@ def _round_robin_assign(
 
 
 def _assign_target_ambiguity(rows: List[Dict[str, object]]) -> None:
-    labels = [
-        label
-        for label, count in TARGET_AMBIGUITY_COUNTS.items()
-        for _ in range(count)
-    ]
-    labels.sort()
-    rows.sort(key=lambda row: (str(row["family"]), int(row["slot_index"])))
+    labels = []
+    remaining = dict(TARGET_AMBIGUITY_COUNTS)
+    while any(remaining.values()):
+        for label in ["high", "mid", "low"]:
+            if remaining[label] > 0:
+                labels.append(label)
+                remaining[label] -= 1
     for idx, row in enumerate(rows):
         row["target_ambiguity_label"] = labels[idx]
+
+
+def _interleave_family_rows(by_family_rows: Dict[str, List[Dict[str, object]]]) -> List[Dict[str, object]]:
+    rows = []
+    max_len = max((len(items) for items in by_family_rows.values()), default=0)
+    for idx in range(max_len):
+        for family in FINAL_BENCHMARK_QUOTAS:
+            family_rows = by_family_rows[family]
+            if idx < len(family_rows):
+                rows.append(family_rows[idx])
+    return rows
 
 
 def build_plan(seed_rows: Iterable[Dict[str, object]]) -> Dict[str, object]:
@@ -77,16 +88,15 @@ def build_plan(seed_rows: Iterable[Dict[str, object]]) -> Dict[str, object]:
     for family in by_family:
         by_family[family].sort(key=lambda row: (str(row["answer_shape"]), str(row["template_id"])))
 
-    planned_rows: List[Dict[str, object]] = []
+    family_assignments: Dict[str, List[Dict[str, object]]] = {}
     template_counts: Counter = Counter()
     for family, quota in FINAL_BENCHMARK_QUOTAS.items():
-        planned_rows.extend(
-            _round_robin_assign(
-                by_family.get(family, []),
-                quota,
-                template_counts=template_counts,
-            )
+        family_assignments[family] = _round_robin_assign(
+            by_family.get(family, []),
+            quota,
+            template_counts=template_counts,
         )
+    planned_rows = _interleave_family_rows(family_assignments)
     _assign_target_ambiguity(planned_rows)
 
     per_family = Counter(str(row["family"]) for row in planned_rows)

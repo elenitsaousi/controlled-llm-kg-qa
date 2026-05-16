@@ -82,5 +82,19 @@
     "query": "SELECT ?technologyCategory ?responseType ?participants WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } ORDER BY ?technologyCategory ?responseType",
     "topic": "order_cancellation",
     "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED013",
+    "question": "How many Tier1 Automotive current-demand entries are recorded for each baseline BL1 and BL2?",
+    "query": "SELECT ?baseline (COUNT(?entry) AS ?entryCount) WHERE { survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin survey:Tier1_Survey ; survey:hasMarketSegment survey:Automotive ; survey:hasAggregatedResult ?entry . ?entry a survey:CurrentDemandAnalysis ; survey:hasMarketSegment survey:Automotive ; survey:baselineType ?baseline . FILTER(?baseline IN ('BL1', 'BL2')) } GROUP BY ?baseline ORDER BY ?baseline",
+    "topic": "current_demand_baselines",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED014",
+    "question": "Which Tier1 Automotive baseline has the higher average current-demand percentage change?",
+    "query": "SELECT ?baseline (AVG(?pct) AS ?avgPctChange) WHERE { survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin survey:Tier1_Survey ; survey:hasMarketSegment survey:Automotive ; survey:hasAggregatedResult ?entry . ?entry a survey:CurrentDemandAnalysis ; survey:hasMarketSegment survey:Automotive ; survey:baselineType ?baseline ; survey:percentageChange ?pct . FILTER(?baseline IN ('BL1', 'BL2')) } GROUP BY ?baseline ORDER BY DESC(?avgPctChange) LIMIT 1",
+    "topic": "current_demand_baselines",
+    "ambiguity_label": "low"
   }
 ]

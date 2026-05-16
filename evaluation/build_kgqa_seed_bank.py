@@ -35,10 +35,10 @@ def _family(row: Dict[str, object]) -> str:
         return "autonomous_driving"
     if "vehiclesalesobservation" in q or "vehicle sales" in q or "yearly sales" in q:
         return "vehicle_sales"
-    if "baseline" in q or "bl1" in q or "bl2" in q:
-        return "current_demand_baselines"
     if "futuredemand" in q or "future demand" in q:
         return "future_demand"
+    if "baseline" in q or "bl1" in q or "bl2" in q:
+        return "current_demand_baselines"
     if "demandforregion" in q or "regional demand" in q or " by region" in q:
         return "regional_demand"
     return "catalog_lookup"

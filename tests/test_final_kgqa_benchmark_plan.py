@@ -37,6 +37,8 @@ def test_build_plan_applies_family_quotas_and_balances_reuse():
     future_rows = [row for row in plan["rows"] if row["family"] == "future_demand"]
     assert future_rows[0]["template_id"] != future_rows[1]["template_id"]
     assert future_rows[2]["variant_index"] == 2
+    assert {row["family"] for row in plan["rows"][:9]} == set(families)
+    assert {row["target_ambiguity_label"] for row in plan["rows"][:3]} == {"high", "mid", "low"}
 
 
 def test_build_plan_tracks_target_ambiguity_counts_independent_of_seed_labels():
