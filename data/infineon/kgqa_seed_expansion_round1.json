@@ -30,7 +30,7 @@
   {
     "id": "SEED005",
     "question": "Compare actual and forecast vehicle-sales totals by month.",
-    "query": "SELECT ?monthLabel (SUM(IF(?actual = true, ?units, 0)) AS ?actualUnits) (SUM(IF(?forecast = true, ?units, 0)) AS ?forecastUnits) WHERE { ?obs a survey:VehicleSalesObservation ; survey:forTimePeriod ?month ; survey:unitsSold ?units . OPTIONAL { ?obs survey:isActualData ?actual . } OPTIONAL { ?obs survey:isForecastData ?forecast . } BIND(REPLACE(STR(?month), '^.*/', '') AS ?monthLabel) } GROUP BY ?monthLabel ORDER BY ?monthLabel",
+    "query": "SELECT ?monthLabel (SUM(?actualPart) AS ?actualUnits) (SUM(?forecastPart) AS ?forecastUnits) WHERE { { ?obs a survey:VehicleSalesObservation ; survey:isActualData true ; survey:forTimePeriod ?month ; survey:unitsSold ?units . BIND(?units AS ?actualPart) BIND(0 AS ?forecastPart) } UNION { ?obs a survey:VehicleSalesObservation ; survey:isForecastData true ; survey:forTimePeriod ?month ; survey:unitsSold ?units . BIND(0 AS ?actualPart) BIND(?units AS ?forecastPart) } BIND(REPLACE(STR(?month), '^.*/', '') AS ?monthLabel) } GROUP BY ?monthLabel ORDER BY ?monthLabel",
     "topic": "vehicle_sales",
     "ambiguity_label": "mid"
   },
