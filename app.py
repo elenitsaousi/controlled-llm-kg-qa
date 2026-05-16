@@ -659,6 +659,8 @@ def _inject_app_styles() -> None:
             --kg-text: #edf4f3;
             --kg-muted: #91a4a4;
             --kg-accent: #19d6c6;
+            --kg-green: #31b67a;
+            --kg-green-soft: rgba(49, 182, 122, 0.16);
             --kg-accent-soft: rgba(25, 214, 198, 0.16);
             --kg-success: #153a34;
             --kg-warning: #3a3118;
@@ -666,7 +668,8 @@ def _inject_app_styles() -> None:
 
         .stApp {
             background:
-                radial-gradient(circle at 85% 8%, rgba(25, 214, 198, 0.10), transparent 28rem),
+                radial-gradient(circle at 88% 8%, rgba(25, 214, 198, 0.10), transparent 28rem),
+                radial-gradient(circle at 8% 96%, rgba(49, 182, 122, 0.16), transparent 24rem),
                 linear-gradient(180deg, #111719 0%, #101719 100%);
             color: var(--kg-text);
         }
@@ -755,7 +758,41 @@ def _inject_app_styles() -> None:
             border-radius: 14px;
         }
         .kg-hero {
+            isolation: isolate;
+            overflow: hidden;
+            position: relative;
             padding: 0.2rem 0 1rem;
+        }
+        .kg-hero::before {
+            background:
+                radial-gradient(circle at 13% 130%, rgba(49, 182, 122, 0.46), transparent 18rem),
+                radial-gradient(circle at 23% 140%, rgba(25, 214, 198, 0.38), transparent 21rem);
+            border-radius: 999px;
+            bottom: -11rem;
+            content: "";
+            height: 24rem;
+            left: -6rem;
+            position: absolute;
+            width: 42rem;
+            z-index: -1;
+        }
+        .kg-hero::after {
+            background: linear-gradient(
+                118deg,
+                transparent 0%,
+                rgba(49, 182, 122, 0.08) 34%,
+                rgba(25, 214, 198, 0.20) 74%,
+                transparent 100%
+            );
+            border-radius: 999px;
+            bottom: -12rem;
+            content: "";
+            height: 18rem;
+            left: -2rem;
+            position: absolute;
+            transform: rotate(10deg);
+            width: 34rem;
+            z-index: -1;
         }
         .kg-hero h1 {
             margin-bottom: 0.25rem;
@@ -772,8 +809,8 @@ def _inject_app_styles() -> None:
             max-width: 42rem;
         }
         .kg-sidebar-note {
-            background: var(--kg-accent-soft);
-            border: 1px solid rgba(25, 214, 198, 0.28);
+            background: linear-gradient(135deg, var(--kg-green-soft), var(--kg-accent-soft));
+            border: 1px solid rgba(49, 182, 122, 0.34);
             border-radius: 8px;
             color: var(--kg-text);
             padding: 0.75rem;
