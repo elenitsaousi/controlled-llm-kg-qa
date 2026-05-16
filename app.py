@@ -601,6 +601,131 @@ def _report_html(markdown_report: str) -> str:
 </html>"""
 
 
+def _inject_app_styles() -> None:
+    st.markdown(
+        """
+        <style>
+        :root {
+            --kg-bg: #101719;
+            --kg-panel: #172124;
+            --kg-panel-soft: #1d2a2d;
+            --kg-border: #26373a;
+            --kg-text: #edf4f3;
+            --kg-muted: #91a4a4;
+            --kg-accent: #19d6c6;
+            --kg-accent-soft: rgba(25, 214, 198, 0.16);
+            --kg-success: #153a34;
+            --kg-warning: #3a3118;
+        }
+
+        .stApp {
+            background:
+                radial-gradient(circle at 85% 8%, rgba(25, 214, 198, 0.10), transparent 28rem),
+                linear-gradient(180deg, #111719 0%, #101719 100%);
+            color: var(--kg-text);
+        }
+        [data-testid="stSidebar"] {
+            background: #070a0b;
+            border-right: 1px solid var(--kg-border);
+        }
+        [data-testid="stSidebar"] * {
+            color: var(--kg-text);
+        }
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] span {
+            color: var(--kg-muted);
+        }
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3 {
+            color: var(--kg-text);
+        }
+        .block-container {
+            max-width: 1180px;
+            padding-top: 2rem;
+            padding-bottom: 3rem;
+        }
+        h1, h2, h3 {
+            color: var(--kg-text);
+            letter-spacing: 0;
+        }
+        .stCaption, [data-testid="stCaptionContainer"] {
+            color: var(--kg-muted);
+        }
+        textarea, input {
+            background: var(--kg-panel) !important;
+            color: var(--kg-text) !important;
+            border: 1px solid var(--kg-border) !important;
+        }
+        textarea:focus, input:focus {
+            border-color: var(--kg-accent) !important;
+            box-shadow: 0 0 0 1px var(--kg-accent) !important;
+        }
+        button[kind="primary"] {
+            background: var(--kg-accent) !important;
+            border-color: var(--kg-accent) !important;
+            color: #041514 !important;
+            font-weight: 600;
+        }
+        button[kind="secondary"] {
+            border-color: var(--kg-border) !important;
+            color: var(--kg-text) !important;
+            background: var(--kg-panel) !important;
+        }
+        [data-testid="stAlert"] {
+            border-radius: 8px;
+            border: 1px solid var(--kg-border);
+        }
+        [data-testid="stAlert"] div {
+            color: var(--kg-text);
+        }
+        [data-testid="stMetric"] {
+            background: var(--kg-panel);
+            border: 1px solid var(--kg-border);
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+        }
+        [data-testid="stExpander"] {
+            background: var(--kg-panel);
+            border: 1px solid var(--kg-border);
+            border-radius: 8px;
+        }
+        [data-testid="stDataFrame"],
+        pre {
+            border: 1px solid var(--kg-border);
+            border-radius: 8px;
+        }
+        .kg-hero {
+            padding: 0.2rem 0 1rem;
+        }
+        .kg-hero h1 {
+            margin-bottom: 0.25rem;
+        }
+        .kg-kicker {
+            color: var(--kg-accent);
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .kg-page-copy {
+            color: var(--kg-muted);
+            max-width: 42rem;
+        }
+        .kg-sidebar-note {
+            background: var(--kg-accent-soft);
+            border: 1px solid rgba(25, 214, 198, 0.28);
+            border-radius: 8px;
+            color: var(--kg-text);
+            padding: 0.75rem;
+            margin: 0.5rem 0 1rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _render_graph_overview(schema_path: str, graph_path: str) -> None:
     try:
         raw_schema = json.loads(Path(schema_path).read_text(encoding="utf-8"))
@@ -663,82 +788,124 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
 
 
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
+_inject_app_styles()
 
 with st.sidebar:
     page = st.radio("Page", ["Ask", "Graph Overview"])
-    st.subheader("Backend")
+    st.markdown(
+        '<div class="kg-sidebar-note">Ask questions over the Infineon knowledge graph or open the overview report.</div>',
+        unsafe_allow_html=True,
+    )
+    developer_mode = st.checkbox("Developer mode", value=False)
+
     default_url = os.environ.get("INFINEON_API_URL", "https://gpt4ifx.icp.infineon.com")
     default_model = os.environ.get("INFINEON_MODEL", "gpt-4o")
     default_endpoint = os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
     default_key = os.environ.get("INFINEON_API_KEY", "")
 
-    api_url = st.text_input("INFINEON_API_URL", value=default_url)
-    api_endpoint = st.text_input("INFINEON_CHAT_ENDPOINT", value=default_endpoint)
-    model_name = st.text_input("INFINEON_MODEL", value=default_model)
-    api_key = st.text_input("INFINEON_API_KEY", value=default_key, type="password")
-    temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.2, step=0.05)
+    api_url = default_url
+    api_endpoint = default_endpoint
+    model_name = default_model
+    api_key = default_key
+    temperature = 0.2
+    schema_path = str(DEFAULT_SCHEMA_PATH)
+    graph_path = str(DEFAULT_GRAPH_PATH)
+    use_ml_ranking = True
+    ml_policy = "auto"
+    ml_model_path = _default_ml_model_path()
+    ambiguity_config_path = _default_ambiguity_config_path()
+    show_prompt = False
+    show_candidates = False
+    show_candidate_diagnostics = False
+    execute_selected = True
+    max_preview_rows = 200
+    full_graph_limit = 3000
+    subgraph_edge_limit = 1200
+    subgraph_hops = 1
+    graph_height = 760
 
-    st.subheader("Data")
-    schema_path = st.text_input("Schema path", value=str(DEFAULT_SCHEMA_PATH))
-    graph_path = st.text_input("Graph path", value=str(DEFAULT_GRAPH_PATH))
+    if developer_mode:
+        with st.expander("Developer settings", expanded=True):
+            st.subheader("Backend")
+            api_url = st.text_input("INFINEON_API_URL", value=default_url)
+            api_endpoint = st.text_input("INFINEON_CHAT_ENDPOINT", value=default_endpoint)
+            model_name = st.text_input("INFINEON_MODEL", value=default_model)
+            api_key = st.text_input("INFINEON_API_KEY", value=default_key, type="password")
+            temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.2, step=0.05)
 
-    st.subheader("Ranking")
-    use_ml_ranking = st.checkbox("Use ML ranking", value=True)
-    ml_policy = st.selectbox(
-        "ML policy",
-        options=["auto", "all", "mid", "off"],
-        index=0,
-        help="auto: predict ambiguity and route automatically, all: always ML, mid: ML only for medium ambiguity, off: schema-only.",
-    )
-    ml_model_path = st.text_input("ML model path", value=_default_ml_model_path())
-    ambiguity_config_path = st.text_input(
-        "Ambiguity config path",
-        value=_default_ambiguity_config_path(),
-        help="Used when ML policy is auto/mid for runtime ambiguity regime prediction.",
-    )
-    if not use_ml_ranking:
-        ml_policy = "off"
+            st.subheader("Data")
+            schema_path = st.text_input("Schema path", value=str(DEFAULT_SCHEMA_PATH))
+            graph_path = st.text_input("Graph path", value=str(DEFAULT_GRAPH_PATH))
 
-    st.subheader("Display")
-    show_prompt = st.checkbox("Show candidate prompt", value=False)
-    developer_mode = st.checkbox("Developer mode", value=False)
-    show_candidates = st.checkbox("Show candidates", value=False, disabled=not developer_mode)
-    show_candidate_diagnostics = st.checkbox(
-        "Run candidate diagnostics",
-        value=False,
-        disabled=not developer_mode,
-        help=(
-            "Runs graph execution checks for every candidate. Useful for debugging, "
-            "but slower on large graph slices."
-        ),
-    )
-    execute_selected = st.checkbox("Execute selected query on graph", value=True)
-    max_preview_rows = st.number_input("Max preview rows", min_value=10, max_value=1000, value=200, step=10)
+            st.subheader("Ranking")
+            use_ml_ranking = st.checkbox("Use ML ranking", value=True)
+            ml_policy = st.selectbox(
+                "ML policy",
+                options=["auto", "all", "mid", "off"],
+                index=0,
+                help="auto: predict ambiguity and route automatically, all: always ML, mid: ML only for medium ambiguity, off: schema-only.",
+            )
+            ml_model_path = st.text_input("ML model path", value=_default_ml_model_path())
+            ambiguity_config_path = st.text_input(
+                "Ambiguity config path",
+                value=_default_ambiguity_config_path(),
+                help="Used when ML policy is auto/mid for runtime ambiguity regime prediction.",
+            )
+            if not use_ml_ranking:
+                ml_policy = "off"
 
-    st.subheader("Graph Explorer")
-    full_graph_limit = st.number_input(
-        "Full graph triple limit (0 = all)",
-        min_value=0,
-        max_value=100000,
-        value=3000,
-        step=500,
-    )
-    subgraph_edge_limit = st.number_input(
-        "Question subgraph edge limit",
-        min_value=50,
-        max_value=20000,
-        value=1200,
-        step=50,
-    )
-    subgraph_hops = st.slider("Question subgraph hops", min_value=1, max_value=3, value=1, step=1)
-    graph_height = st.slider("Graph canvas height (px)", min_value=400, max_value=1200, value=760, step=20)
+            st.subheader("Diagnostics")
+            show_prompt = st.checkbox("Show candidate prompt", value=False)
+            show_candidates = st.checkbox("Show candidates", value=False)
+            show_candidate_diagnostics = st.checkbox(
+                "Run candidate diagnostics",
+                value=False,
+                help=(
+                    "Runs graph execution checks for every candidate. Useful for debugging, "
+                    "but slower on large graph slices."
+                ),
+            )
+            execute_selected = st.checkbox("Execute selected query on graph", value=True)
+            max_preview_rows = st.number_input(
+                "Max preview rows",
+                min_value=10,
+                max_value=1000,
+                value=200,
+                step=10,
+            )
+
+            st.subheader("Graph Explorer")
+            full_graph_limit = st.number_input(
+                "Full graph triple limit (0 = all)",
+                min_value=0,
+                max_value=100000,
+                value=3000,
+                step=500,
+            )
+            subgraph_edge_limit = st.number_input(
+                "Question subgraph edge limit",
+                min_value=50,
+                max_value=20000,
+                value=1200,
+                step=50,
+            )
+            subgraph_hops = st.slider("Question subgraph hops", min_value=1, max_value=3, value=1, step=1)
+            graph_height = st.slider("Graph canvas height (px)", min_value=400, max_value=1200, value=760, step=20)
 
 if page == "Graph Overview":
     _render_graph_overview(schema_path, graph_path)
     st.stop()
 
-st.title("Infineon KG QA")
-st.caption("Ask a natural-language question and inspect generated SPARQL plus graph results.")
+st.markdown(
+    """
+    <section class="kg-hero">
+      <div class="kg-kicker">Knowledge graph assistant</div>
+      <h1>Infineon KG QA</h1>
+      <div class="kg-page-copy">Ask a natural-language question and receive a graph-grounded answer. When the request is genuinely ambiguous, the system asks for the intended interpretation first.</div>
+    </section>
+    """,
+    unsafe_allow_html=True,
+)
 
 if "question_input" not in st.session_state:
     st.session_state["question_input"] = ""
