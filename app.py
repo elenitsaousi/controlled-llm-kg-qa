@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Any
 
 import streamlit as st
 import streamlit.components.v1 as components
-from rdflib import Graph
+from rdflib import Graph, BNode, URIRef
 
 from kg.schema import load_schema
 from llm.answer_synthesis import synthesize_answer
@@ -34,7 +34,6 @@ except Exception:
 
 DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
 DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
-DEFAULT_GRAPH_STATS_PATH = PROJECT_ROOT / "data" / "infineon" / "graph_stats.json"
 DEFAULT_ML_MODEL_PATHS = [
     PROJECT_ROOT / "ranking" / "models" / "infineon_np_tfidf_ranker_entitylink.json",
     PROJECT_ROOT / "ranking" / "models" / "infineon_np_tfidf_ranker.json",
@@ -464,29 +463,20 @@ def _overview_relationship_triples(schema_dict: Dict[str, Any]) -> List[Tuple[st
 def _graph_data_stats(graph_path: str) -> Dict[str, int]:
     if not graph_path or not os.path.exists(graph_path):
         return {}
-    candidates = [Path(graph_path).with_name("graph_stats.json"), DEFAULT_GRAPH_STATS_PATH]
-    graph_file = Path(graph_path)
-    try:
-        graph_stat = graph_file.stat()
-    except OSError:
-        return {}
-    for path in candidates:
-        if not path.exists():
-            continue
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        if int(payload.get("graph_size_bytes", -1)) != int(graph_stat.st_size):
-            continue
-        if int(payload.get("graph_mtime_ns", -1)) != int(graph_stat.st_mtime_ns):
-            continue
-        return {
-            "triples": int(payload["triples"]),
-            "resource_nodes": int(payload["resource_nodes"]),
-            "subject_entities": int(payload["subject_entities"]),
-        }
-    return {}
+    graph = _load_graph_cached(graph_path)
+    resources = set()
+    subjects = set()
+    for s, _p, o in graph:
+        if isinstance(s, (URIRef, BNode)):
+            subjects.add(s)
+            resources.add(s)
+        if isinstance(o, (URIRef, BNode)):
+            resources.add(o)
+    return {
+        "triples": len(graph),
+        "resource_nodes": len(resources),
+        "subject_entities": len(subjects),
+    }
 
 
 def _graph_overview_report(
@@ -618,7 +608,11 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
         st.error(f"Schema load failed: {exc}")
         return
 
-    graph_stats = _graph_data_stats(graph_path)
+    try:
+        with st.spinner("Reading graph statistics..."):
+            graph_stats = _graph_data_stats(graph_path)
+    except Exception:
+        graph_stats = {}
     report = _graph_overview_report(raw_schema, graph_stats, include_inventory=False)
     full_report = _graph_overview_report(raw_schema, graph_stats, include_inventory=True)
     html_report = _report_html(full_report)
@@ -641,12 +635,6 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
         use_container_width=True,
     )
     st.caption("Open the downloaded HTML report and use its `Print / Save as PDF` button for a PDF copy.")
-    if not graph_stats:
-        st.info(
-            "Cached data-graph statistics are unavailable or stale. "
-            "Run `python evaluation/build_graph_stats.py --graph data/infineon/graph.ttl "
-            "--out data/infineon/graph_stats.json` once to refresh them."
-        )
 
     st.markdown(report)
 
@@ -664,15 +652,14 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
     if triples:
         st.subheader("High-level graph structure")
         st.caption("Core class-to-class relationships declared by the ontology.")
-        if st.button("Load schema graph", key="load_schema_graph_btn"):
-            html = build_graph_html(
-                triples,
-                height_px=620,
-                heading="Schema Relationship Graph",
-                max_nodes=140,
-                max_edges=180,
-            )
-            components.html(html, height=660, scrolling=True)
+        html = build_graph_html(
+            triples,
+            height_px=620,
+            heading="Schema Relationship Graph",
+            max_nodes=140,
+            max_edges=180,
+        )
+        components.html(html, height=660, scrolling=True)
 
 
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
