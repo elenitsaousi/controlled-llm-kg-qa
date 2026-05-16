@@ -6,6 +6,7 @@ from html import escape
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from rdflib import Graph, URIRef
+from rdflib.namespace import RDF, RDFS
 try:
     from pyvis.network import Network
 except Exception:  # pragma: no cover
@@ -14,6 +15,13 @@ except Exception:  # pragma: no cover
 SURVEY_NS = "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/"
 _PREF_LABEL_RE = re.compile(r"\bsurvey:([A-Za-z0-9_\-./%<>=:]+)")
 _ABS_URI_RE = re.compile(r"<(https?://[^>]+)>")
+_SURVEY_PREDICATE_RE = re.compile(r"\bsurvey:([A-Za-z0-9_\-]+)\b")
+_TECHNICAL_PREDICATES = {
+    str(RDF.type),
+    str(RDFS.domain),
+    str(RDFS.range),
+    str(RDFS.label),
+}
 
 
 def _short_term(term) -> str:
@@ -339,3 +347,69 @@ def collect_query_subgraph_triples(
         frontier = next_frontier
 
     return out, {"seed_count": len(seeds), "edge_count": len(out)}
+
+
+def collect_answer_evidence_triples(
+    graph: Graph,
+    query: str,
+    limit: int = 24,
+    per_predicate_limit: int = 3,
+) -> Tuple[List[Tuple], Dict[str, int]]:
+    query_terms = {
+        match.group(1)
+        for match in _SURVEY_PREDICATE_RE.finditer(query or "")
+    }
+    query_predicates = {
+        URIRef(SURVEY_NS + term)
+        for term in query_terms
+    }
+    query_classes = {
+        URIRef(SURVEY_NS + term)
+        for term in query_terms
+        if any(True for _ in graph.triples((URIRef(SURVEY_NS + term), None, None)))
+    }
+
+    out: List[Tuple] = []
+    seen = set()
+
+    for predicate in query_predicates:
+        added_for_predicate = 0
+        for triple in graph.triples((None, predicate, None)):
+            key = tuple(map(str, triple))
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(triple)
+            added_for_predicate += 1
+            if len(out) >= limit:
+                return out, {
+                    "predicate_count": len(query_predicates),
+                    "class_count": len(query_classes),
+                    "edge_count": len(out),
+                }
+            if added_for_predicate >= per_predicate_limit:
+                break
+
+    # If predicates alone do not yield enough business context, add compact
+    # class membership edges for classes referenced by the selected query.
+    for class_uri in query_classes:
+        for triple in graph.triples((None, RDF.type, class_uri)):
+            key = tuple(map(str, triple))
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(triple)
+            if len(out) >= limit:
+                return out, {
+                    "predicate_count": len(query_predicates),
+                    "class_count": len(query_classes),
+                    "edge_count": len(out),
+                }
+
+    # Keep only business predicates; never fall back to rdf/rdfs schema noise.
+    out = [triple for triple in out if str(triple[1]) not in _TECHNICAL_PREDICATES]
+    return out, {
+        "predicate_count": len(query_predicates),
+        "class_count": len(query_classes),
+        "edge_count": len(out),
+    }

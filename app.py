@@ -14,6 +14,7 @@ from llm.client import InfineonGPTClient, LLMClientError
 from pipeline.qa import answer_question
 from visualization.interactive_graph import (
     build_graph_html,
+    collect_answer_evidence_triples,
     collect_full_graph_triples,
     collect_query_subgraph_triples,
 )
@@ -326,12 +327,10 @@ def _render_answer_subgraph(
         return
     try:
         graph = _load_graph_cached(graph_path)
-        triples, meta = collect_query_subgraph_triples(
+        triples, meta = collect_answer_evidence_triples(
             graph=graph,
             query=selected_query,
-            result_rows=graph_rows,
-            hops=1,
-            limit=80,
+            limit=24,
         )
     except Exception:
         return
@@ -340,8 +339,8 @@ def _render_answer_subgraph(
 
     st.subheader("Relevant Graph")
     st.caption(
-        "The graph fragment used to support this answer. "
-        f"Seeds: {meta.get('seed_count', 0)} | Edges shown: {meta.get('edge_count', 0)}"
+        "The business relationships used by the selected query. "
+        f"Predicates: {meta.get('predicate_count', 0)} | Edges shown: {meta.get('edge_count', 0)}"
     )
     html = build_graph_html(
         triples,
