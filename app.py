@@ -344,6 +344,7 @@ def _render_answer_subgraph(
         "The business relationships used by the selected query. "
         f"Predicates: {meta.get('predicate_count', 0)} | Edges shown: {meta.get('edge_count', 0)}"
     )
+    graph_nodes = {node for s, _p, o in triples for node in (s, o)}
     graph_col, legend_col = st.columns([4.2, 1.2], gap="large")
     with graph_col:
         html = build_graph_html(
@@ -358,9 +359,11 @@ def _render_answer_subgraph(
         )
     with legend_col:
         _render_graph_side_panel(
-            node_count=len({node for s, _p, o in triples for node in (s, o)}),
+            node_count=len(graph_nodes),
             edge_count=len(triples),
             relationship_label="Business relationship",
+            has_entity_nodes=any(isinstance(node, URIRef) for node in graph_nodes),
+            has_literal_nodes=any(not isinstance(node, URIRef) for node in graph_nodes),
         )
 
 
@@ -421,15 +424,21 @@ def _render_graph_side_panel(
     node_count: int,
     edge_count: int,
     relationship_label: str,
+    has_entity_nodes: bool,
+    has_literal_nodes: bool,
 ) -> None:
+    node_rows = []
+    if has_entity_nodes:
+        node_rows.append('<div class="kg-side-row"><span class="kg-side-dot"></span> Classes / entities</div>')
+    if has_literal_nodes:
+        node_rows.append('<div class="kg-side-row"><span class="kg-side-dot muted"></span> Literal / value nodes</div>')
     st.markdown(
         f"""
         <aside class="kg-side-legend">
           <div class="kg-side-kicker">Legend</div>
           <div class="kg-side-section">
             <div class="kg-side-title">Nodes</div>
-            <div class="kg-side-row"><span class="kg-side-dot"></span> Classes / entities</div>
-            <div class="kg-side-row"><span class="kg-side-dot muted"></span> Literal / value nodes</div>
+            {''.join(node_rows)}
           </div>
           <div class="kg-side-section">
             <div class="kg-side-title">Connections</div>
@@ -437,7 +446,7 @@ def _render_graph_side_panel(
           </div>
           <div class="kg-side-section">
             <div class="kg-side-title">Quick facts</div>
-            <div class="kg-side-copy">Nodes shown: {node_count}<br>Edges shown: {edge_count}<br>Drag nodes. Scroll to zoom.</div>
+            <div class="kg-side-copy">Nodes shown: {node_count}<br>Edges shown: {edge_count}<br>Scroll to zoom.</div>
           </div>
         </aside>
         """,
@@ -882,6 +891,7 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
     if triples:
         st.subheader("High-level graph structure")
         st.caption("Core class-to-class relationships declared by the ontology.")
+        graph_nodes = {node for s, _p, o in triples for node in (s, o)}
         graph_col, legend_col = st.columns([4.2, 1.2], gap="large")
         with graph_col:
             html = build_graph_html(
@@ -894,9 +904,11 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
             components.html(html, height=660, scrolling=True)
         with legend_col:
             _render_graph_side_panel(
-                node_count=len({node for s, _p, o in triples for node in (s, o)}),
+                node_count=len(graph_nodes),
                 edge_count=len(triples),
                 relationship_label="Declared relationship",
+                has_entity_nodes=any(isinstance(node, URIRef) for node in graph_nodes),
+                has_literal_nodes=any(not isinstance(node, URIRef) for node in graph_nodes),
             )
 
 
