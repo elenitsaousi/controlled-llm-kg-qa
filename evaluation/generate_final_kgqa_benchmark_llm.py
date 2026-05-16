@@ -16,6 +16,8 @@ if PROJECT_ROOT not in sys.path:
 
 BENCHMARK_VARIANT_RE = re.compile(r"^\[Infineon benchmark variant \d+\]\s*", re.I)
 
+from evaluation.audit_generated_benchmark_wording import row_warnings
+
 
 class TextClient(Protocol):
     def generate_text(self, prompt: str) -> str:
@@ -101,9 +103,18 @@ def generate_rows(
         template_id = str(row["template_id"])
         previous_questions = by_template_questions.setdefault(template_id, [])
         question = ""
+        warnings: List[str] = []
+        source_question = _clean_question(str(row["example_question"]))
         for _attempt in range(3):
             question = _parse_question(client.generate_text(_prompt(row, previous_questions)))
-            if question.strip().lower() not in {item.strip().lower() for item in previous_questions}:
+            candidate = {
+                "question": question,
+                "answer_shape": row["answer_shape"],
+                "source_question": source_question,
+            }
+            warnings = row_warnings(candidate)
+            duplicate = question.strip().lower() in {item.strip().lower() for item in previous_questions}
+            if not duplicate and not warnings:
                 break
         previous_questions.append(question)
         out.append(
@@ -118,7 +129,8 @@ def generate_rows(
                 "template_id": row["template_id"],
                 "seed_id": row.get("source_id"),
                 "seed_ambiguity_label": row.get("seed_ambiguity_label"),
-                "source_question": _clean_question(str(row["example_question"])),
+                "source_question": source_question,
+                "wording_warnings": warnings,
             }
         )
         if progress:

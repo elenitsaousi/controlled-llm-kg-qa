@@ -6,6 +6,19 @@ class _FakeClient:
         return '{"question":"How does demand vary by region?"}'
 
 
+class _RetryClient:
+    def __init__(self):
+        self.responses = iter(
+            [
+                '{"question":"Which regions had the highest OEM demand in each quarter?"}',
+                '{"question":"What is the total OEM demand by region and quarter?"}',
+            ]
+        )
+
+    def generate_text(self, _prompt):
+        return next(self.responses)
+
+
 def test_parse_question_accepts_json_object():
     assert _parse_question('{"question":"What is demand"}') == "What is demand?"
 
@@ -31,3 +44,25 @@ def test_generate_rows_preserves_gold_query_and_target_label():
     assert rows[0]["query"] == "SELECT ..."
     assert rows[0]["ambiguity_label"] == "high"
     assert rows[0]["question"] == "How does demand vary by region?"
+
+
+def test_generate_rows_retries_when_wording_audit_detects_drift():
+    plan = {
+        "rows": [
+            {
+                "template_id": "t1",
+                "family": "regional_demand",
+                "answer_shape": "sum",
+                "target_ambiguity_label": "mid",
+                "seed_ambiguity_label": "mid",
+                "source_id": "S1",
+                "example_question": "Show OEM demand by region and quarter.",
+                "query": "SELECT ...",
+            }
+        ]
+    }
+
+    rows = generate_rows(plan, client=_RetryClient())
+
+    assert rows[0]["question"] == "What is the total OEM demand by region and quarter?"
+    assert rows[0]["wording_warnings"] == []
