@@ -284,14 +284,6 @@ def route_request(
     if definition is not None:
         return definition
 
-    unknown_definition = _unknown_definition_route(question)
-    if unknown_definition is not None:
-        return unknown_definition
-
-    underspecified = _underspecified_route(question, glossary)
-    if underspecified is not None:
-        return underspecified
-
     q = _normalize(question)
     if any(hint in q for hint in OUT_OF_DOMAIN_HINTS) and not _contains_domain_term(question, glossary):
         return {
@@ -300,5 +292,13 @@ def route_request(
             "confidence": "High",
             "reason": "No Infineon KG concept was detected and the request appears outside the dataset scope.",
         }
+
+    unknown_definition = _unknown_definition_route(question)
+    if unknown_definition is not None:
+        return unknown_definition
+
+    underspecified = _underspecified_route(question, glossary)
+    if underspecified is not None:
+        return underspecified
 
     return {"route": "kg_query"}
