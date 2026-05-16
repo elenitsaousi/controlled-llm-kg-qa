@@ -242,6 +242,10 @@ def _conflict_is_resolved_by_question(intent: Dict[str, object], conflict: Dict[
         ) and expected in values
     if axis == "time_dimension":
         expected = intent.get("time_dimension")
+        if intent.get("answer_shape") == "raw_values" and expected is None:
+            # For explicit list/raw-value requests, an unasked extra time
+            # breakdown is a candidate defect rather than a user ambiguity.
+            return True
         return expected is not None and expected in values
     if axis == "dimensions":
         expected_dims = set(intent.get("dimensions") or [])

@@ -463,6 +463,32 @@ def test_question_intent_report_treats_inventory_trend_lookup_as_raw_values():
     assert intent["answer_shape"] == "raw_values"
 
 
+def test_build_clarification_payload_skips_unasked_time_for_explicit_raw_values():
+    question = "List inventory trend values for each component."
+    raw_query = (
+        "SELECT ?component ?trend WHERE { "
+        "?entry a survey:InventoryDevelopment ; "
+        "survey:forComponent ?component ; "
+        "survey:inventoryTrend ?trend . "
+        "}"
+    )
+    timed_query = (
+        "SELECT ?component ?period ?trend WHERE { "
+        "?entry a survey:InventoryDevelopment ; "
+        "survey:forComponent ?component ; "
+        "survey:forTimePeriod ?period ; "
+        "survey:inventoryTrend ?trend . "
+        "}"
+    )
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": timed_query}, {"query": raw_query}],
+    )
+
+    assert payload is None
+
+
 def test_question_intent_report_resolves_multiple_explicit_axes():
     intent = question_intent_report(
         "Return monthly totals for actual vehicle-sales observations."
