@@ -253,6 +253,12 @@ def _conflict_is_resolved_by_question(intent: Dict[str, object], conflict: Dict[
         return bool(expected_filters) and any(expected_filters <= set(value or ()) for value in values)
     if axis == "origins":
         expected_origins = set(intent.get("origins") or [])
+        expected_dims = set(intent.get("dimensions") or [])
+        if "survey_origin" in expected_dims and not expected_origins:
+            # When the user asks for a breakdown by survey origin, candidates
+            # that enumerate all origins explicitly are equivalent to queries
+            # that leave the same full-domain traversal implicit.
+            return True
         return bool(expected_origins) and any(expected_origins <= set(value or ()) for value in values)
     return False
 

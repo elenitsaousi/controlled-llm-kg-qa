@@ -229,6 +229,10 @@ def _question_has_explicit_aggregation(question: str) -> bool:
 def _question_wants_raw_values(question: str) -> bool:
     q = (question or "").lower()
     raw_action = _has_word(q, "list", "show", "return", "give")
+    trend_lookup = q.startswith("which ") and (
+        _has_word(q, "decreasing", "increasing", "stable")
+        and _has_word(q, "inventory", "trend")
+    )
     asks_value = (
         "percentage change" in q
         or _has_word(q, "percentage", "percentages", "pct", "value", "values")
@@ -246,7 +250,7 @@ def _question_wants_raw_values(question: str) -> bool:
         _has_word(q, "average", "avg", "mean", "total", "totals", "sum", "count", "highest", "lowest")
         or "how many" in q
     )
-    return bool(raw_action and asks_value and not asks_aggregate)
+    return bool((raw_action and asks_value and not asks_aggregate) or trend_lookup)
 
 
 def _question_wants_named_origin_buckets(question: str) -> bool:

@@ -429,6 +429,40 @@ def test_build_clarification_payload_skips_explicit_raw_value_request():
     assert payload is None
 
 
+def test_build_clarification_payload_skips_implicit_vs_explicit_all_origins():
+    question = "Return shortage values grouped by survey origin."
+    count_query = (
+        "SELECT ?surveyType (COUNT(?entry) AS ?count) WHERE { "
+        "?entry a survey:ShortageResponse ; "
+        "survey:hasSurveyOrigin ?origin . "
+        "} GROUP BY ?surveyType"
+    )
+    total_query = (
+        "SELECT ?surveyType (SUM(?shortage) AS ?totalShortage) WHERE { "
+        "VALUES (?origin ?surveyType) { "
+        "(survey:OEM_Survey 'OEM') "
+        "(survey:Tier1_Survey 'Tier1') "
+        "(survey:Semiconductor_Survey 'Semiconductor') } "
+        "?entry a survey:ShortageResponse ; "
+        "survey:hasSurveyOrigin ?origin ; "
+        "survey:shortageValue ?shortage . "
+        "} GROUP BY ?surveyType"
+    )
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": count_query}, {"query": total_query}],
+    )
+
+    assert payload is None
+
+
+def test_question_intent_report_treats_inventory_trend_lookup_as_raw_values():
+    intent = question_intent_report("Which component has decreasing inventory?")
+
+    assert intent["answer_shape"] == "raw_values"
+
+
 def test_question_intent_report_resolves_multiple_explicit_axes():
     intent = question_intent_report(
         "Return monthly totals for actual vehicle-sales observations."
