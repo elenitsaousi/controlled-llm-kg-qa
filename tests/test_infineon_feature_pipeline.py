@@ -107,6 +107,15 @@ def test_route_request_answers_schema_term_definitions():
     assert "class used in the infineon knowledge graph" in route["answer"].lower()
 
 
+def test_route_request_clarifies_unknown_definition_questions():
+    schema = load_schema("data/infineon/schema.json")
+    route = route_request("What is a manufacturer?", schema=schema)
+    assert route["route"] == "clarification_needed"
+    clarification = route["request_clarification"]
+    assert clarification["needs_clarification"] is True
+    assert "manufacturer" in clarification["reason"].lower()
+
+
 def test_extract_query_labels_relations_for_survey_prefix():
     labels = extract_query_labels(SAMPLE_QUERY)
     rels = extract_query_relations(SAMPLE_QUERY)

@@ -190,6 +190,36 @@ def _definition_route(
     return None
 
 
+def _unknown_definition_route(question: str) -> Optional[Dict[str, object]]:
+    for pattern in DEFINITION_PATTERNS:
+        match = pattern.match(question or "")
+        if not match:
+            continue
+        term = match.group(1).strip(" .?!")
+        return {
+            "route": "clarification_needed",
+            "request_clarification": {
+                "needs_clarification": True,
+                "reason": f"`{term}` is not a recognized Infineon KG term.",
+                "question": "What do you want?",
+                "options": [
+                    {
+                        "id": "general_definition",
+                        "label": f"A general definition of {term}.",
+                        "rewritten_question": f"Give a general definition of {term}.",
+                    },
+                    {
+                        "id": "related_graph_data",
+                        "label": f"Graph data related to {term}.",
+                        "rewritten_question": f"Show graph data related to {term}.",
+                    },
+                ],
+            },
+            "confidence": "Low",
+        }
+    return None
+
+
 def _underspecified_route(
     question: str,
     glossary: Dict[str, Dict[str, str]],
@@ -253,6 +283,10 @@ def route_request(
     definition = _definition_route(question, glossary)
     if definition is not None:
         return definition
+
+    unknown_definition = _unknown_definition_route(question)
+    if unknown_definition is not None:
+        return unknown_definition
 
     underspecified = _underspecified_route(question, glossary)
     if underspecified is not None:
