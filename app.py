@@ -479,7 +479,12 @@ def _graph_data_stats(graph_path: str) -> Dict[str, int]:
     }
 
 
-def _graph_overview_report(schema_dict: Dict[str, Any], graph_stats: Dict[str, int]) -> str:
+def _graph_overview_report(
+    schema_dict: Dict[str, Any],
+    graph_stats: Dict[str, int],
+    *,
+    include_inventory: bool,
+) -> str:
     groups = _overview_topic_groups(schema_dict)
     predicates = list(schema_dict.get("predicates") or [])
     properties = list(schema_dict.get("properties") or [])
@@ -505,7 +510,15 @@ def _graph_overview_report(schema_dict: Dict[str, Any], graph_stats: Dict[str, i
     subject_entities_text = (
         f"{graph_stats['subject_entities']:,}" if "subject_entities" in graph_stats else "Unavailable"
     )
-    return f"""# Infineon Knowledge Graph Overview
+    class_lines = "\n".join(f"- {item}" for item in sorted(schema_dict.get("classes") or []))
+    predicate_lines = "\n".join(f"- {item}" for item in sorted(predicates))
+    property_lines = "\n".join(f"- {item}" for item in sorted(properties))
+    relationship_lines = "\n".join(
+        f"- {rel.get('type')}: {', '.join(rel.get('from') or []) or '(unspecified)'} -> "
+        f"{', '.join(rel.get('to') or []) or '(literal / unspecified)'}"
+        for rel in relationships
+    )
+    summary = f"""# Infineon Knowledge Graph Overview
 
 ## One-page summary
 This knowledge graph describes survey and analytical data around semiconductor and automotive demand. It connects regional demand, current- and future-demand analyses, vehicle sales, autonomous-driving development, order-cancellation responses, shortages, inventory trends, technology categories, vehicle types, companies, components, survey origins, and time periods. The graph is designed to support structured questions over business measures such as demand, percentage change, participant counts, sales units, shortage values, inventory trends, and autonomous-driving percentages.
@@ -543,6 +556,24 @@ This knowledge graph describes survey and analytical data around semiconductor a
 
 ## How to use it
 Use precise wording when you know the intended calculation, such as **average**, **total**, **count**, **highest**, **by month**, or **by technology category**. If a question leaves the intended interpretation open, the QA system may ask for clarification before answering.
+"""
+    if not include_inventory:
+        return summary
+
+    return summary + f"""
+## Complete schema inventory
+
+### All classes
+{class_lines}
+
+### All predicates
+{predicate_lines}
+
+### All properties
+{property_lines}
+
+### All declared relationships
+{relationship_lines}
 """
 
 
@@ -582,15 +613,16 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
             graph_stats = _graph_data_stats(graph_path)
     except Exception:
         graph_stats = {}
-    report = _graph_overview_report(raw_schema, graph_stats)
-    html_report = _report_html(report)
+    report = _graph_overview_report(raw_schema, graph_stats, include_inventory=False)
+    full_report = _graph_overview_report(raw_schema, graph_stats, include_inventory=True)
+    html_report = _report_html(full_report)
 
     st.title("Infineon Knowledge Graph Overview")
     st.caption("A compact guide to what the graph contains and what users can ask.")
     col1, col2 = st.columns([1, 1])
     col1.download_button(
         "Download report (.md)",
-        data=report,
+        data=full_report,
         file_name="infineon_kg_overview.md",
         mime="text/markdown",
         use_container_width=True,
@@ -606,14 +638,26 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
 
     st.markdown(report)
 
+    with st.expander("Complete schema inventory", expanded=False):
+        st.markdown("#### All classes")
+        st.write(sorted(raw_schema.get("classes") or []))
+        st.markdown("#### All predicates")
+        st.write(sorted(raw_schema.get("predicates") or []))
+        st.markdown("#### All properties")
+        st.write(sorted(raw_schema.get("properties") or []))
+        st.markdown("#### All declared relationships")
+        st.dataframe(list(raw_schema.get("relationships") or []), width="stretch")
+
     triples = _overview_relationship_triples(raw_schema)
     if triples:
         st.subheader("High-level graph structure")
         st.caption("Core class-to-class relationships declared by the ontology.")
         html = build_graph_html(
-            triples[:80],
+            triples,
             height_px=620,
             heading="Schema Relationship Graph",
+            max_nodes=140,
+            max_edges=180,
         )
         components.html(html, height=660, scrolling=True)
 

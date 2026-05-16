@@ -57,9 +57,17 @@ def build_graph_html(
     triples: Sequence[Tuple],
     height_px: int = 760,
     heading: str = "Graph View",
+    max_nodes: int = 48,
+    max_edges: int = 80,
 ) -> str:
     if Network is None:
-        return _build_svg_graph_html(triples, height_px=height_px, heading=heading)
+        return _build_svg_graph_html(
+            triples,
+            height_px=height_px,
+            heading=heading,
+            max_nodes=max_nodes,
+            max_edges=max_edges,
+        )
 
     net = Network(height=f"{max(300, int(height_px))}px", width="100%", directed=True)
     net.barnes_hut()
@@ -203,15 +211,34 @@ def _build_svg_graph_html(
 
     return (
         f"<h4 style='font-family: sans-serif'>{escape(heading)}</h4>"
-        "<div style='overflow:auto; border:1px solid #e5e7eb; background:#fff'>"
-        f"<svg viewBox='0 0 {width} {height}' width='100%' height='{height}' "
+        "<div style='font-family:sans-serif; margin-bottom:8px'>"
+        "<button onclick='zoomGraph(1.2)'>Zoom in</button> "
+        "<button onclick='zoomGraph(0.83)'>Zoom out</button> "
+        "<button onclick='resetGraph()'>Reset</button>"
+        "</div>"
+        "<div id='graphWrap' style='overflow:hidden; border:1px solid #e5e7eb; background:#fff; cursor:grab'>"
+        f"<svg id='graphSvg' viewBox='0 0 {width} {height}' width='100%' height='{height}' "
         "xmlns='http://www.w3.org/2000/svg' role='img'>"
         "<defs><marker id='arrow' markerWidth='8' markerHeight='8' refX='7' refY='3' "
         "orient='auto'><path d='M0,0 L0,6 L8,3 z' fill='#9aa4b2'/></marker></defs>"
+        "<g id='graphViewport'>"
         + "".join(edge_markup)
         + "".join(edge_labels)
         + "".join(node_markup)
-        + "</svg></div>"
+        + "</g></svg></div>"
+        "<script>"
+        "const svg=document.getElementById('graphSvg');"
+        "const viewport=document.getElementById('graphViewport');"
+        "const wrap=document.getElementById('graphWrap');"
+        "let scale=1, tx=0, ty=0, dragging=false, sx=0, sy=0;"
+        "function applyGraph(){viewport.setAttribute('transform',`translate(${tx} ${ty}) scale(${scale})`);}"
+        "function zoomGraph(f){scale=Math.max(0.25,Math.min(5,scale*f));applyGraph();}"
+        "function resetGraph(){scale=1;tx=0;ty=0;applyGraph();}"
+        "wrap.addEventListener('wheel',(e)=>{e.preventDefault();zoomGraph(e.deltaY<0?1.1:0.9);},{passive:false});"
+        "wrap.addEventListener('mousedown',(e)=>{dragging=true;sx=e.clientX;sy=e.clientY;wrap.style.cursor='grabbing';});"
+        "window.addEventListener('mouseup',()=>{dragging=false;wrap.style.cursor='grab';});"
+        "window.addEventListener('mousemove',(e)=>{if(!dragging)return;tx+=(e.clientX-sx)/scale;ty+=(e.clientY-sy)/scale;sx=e.clientX;sy=e.clientY;applyGraph();});"
+        "</script>"
     )
 
 
