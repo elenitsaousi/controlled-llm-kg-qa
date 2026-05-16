@@ -375,9 +375,17 @@ def _render_request_clarification(clarification: Dict[str, Any]) -> None:
     for option in list(clarification.get("options") or []):
         cols = st.columns([3, 1])
         cols[0].write(str(option.get("label", "Option")))
-        if cols[1].button("Use", key=f"request_clarify_{option.get('id')}", use_container_width=True):
-            st.session_state["question_input"] = str(option.get("rewritten_question", ""))
-            st.rerun()
+        cols[1].button(
+            "Use",
+            key=f"request_clarify_{option.get('id')}",
+            use_container_width=True,
+            on_click=_set_question_input,
+            args=(str(option.get("rewritten_question", "")),),
+        )
+
+
+def _set_question_input(value: str) -> None:
+    st.session_state["question_input"] = value
 
 
 st.set_page_config(page_title="Infineon KG QA", layout="wide")

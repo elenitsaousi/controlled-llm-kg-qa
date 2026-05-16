@@ -197,25 +197,10 @@ def _unknown_definition_route(question: str) -> Optional[Dict[str, object]]:
             continue
         term = match.group(1).strip(" .?!")
         return {
-            "route": "clarification_needed",
-            "request_clarification": {
-                "needs_clarification": True,
-                "reason": f"`{term}` is not a recognized Infineon KG term.",
-                "question": "What do you want?",
-                "options": [
-                    {
-                        "id": "general_definition",
-                        "label": f"A general definition of {term}.",
-                        "rewritten_question": f"Give a general definition of {term}.",
-                    },
-                    {
-                        "id": "related_graph_data",
-                        "label": f"Graph data related to {term}.",
-                        "rewritten_question": f"Show graph data related to {term}.",
-                    },
-                ],
-            },
-            "confidence": "Low",
+            "route": "unknown_definition",
+            "answer": f'I do not have a graph-backed definition for "{term}".',
+            "confidence": "High",
+            "reason": "The question asks for a definition, but the term is not present in the Infineon KG glossary.",
         }
     return None
 
