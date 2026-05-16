@@ -1341,8 +1341,20 @@ def answer_question(
     alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
     request_route = route_request(question, schema=schema, alias_index=alias_index)
     if request_route.get("route") != "kg_query":
+        answer = str(request_route.get("answer", ""))
+        if request_route.get("route") == "general_definition":
+            term = str(request_route.get("term", "")).strip()
+            if llm_client is not None and hasattr(llm_client, "generate_text"):
+                answer = str(
+                    llm_client.generate_text(
+                        "Answer in one concise sentence. "
+                        f"What is {term}?"
+                    )
+                ).strip()
+            else:
+                answer = f'I do not have a graph-backed definition for "{term}".'
         return {
-            "answer": request_route.get("answer", ""),
+            "answer": answer,
             "selected_query": None,
             "candidates": [],
             "schema_ranked": [],

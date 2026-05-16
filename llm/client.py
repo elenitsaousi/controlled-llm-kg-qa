@@ -34,6 +34,11 @@ class InfineonGPTClient:
             raise ValueError("Missing API URL or API key.")
 
     def generate(self, prompt: str, k: int = 5) -> List[str]:
+        text = self.generate_text(prompt)
+        candidates = _parse_candidates(text)
+        return candidates[:k]
+
+    def generate_text(self, prompt: str) -> str:
         endpoint = self.chat_endpoint if self.chat_endpoint.startswith("/") else f"/{self.chat_endpoint}"
         url = f"{self.base_url.rstrip('/')}{endpoint}"
         payload = {
@@ -63,9 +68,7 @@ class InfineonGPTClient:
                 )
                 if response.status_code == 200:
                     data = response.json()
-                    text = data["choices"][0]["message"]["content"]
-                    candidates = _parse_candidates(text)
-                    return candidates[:k]
+                    return str(data["choices"][0]["message"]["content"])
                 if response.status_code in {301, 302, 303, 307, 308}:
                     location = response.headers.get("location", "")
                     body = (response.text or "")[:500]

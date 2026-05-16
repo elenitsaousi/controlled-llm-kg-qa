@@ -197,10 +197,10 @@ def _unknown_definition_route(question: str) -> Optional[Dict[str, object]]:
             continue
         term = match.group(1).strip(" .?!")
         return {
-            "route": "unknown_definition",
-            "answer": f'I do not have a graph-backed definition for "{term}".',
-            "confidence": "High",
-            "reason": "The question asks for a definition, but the term is not present in the Infineon KG glossary.",
+            "route": "general_definition",
+            "term": term,
+            "confidence": "Medium",
+            "reason": "The question asks for a general definition of a term that is not present in the Infineon KG glossary.",
         }
     return None
 

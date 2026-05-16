@@ -107,11 +107,27 @@ def test_route_request_answers_schema_term_definitions():
     assert "class used in the infineon knowledge graph" in route["answer"].lower()
 
 
-def test_route_request_handles_unknown_definition_questions_without_querying():
+def test_route_request_routes_unknown_definition_questions_to_general_definition():
     schema = load_schema("data/infineon/schema.json")
     route = route_request("What is a manufacturer?", schema=schema)
-    assert route["route"] == "unknown_definition"
-    assert "manufacturer" in route["answer"].lower()
+    assert route["route"] == "general_definition"
+    assert route["term"] == "a manufacturer"
+
+
+def test_answer_question_uses_general_definition_llm_path():
+    class FakeClient:
+        def generate_text(self, prompt):
+            assert "What is a manufacturer?" in prompt
+            return "A manufacturer is a company that makes goods."
+
+    schema = load_schema("data/infineon/schema.json")
+    result = qa_pipeline.answer_question(
+        "What is a manufacturer?",
+        schema,
+        llm_client=FakeClient(),
+    )
+    assert result["policy"] == "general_definition"
+    assert result["answer"] == "A manufacturer is a company that makes goods."
 
 
 def test_extract_query_labels_relations_for_survey_prefix():
