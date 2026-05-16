@@ -30,39 +30,24 @@ def _next_seed(rows: List[Dict[str, object]], template_counts: Counter) -> Dict[
     return min(rows, key=lambda row: (template_counts[str(row["template_id"])], str(row["template_id"])))
 
 
-def _balanced_assign(
+def _round_robin_assign(
     rows: List[Dict[str, object]],
     quota: int,
-    ambiguity_remaining: Dict[str, int],
     template_counts: Counter,
 ) -> List[Dict[str, object]]:
     if not rows:
         raise ValueError("Cannot assign benchmark rows from an empty family.")
-    by_label: Dict[str, List[Dict[str, object]]] = {}
-    for row in rows:
-        by_label.setdefault(str(row.get("ambiguity_label") or "unknown"), []).append(row)
     assignments = []
     for slot in range(quota):
-        available_labels = sorted(by_label)
-        label = max(
-            available_labels,
-            key=lambda item: (
-                ambiguity_remaining.get(item, 0),
-                -sum(template_counts[str(row["template_id"])] for row in by_label[item]),
-                item,
-            ),
-        )
-        seed = _next_seed(by_label[label], template_counts)
+        seed = _next_seed(rows, template_counts)
         template_counts[str(seed["template_id"])] += 1
-        if ambiguity_remaining.get(label, 0) > 0:
-            ambiguity_remaining[label] -= 1
         assignments.append(
             {
                 "slot_index": slot + 1,
                 "template_id": seed["template_id"],
                 "family": seed["family"],
                 "answer_shape": seed["answer_shape"],
-                "ambiguity_label": seed.get("ambiguity_label"),
+                "seed_ambiguity_label": seed.get("ambiguity_label"),
                 "source_id": seed.get("source_id"),
                 "example_question": seed.get("example_question"),
                 "query": seed.get("query"),
@@ -70,6 +55,18 @@ def _balanced_assign(
             }
         )
     return assignments
+
+
+def _assign_target_ambiguity(rows: List[Dict[str, object]]) -> None:
+    labels = [
+        label
+        for label, count in TARGET_AMBIGUITY_COUNTS.items()
+        for _ in range(count)
+    ]
+    labels.sort()
+    rows.sort(key=lambda row: (str(row["family"]), int(row["slot_index"])))
+    for idx, row in enumerate(rows):
+        row["target_ambiguity_label"] = labels[idx]
 
 
 def build_plan(seed_rows: Iterable[Dict[str, object]]) -> Dict[str, object]:
@@ -81,29 +78,20 @@ def build_plan(seed_rows: Iterable[Dict[str, object]]) -> Dict[str, object]:
         by_family[family].sort(key=lambda row: (str(row["answer_shape"]), str(row["template_id"])))
 
     planned_rows: List[Dict[str, object]] = []
-    ambiguity_remaining = dict(TARGET_AMBIGUITY_COUNTS)
     template_counts: Counter = Counter()
-    family_order = sorted(
-        FINAL_BENCHMARK_QUOTAS,
-        key=lambda family: (
-            len({str(row.get("ambiguity_label") or "unknown") for row in by_family.get(family, [])}),
-            family,
-        ),
-    )
-    for family in family_order:
-        quota = FINAL_BENCHMARK_QUOTAS[family]
+    for family, quota in FINAL_BENCHMARK_QUOTAS.items():
         planned_rows.extend(
-            _balanced_assign(
+            _round_robin_assign(
                 by_family.get(family, []),
                 quota,
-                ambiguity_remaining=ambiguity_remaining,
                 template_counts=template_counts,
             )
         )
+    _assign_target_ambiguity(planned_rows)
 
     per_family = Counter(str(row["family"]) for row in planned_rows)
     per_shape = Counter(str(row["answer_shape"]) for row in planned_rows)
-    per_ambiguity = Counter(str(row.get("ambiguity_label") or "unknown") for row in planned_rows)
+    per_ambiguity = Counter(str(row["target_ambiguity_label"]) for row in planned_rows)
     per_template = Counter(str(row["template_id"]) for row in planned_rows)
     return {
         "summary": {

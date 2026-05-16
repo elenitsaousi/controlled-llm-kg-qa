@@ -33,13 +33,13 @@ def test_build_plan_applies_family_quotas_and_balances_reuse():
     assert plan["summary"]["total_questions"] == 360
     assert plan["summary"]["families"]["future_demand"] == 50
     assert plan["summary"]["families"]["vehicle_sales"] == 45
-    assert plan["summary"]["max_reuse_per_template"] <= 30
+    assert plan["summary"]["max_reuse_per_template"] == 25
     future_rows = [row for row in plan["rows"] if row["family"] == "future_demand"]
     assert future_rows[0]["template_id"] != future_rows[1]["template_id"]
     assert future_rows[2]["variant_index"] == 2
 
 
-def test_build_plan_tracks_target_ambiguity_counts_when_labels_exist():
+def test_build_plan_tracks_target_ambiguity_counts_independent_of_seed_labels():
     seeds = []
     for family in [
         "regional_demand",
@@ -52,14 +52,14 @@ def test_build_plan_tracks_target_ambiguity_counts_when_labels_exist():
         "inventory",
         "catalog_lookup",
     ]:
-        for label in ["low", "mid", "high"]:
+        for idx in range(3):
             seeds.append(
                 {
-                    "template_id": f"{family}_{label}",
+                    "template_id": f"{family}_{idx}",
                     "family": family,
                     "answer_shape": "sum",
-                    "ambiguity_label": label,
-                    "source_id": f"{family}_{label}",
+                    "ambiguity_label": "low",
+                    "source_id": f"{family}_{idx}",
                     "example_question": "q",
                     "query": "SELECT * WHERE {}",
                 }

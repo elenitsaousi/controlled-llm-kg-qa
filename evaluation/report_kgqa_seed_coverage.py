@@ -15,8 +15,6 @@ from evaluation.build_kgqa_seed_bank import summarize_seed_bank
 
 
 TARGET_SHAPES = ["raw_or_lookup", "count", "sum", "average", "ranking_top"]
-TARGET_AMBIGUITY_SHARES = {"low": 0.30, "mid": 0.35, "high": 0.35}
-MAX_VARIANTS_PER_TEMPLATE = 4
 FINAL_BENCHMARK_QUOTAS = {
     "regional_demand": 40,
     "current_demand_baselines": 40,
@@ -49,18 +47,6 @@ def build_report(seed_bank_path: str) -> Dict[str, object]:
         target_min = _target_seed_templates(final_quota)
         shape_counts = {shape: int(matrix.get(family, {}).get(shape, 0)) for shape in TARGET_SHAPES}
         present_shapes = [shape for shape, value in shape_counts.items() if value > 0]
-        ambiguity_counts = {
-            label: sum(
-                1
-                for row in rows
-                if row["family"] == family and str(row.get("ambiguity_label") or "unknown") == label
-            )
-            for label in TARGET_AMBIGUITY_SHARES
-        }
-        ambiguity_targets = {
-            label: int(math.ceil((final_quota * share) / MAX_VARIANTS_PER_TEMPLATE))
-            for label, share in TARGET_AMBIGUITY_SHARES.items()
-        }
         family_rows.append(
             {
                 "family": family,
@@ -70,8 +56,6 @@ def build_report(seed_bank_path: str) -> Dict[str, object]:
                 "template_deficit": max(0, target_min - count),
                 "shape_counts": shape_counts,
                 "present_shapes": present_shapes,
-                "ambiguity_counts": ambiguity_counts,
-                "ambiguity_target_min_templates": ambiguity_targets,
             }
         )
         if count < target_min:
@@ -93,18 +77,6 @@ def build_report(seed_bank_path: str) -> Dict[str, object]:
                     "present_shapes": present_shapes,
                 }
             )
-        for label, target_min in ambiguity_targets.items():
-            current = ambiguity_counts[label]
-            if current < target_min:
-                gaps.append(
-                    {
-                        "family": family,
-                        "gap_type": "low_ambiguity_seed_count",
-                        "label": label,
-                        "current": current,
-                        "target_min": target_min,
-                    }
-                )
     return {
         "summary": summary,
         "family_rows": family_rows,
@@ -128,27 +100,16 @@ def main() -> None:
             f"  {row['family']}: templates={row['templates']}/{row['target_min_templates']} "
             f"(final quota={row['final_question_quota']}), {cells}"
         )
-        ambiguity = ", ".join(
-            f"{label}={row['ambiguity_counts'][label]}/{row['ambiguity_target_min_templates'][label]}"
-            for label in TARGET_AMBIGUITY_SHARES
-        )
-        print(f"    ambiguity seeds: {ambiguity}")
     print("Coverage gaps:")
     for gap in report["coverage_gaps"]:
         if gap["gap_type"] == "low_template_count":
             print(f"  {gap['family']}: only {gap['current']} templates (target >= {gap['target_min']})")
         else:
-            if gap["gap_type"] == "low_shape_diversity":
-                present = ", ".join(gap["present_shapes"]) or "none"
-                print(
-                    f"  {gap['family']}: only {gap['current']} distinct answer shapes "
-                    f"(target >= {gap['target_min']}; present: {present})"
-                )
-            else:
-                print(
-                    f"  {gap['family']}: only {gap['current']} {gap['label']} seeds "
-                    f"(target >= {gap['target_min']})"
-                )
+            present = ", ".join(gap["present_shapes"]) or "none"
+            print(
+                f"  {gap['family']}: only {gap['current']} distinct answer shapes "
+                f"(target >= {gap['target_min']}; present: {present})"
+            )
     if args.out:
         Path(args.out).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print(f"Output: {args.out}")

@@ -30,5 +30,3 @@ def test_build_report_marks_low_count_and_missing_shapes(tmp_path):
     inventory = next(row for row in report["family_rows"] if row["family"] == "inventory")
     assert inventory["final_question_quota"] == 35
     assert inventory["target_min_templates"] == 9
-    assert inventory["ambiguity_target_min_templates"]["high"] == 4
-    assert any(gap["gap_type"] == "low_ambiguity_seed_count" for gap in gaps)
