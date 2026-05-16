@@ -1,0 +1,86 @@
+[
+  {
+    "id": "SEED001",
+    "question": "What is the total number of actual vehicle-sales units recorded?",
+    "query": "SELECT (SUM(?units) AS ?totalActualUnits) WHERE { ?obs a survey:VehicleSalesObservation ; survey:isActualData true ; survey:unitsSold ?units . }",
+    "topic": "vehicle_sales",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED002",
+    "question": "What is the total number of forecast vehicle-sales units recorded?",
+    "query": "SELECT (SUM(?units) AS ?totalForecastUnits) WHERE { ?obs a survey:VehicleSalesObservation ; survey:isForecastData true ; survey:unitsSold ?units . }",
+    "topic": "vehicle_sales",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED003",
+    "question": "Which month has the highest actual vehicle sales?",
+    "query": "SELECT ?monthLabel (SUM(?units) AS ?totalUnits) WHERE { ?obs a survey:VehicleSalesObservation ; survey:isActualData true ; survey:forTimePeriod ?month ; survey:unitsSold ?units . BIND(REPLACE(STR(?month), '^.*/', '') AS ?monthLabel) } GROUP BY ?monthLabel ORDER BY DESC(?totalUnits) LIMIT 1",
+    "topic": "vehicle_sales",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED004",
+    "question": "Which month has the highest forecast vehicle sales?",
+    "query": "SELECT ?monthLabel (SUM(?units) AS ?totalUnits) WHERE { ?obs a survey:VehicleSalesObservation ; survey:isForecastData true ; survey:forTimePeriod ?month ; survey:unitsSold ?units . BIND(REPLACE(STR(?month), '^.*/', '') AS ?monthLabel) } GROUP BY ?monthLabel ORDER BY DESC(?totalUnits) LIMIT 1",
+    "topic": "vehicle_sales",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED005",
+    "question": "Compare actual and forecast vehicle-sales totals by month.",
+    "query": "SELECT ?monthLabel (SUM(IF(?actual = true, ?units, 0)) AS ?actualUnits) (SUM(IF(?forecast = true, ?units, 0)) AS ?forecastUnits) WHERE { ?obs a survey:VehicleSalesObservation ; survey:forTimePeriod ?month ; survey:unitsSold ?units . OPTIONAL { ?obs survey:isActualData ?actual . } OPTIONAL { ?obs survey:isForecastData ?forecast . } BIND(REPLACE(STR(?month), '^.*/', '') AS ?monthLabel) } GROUP BY ?monthLabel ORDER BY ?monthLabel",
+    "topic": "vehicle_sales",
+    "ambiguity_label": "mid"
+  },
+  {
+    "id": "SEED006",
+    "question": "List the raw Tier1 inventory trend observations by component.",
+    "query": "SELECT ?componentLabel ?trend WHERE { ?entry a survey:InventoryDevelopment_Tier1 ; survey:forComponent ?component ; survey:inventoryTrend ?trend . BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) } ORDER BY ?componentLabel ?trend",
+    "topic": "inventory",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED007",
+    "question": "Summarize Tier1 inventory participant totals by component.",
+    "query": "SELECT ?componentLabel (SUM(?participants) AS ?participantTotal) WHERE { ?entry a survey:InventoryDevelopment_Tier1 ; survey:forComponent ?component ; survey:participantCount ?participants . BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) } GROUP BY ?componentLabel ORDER BY ?componentLabel",
+    "topic": "inventory",
+    "ambiguity_label": "mid"
+  },
+  {
+    "id": "SEED008",
+    "question": "Which component has the largest Tier1 inventory participant total?",
+    "query": "SELECT ?componentLabel (SUM(?participants) AS ?participantTotal) WHERE { ?entry a survey:InventoryDevelopment_Tier1 ; survey:forComponent ?component ; survey:participantCount ?participants . BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) } GROUP BY ?componentLabel ORDER BY DESC(?participantTotal) LIMIT 1",
+    "topic": "inventory",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED009",
+    "question": "List raw future-demand percentages by technology category and quarter.",
+    "query": "SELECT ?techLabel ?quarterLabel ?pct WHERE { ?entry a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:forTimePeriod ?quarter ; survey:percentageChange ?pct . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?techLabel) BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) } ORDER BY ?techLabel ?quarterLabel",
+    "topic": "future_demand",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED010",
+    "question": "Which vehicle type has the highest average future-demand change?",
+    "query": "SELECT ?vehicleType (AVG(?pct) AS ?avgFutureChange) WHERE { ?entry a survey:FutureDemandAnalysis ; survey:analyzesVehicleType ?vehicle ; survey:percentageChange ?pct . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) } GROUP BY ?vehicleType ORDER BY DESC(?avgFutureChange) LIMIT 1",
+    "topic": "future_demand",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED011",
+    "question": "What is the average BL1 and BL2 current-demand change for Tier1 Automotive?",
+    "query": "SELECT ?baseline (AVG(?pct) AS ?avgPctChange) WHERE { survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin survey:Tier1_Survey ; survey:hasMarketSegment survey:Automotive ; survey:hasAggregatedResult ?entry . ?entry a survey:CurrentDemandAnalysis ; survey:hasMarketSegment survey:Automotive ; survey:baselineType ?baseline ; survey:percentageChange ?pct . FILTER(?baseline IN ('BL1', 'BL2')) } GROUP BY ?baseline ORDER BY ?baseline",
+    "topic": "current_demand_baselines",
+    "ambiguity_label": "low"
+  },
+  {
+    "id": "SEED012",
+    "question": "List order-cancellation participant observations by technology category and response type.",
+    "query": "SELECT ?technologyCategory ?responseType ?participants WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } ORDER BY ?technologyCategory ?responseType",
+    "topic": "order_cancellation",
+    "ambiguity_label": "low"
+  }
+]

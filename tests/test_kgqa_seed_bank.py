@@ -31,3 +31,17 @@ def test_summarize_seed_bank_builds_family_shape_matrix():
     assert summary["families"] == {"future_demand": 2, "shortage": 1}
     assert summary["family_shape_matrix"]["future_demand"]["average"] == 1
     assert summary["family_shape_matrix"]["future_demand"]["sum"] == 1
+
+
+def test_ranking_query_takes_priority_over_inner_count_shape(tmp_path):
+    dataset = tmp_path / "dataset.json"
+    dataset.write_text(
+        """[
+          {"id":"A","question":"Which group has the most shortages?","query":"SELECT ?g (COUNT(?x) AS ?count) WHERE { ?x ?p ?g } GROUP BY ?g ORDER BY DESC(?count) LIMIT 1"}
+        ]""",
+        encoding="utf-8",
+    )
+
+    rows = build_seed_bank([str(dataset)])
+
+    assert rows[0]["answer_shape"] == "ranking_top"

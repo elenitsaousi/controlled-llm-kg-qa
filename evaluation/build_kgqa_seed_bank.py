@@ -46,9 +46,11 @@ def _family(row: Dict[str, object]) -> str:
 
 def _shape(query: str) -> str:
     q = str(query or "").upper()
+    if "ORDER BY DESC" in q and "LIMIT 1" in q:
+        return "ranking_top"
     if "COUNT(" in q:
         return "count"
-    if "MAX(" in q or ("ORDER BY DESC" in q and "LIMIT 1" in q):
+    if "MAX(" in q:
         return "ranking_top"
     if "AVG(" in q:
         return "average"
