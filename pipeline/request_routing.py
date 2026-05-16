@@ -82,6 +82,8 @@ OUT_OF_DOMAIN_HINTS = {
     "soccer",
     "president",
     "stock price",
+    "exchange rate",
+    "restaurant",
     "recipe",
 }
 
@@ -162,9 +164,16 @@ def _recognized_term(text: str, glossary: Dict[str, Dict[str, str]]) -> Optional
 
 def _contains_domain_term(question: str, glossary: Dict[str, Dict[str, str]]) -> bool:
     q = _normalize(question)
-    compact = _normalize_alias(q)
-    if any(key and key in compact for key in glossary):
-        return True
+    q_words = set(re.findall(r"[a-z0-9]+", q))
+    for term in glossary.values():
+        label = _normalize(str(term.get("label", "")))
+        if not label:
+            continue
+        label_words = re.findall(r"[a-z0-9]+", label)
+        if len(label_words) == 1 and label_words[0] in q_words:
+            return True
+        if len(label_words) > 1 and label in q:
+            return True
     words = set(re.findall(r"[a-z0-9]+", q))
     return bool(words & KG_HINTS)
 
