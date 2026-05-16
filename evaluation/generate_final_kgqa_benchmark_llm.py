@@ -39,12 +39,17 @@ Goal:
 - Do not mention SPARQL, RDF, graph internals, or "Infineon benchmark".
 - Do not add facts that are not present in the source question.
 - Keep the same business topic and requested dimensions.
+- Preserve the original measure nouns when they matter:
+  - percentage / percentage change must stay percentage / percentage change.
+  - participant count / participants must stay participant-based, not become inventory quantity or generic records.
+  - inventory trend must stay trend, not become time / over time unless time is present in the source.
+  - yearly / monthly / quarterly wording must not be added or removed unless already implied by the source.
 - Preserve the core answer intent of the gold query:
   - ranking_top must still ask for highest / largest / top / maximum.
   - count must still ask how many / count / number.
   - average must still ask for average / mean.
   - sum must still ask for total / sum.
-  - raw_or_lookup must still ask for raw values / list / lookup values.
+- raw_or_lookup must still ask for raw values / list / lookup values.
 
 Target ambiguity:
 - low: explicit about aggregation / requested result shape.
@@ -55,6 +60,7 @@ Family: {row["family"]}
 Answer shape intended by the gold query: {row["answer_shape"]}
 Target ambiguity label: {row["target_ambiguity_label"]}
 Source question: {_clean_question(str(row["example_question"]))}
+Gold-query measure clue: {row["answer_shape"]}
 Avoid exact reuse of these previous rewrites for this same template:
 {previous}
 """
@@ -112,6 +118,7 @@ def generate_rows(
                 "template_id": row["template_id"],
                 "seed_id": row.get("source_id"),
                 "seed_ambiguity_label": row.get("seed_ambiguity_label"),
+                "source_question": _clean_question(str(row["example_question"])),
             }
         )
         if progress:
