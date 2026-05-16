@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import math
+from html import escape
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from rdflib import Graph, URIRef
@@ -35,17 +37,7 @@ def build_graph_html(
     heading: str = "Graph View",
 ) -> str:
     if Network is None:
-        rows = "".join(
-            f"<tr><td>{_short_term(s)}</td><td>{_short_term(p)}</td><td>{_short_term(o)}</td></tr>"
-            for s, p, o in triples[:500]
-        )
-        return (
-            f"<h4>{heading}</h4>"
-            "<p>pyvis is not installed; showing triple table preview.</p>"
-            "<table border='1' cellpadding='4' cellspacing='0'>"
-            "<tr><th>Subject</th><th>Predicate</th><th>Object</th></tr>"
-            f"{rows}</table>"
-        )
+        return _build_svg_graph_html(triples, height_px=height_px, heading=heading)
 
     net = Network(height=f"{max(300, int(height_px))}px", width="100%", directed=True)
     net.barnes_hut()
@@ -110,6 +102,155 @@ def build_graph_html(
         """
     )
     return net.generate_html(notebook=False)
+
+
+def _build_svg_graph_html(
+    triples: Sequence[Tuple],
+    *,
+    height_px: int,
+    heading: str,
+    max_nodes: int = 48,
+    max_edges: int = 80,
+) -> str:
+    width = 1200
+    height = max(360, int(height_px))
+    margin = 72
+    triples = list(triples[:max_edges])
+
+    node_terms: List[object] = []
+    seen = set()
+    edges: List[Tuple[object, object, object]] = []
+    for s, p, o in triples:
+        if s not in seen and len(node_terms) < max_nodes:
+            node_terms.append(s)
+            seen.add(s)
+        if o not in seen and len(node_terms) < max_nodes:
+            node_terms.append(o)
+            seen.add(o)
+        if s in seen and o in seen:
+            edges.append((s, p, o))
+    if not node_terms:
+        return f"<h4>{escape(heading)}</h4><p>No graph data available.</p>"
+
+    center_x = width / 2
+    center_y = height / 2
+    radius = max(90.0, min(width, height) * 0.34)
+    positions = {}
+    for idx, term in enumerate(node_terms):
+        angle = (2 * math.pi * idx) / max(1, len(node_terms))
+        positions[term] = (
+            center_x + (radius * math.cos(angle)),
+            center_y + (radius * math.sin(angle)),
+        )
+    _apply_force_layout(
+        positions,
+        [(s, o) for s, _, o in edges if s in positions and o in positions],
+        width=width,
+        height=height,
+        margin=margin,
+    )
+
+    edge_markup = []
+    edge_labels = []
+    for s, p, o in edges:
+        if s not in positions or o not in positions:
+            continue
+        x1, y1 = positions[s]
+        x2, y2 = positions[o]
+        edge_markup.append(
+            f"<line x1='{x1:.1f}' y1='{y1:.1f}' x2='{x2:.1f}' y2='{y2:.1f}' "
+            "stroke='#9aa4b2' stroke-width='1.2' marker-end='url(#arrow)' />"
+        )
+        mx = (x1 + x2) / 2
+        my = (y1 + y2) / 2
+        edge_labels.append(
+            f"<text x='{mx:.1f}' y='{my - 4:.1f}' fill='#5b6472' font-size='10' "
+            f"text-anchor='middle'>{escape(_short_term(p))}</text>"
+        )
+
+    node_markup = []
+    for term, (x, y) in positions.items():
+        is_entity = _is_entity(term)
+        fill = "#2563eb" if is_entity else "#64748b"
+        label = escape(_short_term(term))
+        node_markup.append(
+            f"<circle cx='{x:.1f}' cy='{y:.1f}' r='16' fill='{fill}' opacity='0.92' />"
+            f"<text x='{x:.1f}' y='{y + 31:.1f}' fill='#111827' font-size='11' "
+            f"text-anchor='middle'>{label}</text>"
+        )
+
+    return (
+        f"<h4 style='font-family: sans-serif'>{escape(heading)}</h4>"
+        "<div style='overflow:auto; border:1px solid #e5e7eb; background:#fff'>"
+        f"<svg viewBox='0 0 {width} {height}' width='100%' height='{height}' "
+        "xmlns='http://www.w3.org/2000/svg' role='img'>"
+        "<defs><marker id='arrow' markerWidth='8' markerHeight='8' refX='7' refY='3' "
+        "orient='auto'><path d='M0,0 L0,6 L8,3 z' fill='#9aa4b2'/></marker></defs>"
+        + "".join(edge_markup)
+        + "".join(edge_labels)
+        + "".join(node_markup)
+        + "</svg></div>"
+    )
+
+
+def _apply_force_layout(
+    positions: Dict[object, Tuple[float, float]],
+    edges: Sequence[Tuple[object, object]],
+    *,
+    width: int,
+    height: int,
+    margin: int,
+    iterations: int = 90,
+) -> None:
+    nodes = list(positions)
+    if len(nodes) < 2:
+        return
+    area = float(width * height)
+    k = math.sqrt(area / len(nodes))
+    temperature = min(width, height) / 8.0
+
+    for step in range(iterations):
+        disp = {node: [0.0, 0.0] for node in nodes}
+        for i, v in enumerate(nodes):
+            vx, vy = positions[v]
+            for u in nodes[i + 1 :]:
+                ux, uy = positions[u]
+                dx = vx - ux
+                dy = vy - uy
+                dist = max(0.01, math.hypot(dx, dy))
+                force = (k * k) / dist
+                fx = (dx / dist) * force
+                fy = (dy / dist) * force
+                disp[v][0] += fx
+                disp[v][1] += fy
+                disp[u][0] -= fx
+                disp[u][1] -= fy
+
+        for v, u in edges:
+            vx, vy = positions[v]
+            ux, uy = positions[u]
+            dx = vx - ux
+            dy = vy - uy
+            dist = max(0.01, math.hypot(dx, dy))
+            force = (dist * dist) / k
+            fx = (dx / dist) * force
+            fy = (dy / dist) * force
+            disp[v][0] -= fx
+            disp[v][1] -= fy
+            disp[u][0] += fx
+            disp[u][1] += fy
+
+        cooling = temperature * (1.0 - (step / max(1, iterations)))
+        for node in nodes:
+            x, y = positions[node]
+            dx, dy = disp[node]
+            dist = max(0.01, math.hypot(dx, dy))
+            x += (dx / dist) * min(dist, cooling)
+            y += (dy / dist) * min(dist, cooling)
+            positions[node] = (
+                min(width - margin, max(margin, x)),
+                min(height - margin, max(margin, y)),
+            )
 
 
 def collect_full_graph_triples(graph: Graph, limit: int = 3000) -> Tuple[List[Tuple], int]:

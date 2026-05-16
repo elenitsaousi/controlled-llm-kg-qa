@@ -331,7 +331,7 @@ def _render_answer_subgraph(
             query=selected_query,
             result_rows=graph_rows,
             hops=1,
-            limit=180,
+            limit=80,
         )
     except Exception:
         return
