@@ -27,7 +27,21 @@ _TECHNICAL_PREDICATES = {
 def _short_term(term) -> str:
     txt = str(term)
     if txt.startswith(SURVEY_NS):
-        return "survey:" + txt[len(SURVEY_NS):]
+        return txt[len(SURVEY_NS):]
+    common = {
+        str(RDF.type): "type",
+        str(RDFS.domain): "domain",
+        str(RDFS.range): "range",
+        "http://www.w3.org/2001/XMLSchema#decimal": "decimal",
+        "http://www.w3.org/2001/XMLSchema#string": "string",
+        "http://www.w3.org/2001/XMLSchema#boolean": "boolean",
+    }
+    if txt in common:
+        return common[txt]
+    if "#" in txt:
+        return txt.rsplit("#", 1)[-1]
+    if "/" in txt:
+        return txt.rstrip("/").rsplit("/", 1)[-1]
     return txt
 
 
@@ -353,63 +367,53 @@ def collect_answer_evidence_triples(
     graph: Graph,
     query: str,
     limit: int = 24,
-    per_predicate_limit: int = 3,
 ) -> Tuple[List[Tuple], Dict[str, int]]:
-    query_terms = {
-        match.group(1)
-        for match in _SURVEY_PREDICATE_RE.finditer(query or "")
-    }
-    query_predicates = {
-        URIRef(SURVEY_NS + term)
-        for term in query_terms
-    }
-    query_classes = {
-        URIRef(SURVEY_NS + term)
-        for term in query_terms
-        if any(True for _ in graph.triples((URIRef(SURVEY_NS + term), None, None)))
-    }
-
+    query_predicates = _query_business_predicates(query)
     out: List[Tuple] = []
     seen = set()
 
     for predicate in query_predicates:
-        added_for_predicate = 0
-        for triple in graph.triples((None, predicate, None)):
-            key = tuple(map(str, triple))
-            if key in seen:
-                continue
-            seen.add(key)
-            out.append(triple)
-            added_for_predicate += 1
+        domains = [o for _, _, o in graph.triples((predicate, RDFS.domain, None))]
+        ranges = [o for _, _, o in graph.triples((predicate, RDFS.range, None))]
+        if not domains:
+            domains = [URIRef(SURVEY_NS + "Entity")]
+        if not ranges:
+            ranges = [URIRef(SURVEY_NS + "Value")]
+        for domain in domains[:2]:
+            for range_ in ranges[:2]:
+                triple = (domain, predicate, range_)
+                key = tuple(map(str, triple))
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(triple)
+                if len(out) >= limit:
+                    break
             if len(out) >= limit:
-                return out, {
-                    "predicate_count": len(query_predicates),
-                    "class_count": len(query_classes),
-                    "edge_count": len(out),
-                }
-            if added_for_predicate >= per_predicate_limit:
                 break
+        if len(out) >= limit:
+            break
 
-    # If predicates alone do not yield enough business context, add compact
-    # class membership edges for classes referenced by the selected query.
-    for class_uri in query_classes:
-        for triple in graph.triples((None, RDF.type, class_uri)):
-            key = tuple(map(str, triple))
-            if key in seen:
-                continue
-            seen.add(key)
-            out.append(triple)
-            if len(out) >= limit:
-                return out, {
-                    "predicate_count": len(query_predicates),
-                    "class_count": len(query_classes),
-                    "edge_count": len(out),
-                }
-
-    # Keep only business predicates; never fall back to rdf/rdfs schema noise.
-    out = [triple for triple in out if str(triple[1]) not in _TECHNICAL_PREDICATES]
     return out, {
         "predicate_count": len(query_predicates),
-        "class_count": len(query_classes),
+        "class_count": len({t[0] for t in out} | {t[2] for t in out}),
         "edge_count": len(out),
     }
+
+
+def _query_business_predicates(query: str) -> List[URIRef]:
+    class_terms = set(
+        re.findall(r"\ba\s+survey:([A-Za-z0-9_\-]+)\b", query or "")
+    )
+    seen = set()
+    predicates: List[URIRef] = []
+    for match in _SURVEY_PREDICATE_RE.finditer(query or ""):
+        term = match.group(1)
+        if term in class_terms:
+            continue
+        uri = URIRef(SURVEY_NS + term)
+        if uri in seen:
+            continue
+        seen.add(uri)
+        predicates.append(uri)
+    return predicates
