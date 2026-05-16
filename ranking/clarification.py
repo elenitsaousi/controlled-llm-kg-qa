@@ -221,6 +221,10 @@ def _conflict_is_resolved_by_question(intent: Dict[str, object], conflict: Dict[
     axis = str(conflict.get("axis"))
     values = set(conflict.get("values") or [])
     if axis == "aggregation":
+        # An explicit request for individual/listed values already resolves
+        # the important distinction between raw observations and summaries.
+        if intent.get("answer_shape") == "raw_values":
+            return True
         if not intent.get("aggregation_explicit"):
             return False
         expected = intent.get("aggregation")

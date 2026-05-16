@@ -402,6 +402,33 @@ def test_build_clarification_payload_skips_explicit_list_response_request():
     assert payload is None
 
 
+def test_build_clarification_payload_skips_explicit_raw_value_request():
+    question = "List actual sold units by time period."
+    raw_query = (
+        "SELECT ?timePeriod ?unitsSold WHERE { "
+        "?obs a survey:VehicleSalesObservation ; "
+        "survey:isActualData true ; "
+        "survey:forTimePeriod ?timePeriod ; "
+        "survey:unitsSold ?unitsSold . "
+        "}"
+    )
+    total_query = (
+        "SELECT ?timePeriod (SUM(?unitsSold) AS ?totalUnits) WHERE { "
+        "?obs a survey:VehicleSalesObservation ; "
+        "survey:isActualData true ; "
+        "survey:forTimePeriod ?timePeriod ; "
+        "survey:unitsSold ?unitsSold . "
+        "} GROUP BY ?timePeriod"
+    )
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": total_query}, {"query": raw_query}],
+    )
+
+    assert payload is None
+
+
 def test_question_intent_report_resolves_multiple_explicit_axes():
     intent = question_intent_report(
         "Return monthly totals for actual vehicle-sales observations."
