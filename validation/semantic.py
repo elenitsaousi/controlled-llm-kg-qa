@@ -210,12 +210,37 @@ def _question_expected_aggregation(question: str) -> Optional[str]:
     return None
 
 
+def _question_has_explicit_aggregation(question: str) -> bool:
+    q = (question or "").lower()
+    return bool(
+        _has_word(q, "average", "avg", "mean")
+        or _has_word(q, "count", "counts")
+        or "how many" in q
+        or "number of" in q
+        or _has_word(q, "lowest", "smallest", "minimum", "min", "least")
+        or _has_word(q, "highest", "largest", "maximum", "max", "top", "strongest", "leads", "leading")
+        or "top-ranked" in q
+        or "most common" in q
+        or _has_word(q, "total", "totals", "sum", "aggregate", "aggregated")
+        or "total demand" in q
+    )
+
+
 def _question_wants_raw_values(question: str) -> bool:
     q = (question or "").lower()
     raw_action = _has_word(q, "list", "show", "return", "give")
     asks_value = (
         "percentage change" in q
         or _has_word(q, "percentage", "percentages", "pct", "value", "values")
+        or "response type" in q
+        or "response types" in q
+        or "response" in q
+        or "responses" in q
+        or "trend" in q
+        or "trends" in q
+        or "change" in q
+        or "changes" in q
+        or "sold units" in q
     )
     asks_aggregate = (
         _has_word(q, "average", "avg", "mean", "total", "totals", "sum", "count", "highest", "lowest")
@@ -319,6 +344,7 @@ def question_intent_report(question: str) -> Dict[str, object]:
     q_filters = _question_filters(question)
     q_origins = _question_origins(question)
     q_aggr = _question_expected_aggregation(question)
+    aggregation_explicit = _question_has_explicit_aggregation(question)
     if "quarter" in q_dims:
         time_dimension = "quarter"
     elif "month" in q_dims:
@@ -352,6 +378,7 @@ def question_intent_report(question: str) -> Dict[str, object]:
         answer_shape = None
     return {
         "aggregation": q_aggr,
+        "aggregation_explicit": aggregation_explicit,
         "dimensions": sorted(q_dims),
         "filters": sorted(q_filters),
         "origins": sorted(q_origins),

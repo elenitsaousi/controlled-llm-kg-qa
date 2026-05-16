@@ -351,6 +351,57 @@ def test_build_clarification_payload_skips_explicit_average_question():
     assert payload is None
 
 
+def test_build_clarification_payload_keeps_vague_summary_questions_ambiguous():
+    question = "Describe autonomous development by vehicle category."
+    avg_query = (
+        "SELECT ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE { "
+        "?entry a survey:AutonomousDrivingDevelopment ; "
+        "survey:hasVehicleType ?vehicle ; "
+        "survey:hasPercentage ?percentage . "
+        "} GROUP BY ?vehicleType"
+    )
+    raw_query = (
+        "SELECT ?vehicleType ?percentage WHERE { "
+        "?entry a survey:AutonomousDrivingDevelopment ; "
+        "survey:hasVehicleType ?vehicle ; "
+        "survey:hasPercentage ?percentage . "
+        "}"
+    )
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": avg_query}, {"query": raw_query}],
+    )
+
+    assert payload is not None
+    assert payload["needs_clarification"] is True
+
+
+def test_build_clarification_payload_skips_explicit_list_response_request():
+    question = "List cancellation response types by technology category."
+    raw_query = (
+        "SELECT ?technologyCategory ?responseType WHERE { "
+        "?entry a survey:OrderCancellation ; "
+        "survey:forTechnologyCategory ?tech ; "
+        "survey:hasResponseType ?responseType . "
+        "}"
+    )
+    grouped_query = (
+        "SELECT ?technologyCategory ?responseType (COUNT(?entry) AS ?count) WHERE { "
+        "?entry a survey:OrderCancellation ; "
+        "survey:forTechnologyCategory ?tech ; "
+        "survey:hasResponseType ?responseType . "
+        "} GROUP BY ?technologyCategory ?responseType"
+    )
+
+    payload = build_clarification_payload(
+        question,
+        [{"query": grouped_query}, {"query": raw_query}],
+    )
+
+    assert payload is None
+
+
 def test_question_intent_report_resolves_multiple_explicit_axes():
     intent = question_intent_report(
         "Return monthly totals for actual vehicle-sales observations."

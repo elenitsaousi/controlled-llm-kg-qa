@@ -221,6 +221,8 @@ def _conflict_is_resolved_by_question(intent: Dict[str, object], conflict: Dict[
     axis = str(conflict.get("axis"))
     values = set(conflict.get("values") or [])
     if axis == "aggregation":
+        if not intent.get("aggregation_explicit"):
+            return False
         expected = intent.get("aggregation")
         if expected is None:
             return False
@@ -231,7 +233,9 @@ def _conflict_is_resolved_by_question(intent: Dict[str, object], conflict: Dict[
         return expected in values
     if axis == "answer_shape":
         expected = intent.get("answer_shape")
-        return expected is not None and expected in values
+        return expected is not None and (
+            expected == "raw_values" or bool(intent.get("aggregation_explicit"))
+        ) and expected in values
     if axis == "time_dimension":
         expected = intent.get("time_dimension")
         return expected is not None and expected in values
