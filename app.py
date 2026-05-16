@@ -344,16 +344,24 @@ def _render_answer_subgraph(
         "The business relationships used by the selected query. "
         f"Predicates: {meta.get('predicate_count', 0)} | Edges shown: {meta.get('edge_count', 0)}"
     )
-    html = build_graph_html(
-        triples,
-        height_px=520,
-        heading="Answer Evidence Graph",
-    )
-    components.html(
-        html,
-        height=560,
-        scrolling=True,
-    )
+    graph_col, legend_col = st.columns([4.2, 1.2], gap="large")
+    with graph_col:
+        html = build_graph_html(
+            triples,
+            height_px=520,
+            heading="Answer Evidence Graph",
+        )
+        components.html(
+            html,
+            height=560,
+            scrolling=True,
+        )
+    with legend_col:
+        _render_graph_side_panel(
+            node_count=len({node for s, _p, o in triples for node in (s, o)}),
+            edge_count=len(triples),
+            relationship_label="Business relationship",
+        )
 
 
 def _render_clarification(
@@ -406,6 +414,35 @@ def _render_clarification(
         chosen = next((opt for opt in options if opt.get("id") == chosen_id), None)
         if chosen is not None:
             st.success(f"Using clarified interpretation: {chosen.get('label')}")
+
+
+def _render_graph_side_panel(
+    *,
+    node_count: int,
+    edge_count: int,
+    relationship_label: str,
+) -> None:
+    st.markdown(
+        f"""
+        <aside class="kg-side-legend">
+          <div class="kg-side-kicker">Legend</div>
+          <div class="kg-side-section">
+            <div class="kg-side-title">Nodes</div>
+            <div class="kg-side-row"><span class="kg-side-dot"></span> Classes / entities</div>
+            <div class="kg-side-row"><span class="kg-side-dot muted"></span> Literal / value nodes</div>
+          </div>
+          <div class="kg-side-section">
+            <div class="kg-side-title">Connections</div>
+            <div class="kg-side-row"><span class="kg-side-line"></span> {escape(relationship_label)}</div>
+          </div>
+          <div class="kg-side-section">
+            <div class="kg-side-title">Quick facts</div>
+            <div class="kg-side-copy">Nodes shown: {node_count}<br>Edges shown: {edge_count}<br>Drag nodes. Scroll to zoom.</div>
+          </div>
+        </aside>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _render_request_clarification(clarification: Dict[str, Any]) -> None:
@@ -733,6 +770,61 @@ def _inject_app_styles() -> None:
             padding: 0.75rem;
             margin: 0.5rem 0 1rem;
         }
+        .kg-side-legend {
+            background: rgba(11, 28, 40, 0.88);
+            border: 1px solid rgba(25, 214, 198, 0.48);
+            border-radius: 14px;
+            min-height: 240px;
+            padding: 1rem;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+        }
+        .kg-side-kicker {
+            color: #f5d96c;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .kg-side-section {
+            border-top: 1px solid rgba(25, 214, 198, 0.2);
+            margin-top: 0.9rem;
+            padding-top: 0.9rem;
+        }
+        .kg-side-title {
+            color: #f5d96c;
+            font-weight: 600;
+            margin-bottom: 0.45rem;
+        }
+        .kg-side-row {
+            align-items: center;
+            color: #d7e4e4;
+            display: flex;
+            font-size: 0.82rem;
+            gap: 0.55rem;
+            margin: 0.45rem 0;
+        }
+        .kg-side-dot {
+            background: #b9f2f2;
+            border: 2px solid #7de4df;
+            border-radius: 999px;
+            display: inline-block;
+            height: 12px;
+            width: 12px;
+        }
+        .kg-side-dot.muted {
+            background: #54656d;
+            border-color: #70838b;
+        }
+        .kg-side-line {
+            border-top: 2px solid #6a8a8f;
+            display: inline-block;
+            width: 24px;
+        }
+        .kg-side-copy {
+            color: var(--kg-muted);
+            font-size: 0.82rem;
+            line-height: 1.6;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -790,14 +882,22 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
     if triples:
         st.subheader("High-level graph structure")
         st.caption("Core class-to-class relationships declared by the ontology.")
-        html = build_graph_html(
-            triples,
-            height_px=620,
-            heading="Schema Relationship Graph",
-            max_nodes=140,
-            max_edges=180,
-        )
-        components.html(html, height=660, scrolling=True)
+        graph_col, legend_col = st.columns([4.2, 1.2], gap="large")
+        with graph_col:
+            html = build_graph_html(
+                triples,
+                height_px=620,
+                heading="Schema Relationship Graph",
+                max_nodes=140,
+                max_edges=180,
+            )
+            components.html(html, height=660, scrolling=True)
+        with legend_col:
+            _render_graph_side_panel(
+                node_count=len({node for s, _p, o in triples for node in (s, o)}),
+                edge_count=len(triples),
+                relationship_label="Declared relationship",
+            )
 
 
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
