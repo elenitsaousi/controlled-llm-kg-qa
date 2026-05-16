@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from collections import Counter
+from pathlib import Path
+from typing import Dict, List, Optional, Protocol
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+BENCHMARK_VARIANT_RE = re.compile(r"^\[Infineon benchmark variant \d+\]\s*", re.I)
+
+
+class TextClient(Protocol):
+    def generate_text(self, prompt: str) -> str:
+        ...
+
+
+def _clean_question(question: str) -> str:
+    return BENCHMARK_VARIANT_RE.sub("", str(question or "").strip())
+
+
+def _prompt(row: Dict[str, object]) -> str:
+    return f"""Rewrite one graph-question for a benchmark.
+
+Return ONLY JSON in this exact form:
+{{"question": "..."}}
+
+Goal:
+- Keep the intended graph answer compatible with the original gold query.
+- Write one natural question an Infineon business user could ask.
+- Do not mention SPARQL, RDF, graph internals, or "Infineon benchmark".
+- Do not add facts that are not present in the source question.
+- Keep the same business topic and requested dimensions.
+
+Target ambiguity:
+- low: explicit about aggregation / requested result shape.
+- mid: realistic business wording; some interpretation remains, but still fairly guided.
+- high: genuinely plausible ambiguity; omit the aggregation or exact answer shape when natural, while keeping the topic and dimensions recognizable.
+
+Family: {row["family"]}
+Answer shape intended by the gold query: {row["answer_shape"]}
+Target ambiguity label: {row["target_ambiguity_label"]}
+Source question: {_clean_question(str(row["example_question"]))}
+"""
+
+
+def _parse_question(text: str) -> str:
+    cleaned = text.strip()
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        match = re.search(r"\{[\s\S]*\}", cleaned)
+        if not match:
+            raise ValueError(f"Could not parse JSON response: {cleaned[:300]!r}")
+        parsed = json.loads(match.group(0))
+    question = str(parsed.get("question") or "").strip()
+    if not question:
+        raise ValueError(f"Missing question in response: {cleaned[:300]!r}")
+    return question.rstrip(".") + ("?" if not question.endswith("?") else "")
+
+
+def generate_rows(
+    plan: Dict[str, object],
+    *,
+    client: TextClient,
+    limit: Optional[int] = None,
+    existing_rows: Optional[List[Dict[str, object]]] = None,
+    progress: bool = False,
+) -> List[Dict[str, object]]:
+    out = list(existing_rows or [])
+    start = len(out)
+    plan_rows = list(plan["rows"])
+    stop = len(plan_rows) if limit is None else min(len(plan_rows), limit)
+    for idx in range(start, stop):
+        row = plan_rows[idx]
+        question = _parse_question(client.generate_text(_prompt(row)))
+        out.append(
+            {
+                "id": f"FINALKGQA{idx + 1:03d}",
+                "question": question,
+                "query": row["query"],
+                "topic": row["family"],
+                "family": row["family"],
+                "answer_shape": row["answer_shape"],
+                "ambiguity_label": row["target_ambiguity_label"],
+                "template_id": row["template_id"],
+                "seed_id": row.get("source_id"),
+                "seed_ambiguity_label": row.get("seed_ambiguity_label"),
+            }
+        )
+        if progress:
+            print(f"[{idx + 1}/{stop}] {out[-1]['id']} - {question}", flush=True)
+    return out
+
+
+def summarize(rows: List[Dict[str, object]]) -> Dict[str, object]:
+    return {
+        "total": len(rows),
+        "families": dict(Counter(str(row["family"]) for row in rows)),
+        "answer_shapes": dict(Counter(str(row["answer_shape"]) for row in rows)),
+        "ambiguity": dict(Counter(str(row["ambiguity_label"]) for row in rows)),
+        "unique_templates": len({str(row["template_id"]) for row in rows}),
+        "unique_questions": len({str(row["question"]).strip().lower() for row in rows}),
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Generate a natural-language KGQA benchmark using controlled LLM rewrites.")
+    parser.add_argument("--plan", required=True)
+    parser.add_argument("--out", required=True)
+    parser.add_argument("--limit", type=int, default=0)
+    parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--progress", action="store_true")
+    args = parser.parse_args()
+
+    plan = json.loads(Path(args.plan).read_text(encoding="utf-8"))
+    existing_rows: List[Dict[str, object]] = []
+    out_path = Path(args.out)
+    if args.resume and out_path.exists():
+        existing_rows = json.loads(out_path.read_text(encoding="utf-8"))
+
+    from llm.client import InfineonGPTClient
+
+    client = InfineonGPTClient(temperature=0.2, max_tokens=300)
+    rows = generate_rows(
+        plan,
+        client=client,
+        limit=(args.limit or None),
+        existing_rows=existing_rows,
+        progress=args.progress,
+    )
+    out_path.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
+    summary = summarize(rows)
+    print("===== FINAL KGQA BENCHMARK LLM DRAFT =====")
+    print(f"Total: {summary['total']}")
+    print(f"Unique templates: {summary['unique_templates']}")
+    print(f"Unique questions: {summary['unique_questions']}")
+    print(f"Ambiguity: {summary['ambiguity']}")
+    print(f"Output: {args.out}")
+
+
+if __name__ == "__main__":
+    main()
