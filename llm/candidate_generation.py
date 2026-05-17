@@ -2,7 +2,11 @@
 import json
 from typing import Dict, List, Optional
 from kg.schema import KGSchema
-from kg.entity_linking import EntityAliasIndex, canonicalize_question_with_index
+from kg.entity_linking import EntityAliasIndex, canonicalize_question_with_index, normalize_alias
+from kg.entity_profiles import (
+    EntityProfile,
+    build_profiles_for_iris,
+)
 from llm.prompts import build_candidate_prompt, build_repair_prompt
 from llm.client import InfineonGPTClient
 import re
@@ -29,6 +33,7 @@ def generate_candidate_prompt(
     k: int = 5,
     canonical_question: Optional[str] = None,
     entity_mappings: Optional[List[Dict[str, object]]] = None,
+    entity_profiles: Optional[List[EntityProfile]] = None,
     predicted_query_plan_labels: Optional[List[str]] = None,
 ) -> str:
     return build_candidate_prompt(
@@ -37,6 +42,7 @@ def generate_candidate_prompt(
         k=k,
         canonical_question=canonical_question,
         entity_mappings=entity_mappings,
+        entity_profiles=entity_profiles,
         predicted_query_plan_labels=predicted_query_plan_labels,
     )
 
@@ -658,6 +664,7 @@ def generate_candidates(
     k: int = 5,
     llm_client: Optional[object] = None,
     entity_alias_index: Optional[EntityAliasIndex] = None,
+    entity_profile_graph: Optional[object] = None,
     max_entity_links: int = 5,
     query_plan_predictor: Optional[object] = None,
 ) -> Dict:
@@ -668,6 +675,13 @@ def generate_candidates(
     )
     effective_question = resolved.effective_question
     entity_mappings = resolved.mappings
+    linked_profiles: List[EntityProfile] = []
+    if entity_alias_index and entity_profile_graph is not None and entity_mappings:
+        matched_iris: List[str] = []
+        for mapping in entity_mappings:
+            key = normalize_alias(str(mapping.get("canonical", "")))
+            matched_iris.extend(entity_alias_index.key_to_subjects.get(key, []))
+        linked_profiles = build_profiles_for_iris(entity_profile_graph, matched_iris)
     predicted_query_plan_labels: List[str] = []
     if query_plan_predictor is not None:
         try:
@@ -684,6 +698,7 @@ def generate_candidates(
         k=k,
         canonical_question=effective_question,
         entity_mappings=entity_mappings,
+        entity_profiles=linked_profiles,
         predicted_query_plan_labels=predicted_query_plan_labels,
     )
 
@@ -738,6 +753,16 @@ def generate_candidates(
                 "original_question": (question or "").strip(),
                 "effective_question": effective_question,
                 "entity_mappings": entity_mappings,
+                "entity_profiles": [
+                    {
+                        "iri": profile.iri,
+                        "canonical_label": profile.canonical_label,
+                        "types": profile.types,
+                        "predicates": profile.predicates,
+                        "quality_flags": profile.quality_flags,
+                    }
+                    for profile in linked_profiles
+                ],
                 "entity_linking_applied": bool(entity_mappings),
                 "predicted_query_plan_labels": predicted_query_plan_labels,
                 "query_plan_predictor_applied": bool(predicted_query_plan_labels),

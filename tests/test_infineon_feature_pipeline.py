@@ -254,6 +254,18 @@ def test_semantic_coverage_detects_missing_requested_survey_origins():
 
     report = semantic_coverage_report(question, oem_only)
     assert "Tier1_Survey" in report["missing"]
+
+
+def test_inventory_trend_does_not_require_percentage_change():
+    report = semantic_coverage_report(
+        "How many inventory records are there for each component in the Tier1 inventory trend?",
+        "SELECT ?component (COUNT(?entry) AS ?count) WHERE { "
+        "?entry a survey:InventoryDevelopment_Tier1 ; "
+        "survey:forComponent ?component ; "
+        "survey:inventoryTrend ?trend . "
+        "} GROUP BY ?component",
+    )
+    assert "percentageChange" not in report["required"]
     assert "Semiconductor_Survey" in report["missing"]
     assert report["coverage_score"] < 1.0
 

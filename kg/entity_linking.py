@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from rdflib import Graph, Literal
+from rdflib import Graph, Literal, RDF, URIRef
 
 
 RDFS_LABEL = "http://www.w3.org/2000/01/rdf-schema#label"
@@ -66,6 +66,8 @@ def _predicate_is_candidate(uri: str) -> bool:
 class EntityAliasIndex:
     # normalized alias -> canonical-label frequency counter
     key_to_labels: Dict[str, Counter]
+    # normalized alias -> entity IRIs observed with that alias
+    key_to_subjects: Dict[str, List[str]]
     # quick retrieval buckets for fuzzy matching
     keys_by_digit_signature: Dict[str, List[str]]
     keys_by_prefix: Dict[str, List[str]]
@@ -97,9 +99,10 @@ def build_entity_alias_index(
     max_key_len: int = 64,
 ) -> EntityAliasIndex:
     key_to_labels: Dict[str, Counter] = defaultdict(Counter)
+    key_to_subjects: Dict[str, List[str]] = defaultdict(list)
     seen_literals = 0
 
-    for _, p, o in graph:
+    for s, p, o in graph:
         if not isinstance(o, Literal):
             continue
         p_uri = str(p)
@@ -114,9 +117,23 @@ def build_entity_alias_index(
             continue
 
         key_to_labels[norm][label] += 1
+        if isinstance(s, URIRef):
+            key_to_subjects[norm].append(str(s))
         seen_literals += 1
         if seen_literals >= max_literals:
             break
+
+    # Typed entities may only have a placeholder display label. Keep a structural
+    # fallback alias from the URI local name so linking is not label-only.
+    for subject in graph.subjects(RDF.type, None):
+        if not isinstance(subject, URIRef):
+            continue
+        local = str(subject).rsplit("/", 1)[-1].rsplit("#", 1)[-1].strip()
+        norm = normalize_alias(local)
+        if len(norm) < min_key_len or len(norm) > max_key_len:
+            continue
+        key_to_labels[norm][local] += 1
+        key_to_subjects[norm].append(str(subject))
 
     keys_by_digit_signature: Dict[str, List[str]] = defaultdict(list)
     keys_by_prefix: Dict[str, List[str]] = defaultdict(list)
@@ -128,6 +145,7 @@ def build_entity_alias_index(
 
     return EntityAliasIndex(
         key_to_labels=dict(key_to_labels),
+        key_to_subjects={key: sorted(set(values)) for key, values in key_to_subjects.items()},
         keys_by_digit_signature=dict(keys_by_digit_signature),
         keys_by_prefix=dict(keys_by_prefix),
     )

@@ -659,7 +659,7 @@ _DOMAIN_REQUIREMENTS = [
     },
     {
         "id": "percentageChange",
-        "keywords": ["percentage change", "change", "trend", "evolve", "evolution"],
+        "keywords": ["percentage change", "change", "evolve", "evolution"],
         "query_terms": ["percentageChange", "totalDemandPercentageChange"],
     },
     {

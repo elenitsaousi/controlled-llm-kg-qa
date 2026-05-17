@@ -68,7 +68,7 @@ RELATION_KEYWORDS = {
     "regionName": ["region name"],
     "totalDemand": ["total demand", "demand volume"],
     "totalDemandPercentageChange": ["demand percentage change", "percentage change", "demand trend"],
-    "percentageChange": ["percentage change", "change", "trend"],
+    "percentageChange": ["percentage change", "change", "demand trend"],
     "forTimePeriod": ["time period", "quarter", "year"],
     "periodLabel": ["period label", "quarter label"],
     "reportsShortage": ["shortage", "shortages"],

@@ -1387,6 +1387,7 @@ def answer_question(
         schema,
         llm_client=llm_client,
         entity_alias_index=alias_index,
+        entity_profile_graph=_get_default_graph() if enable_entity_linking else None,
         query_plan_predictor=query_plan_predictor,
     )
     raw_candidates = generation.get("candidates", [])

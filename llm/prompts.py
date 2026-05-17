@@ -2,6 +2,7 @@
 from typing import Dict, List, Optional
 
 from kg.schema import KGSchema
+from kg.entity_profiles import EntityProfile, profile_prompt_lines
 from ranking.feature_extraction import extract_question_entities, extract_question_relations
 from validation.semantic import semantic_coverage_report
 
@@ -73,6 +74,7 @@ def build_candidate_prompt(
     k: int = 5,
     canonical_question: Optional[str] = None,
     entity_mappings: Optional[List[Dict[str, object]]] = None,
+    entity_profiles: Optional[List[EntityProfile]] = None,
     predicted_query_plan_labels: Optional[List[str]] = None,
 ) -> str:
     effective_question = (canonical_question or question or "").strip()
@@ -111,6 +113,7 @@ def build_candidate_prompt(
             continue
         entity_mapping_lines.append(f"- '{mention}' -> '{canonical}'")
     entity_mapping_text = "\n".join(entity_mapping_lines)
+    entity_profile_text = "\n".join(profile_prompt_lines(entity_profiles or []))
     query_plan_labels_text = "\n".join(
         f"- {label}" for label in (predicted_query_plan_labels or []) if str(label).strip()
     )
@@ -154,6 +157,14 @@ def build_candidate_prompt(
             + entity_mapping_text
             + "\nUse canonical names exactly as shown above in the SPARQL query.\n\n"
             if entity_mapping_text
+            else ""
+        )
+
+        + (
+            "ENTITY STRUCTURAL PROFILES:\n"
+            + entity_profile_text
+            + "\nUse entity type and neighborhood evidence when labels are missing, noisy, or placeholders.\n\n"
+            if entity_profile_text
             else ""
         )
 
