@@ -44,13 +44,14 @@ Goal:
 - Keep the same business topic and requested dimensions.
 - Preserve the original measure nouns when they matter:
   - percentage / percentage change must stay percentage / percentage change.
+  - Do not replace percentage with share.
   - participant count / participants must stay participant-based, not become inventory quantity or generic records.
   - inventory trend must stay trend, not become time / over time unless time is present in the source.
   - yearly / monthly / quarterly wording must not be added or removed unless already implied by the source.
 - Preserve the core answer intent of the gold query:
   - ranking_top must still ask for highest / largest / top / maximum.
   - count must still ask how many / count / number.
-  - average must still ask for average / mean.
+  - average must still ask for average / mean, not typical.
   - sum must still ask for total / sum.
 - raw_or_lookup must still ask for raw values / list / lookup values.
 
