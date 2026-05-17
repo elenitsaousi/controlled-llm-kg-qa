@@ -13,6 +13,20 @@ def _contains_any(text: str, terms: List[str]) -> bool:
 
 
 TIME_TERMS = ["time", "year", "month", "quarter"]
+RANKING_TERMS = [
+    "highest",
+    "largest",
+    "top",
+    "maximum",
+    "greatest",
+    "peak",
+    "most",
+    "leads",
+    "strongest",
+    "most common",
+    "most frequently",
+]
+YEAR_TERMS = ["year", "annual"]
 
 
 def row_warnings(row: Dict[str, object]) -> List[str]:
@@ -20,7 +34,7 @@ def row_warnings(row: Dict[str, object]) -> List[str]:
     question = str(row.get("question") or "")
     warnings = []
     shape = str(row.get("answer_shape") or "")
-    if shape == "ranking_top" and not _contains_any(question, ["highest", "largest", "top", "maximum", "greatest", "peak"]):
+    if shape == "ranking_top" and not _contains_any(question, RANKING_TERMS):
         warnings.append("missing_ranking_language")
     if shape == "count" and not _contains_any(question, ["how many", "number of", "count"]):
         warnings.append("missing_count_language")
@@ -41,10 +55,12 @@ def row_warnings(row: Dict[str, object]) -> List[str]:
         if _contains_any(question, ["over time"]) and not _contains_any(source, TIME_TERMS):
             warnings.append("added_time_dimension")
         for term in TIME_TERMS[1:]:
-            if _contains_any(question, [term]) and not _contains_any(source, [term]):
+            aliases = YEAR_TERMS if term == "year" else [term]
+            if _contains_any(question, aliases) and not _contains_any(source, aliases):
                 warnings.append(f"added_{term}_dimension")
         for term in TIME_TERMS[1:]:
-            if _contains_any(source, [term]) and not _contains_any(question, [term]):
+            aliases = YEAR_TERMS if term == "year" else [term]
+            if _contains_any(source, aliases) and not _contains_any(question, aliases):
                 warnings.append(f"lost_{term}_dimension")
         if _contains_any(source, ["trend"]) and not _contains_any(question, ["trend"]):
             warnings.append("lost_trend_dimension")

@@ -66,3 +66,19 @@ def test_audit_rows_skips_source_dependent_checks_when_source_missing():
     report = audit_rows(rows)
 
     assert report["summary"]["flagged"] == 0
+
+
+def test_audit_rows_accepts_ranking_and_year_synonyms():
+    rows = [
+        {
+            "id": "A",
+            "family": "vehicle_sales",
+            "answer_shape": "ranking_top",
+            "source_question": "Which vehicle type has the highest total yearly sales?",
+            "question": "What vehicle type leads in annual sales?",
+        }
+    ]
+
+    report = audit_rows(rows)
+
+    assert report["summary"]["flagged"] == 0
