@@ -85,6 +85,12 @@ def _parse_question(text: str) -> str:
     return question.rstrip(".") + ("?" if not question.endswith("?") else "")
 
 
+def _normalize_measure_wording(question: str, answer_shape: str) -> str:
+    if answer_shape == "average" and re.search(r"\btypical\b", question, flags=re.I):
+        return re.sub(r"\btypical\b", "average", question, flags=re.I)
+    return question
+
+
 def generate_rows(
     plan: Dict[str, object],
     *,
@@ -113,6 +119,7 @@ def generate_rows(
             if request_pause_sec:
                 time.sleep(request_pause_sec)
             question = _parse_question(client.generate_text(_prompt(row, previous_questions)))
+            question = _normalize_measure_wording(question, str(row["answer_shape"]))
             candidate = {
                 "question": question,
                 "answer_shape": row["answer_shape"],

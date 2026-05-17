@@ -1,4 +1,4 @@
-from evaluation.generate_final_kgqa_benchmark_llm import _parse_question, generate_rows
+from evaluation.generate_final_kgqa_benchmark_llm import _normalize_measure_wording, _parse_question, generate_rows
 
 
 class _FakeClient:
@@ -21,6 +21,13 @@ class _RetryClient:
 
 def test_parse_question_accepts_json_object():
     assert _parse_question('{"question":"What is demand"}') == "What is demand?"
+
+
+def test_normalize_measure_wording_replaces_typical_for_average_shape():
+    assert (
+        _normalize_measure_wording("What is the typical OEM demand?", "average")
+        == "What is the average OEM demand?"
+    )
 
 
 def test_generate_rows_preserves_gold_query_and_target_label():
