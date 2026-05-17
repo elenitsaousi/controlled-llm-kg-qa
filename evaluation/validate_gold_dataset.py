@@ -40,16 +40,18 @@ def _strip_comments(query: str) -> str:
     return "\n".join(cleaned_lines).strip()
 
 
-def validate_dataset(dataset_path: str, graph_path: str) -> Dict[str, object]:
+def validate_dataset(dataset_path: str, graph_path: str, *, progress: bool = False) -> Dict[str, object]:
     if Graph is None:
         raise RuntimeError("rdflib is required to validate gold datasets.")
     graph = Graph()
+    if progress:
+        print(f"Loading graph: {graph_path}", flush=True)
     graph.parse(graph_path, format="turtle")
     rows: List[Dict[str, object]] = json.loads(Path(dataset_path).read_text(encoding="utf-8"))
     cases = []
     valid = 0
     non_empty = 0
-    for row in rows:
+    for index, row in enumerate(rows, start=1):
         query = _ensure_prefixes(_strip_comments(str(row.get("query") or "")))
         case = {"id": row.get("id"), "question": row.get("question")}
         try:
@@ -63,6 +65,8 @@ def validate_dataset(dataset_path: str, graph_path: str) -> Dict[str, object]:
             case["row_count"] = None
             case["error"] = str(exc)
         cases.append(case)
+        if progress:
+            print(f"[{index}/{len(rows)}] {case['id']} valid={case['valid']} rows={case['row_count']}", flush=True)
     total = len(cases)
     return {
         "summary": {
@@ -81,8 +85,9 @@ def main() -> None:
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--graph", default="data/infineon/graph.ttl")
     parser.add_argument("--out", default="")
+    parser.add_argument("--progress", action="store_true")
     args = parser.parse_args()
-    report = validate_dataset(args.dataset, args.graph)
+    report = validate_dataset(args.dataset, args.graph, progress=args.progress)
     summary = report["summary"]
     print("===== GOLD DATASET VALIDATION =====")
     print(f"Dataset: {args.dataset}")
