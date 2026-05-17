@@ -36,6 +36,8 @@ def row_warnings(row: Dict[str, object]) -> List[str]:
     shape = str(row.get("answer_shape") or "")
     if shape == "ranking_top" and not _contains_any(question, RANKING_TERMS):
         warnings.append("missing_ranking_language")
+    if shape != "ranking_top" and _contains_any(question, RANKING_TERMS):
+        warnings.append("unexpected_ranking_language")
     if shape == "count" and not _contains_any(question, ["how many", "number of", "count"]):
         warnings.append("missing_count_language")
     if shape == "average" and not _contains_any(question, ["average", "mean"]):

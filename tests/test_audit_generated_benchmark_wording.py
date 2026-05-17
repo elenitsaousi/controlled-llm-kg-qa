@@ -82,3 +82,19 @@ def test_audit_rows_accepts_ranking_and_year_synonyms():
     report = audit_rows(rows)
 
     assert report["summary"]["flagged"] == 0
+
+
+def test_audit_rows_flags_ranking_language_for_non_ranking_shape():
+    rows = [
+        {
+            "id": "A",
+            "family": "regional_demand",
+            "answer_shape": "sum",
+            "source_question": "Show OEM demand by region and quarter.",
+            "question": "Which regions had the highest total OEM demand each quarter?",
+        }
+    ]
+
+    report = audit_rows(rows)
+
+    assert "unexpected_ranking_language" in report["cases"][0]["warnings"]
