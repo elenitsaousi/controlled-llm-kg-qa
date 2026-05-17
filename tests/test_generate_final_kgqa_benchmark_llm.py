@@ -19,6 +19,19 @@ class _RetryClient:
         return next(self.responses)
 
 
+class _MalformedThenValidClient:
+    def __init__(self):
+        self.responses = iter(
+            [
+                '{"question": "For vehicles with Level 5 autonomy,',
+                '{"question":"Which vehicle type has the highest percentage at Level 5 autonomy?"}',
+            ]
+        )
+
+    def generate_text(self, _prompt):
+        return next(self.responses)
+
+
 def test_parse_question_accepts_json_object():
     assert _parse_question('{"question":"What is demand"}') == "What is demand?"
 
@@ -73,6 +86,27 @@ def test_generate_rows_retries_when_wording_audit_detects_drift():
 
     assert rows[0]["question"] == "What is the total OEM demand by region and quarter?"
     assert rows[0]["wording_warnings"] == []
+
+
+def test_generate_rows_retries_when_llm_returns_malformed_json():
+    plan = {
+        "rows": [
+            {
+                "template_id": "t1",
+                "family": "autonomous_driving",
+                "answer_shape": "ranking_top",
+                "target_ambiguity_label": "low",
+                "seed_ambiguity_label": "low",
+                "source_id": "S1",
+                "example_question": "Which vehicle type has the highest percentage at Level 5 autonomy?",
+                "query": "SELECT ...",
+            }
+        ]
+    }
+
+    rows = generate_rows(plan, client=_MalformedThenValidClient())
+
+    assert rows[0]["question"] == "Which vehicle type has the highest percentage at Level 5 autonomy?"
 
 
 def test_generate_rows_calls_progress_hook_after_each_row():

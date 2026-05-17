@@ -118,7 +118,10 @@ def generate_rows(
         for _attempt in range(3):
             if request_pause_sec:
                 time.sleep(request_pause_sec)
-            question = _parse_question(client.generate_text(_prompt(row, previous_questions)))
+            try:
+                question = _parse_question(client.generate_text(_prompt(row, previous_questions)))
+            except ValueError:
+                continue
             question = _normalize_measure_wording(question, str(row["answer_shape"]))
             candidate = {
                 "question": question,
@@ -129,6 +132,8 @@ def generate_rows(
             duplicate = question.strip().lower() in {item.strip().lower() for item in previous_questions}
             if not duplicate and not warnings:
                 break
+        if not question:
+            raise ValueError(f"Could not generate a parseable rewrite for plan row {idx + 1}.")
         previous_questions.append(question)
         out.append(
             {
