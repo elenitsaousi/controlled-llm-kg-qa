@@ -8,8 +8,19 @@ from typing import List, Optional
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover - optional dependency
+    load_dotenv = None
+else:
+    load_dotenv()
+
 
 class LLMClientError(RuntimeError):
+    pass
+
+
+class LLMAuthError(LLMClientError):
     pass
 
 
@@ -72,9 +83,11 @@ class InfineonGPTClient:
                 if response.status_code in {301, 302, 303, 307, 308}:
                     location = response.headers.get("location", "")
                     body = (response.text or "")[:500]
-                    raise LLMClientError(
+                    raise LLMAuthError(
                         f"API redirect to SSO/gateway (status={response.status_code}, "
-                        f"location={location!r}). Body preview: {body!r}"
+                        f"location={location!r}). Body preview: {body!r}. "
+                        "This usually means INFINEON_API_KEY is missing, expired, or not valid "
+                        "for machine API calls to INFINEON_API_URL + INFINEON_CHAT_ENDPOINT."
                     )
 
                 body = (response.text or "")[:500]
@@ -92,6 +105,17 @@ class InfineonGPTClient:
             time.sleep(sleep_s)
 
         raise LLMClientError(f"API failed: {last_error}")
+
+    def check_auth(self) -> None:
+        previous_max_tokens = self.max_tokens
+        previous_temperature = self.temperature
+        try:
+            self.max_tokens = 8
+            self.temperature = 0.0
+            self.generate_text("Return exactly: OK")
+        finally:
+            self.max_tokens = previous_max_tokens
+            self.temperature = previous_temperature
 
 
 class OpenAIClient:

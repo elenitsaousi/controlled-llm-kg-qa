@@ -12,7 +12,7 @@ from rdflib import Graph, BNode, URIRef
 from kg.schema import load_schema
 from llm.answer_synthesis import synthesize_answer
 from llm.candidate_generation import generate_candidate_prompt
-from llm.client import InfineonGPTClient, LLMClientError
+from llm.client import InfineonGPTClient, LLMAuthError, LLMClientError
 from pipeline.qa import answer_question
 from visualization.interactive_graph import (
     build_graph_html,
@@ -1132,6 +1132,15 @@ if asked:
                 ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
                 include_candidate_diagnostics=bool(show_candidate_diagnostics),
             )
+        except LLMAuthError as exc:
+            st.error("Infineon GPT authentication failed.")
+            st.write(str(exc))
+            st.info(
+                "Refresh or replace INFINEON_API_KEY, then restart Streamlit. "
+                "Opening the browser SSO page alone does not necessarily refresh the API token "
+                "used by this local process."
+            )
+            st.stop()
         except LLMClientError as exc:
             st.error(f"LLM error: {exc}")
             st.stop()

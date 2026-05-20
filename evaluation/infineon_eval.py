@@ -25,7 +25,7 @@ from kg.entity_linking import (
     canonicalize_question_with_index,
 )
 from llm.candidate_generation import generate_candidates, repair_candidate_query
-from llm.client import InfineonGPTClient
+from llm.client import InfineonGPTClient, LLMAuthError
 from pipeline.qa import _rerank_with_semantic_coverage
 from ranking.ambiguity_policy import (
     AmbiguityConfig,
@@ -52,6 +52,11 @@ DEFAULT_QUERY_PLAN_MODEL = os.path.join(
 )
 _RANKER_CACHE: Dict[str, object] = {}
 _QUERY_PLAN_PREDICTOR_CACHE: Dict[str, object] = {}
+
+
+class EvaluationAbortedError(RuntimeError):
+    pass
+
 
 def _ensure_prefixes(query: str) -> str:
     if "PREFIX" in query.upper():
@@ -530,6 +535,8 @@ def evaluate(
     ambiguity_config_path: Optional[str] = None,
     enable_entity_linking: bool = True,
     entity_link_max_matches: int = 5,
+    fail_on_auth_error: bool = True,
+    limit: Optional[int] = None,
 ) -> Dict[str, object]:
     allowed_regimes = {"low", "mid", "high"}
     normalized_regimes: List[str] = []
@@ -545,6 +552,8 @@ def evaluate(
     g = Graph()
     g.parse(graph_path, format="turtle")
     questions = _load_questions(dataset_path)
+    if limit is not None:
+        questions = questions[: max(0, int(limit))]
 
     entity_alias_index = None
     if enable_entity_linking:
@@ -633,6 +642,8 @@ def evaluate(
         "query_plan_predictor": bool(query_plan_predictor),
         "execution_cache_entries": 0,
         "candidate_duplicates_removed": 0,
+        "aborted": False,
+        "abort_reason": None,
     }
 
     details = []
@@ -733,6 +744,35 @@ def evaluate(
                 q_eff = str(metadata.get("effective_question", "")).strip()
                 if q_eff:
                     ranking_question = q_eff
+            except LLMAuthError as exc:
+                summary["llm_generation_failures"] += 1
+                generation_errors.append(str(exc))
+                if fail_on_auth_error:
+                    summary["aborted"] = True
+                    summary["abort_reason"] = str(exc)
+                    summary["execution_cache_entries"] = len(query_cache)
+                    summary["candidate_duplicates_removed"] = candidate_duplicates_removed
+                    denom = summary["total"] if summary["total"] > 0 else 1
+                    summary["top1_correct_rate"] = summary["top1_correct"] / denom
+                    summary["any_correct_rate"] = summary["any_correct"] / denom
+                    if summary["total_candidates"] > 0:
+                        summary["candidate_correct_rate"] = (
+                            summary["correct_candidates"] / summary["total_candidates"]
+                        )
+                        summary["candidate_invalid_rate"] = (
+                            summary["invalid_candidates"] / summary["total_candidates"]
+                        )
+                    else:
+                        summary["candidate_correct_rate"] = 0.0
+                        summary["candidate_invalid_rate"] = 0.0
+                    partial = {"summary": summary, "details": details}
+                    if out_path:
+                        with open(out_path, "w", encoding="utf-8") as f:
+                            json.dump(partial, f, indent=2, ensure_ascii=False)
+                    raise EvaluationAbortedError(
+                        "Evaluation aborted because the LLM endpoint redirected to SSO/gateway. "
+                        "Refresh INFINEON_API_KEY and rerun; partial results were written."
+                    ) from exc
             except Exception as exc:
                 summary["llm_generation_failures"] += 1
                 generation_errors.append(str(exc))

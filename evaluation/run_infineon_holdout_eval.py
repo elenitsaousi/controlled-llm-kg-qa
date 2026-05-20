@@ -7,7 +7,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from evaluation.infineon_eval import evaluate, _parse_amb_regimes
+from evaluation.infineon_eval import EvaluationAbortedError, evaluate, _parse_amb_regimes
 
 
 def main() -> None:
@@ -26,7 +26,13 @@ def main() -> None:
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--query-timeout", type=float, default=None)
     parser.add_argument("--generation-runs", type=int, default=1)
+    parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--progress", action="store_true")
+    parser.add_argument(
+        "--keep-going-on-auth-error",
+        action="store_true",
+        help="Treat SSO/auth redirects as ordinary LLM failures instead of aborting immediately.",
+    )
     parser.add_argument(
         "--use-ml-ranking",
         action="store_true",
@@ -64,26 +70,33 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    results = evaluate(
-        dataset_path=args.dataset,
-        graph_path=args.graph,
-        k=args.k,
-        schema_path=args.schema,
-        out_path=args.out,
-        llm=args.llm,
-        temperature=args.temperature,
-        progress=args.progress,
-        query_timeout=args.query_timeout,
-        generation_runs=max(1, int(args.generation_runs)),
-        use_ml_ranking=args.use_ml_ranking,
-        use_schema_ranking=args.use_schema_ranking,
-        use_semantic_selection=args.use_semantic_selection,
-        semantic_selection_margin=args.semantic_selection_margin,
-        ml_model_path=args.ml_model,
-        ml_ambiguity_regimes=_parse_amb_regimes(args.ml_ambiguity_regimes),
-        ambiguity_config_path=(args.ambiguity_config or None),
-        enable_entity_linking=True,
-    )
+    try:
+        results = evaluate(
+            dataset_path=args.dataset,
+            graph_path=args.graph,
+            k=args.k,
+            schema_path=args.schema,
+            out_path=args.out,
+            llm=args.llm,
+            temperature=args.temperature,
+            progress=args.progress,
+            query_timeout=args.query_timeout,
+            generation_runs=max(1, int(args.generation_runs)),
+            use_ml_ranking=args.use_ml_ranking,
+            use_schema_ranking=args.use_schema_ranking,
+            use_semantic_selection=args.use_semantic_selection,
+            semantic_selection_margin=args.semantic_selection_margin,
+            ml_model_path=args.ml_model,
+            ml_ambiguity_regimes=_parse_amb_regimes(args.ml_ambiguity_regimes),
+            ambiguity_config_path=(args.ambiguity_config or None),
+            enable_entity_linking=True,
+            fail_on_auth_error=not args.keep_going_on_auth_error,
+            limit=args.limit,
+        )
+    except EvaluationAbortedError as exc:
+        print(f"ABORTED: {exc}")
+        print(f"Partial output: {args.out}")
+        raise SystemExit(2) from exc
 
     summary = results["summary"]
     print("===== INFINEON HELD-OUT SUMMARY =====")
