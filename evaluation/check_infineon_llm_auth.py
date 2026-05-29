@@ -21,8 +21,12 @@ def main() -> int:
     print("===== INFINEON LLM AUTH CHECK =====")
     print(f"INFINEON_API_URL: {os.environ.get('INFINEON_API_URL') or '<missing>'}")
     print(f"INFINEON_CHAT_ENDPOINT: {os.environ.get('INFINEON_CHAT_ENDPOINT') or '/chat/completions'}")
+    print(f"INFINEON_AUTH_ENDPOINT: {os.environ.get('INFINEON_AUTH_ENDPOINT') or '/auth/token'}")
     print(f"INFINEON_MODEL: {os.environ.get('INFINEON_MODEL') or 'gpt-4o'}")
     print(f"INFINEON_API_KEY: {_mask_secret(os.environ.get('INFINEON_API_KEY', ''))}")
+    print(f"USER_LLM/INFINEON_API_USER: {'<present>' if (os.environ.get('USER_LLM') or os.environ.get('INFINEON_API_USER')) else '<missing>'}")
+    print(f"PASSWORD_LLM/INFINEON_API_PASSWORD: {'<present>' if (os.environ.get('PASSWORD_LLM') or os.environ.get('INFINEON_API_PASSWORD')) else '<missing>'}")
+    print(f"INFINEON_AUTO_REFRESH_TOKEN: {os.environ.get('INFINEON_AUTO_REFRESH_TOKEN') or '1'}")
 
     try:
         client = InfineonGPTClient()

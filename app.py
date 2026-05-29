@@ -1098,8 +1098,13 @@ clarification_rendered = False
 if asked:
     if not question.strip():
         st.warning("Please enter a question.")
-    elif not api_url.strip() or not api_key.strip():
-        st.error("Missing API URL or API key.")
+    elif not api_url.strip():
+        st.error("Missing API URL.")
+    elif not api_key.strip() and not (
+        os.environ.get("USER_LLM")
+        or os.environ.get("INFINEON_API_USER")
+    ):
+        st.error("Missing API key or token-refresh credentials.")
     else:
         try:
             schema = _load_schema_from_path(schema_path)

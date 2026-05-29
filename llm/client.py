@@ -4,7 +4,7 @@ import os
 import re
 import time
 import requests
-from typing import List, Optional
+from typing import List, Optional, Union
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -37,12 +37,24 @@ class InfineonGPTClient:
         self.base_url = base_url or os.environ.get("INFINEON_API_URL")
         self.api_key = api_key or os.environ.get("INFINEON_API_KEY")
         self.chat_endpoint = os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
+        self.auth_endpoint = os.environ.get("INFINEON_AUTH_ENDPOINT", "/auth/token")
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.max_retries = int(os.environ.get("INFINEON_MAX_RETRIES", "4"))
         self.retry_backoff_sec = float(os.environ.get("INFINEON_RETRY_BACKOFF_SEC", "1.0"))
-        if not self.base_url or not self.api_key:
-            raise ValueError("Missing API URL or API key.")
+        self.auto_refresh_token = _env_bool("INFINEON_AUTO_REFRESH_TOKEN", True)
+        self.api_user = os.environ.get("INFINEON_API_USER") or os.environ.get("USER_LLM")
+        self.api_password = os.environ.get("INFINEON_API_PASSWORD") or os.environ.get("PASSWORD_LLM")
+        self.verify = _requests_verify_setting()
+        if not self.base_url:
+            raise ValueError("Missing API URL.")
+        if not self.api_key and self.auto_refresh_token and self.api_user and self.api_password:
+            self.refresh_api_key()
+        if not self.api_key:
+            raise ValueError(
+                "Missing API key. Set INFINEON_API_KEY or set USER_LLM/PASSWORD_LLM "
+                "for automatic token retrieval."
+            )
 
     def generate(self, prompt: str, k: int = 5) -> List[str]:
         text = self.generate_text(prompt)
@@ -74,13 +86,27 @@ class InfineonGPTClient:
                     headers=headers,
                     json=payload,
                     timeout=120,
-                    verify=False,
+                    verify=self.verify,
                     allow_redirects=False,
                 )
                 if response.status_code == 200:
                     data = response.json()
                     return str(data["choices"][0]["message"]["content"])
                 if response.status_code in {301, 302, 303, 307, 308}:
+                    if self.auto_refresh_token and self.api_user and self.api_password:
+                        self.refresh_api_key()
+                        headers["Authorization"] = f"Bearer {self.api_key}"
+                        response = requests.post(
+                            url,
+                            headers=headers,
+                            json=payload,
+                            timeout=120,
+                            verify=self.verify,
+                            allow_redirects=False,
+                        )
+                        if response.status_code == 200:
+                            data = response.json()
+                            return str(data["choices"][0]["message"]["content"])
                     location = response.headers.get("location", "")
                     body = (response.text or "")[:500]
                     raise LLMAuthError(
@@ -105,6 +131,41 @@ class InfineonGPTClient:
             time.sleep(sleep_s)
 
         raise LLMClientError(f"API failed: {last_error}")
+
+    def refresh_api_key(self) -> str:
+        if not self.api_user or not self.api_password:
+            raise LLMAuthError(
+                "Cannot refresh Infineon API token: missing USER_LLM/PASSWORD_LLM "
+                "or INFINEON_API_USER/INFINEON_API_PASSWORD."
+            )
+        endpoint = self.auth_endpoint if self.auth_endpoint.startswith("/") else f"/{self.auth_endpoint}"
+        url = f"{self.base_url.rstrip('/')}{endpoint}"
+        try:
+            response = requests.get(
+                url,
+                headers={"Content-Type": "application/json"},
+                auth=(self.api_user, self.api_password),
+                timeout=60,
+                verify=self.verify,
+                allow_redirects=False,
+            )
+        except requests.RequestException as exc:
+            raise LLMAuthError(f"Failed to refresh Infineon API token: {exc}") from exc
+
+        if 200 <= response.status_code < 300:
+            token = response.text.strip()
+            if not token:
+                raise LLMAuthError("Infineon token endpoint returned an empty token.")
+            self.api_key = token
+            os.environ["INFINEON_API_KEY"] = token
+            return token
+
+        location = response.headers.get("location", "")
+        body = (response.text or "")[:500]
+        raise LLMAuthError(
+            f"Failed to refresh Infineon API token: status={response.status_code}, "
+            f"location={location!r}, body={body!r}"
+        )
 
     def check_auth(self) -> None:
         previous_max_tokens = self.max_tokens
@@ -165,3 +226,19 @@ def _parse_candidates(text: str) -> List[str]:
     # Fallback: line-based parsing
     lines = [_clean_query(line) for line in cleaned.splitlines() if line.strip()]
     return [l for l in lines if l]
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _requests_verify_setting() -> Union[bool, str]:
+    raw = (os.environ.get("INFINEON_CERT_PATH") or "").strip()
+    if not raw:
+        return False
+    if raw.lower() in {"0", "false", "no", "off"}:
+        return False
+    return raw
