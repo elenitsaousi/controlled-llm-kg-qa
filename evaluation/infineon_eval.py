@@ -514,6 +514,148 @@ def _repair_invalid_candidates(
     return deduped, repaired_attempted, repaired_succeeded
 
 
+def _completed_details_from_resume(path: Optional[str]) -> List[Dict]:
+    if not path or not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    details = payload.get("details", [])
+    if not isinstance(details, list):
+        return []
+    completed = []
+    seen = set()
+    for row in details:
+        if not isinstance(row, dict):
+            continue
+        qid = str(row.get("id", "")).strip()
+        if not qid or qid in seen:
+            continue
+        seen.add(qid)
+        completed.append(row)
+    return completed
+
+
+def _finalize_eval_payload(
+    summary: Dict[str, object],
+    details: List[Dict],
+    query_cache_entries: int,
+    candidate_duplicates_removed: int,
+    out_path: Optional[str],
+) -> Dict[str, object]:
+    summary["execution_cache_entries"] = query_cache_entries
+    summary["candidate_duplicates_removed"] = candidate_duplicates_removed
+
+    denom = int(summary["total"]) if int(summary.get("total", 0)) > 0 else 1
+    summary["top1_correct_rate"] = int(summary["top1_correct"]) / denom
+    summary["any_correct_rate"] = int(summary["any_correct"]) / denom
+
+    total_candidates = int(summary.get("total_candidates", 0))
+    if total_candidates > 0:
+        summary["candidate_correct_rate"] = int(summary["correct_candidates"]) / total_candidates
+        summary["candidate_invalid_rate"] = int(summary["invalid_candidates"]) / total_candidates
+    else:
+        summary["candidate_correct_rate"] = 0.0
+        summary["candidate_invalid_rate"] = 0.0
+
+    for stats in summary["per_ambiguity"].values():
+        amb_denom = stats["total"] if stats["total"] > 0 else 1
+        stats["top1_correct_rate"] = stats["top1_correct"] / amb_denom
+        stats["any_correct_rate"] = stats["any_correct"] / amb_denom
+
+    payload = {"summary": summary, "details": details}
+    if out_path:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+    return payload
+
+
+def _replay_detail_into_summary(summary: Dict[str, object], detail: Dict) -> None:
+    summary["total"] += 1
+    if detail.get("entity_mappings"):
+        summary["entity_linked_questions"] += 1
+
+    ambiguity_label = _normalize_amb_label(str(detail.get("ambiguity_label", "")))
+    amb_summary = None
+    if ambiguity_label:
+        amb_summary = summary["per_ambiguity"].setdefault(
+            ambiguity_label,
+            {
+                "total": 0,
+                "gold_invalid": 0,
+                "gold_timeout": 0,
+                "top1_correct": 0,
+                "any_correct": 0,
+            },
+        )
+        amb_summary["total"] += 1
+
+    gold_error = str(detail.get("gold_error", "")).lower()
+    if gold_error:
+        if "timeout" in gold_error:
+            summary["gold_timeout"] += 1
+            if amb_summary is not None:
+                amb_summary["gold_timeout"] += 1
+        else:
+            summary["gold_invalid"] += 1
+            if amb_summary is not None:
+                amb_summary["gold_invalid"] += 1
+        return
+
+    if detail.get("generation_error"):
+        summary["llm_generation_failures"] += 1
+
+    candidates = detail.get("candidates") or []
+    if not candidates:
+        summary["top1_invalid"] += 1
+        summary["all_invalid"] += 1
+        if amb_summary is not None:
+            amb_summary["top1_correct"] += 0
+            amb_summary["any_correct"] += 0
+        return
+
+    any_valid = False
+    any_correct = bool(detail.get("any_correct"))
+    top1_correct = bool(detail.get("top1_correct"))
+    for idx, cand in enumerate(candidates):
+        label = str(cand.get("label", ""))
+        summary["total_candidates"] += 1
+        if label == "correct":
+            summary["correct_candidates"] += 1
+            any_valid = True
+        elif label == "valid_wrong":
+            summary["valid_wrong_candidates"] += 1
+            any_valid = True
+        elif label == "timeout":
+            summary["invalid_candidates"] += 1
+            summary["candidate_timeouts"] += 1
+        elif label == "invalid":
+            summary["invalid_candidates"] += 1
+
+        if idx == 0:
+            if label in ("invalid", "timeout"):
+                summary["top1_invalid"] += 1
+            elif label == "valid_wrong":
+                summary["top1_valid_wrong"] += 1
+
+    if top1_correct:
+        summary["top1_correct"] += 1
+    if any_correct:
+        summary["any_correct"] += 1
+    if amb_summary is not None:
+        amb_summary["top1_correct"] += int(top1_correct)
+        amb_summary["any_correct"] += int(any_correct)
+    if not any_valid:
+        summary["all_invalid"] += 1
+    if any_valid and not any_correct:
+        summary["all_valid_wrong"] += 1
+
+    predicted_regime = detail.get("predicted_regime")
+    if predicted_regime:
+        summary["predicted_regime_counts"][predicted_regime] = (
+            int(summary["predicted_regime_counts"].get(predicted_regime, 0)) + 1
+        )
+
+
 def evaluate(
     dataset_path: str,
     graph_path: str,
@@ -537,6 +679,7 @@ def evaluate(
     entity_link_max_matches: int = 5,
     fail_on_auth_error: bool = True,
     limit: Optional[int] = None,
+    resume_path: Optional[str] = None,
 ) -> Dict[str, object]:
     allowed_regimes = {"low", "mid", "high"}
     normalized_regimes: List[str] = []
@@ -644,10 +787,26 @@ def evaluate(
         "candidate_duplicates_removed": 0,
         "aborted": False,
         "abort_reason": None,
+        "resume_path": resume_path,
+        "resume_completed": 0,
     }
 
-    details = []
-    total_questions = len(questions)
+    completed_details = _completed_details_from_resume(resume_path)
+    completed_ids = {str(row.get("id", "")).strip() for row in completed_details}
+    for row in completed_details:
+        _replay_detail_into_summary(summary, row)
+    summary["resume_completed"] = len(completed_details)
+
+    if completed_ids:
+        questions = [
+            item for item in questions
+            if str(item.get("id", "")).strip() not in completed_ids
+        ]
+        if progress:
+            print(f"Resume: skipping {len(completed_details)} completed questions from {resume_path}")
+
+    details = list(completed_details)
+    total_questions = len(questions) + len(completed_details)
     query_cache: Dict[Tuple[Optional[float], str], Tuple[str, object]] = {}
     candidate_duplicates_removed = 0
 
@@ -655,7 +814,7 @@ def evaluate(
         if progress:
             qid = item.get("id", "")
             question = item.get("question", "")
-            print(f"[{idx + 1}/{total_questions}] {qid} - {question}", flush=True)
+            print(f"[{idx + 1 + len(completed_details)}/{total_questions}] {qid} - {question}", flush=True)
 
         summary["total"] += 1
         qid = item.get("id", "")
@@ -750,25 +909,13 @@ def evaluate(
                 if fail_on_auth_error:
                     summary["aborted"] = True
                     summary["abort_reason"] = str(exc)
-                    summary["execution_cache_entries"] = len(query_cache)
-                    summary["candidate_duplicates_removed"] = candidate_duplicates_removed
-                    denom = summary["total"] if summary["total"] > 0 else 1
-                    summary["top1_correct_rate"] = summary["top1_correct"] / denom
-                    summary["any_correct_rate"] = summary["any_correct"] / denom
-                    if summary["total_candidates"] > 0:
-                        summary["candidate_correct_rate"] = (
-                            summary["correct_candidates"] / summary["total_candidates"]
-                        )
-                        summary["candidate_invalid_rate"] = (
-                            summary["invalid_candidates"] / summary["total_candidates"]
-                        )
-                    else:
-                        summary["candidate_correct_rate"] = 0.0
-                        summary["candidate_invalid_rate"] = 0.0
-                    partial = {"summary": summary, "details": details}
-                    if out_path:
-                        with open(out_path, "w", encoding="utf-8") as f:
-                            json.dump(partial, f, indent=2, ensure_ascii=False)
+                    _finalize_eval_payload(
+                        summary=summary,
+                        details=details,
+                        query_cache_entries=len(query_cache),
+                        candidate_duplicates_removed=candidate_duplicates_removed,
+                        out_path=out_path,
+                    )
                     raise EvaluationAbortedError(
                         "Evaluation aborted because the LLM endpoint redirected to SSO/gateway. "
                         "Refresh INFINEON_API_KEY and rerun; partial results were written."
@@ -1036,34 +1183,13 @@ def evaluate(
             "candidates": candidate_results,
         })
 
-    summary["top1_correct_rate"] = summary["top1_correct"] / summary["total"]
-    summary["any_correct_rate"] = summary["any_correct"] / summary["total"]
-    summary["execution_cache_entries"] = len(query_cache)
-    summary["candidate_duplicates_removed"] = candidate_duplicates_removed
-
-    if summary["total_candidates"] > 0:
-        summary["candidate_correct_rate"] = (
-            summary["correct_candidates"] / summary["total_candidates"]
-        )
-        summary["candidate_invalid_rate"] = (
-            summary["invalid_candidates"] / summary["total_candidates"]
-        )
-    else:
-        summary["candidate_correct_rate"] = 0.0
-        summary["candidate_invalid_rate"] = 0.0
-
-    for label, stats in summary["per_ambiguity"].items():
-        denom = stats["total"] if stats["total"] > 0 else 1
-        stats["top1_correct_rate"] = stats["top1_correct"] / denom
-        stats["any_correct_rate"] = stats["any_correct"] / denom
-
-    payload = {"summary": summary, "details": details}
-
-    if out_path:
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f, indent=2, ensure_ascii=False)
-
-    return payload
+    return _finalize_eval_payload(
+        summary=summary,
+        details=details,
+        query_cache_entries=len(query_cache),
+        candidate_duplicates_removed=candidate_duplicates_removed,
+        out_path=out_path,
+    )
 
 
 def main() -> None:

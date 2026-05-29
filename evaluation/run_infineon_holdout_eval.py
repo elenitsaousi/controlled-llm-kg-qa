@@ -27,6 +27,16 @@ def main() -> None:
     parser.add_argument("--query-timeout", type=float, default=None)
     parser.add_argument("--generation-runs", type=int, default=1)
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from the existing --out file by skipping completed question IDs.",
+    )
+    parser.add_argument(
+        "--resume-from",
+        default="",
+        help="Optional existing result JSON to resume from. Defaults to --out when --resume is set.",
+    )
     parser.add_argument("--progress", action="store_true")
     parser.add_argument(
         "--keep-going-on-auth-error",
@@ -92,6 +102,7 @@ def main() -> None:
             enable_entity_linking=True,
             fail_on_auth_error=not args.keep_going_on_auth_error,
             limit=args.limit,
+            resume_path=(args.resume_from or args.out) if args.resume else None,
         )
     except EvaluationAbortedError as exc:
         print(f"ABORTED: {exc}")
