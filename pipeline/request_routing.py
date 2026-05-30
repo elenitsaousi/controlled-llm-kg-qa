@@ -74,6 +74,36 @@ KG_HINTS = {
     "actual",
 }
 
+QUERY_TASK_HINTS = {
+    "average",
+    "avg",
+    "breakdown",
+    "compare",
+    "comparison",
+    "count",
+    "counts",
+    "current",
+    "each",
+    "forecasted",
+    "future",
+    "highest",
+    "largest",
+    "level",
+    "levels",
+    "lowest",
+    "number",
+    "overall",
+    "per",
+    "records",
+    "reported",
+    "show",
+    "sum",
+    "total",
+    "trend",
+    "trends",
+    "units",
+}
+
 OUT_OF_DOMAIN_HINTS = {
     "weather",
     "temperature",
@@ -178,6 +208,22 @@ def _contains_domain_term(question: str, glossary: Dict[str, Dict[str, str]]) ->
     return bool(words & KG_HINTS)
 
 
+def _looks_like_kg_query(question: str, matched_text: str = "") -> bool:
+    q = _normalize(question)
+    text = _normalize(matched_text or question)
+    words = set(re.findall(r"[a-z0-9]+", q))
+    text_words = set(re.findall(r"[a-z0-9]+", text))
+    if words & QUERY_TASK_HINTS:
+        return True
+    if text_words & KG_HINTS and len(text_words) > 1:
+        return True
+    if re.search(r"\b(by|for|in|per|across|between|grouped by|broken down by)\b", q):
+        return True
+    if re.search(r"\bhow\s+(many|much)\b", q):
+        return True
+    return False
+
+
 def _definition_route(
     question: str,
     glossary: Dict[str, Dict[str, str]],
@@ -186,6 +232,8 @@ def _definition_route(
         match = pattern.match(question or "")
         if not match:
             continue
+        if _looks_like_kg_query(question, match.group(1)):
+            return None
         term = _recognized_term(match.group(1), glossary)
         if term is None:
             return None
@@ -204,6 +252,8 @@ def _unknown_definition_route(question: str) -> Optional[Dict[str, object]]:
         match = pattern.match(question or "")
         if not match:
             continue
+        if _looks_like_kg_query(question, match.group(1)):
+            return None
         term = match.group(1).strip(" .?!")
         return {
             "route": "general_definition",

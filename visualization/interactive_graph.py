@@ -146,15 +146,15 @@ def build_graph_html(
           },
           "nodes": {
             "borderWidth": 1.5,
-            "size": 22,
+            "size": 24,
             "shadow": {"enabled": true, "color": "rgba(25,214,198,0.18)", "size": 18, "x": 0, "y": 0},
-            "font": {"size": 14, "color": "#edf4f3", "face": "Arial"}
+            "font": {"size": 16, "color": "#edf4f3", "face": "Arial", "strokeWidth": 3, "strokeColor": "#0f1f28"}
           },
           "edges": {
             "smooth": {"type": "curvedCW", "roundness": 0.18},
-            "font": {"size": 10, "align": "middle", "color": "#91a4a4"},
-            "color": {"color": "#6a8a8f", "opacity": 0.6},
-            "width": 1.2
+            "font": {"size": 11, "align": "middle", "color": "#b8c8c8", "strokeWidth": 3, "strokeColor": "#0f1f28"},
+            "color": {"color": "#8aa5aa", "opacity": 0.72},
+            "width": 1.4
           }
         }
         """

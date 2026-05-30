@@ -761,7 +761,7 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
 
         if error:
             profile = {
-                "has_rows": False,   # treat timeout σαν empty
+                "has_rows": None if error == "timeout" else False,
                 "row_count": 0,
                 "preview_rows": [],
                 "unbound_vars": [],
@@ -902,6 +902,55 @@ def _answerable_option_preview(
     }
 
 
+def _candidate_is_user_answerable(question: str, query: str) -> Tuple[bool, List[str]]:
+    """Guard user-facing options against non-empty but semantically wrong paths."""
+    q = (question or "").lower()
+    sparql = (query or "").lower()
+    reasons: List[str] = []
+
+    asks_sales = any(token in q for token in ("sales", "sold", "units sold", "vehicle units"))
+    asks_demand = "demand" in q and not asks_sales
+    if asks_demand and any(
+        token in sparql
+        for token in ("vehiclesalesobservation", "yearlysalesdata", "unitssold", "isforecast")
+    ):
+        reasons.append("sales_query_for_demand_question")
+
+    asks_inventory = "inventory" in q or "stock" in q
+    if asks_inventory and not any(token in sparql for token in ("inventory", "component")):
+        reasons.append("non_inventory_query_for_inventory_question")
+
+    asks_cancellation = "cancellation" in q or "cancel" in q
+    if asks_cancellation and "ordercancellation" not in sparql:
+        reasons.append("non_cancellation_query_for_cancellation_question")
+
+    asks_autonomous = "autonomous" in q or "sae" in q or "adas" in q
+    if asks_autonomous and "autonomousdrivingdevelopment" not in sparql:
+        reasons.append("non_autonomous_query_for_autonomous_question")
+
+    coverage = semantic_coverage_report(question, query)
+    if int(coverage.get("missing_count", 0)) > 0 and float(coverage.get("coverage_score", 0.0)) < 0.75:
+        reasons.extend(f"missing_required:{x}" for x in coverage.get("missing", []))
+
+    judge = semantic_judge_report(question, query)
+    severe_penalties = [
+        p
+        for p in list(judge.get("penalties") or [])
+        if str(p).startswith(
+            (
+                "missing_origin:",
+                "missing_filter:",
+                "missing_dimension:",
+                "wrong_or_missing_aggregation:",
+            )
+        )
+    ]
+    if severe_penalties and float(judge.get("score", 0.0)) < -1.5:
+        reasons.extend(str(p) for p in severe_penalties)
+
+    return not reasons, reasons
+
+
 def _select_best_valid_query(
     ordered_queries: List[str],
 ) -> Tuple[Optional[str], List[Dict[str, str]], int]:
@@ -1001,6 +1050,10 @@ def _answerability_assessment(
             continue
         profile = _query_runtime_profile(query)
         if profile.get("has_rows") is True:
+            is_answerable, reject_reasons = _candidate_is_user_answerable(question, query)
+            if not is_answerable:
+                candidate["answerability_reject_reasons"] = reject_reasons
+                continue
             nonempty_alternatives.append(
                 _answerable_option_preview(
                     question=question,
@@ -1857,7 +1910,10 @@ def answer_question(
             candidate["execution_error"] = profile.get("error")
             candidate["execution_row_count"] = profile.get("row_count")
             candidate["execution_unbound_vars"] = list(profile.get("unbound_vars") or [])
-            if profile.get("has_rows") is True:
+            is_answerable, reject_reasons = _candidate_is_user_answerable(effective_question, query)
+            candidate["semantic_answerable"] = bool(is_answerable)
+            candidate["answerability_reject_reasons"] = list(reject_reasons)
+            if profile.get("has_rows") is True and is_answerable:
                 option_preview = _answerable_option_preview(
                     question=effective_question,
                     query=query,

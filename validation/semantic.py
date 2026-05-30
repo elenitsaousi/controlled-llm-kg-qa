@@ -655,7 +655,7 @@ _DOMAIN_REQUIREMENTS = [
     {
         "id": "totalDemand",
         "keywords": ["total demand", "demand per region", "demand by region", "regional demand"],
-        "query_terms": ["totalDemand", "unitsSold", "SUM("],
+        "query_terms": ["totalDemand", "SUM("],
     },
     {
         "id": "percentageChange",

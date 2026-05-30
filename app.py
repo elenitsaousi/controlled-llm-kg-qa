@@ -409,21 +409,27 @@ def _render_answer_subgraph(
 ) -> None:
     if not selected_query or not graph_path or not os.path.exists(graph_path):
         return
+    if not graph_rows:
+        st.subheader("Inspected Query Path")
+        st.warning(
+            "The selected query returned no graph rows, so no answer evidence graph is shown."
+        )
+        return
     try:
         graph = _load_graph_cached(graph_path)
         triples, meta = collect_answer_evidence_triples(
             graph=graph,
             query=selected_query,
-            limit=24,
+            limit=18,
         )
     except Exception:
         return
     if not triples:
         return
 
-    st.subheader("Relevant Graph")
+    st.subheader("Answer Evidence Graph")
     st.caption(
-        "The business relationships used by the selected query. "
+        "The key graph relationships used by the selected query. "
         f"Predicates: {meta.get('predicate_count', 0)} | Edges shown: {meta.get('edge_count', 0)}"
     )
     graph_nodes = {node for s, _p, o in triples for node in (s, o)}
@@ -433,6 +439,8 @@ def _render_answer_subgraph(
             triples,
             height_px=520,
             heading="Answer Evidence Graph",
+            max_nodes=24,
+            max_edges=36,
         )
         components.html(
             html,
@@ -446,6 +454,7 @@ def _render_answer_subgraph(
             relationship_label="Business relationship",
             has_entity_nodes=any(isinstance(node, URIRef) for node in graph_nodes),
             has_literal_nodes=any(not isinstance(node, URIRef) for node in graph_nodes),
+            graph_rows=graph_rows,
         )
 
 
@@ -459,7 +468,17 @@ def _render_clarification(
     st.subheader("Clarify Interpretation")
     st.write(str(clarification.get("reason", "Candidates disagree on the intended query plan.")))
     st.write(str(clarification.get("question", "Which interpretation matches what you want?")))
-    options = list(clarification.get("options") or [])
+    options = [
+        option
+        for option in list(clarification.get("options") or [])
+        if option.get("row_count") is None or int(option.get("row_count") or 0) > 0
+    ]
+    if not options:
+        st.warning(
+            "No answerable clarification option was found. The generated interpretations "
+            "returned no rows or did not match the requested meaning."
+        )
+        return
     for option in options:
         with st.container(border=True):
             st.markdown(f"**{str(option.get('label', 'Interpretation'))}**")
@@ -527,12 +546,14 @@ def _render_graph_side_panel(
     relationship_label: str,
     has_entity_nodes: bool,
     has_literal_nodes: bool,
+    graph_rows: List[Dict[str, str]] | None = None,
 ) -> None:
     node_rows = []
     if has_entity_nodes:
         node_rows.append('<div class="kg-side-row"><span class="kg-side-dot"></span> Classes / entities</div>')
     if has_literal_nodes:
         node_rows.append('<div class="kg-side-row"><span class="kg-side-dot muted"></span> Literal / value nodes</div>')
+    evidence_rows = _graph_evidence_summary(graph_rows or [])
     st.markdown(
         f"""
         <aside class="kg-side-legend">
@@ -549,9 +570,34 @@ def _render_graph_side_panel(
             <div class="kg-side-title">Quick facts</div>
             <div class="kg-side-copy">Nodes shown: {node_count}<br>Edges shown: {edge_count}<br>Scroll to zoom.</div>
           </div>
+          {evidence_rows}
         </aside>
         """,
         unsafe_allow_html=True,
+    )
+
+
+def _graph_evidence_summary(graph_rows: List[Dict[str, str]]) -> str:
+    if not graph_rows:
+        return ""
+    first = graph_rows[0]
+    items = []
+    for key, value in list(first.items())[:5]:
+        cleaned_key = escape(str(key).replace("_", " "))
+        cleaned_value = escape(str(value))
+        if len(cleaned_value) > 80:
+            cleaned_value = cleaned_value[:77] + "..."
+        items.append(
+            f"<div class='kg-evidence-row'><span>{cleaned_key}</span><strong>{cleaned_value}</strong></div>"
+        )
+    if not items:
+        return ""
+    return (
+        "<div class='kg-side-section'>"
+        "<div class='kg-side-title'>Answer row preview</div>"
+        f"<div class='kg-side-copy'>Rows returned: {len(graph_rows)}</div>"
+        + "".join(items)
+        + "</div>"
     )
 
 
@@ -971,6 +1017,23 @@ def _inject_app_styles() -> None:
             color: var(--kg-muted);
             font-size: 0.82rem;
             line-height: 1.6;
+        }
+        .kg-evidence-row {
+            border-top: 1px solid rgba(148, 163, 184, 0.18);
+            display: grid;
+            gap: 0.18rem;
+            padding: 0.45rem 0;
+        }
+        .kg-evidence-row span {
+            color: var(--kg-muted);
+            font-size: 0.74rem;
+            text-transform: capitalize;
+        }
+        .kg-evidence-row strong {
+            color: var(--kg-text);
+            font-size: 0.82rem;
+            font-weight: 600;
+            overflow-wrap: anywhere;
         }
         </style>
         """,

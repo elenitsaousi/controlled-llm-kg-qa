@@ -314,14 +314,19 @@ def build_clarification_payload(
     if len(rows) < 2:
         return None
 
-    # If runtime profiling is available, do not ask users to choose between
-    # empty plans when at least two non-empty interpretations are available.
-    # Unknown execution state is kept for callers that have not profiled yet.
+    # If runtime profiling is available, only ask users to choose between
+    # interpretations that are both non-empty and semantically acceptable.
+    # Empty options are not useful clarification choices; they push internal
+    # candidate noise onto the user.
+    profiled = any("execution_has_rows" in row["candidate"] for row in rows)
     nonempty_rows = [
         row for row in rows
         if row["candidate"].get("execution_has_rows") is True
+        and row["candidate"].get("semantic_answerable") is not False
     ]
-    if len(nonempty_rows) >= 2:
+    if profiled and len(nonempty_rows) < 2:
+        return None
+    if nonempty_rows:
         rows = nonempty_rows
 
     grouped: Dict[Tuple[object, ...], List[Dict[str, object]]] = defaultdict(list)
