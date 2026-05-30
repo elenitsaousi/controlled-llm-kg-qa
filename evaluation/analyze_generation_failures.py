@@ -47,10 +47,94 @@ def _dataset_by_id(path: str) -> Dict[str, Dict[str, object]]:
     return {str(row.get("id", "")): row for row in rows if isinstance(row, dict)}
 
 
-def _suggest_pattern(question: str, gold_labels: List[str], selected_labels: List[str]) -> List[str]:
+def _query_contains_any(query: str, terms: List[str]) -> bool:
+    q = query.lower()
+    return any(term.lower() in q for term in terms)
+
+
+def _suggest_pattern(
+    question: str,
+    topic: str,
+    gold_labels: List[str],
+    selected_labels: List[str],
+    gold_query: str,
+    selected_query: str,
+) -> List[str]:
     q = question.lower()
+    topic_norm = topic.lower()
     suggestions = []
     missing_labels = set(gold_labels) - set(selected_labels)
+
+    # Topic-level labels are intentionally broad: they identify reusable fixes,
+    # not benchmark-ID-specific patches.
+    if "inventory" in topic_norm:
+        if _query_contains_any(gold_query, ["InventoryDevelopment_Tier1", "forComponent", "inventoryTrend"]):
+            suggestions.append("inventory_tier1_component_trend_generation_gap")
+        if _query_contains_any(gold_query, ["InventoryDevelopment_Semi", "forTechnologyCategory", "hasInventoryTrend"]):
+            suggestions.append("inventory_semiconductor_tech_trend_generation_gap")
+        if _query_contains_any(gold_query, ["componentType", "splitPercentage"]):
+            suggestions.append("inventory_component_type_share_generation_gap")
+        if _query_contains_any(gold_query, ["COUNT("]) and not _query_contains_any(selected_query, ["COUNT("]):
+            suggestions.append("inventory_count_aggregation_generation_gap")
+        if _query_contains_any(gold_query, ["SUM("]) and not _query_contains_any(selected_query, ["SUM("]):
+            suggestions.append("inventory_sum_aggregation_generation_gap")
+    elif "future_demand" in topic_norm or ("future" in topic_norm and "demand" in topic_norm):
+        if _query_contains_any(gold_query, ["DemandForRegion", "totalDemandPercentageChange", "quarter"]):
+            suggestions.append("future_demand_region_quarter_generation_gap")
+        if _query_contains_any(gold_query, ["analyzesTechnologyCategory"]):
+            suggestions.append("future_demand_technology_quarter_generation_gap")
+        if _query_contains_any(gold_query, ["analyzesVehicleType"]):
+            suggestions.append("future_demand_vehicle_quarter_generation_gap")
+        if _query_contains_any(gold_query, ["Option1", "Option2", "Option3", "UNION"]):
+            suggestions.append("future_demand_option_union_generation_gap")
+        if _query_contains_any(gold_query, ["SUM("]) and not _query_contains_any(selected_query, ["SUM("]):
+            suggestions.append("future_demand_sum_aggregation_generation_gap")
+        if _query_contains_any(gold_query, ["AVG("]) and not _query_contains_any(selected_query, ["AVG("]):
+            suggestions.append("future_demand_avg_aggregation_generation_gap")
+    elif "autonomous" in topic_norm:
+        if _query_contains_any(gold_query, ["hasSAELevel"]):
+            suggestions.append("autonomous_sae_level_generation_gap")
+        if _query_contains_any(gold_query, ["hasYear"]):
+            suggestions.append("autonomous_year_dimension_generation_gap")
+        if _query_contains_any(gold_query, ["AutonomousDrivingDevelopment_OEM"]):
+            suggestions.append("autonomous_oem_scope_generation_gap")
+        if _query_contains_any(gold_query, ["AutonomousDrivingDevelopment_Tier1"]):
+            suggestions.append("autonomous_tier1_scope_generation_gap")
+        if _query_contains_any(gold_query, ["AVG("]) and not _query_contains_any(selected_query, ["AVG("]):
+            suggestions.append("autonomous_avg_aggregation_generation_gap")
+    elif "order_cancellation" in topic_norm or ("order" in topic_norm and "cancellation" in topic_norm):
+        if _query_contains_any(gold_query, ["OrderCancellation", "forTechnologyCategory"]):
+            suggestions.append("order_cancellation_technology_generation_gap")
+        if _query_contains_any(gold_query, ["hasResponseType"]):
+            suggestions.append("order_cancellation_response_type_generation_gap")
+        if _query_contains_any(gold_query, ["participantCount", "SUM("]):
+            suggestions.append("order_cancellation_participant_sum_generation_gap")
+    elif "regional_demand" in topic_norm or ("region" in topic_norm and "demand" in topic_norm):
+        if _query_contains_any(gold_query, ["DemandForRegion", "inRegion", "regionName"]):
+            suggestions.append("regional_demand_region_generation_gap")
+        if _query_contains_any(gold_query, ["hasSurveyOrigin"]):
+            suggestions.append("regional_demand_origin_scope_generation_gap")
+        if _query_contains_any(gold_query, ["totalDemand"]) and not _query_contains_any(selected_query, ["totalDemand"]):
+            suggestions.append("regional_demand_total_vs_percentage_generation_gap")
+    elif "current_demand" in topic_norm or "baseline" in topic_norm:
+        if _query_contains_any(gold_query, ["BL1", "BL2", "baselineType"]):
+            suggestions.append("current_demand_bl1_bl2_generation_gap")
+        if _query_contains_any(gold_query, ["CurrentDemandAnalysis", "hasAggregatedResult"]):
+            suggestions.append("current_demand_aggregated_result_generation_gap")
+    elif "vehicle_sales" in topic_norm or ("vehicle" in topic_norm and "sales" in topic_norm):
+        if _query_contains_any(gold_query, ["VehicleSalesObservation", "isActualData"]):
+            suggestions.append("vehicle_sales_actual_generation_gap")
+        if _query_contains_any(gold_query, ["VehicleSalesObservation", "isForecastData"]):
+            suggestions.append("vehicle_sales_forecast_generation_gap")
+        if _query_contains_any(gold_query, ["YearlySalesData", "yearlySales"]):
+            suggestions.append("vehicle_sales_yearly_generation_gap")
+        if _query_contains_any(gold_query, ["forTimePeriod"]):
+            suggestions.append("vehicle_sales_time_period_generation_gap")
+    elif "catalog" in topic_norm:
+        suggestions.append("catalog_lookup_schema_entity_generation_gap")
+    elif "shortage" in topic_norm:
+        suggestions.append("shortage_company_origin_status_generation_gap")
+
     if any("DemandForRegion" in lab for lab in missing_labels):
         suggestions.append("regional_demand_template_or_prompt_gap")
     if any("FutureDemandAnalysis" in lab for lab in missing_labels):
@@ -102,7 +186,14 @@ def analyze_generation_failures(
         missing_labels = sorted(set(gold_labels) - set(selected_labels))
         for label in missing_labels:
             missing_label_counts[label] += 1
-        suggestions = _suggest_pattern(question, gold_labels, selected_labels)
+        suggestions = _suggest_pattern(
+            question,
+            topic,
+            gold_labels,
+            selected_labels,
+            gold_query,
+            selected_query,
+        )
         for suggestion in suggestions:
             suggestion_counts[suggestion] += 1
 
