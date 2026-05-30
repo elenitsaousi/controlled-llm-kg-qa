@@ -217,12 +217,20 @@ def _confidence_summary(result: Dict[str, Any]) -> Tuple[str, str]:
     answerability = result.get("answerability")
     if isinstance(answerability, dict):
         status = str(answerability.get("status", ""))
-        if status == "selected_query_empty_but_alternatives_exist":
+        if status in {
+            "selected_query_empty_but_alternatives_exist",
+            "selected_query_semantic_mismatch_but_alternatives_exist",
+        }:
             return (
                 "Low",
-                "The selected query returned no rows while another valid generated interpretation returned data.",
+                "The selected query was not answerable for the requested meaning while another valid interpretation returned data.",
             )
-        if status in {"query_invalid", "query_execution_error", "generation_failure"}:
+        if status in {
+            "query_invalid",
+            "query_execution_error",
+            "generation_failure",
+            "selected_query_semantic_mismatch",
+        }:
             return ("Low", str(answerability.get("reason", "The system could not produce an answerable graph query.")))
         if status == "no_rows_for_generated_queries":
             return (
@@ -326,7 +334,10 @@ def _render_answer_block(
         reason = str(answerability.get("reason", "")).strip()
         if status == "answer_available":
             st.caption("Answerability: answer available from graph execution.")
-        elif status == "selected_query_empty_but_alternatives_exist":
+        elif status in {
+            "selected_query_empty_but_alternatives_exist",
+            "selected_query_semantic_mismatch_but_alternatives_exist",
+        }:
             st.warning(reason)
             alternatives = answerability.get("nonempty_alternatives") or []
             if alternatives:
@@ -360,7 +371,13 @@ def _render_answer_block(
                     st.success(f"Using alternative interpretation: {chosen_alternative.get('label')}")
                 with st.expander("Technical alternative details", expanded=False):
                     st.json(alternatives)
-        elif status in {"no_rows_for_generated_queries", "query_invalid", "query_execution_error", "generation_failure"}:
+        elif status in {
+            "no_rows_for_generated_queries",
+            "query_invalid",
+            "query_execution_error",
+            "generation_failure",
+            "selected_query_semantic_mismatch",
+        }:
             st.warning(reason or f"Answerability status: {status}")
 
     if graph_exec_error:

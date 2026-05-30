@@ -951,6 +951,55 @@ def _candidate_is_user_answerable(question: str, query: str) -> Tuple[bool, List
     return not reasons, reasons
 
 
+def _prefer_answerable_selected_candidate(
+    selected: Optional[Dict[str, object]],
+    ordered_candidates: Sequence[Dict[str, object]],
+    question: str,
+) -> Tuple[Optional[Dict[str, object]], Optional[Dict[str, object]]]:
+    if selected is None:
+        return selected, None
+
+    selected_query = str(selected.get("query", "") or "").strip()
+    selected_ok, selected_reasons = _candidate_is_user_answerable(question, selected_query)
+    selected["semantic_answerable"] = bool(selected_ok)
+    selected["answerability_reject_reasons"] = list(selected_reasons)
+    if selected_ok:
+        return selected, None
+
+    answerable_candidates: List[Dict[str, object]] = []
+    for rank, candidate in enumerate(ordered_candidates[:8], start=1):
+        query = str(candidate.get("query", "") or "").strip()
+        if not query or _runtime_validate_query(query):
+            continue
+        ok, reasons = _candidate_is_user_answerable(question, query)
+        candidate["semantic_answerable"] = bool(ok)
+        candidate["answerability_reject_reasons"] = list(reasons)
+        if not ok:
+            continue
+        profile = _query_runtime_profile(query)
+        candidate["execution_has_rows"] = profile.get("has_rows")
+        candidate["execution_error"] = profile.get("error")
+        candidate["execution_row_count"] = profile.get("row_count")
+        candidate["execution_unbound_vars"] = list(profile.get("unbound_vars") or [])
+        if profile.get("has_rows") is True:
+            candidate["selection_original_rank"] = int(candidate.get("selection_original_rank", rank - 1))
+            answerable_candidates.append(candidate)
+
+    if answerable_candidates:
+        replacement = _select_best_candidate_semantic(answerable_candidates, question) or answerable_candidates[0]
+        return replacement, {
+            "status": "selected_semantic_replaced",
+            "rejected_reasons": selected_reasons,
+            "replacement_count": len(answerable_candidates),
+        }
+
+    return selected, {
+        "status": "selected_semantic_rejected_no_replacement",
+        "rejected_reasons": selected_reasons,
+        "replacement_count": 0,
+    }
+
+
 def _select_best_valid_query(
     ordered_queries: List[str],
 ) -> Tuple[Optional[str], List[Dict[str, str]], int]:
@@ -1022,6 +1071,7 @@ def _answerability_assessment(
             "valid_candidate_count": 0,
         }
 
+    selected_ok, selected_reject_reasons = _candidate_is_user_answerable(question, selected_query)
     selected_profile = _query_runtime_profile(selected_query)
     selected_has_rows = selected_profile.get("has_rows")
     selected_error = selected_profile.get("error")
@@ -1063,6 +1113,39 @@ def _answerability_assessment(
                     profile=profile,
                 )
             )
+
+    if not selected_ok:
+        if nonempty_alternatives:
+            return {
+                "status": "selected_query_semantic_mismatch_but_alternatives_exist",
+                "can_answer": False,
+                "reason": (
+                    "The selected query returned graph rows, but they do not match the "
+                    "requested meaning. Other answerable interpretations were found."
+                ),
+                "selected_has_rows": selected_has_rows,
+                "selected_error": None,
+                "selected_row_count": selected_profile.get("row_count"),
+                "selected_reject_reasons": selected_reject_reasons,
+                "alternative_nonempty_count": len(nonempty_alternatives),
+                "valid_candidate_count": valid_count,
+                "nonempty_alternatives": nonempty_alternatives[:3],
+            }
+        return {
+            "status": "selected_query_semantic_mismatch",
+            "can_answer": False,
+            "reason": (
+                "The selected query returned graph rows, but the graph path does not "
+                "match the requested meaning closely enough."
+            ),
+            "selected_has_rows": selected_has_rows,
+            "selected_error": None,
+            "selected_row_count": selected_profile.get("row_count"),
+            "selected_reject_reasons": selected_reject_reasons,
+            "alternative_nonempty_count": 0,
+            "valid_candidate_count": valid_count,
+            "nonempty_alternatives": [],
+        }
 
     if selected_has_rows is True:
         return {
@@ -1933,6 +2016,7 @@ def answer_question(
                 candidate
                 for candidate in ordered_candidates[:6]
                 if candidate.get("execution_has_rows") is True
+                and candidate.get("semantic_answerable") is not False
             ]
             if nonempty_candidates:
                 selected = _select_best_candidate_semantic(
@@ -1940,6 +2024,13 @@ def answer_question(
                     effective_question,
                 )
 
+    selected, selected_answerability_override = _prefer_answerable_selected_candidate(
+        selected,
+        ordered_candidates,
+        effective_question,
+    )
+    if selected_answerability_override is not None:
+        metadata["selected_answerability_override"] = selected_answerability_override
     selected_query = selected.get("query") if selected else None
     errors = _runtime_validate_query(selected_query) if selected_query else []
     selected_rank = None
