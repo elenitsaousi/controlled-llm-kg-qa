@@ -656,6 +656,16 @@ def _replay_detail_into_summary(summary: Dict[str, object], detail: Dict) -> Non
         )
 
 
+def _parse_skip_ids(skip_ids: Optional[List[str]]) -> set:
+    out = set()
+    for value in skip_ids or []:
+        for part in str(value).replace(",", " ").split():
+            part = part.strip()
+            if part:
+                out.add(part)
+    return out
+
+
 def evaluate(
     dataset_path: str,
     graph_path: str,
@@ -680,6 +690,7 @@ def evaluate(
     fail_on_auth_error: bool = True,
     limit: Optional[int] = None,
     resume_path: Optional[str] = None,
+    skip_ids: Optional[List[str]] = None,
 ) -> Dict[str, object]:
     allowed_regimes = {"low", "mid", "high"}
     normalized_regimes: List[str] = []
@@ -810,6 +821,7 @@ def evaluate(
     query_cache: Dict[Tuple[Optional[float], str], Tuple[str, object]] = {}
     candidate_duplicates_removed = 0
     checkpoint_every = _env_int("INFINEON_EVAL_CHECKPOINT_EVERY", 1, min_value=0)
+    skip_id_set = _parse_skip_ids(skip_ids)
 
     def _checkpoint() -> None:
         if not out_path or checkpoint_every <= 0:
@@ -833,6 +845,38 @@ def evaluate(
         summary["total"] += 1
         qid = item.get("id", "")
         question = item.get("question", "")
+        if qid in skip_id_set:
+            detail = {
+                "id": qid,
+                "question": question,
+                "effective_question": question,
+                "entity_mappings": [],
+                "ambiguity_label": _normalize_amb_label(str(item.get("ambiguity_label", ""))) or None,
+                "generation_error": "Skipped by user via --skip-ids",
+                "candidates": [],
+                "top1_correct": False,
+                "any_correct": False,
+                "skipped": True,
+            }
+            details.append(detail)
+            summary["llm_generation_failures"] += 1
+            summary["top1_invalid"] += 1
+            summary["all_invalid"] += 1
+            amb_label = detail["ambiguity_label"]
+            if amb_label:
+                amb_summary = summary["per_ambiguity"].setdefault(
+                    amb_label,
+                    {
+                        "total": 0,
+                        "gold_invalid": 0,
+                        "gold_timeout": 0,
+                        "top1_correct": 0,
+                        "any_correct": 0,
+                    },
+                )
+                amb_summary["total"] += 1
+            _checkpoint()
+            continue
         canon = canonicalize_question_with_index(
             question,
             index=entity_alias_index,

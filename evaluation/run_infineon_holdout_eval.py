@@ -37,6 +37,12 @@ def main() -> None:
         default="",
         help="Optional existing result JSON to resume from. Defaults to --out when --resume is set.",
     )
+    parser.add_argument(
+        "--skip-ids",
+        nargs="*",
+        default=[],
+        help="Question IDs to mark as skipped/failure and continue, e.g. FINALKGQA300.",
+    )
     parser.add_argument("--progress", action="store_true")
     parser.add_argument(
         "--keep-going-on-auth-error",
@@ -103,6 +109,7 @@ def main() -> None:
             fail_on_auth_error=not args.keep_going_on_auth_error,
             limit=args.limit,
             resume_path=(args.resume_from or args.out) if args.resume else None,
+            skip_ids=args.skip_ids,
         )
     except EvaluationAbortedError as exc:
         print(f"ABORTED: {exc}")
