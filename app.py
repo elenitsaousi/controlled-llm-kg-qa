@@ -684,6 +684,150 @@ def _guided_pattern_query(pattern: Dict[str, str]) -> str:
     return _load_guided_query_lookup().get(_normalize_question_key(str(pattern.get("question", ""))), "")
 
 
+def _guided_topic_for_question(question: str) -> str:
+    q = (question or "").lower()
+    if "inventory" in q:
+        return "Inventory"
+    if "future" in q and "demand" in q:
+        return "Future demand"
+    if "current" in q and "demand" in q:
+        return "Current demand baselines" if ("bl1" in q or "bl2" in q or "baseline" in q) else "Regional demand"
+    if "demand" in q and "region" in q:
+        return "Regional demand"
+    if "vehicle sales" in q or "vehicles sold" in q or "units sold" in q:
+        return "Vehicle sales"
+    if "shortage" in q:
+        return "Shortage"
+    if "order cancellation" in q or "cancellation" in q:
+        return "Order cancellation"
+    if "autonomous" in q or "sae" in q:
+        return "Autonomous driving"
+    if any(token in q for token in ("names of all", "labels", "how many companies", "how many quarter", "how many technology")):
+        return "Catalog lookup"
+    return "Other graph-backed questions"
+
+
+def _guided_metric_for_question(question: str) -> str:
+    q = (question or "").lower()
+    if "average" in q or "avg" in q or "mean" in q:
+        return "average"
+    if "highest" in q or "largest" in q or "most" in q or "strongest" in q:
+        return "highest / ranked"
+    if "count" in q or "how many" in q or "number of" in q:
+        return "count"
+    if "compare" in q or "versus" in q or " vs " in q or "difference" in q:
+        return "comparison"
+    if "actual" in q and "forecast" in q:
+        return "actual versus forecast"
+    if "forecast" in q:
+        return "forecasted values"
+    if "actual" in q:
+        return "actual values"
+    if "future demand" in q:
+        return "future-demand percentage"
+    if "participant" in q:
+        return "participant counts"
+    if "inventory" in q:
+        return "inventory trend / participants"
+    if "shortage" in q:
+        return "shortage status"
+    if "response" in q:
+        return "responses"
+    if "total" in q or "sum" in q:
+        return "total"
+    return "values"
+
+
+def _guided_breakdown_for_question(question: str) -> str:
+    q = (question or "").lower()
+    dims = []
+    for token, label in (
+        ("technology", "technology category"),
+        ("response type", "response type"),
+        ("vehicle type", "vehicle type"),
+        ("sae", "SAE level"),
+        ("component", "component"),
+        ("survey", "survey group"),
+        ("region", "region"),
+        ("quarter", "quarter"),
+        ("month", "month"),
+        ("year", "year"),
+        ("baseline", "baseline"),
+    ):
+        if token in q:
+            dims.append(label)
+    if "bl1" in q or "bl2" in q:
+        dims.append("baseline")
+    dims = _unique_preserving_order(dims)
+    return "by " + " and ".join(dims) if dims else "overall"
+
+
+def _guided_scope_for_question(question: str) -> str:
+    q = (question or "").lower()
+    scopes = []
+    if "oem" in q:
+        scopes.append("OEM")
+    if "tier1" in q or "tier 1" in q:
+        scopes.append("Tier1")
+    if "semiconductor" in q:
+        scopes.append("Semiconductor")
+    if "automotive" in q:
+        scopes.append("Automotive")
+    return " + ".join(scopes) if scopes else "all graph data"
+
+
+@st.cache_data(show_spinner=False)
+def _validated_guided_patterns() -> List[Dict[str, str]]:
+    patterns: List[Dict[str, str]] = []
+    seen = set()
+    for relative in (
+        "data/infineon/kgqa_seed_expansion_round1.json",
+        "data/infineon/infineon_dev.json",
+        "data/infineon/infineon_train.json",
+    ):
+        path = PROJECT_ROOT / relative
+        if not path.exists():
+            continue
+        try:
+            rows = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for row in rows if isinstance(rows, list) else []:
+            question = str(row.get("question", "") or "").strip()
+            query = str(row.get("query", "") or "").strip()
+            if not question or not query:
+                continue
+            key = _normalize_question_key(question)
+            if key in seen:
+                continue
+            seen.add(key)
+            topic = _guided_topic_for_question(question)
+            if topic == "Other graph-backed questions":
+                continue
+            patterns.append(
+                {
+                    "topic": topic,
+                    "metric": _guided_metric_for_question(question),
+                    "breakdown": _guided_breakdown_for_question(question),
+                    "scope": _guided_scope_for_question(question),
+                    "question": question,
+                    "query": query,
+                }
+            )
+    manual = [
+        dict(row, query=_guided_pattern_query(row))
+        for row in GUIDED_PATTERNS
+        if _guided_pattern_query(row)
+    ]
+    for row in manual:
+        key = _normalize_question_key(str(row.get("question", "")))
+        if key not in seen:
+            seen.add(key)
+            patterns.append(row)
+    patterns.sort(key=lambda row: (row["topic"], row["metric"], row["breakdown"], row["scope"], row["question"]))
+    return patterns
+
+
 def _guided_answerability(rows: List[Dict[str, str]], error: str = "") -> Dict[str, Any]:
     if error:
         return {
@@ -1022,11 +1166,7 @@ def _render_question_guidance() -> None:
                     args=(example,),
                 )
         with tabs[1]:
-            validated_patterns = [
-                dict(row, query=_guided_pattern_query(row))
-                for row in GUIDED_PATTERNS
-                if _guided_pattern_query(row)
-            ]
+            validated_patterns = _validated_guided_patterns()
             topic_options = _unique_preserving_order([row["topic"] for row in validated_patterns])
             if not topic_options:
                 st.warning("No validated guided patterns are available.")
@@ -1080,11 +1220,7 @@ def _render_question_guidance() -> None:
             st.caption("Only combinations with a validated graph query are shown.")
         with tabs[2]:
             topic_rows = []
-            validated_patterns = [
-                dict(row, query=_guided_pattern_query(row))
-                for row in GUIDED_PATTERNS
-                if _guided_pattern_query(row)
-            ]
+            validated_patterns = _validated_guided_patterns()
             for topic in _unique_preserving_order([row["topic"] for row in validated_patterns]):
                 rows = [row for row in validated_patterns if row["topic"] == topic]
                 topic_rows.append(
