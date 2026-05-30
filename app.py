@@ -638,6 +638,129 @@ def _set_question_input(value: str) -> None:
     st.session_state["question_input"] = value
 
 
+EXAMPLE_QUESTIONS = [
+    "What is the current demand by region?",
+    "Show me the demand in the Americas region.",
+    "Show me demand for Tier1 and OEM by region.",
+    "What is the future demand by technology category and quarter?",
+    "Which companies have indicated semiconductor shortages?",
+    "Show inventory trends by component.",
+    "What are order-cancellation responses by technology category?",
+    "What is the average autonomous-driving development by vehicle type and SAE level?",
+    "How do actual and forecasted vehicle sales compare by month?",
+]
+
+GUIDED_TOPICS = {
+    "Regional demand": {
+        "metrics": ["total demand", "average demand", "current demand", "future demand percentage"],
+        "breakdowns": ["by region", "by region and quarter", "by survey group and region"],
+        "surveys": ["all surveys", "OEM", "Tier1", "Semiconductor"],
+    },
+    "Future demand": {
+        "metrics": ["total future demand", "average future-demand change", "future-demand percentage"],
+        "breakdowns": ["by technology category and quarter", "by region and quarter", "by vehicle type and quarter"],
+        "surveys": ["all surveys", "OEM", "Tier1", "Semiconductor"],
+    },
+    "Current demand baselines": {
+        "metrics": ["percentage change", "average current-demand change", "difference between BL1 and BL2"],
+        "breakdowns": ["for BL1 and BL2", "by baseline", "overall"],
+        "surveys": ["Tier1"],
+    },
+    "Vehicle sales": {
+        "metrics": ["total vehicle sales", "actual vehicle sales", "forecasted vehicle sales"],
+        "breakdowns": ["by month", "by year and vehicle type", "actual versus forecast by month"],
+        "surveys": ["all surveys"],
+    },
+    "Inventory": {
+        "metrics": ["inventory entries", "total inventory participants", "inventory trend"],
+        "breakdowns": ["by component", "by component and trend", "by technology category and trend"],
+        "surveys": ["Tier1", "Semiconductor"],
+    },
+    "Shortage": {
+        "metrics": ["companies reporting shortages", "shortage status", "companies without shortage reports"],
+        "breakdowns": ["by survey group", "by company", "overall"],
+        "surveys": ["all surveys", "OEM", "Tier1", "Semiconductor"],
+    },
+    "Order cancellation": {
+        "metrics": ["order-cancellation responses", "participant counts", "response trends"],
+        "breakdowns": ["by technology category", "by technology category and response type", "by response type"],
+        "surveys": ["Semiconductor", "OEM", "Tier1"],
+    },
+    "Autonomous driving": {
+        "metrics": ["average autonomous-driving development", "highest autonomous-driving percentage", "Level 5 autonomy percentage"],
+        "breakdowns": ["by vehicle type and SAE level", "by vehicle type, SAE level, and year", "by year"],
+        "surveys": ["OEM", "Tier1", "all surveys"],
+    },
+    "Catalog lookup": {
+        "metrics": ["available names", "record count", "conversion factors"],
+        "breakdowns": ["for regions", "for technology categories", "for quarter labels"],
+        "surveys": ["all surveys"],
+    },
+}
+
+
+def _guided_question(topic: str, metric: str, breakdown: str, survey: str) -> str:
+    survey_clean = (survey or "").strip()
+    topic_clean = (topic or "").strip().lower()
+    metric_clean = (metric or "").strip()
+    breakdown_clean = (breakdown or "").strip()
+
+    if topic_clean == "catalog lookup":
+        return f"Show me the {metric_clean} {breakdown_clean}."
+
+    survey_phrase = ""
+    if survey_clean and survey_clean.lower() != "all surveys":
+        survey_phrase = f" for {survey_clean}"
+
+    if breakdown_clean == "overall":
+        return f"What is the {metric_clean}{survey_phrase}?"
+    return f"Show the {metric_clean}{survey_phrase} {breakdown_clean}."
+
+
+def _render_question_guidance() -> None:
+    with st.expander("Question guide", expanded=False):
+        st.caption(
+            "Use free text, or pick an example/builder option to create a graph-relevant question."
+        )
+        tabs = st.tabs(["Examples", "Guided builder", "Available topics"])
+        with tabs[0]:
+            cols = st.columns(3)
+            for idx, example in enumerate(EXAMPLE_QUESTIONS):
+                cols[idx % 3].button(
+                    example,
+                    key=f"example_question_{idx}",
+                    use_container_width=True,
+                    on_click=_set_question_input,
+                    args=(example,),
+                )
+        with tabs[1]:
+            topic = st.selectbox("Topic", list(GUIDED_TOPICS), key="guided_topic")
+            config = GUIDED_TOPICS[topic]
+            metric = st.selectbox("Metric", list(config["metrics"]), key="guided_metric")
+            breakdown = st.selectbox("Breakdown", list(config["breakdowns"]), key="guided_breakdown")
+            survey = st.selectbox("Survey / scope", list(config["surveys"]), key="guided_survey")
+            built_question = _guided_question(topic, metric, breakdown, survey)
+            st.text_input("Generated question", value=built_question, disabled=True)
+            st.button(
+                "Use generated question",
+                key="use_guided_question",
+                type="secondary",
+                on_click=_set_question_input,
+                args=(built_question,),
+            )
+        with tabs[2]:
+            topic_rows = [
+                {
+                    "Topic": topic,
+                    "Typical metrics": ", ".join(config["metrics"][:3]),
+                    "Useful breakdowns": ", ".join(config["breakdowns"][:3]),
+                    "Scopes": ", ".join(config["surveys"]),
+                }
+                for topic, config in GUIDED_TOPICS.items()
+            ]
+            st.dataframe(topic_rows, width="stretch", hide_index=True)
+
+
 def _overview_topic_groups(schema_dict: Dict[str, Any]) -> List[Tuple[str, List[str]]]:
     classes = set(schema_dict.get("classes") or [])
     groups = [
@@ -1252,6 +1375,8 @@ st.markdown(
 
 if "question_input" not in st.session_state:
     st.session_state["question_input"] = ""
+
+_render_question_guidance()
 
 question = st.text_area(
     "Your question",
