@@ -650,71 +650,285 @@ EXAMPLE_QUESTIONS = [
     "How do actual and forecasted vehicle sales compare by month?",
 ]
 
-GUIDED_TOPICS = {
-    "Regional demand": {
-        "metrics": ["total demand", "average demand", "current demand", "future demand percentage"],
-        "breakdowns": ["by region", "by region and quarter", "by survey group and region"],
-        "surveys": ["all surveys", "OEM", "Tier1", "Semiconductor"],
+GUIDED_PATTERNS = [
+    {
+        "topic": "Regional demand",
+        "metric": "total demand",
+        "breakdown": "by region",
+        "scope": "OEM",
+        "question": "Show total current demand from OEM customers by region.",
     },
-    "Future demand": {
-        "metrics": ["total future demand", "average future-demand change", "future-demand percentage"],
-        "breakdowns": ["by technology category and quarter", "by region and quarter", "by vehicle type and quarter"],
-        "surveys": ["all surveys", "OEM", "Tier1", "Semiconductor"],
+    {
+        "topic": "Regional demand",
+        "metric": "total demand",
+        "breakdown": "by region",
+        "scope": "Tier1",
+        "question": "Show total current demand from Tier1 customers by region.",
     },
-    "Current demand baselines": {
-        "metrics": ["percentage change", "average current-demand change", "difference between BL1 and BL2"],
-        "breakdowns": ["for BL1 and BL2", "by baseline", "overall"],
-        "surveys": ["Tier1"],
+    {
+        "topic": "Regional demand",
+        "metric": "total demand",
+        "breakdown": "by region",
+        "scope": "Semiconductor",
+        "question": "Show total current demand from Semiconductor customers by region.",
     },
-    "Vehicle sales": {
-        "metrics": ["total vehicle sales", "actual vehicle sales", "forecasted vehicle sales"],
-        "breakdowns": ["by month", "by year and vehicle type", "actual versus forecast by month"],
-        "surveys": ["all surveys"],
+    {
+        "topic": "Regional demand",
+        "metric": "average demand",
+        "breakdown": "by quarter",
+        "scope": "OEM",
+        "question": "Can you show me the average quarterly demand percentage trend based on the OEM survey results?",
     },
-    "Inventory": {
-        "metrics": ["inventory entries", "total inventory participants", "inventory trend"],
-        "breakdowns": ["by component", "by component and trend", "by technology category and trend"],
-        "surveys": ["Tier1", "Semiconductor"],
+    {
+        "topic": "Regional demand",
+        "metric": "average demand",
+        "breakdown": "by quarter",
+        "scope": "Tier1",
+        "question": "Can you show me the average demand percentage trend for the Tier1 survey by quarter?",
     },
-    "Shortage": {
-        "metrics": ["companies reporting shortages", "shortage status", "companies without shortage reports"],
-        "breakdowns": ["by survey group", "by company", "overall"],
-        "surveys": ["all surveys", "OEM", "Tier1", "Semiconductor"],
+    {
+        "topic": "Regional demand",
+        "metric": "average demand",
+        "breakdown": "by quarter",
+        "scope": "Semiconductor",
+        "question": "Can you show me the average quarterly percentage trend in demand for the Semiconductor survey?",
     },
-    "Order cancellation": {
-        "metrics": ["order-cancellation responses", "participant counts", "response trends"],
-        "breakdowns": ["by technology category", "by technology category and response type", "by response type"],
-        "surveys": ["Semiconductor", "OEM", "Tier1"],
+    {
+        "topic": "Future demand",
+        "metric": "future-demand percentage",
+        "breakdown": "by region and quarter",
+        "scope": "OEM",
+        "question": "Show the total percentage of future demand for OEM, detailed by quarter and region.",
     },
-    "Autonomous driving": {
-        "metrics": ["average autonomous-driving development", "highest autonomous-driving percentage", "Level 5 autonomy percentage"],
-        "breakdowns": ["by vehicle type and SAE level", "by vehicle type, SAE level, and year", "by year"],
-        "surveys": ["OEM", "Tier1", "all surveys"],
+    {
+        "topic": "Future demand",
+        "metric": "future-demand percentage",
+        "breakdown": "by region and quarter",
+        "scope": "Tier1",
+        "question": "Show the overall future demand for Tier1, grouped by region and quarter.",
     },
-    "Catalog lookup": {
-        "metrics": ["available names", "record count", "conversion factors"],
-        "breakdowns": ["for regions", "for technology categories", "for quarter labels"],
-        "surveys": ["all surveys"],
+    {
+        "topic": "Future demand",
+        "metric": "future-demand percentage",
+        "breakdown": "by region and quarter",
+        "scope": "Semiconductor",
+        "question": "Show the total percentage of future demand for Semiconductor, detailed by quarter and region.",
     },
-}
+    {
+        "topic": "Future demand",
+        "metric": "future-demand percentage",
+        "breakdown": "by technology category and quarter",
+        "scope": "Semiconductor",
+        "question": "Can you provide the total future demand for semiconductors segmented by technology category and quarter?",
+    },
+    {
+        "topic": "Future demand",
+        "metric": "average future-demand change",
+        "breakdown": "by vehicle type and quarter",
+        "scope": "Automotive",
+        "question": "What is the average percentage change in future demand broken down by vehicle type and quarter?",
+    },
+    {
+        "topic": "Future demand",
+        "metric": "future demand options",
+        "breakdown": "by quarter",
+        "scope": "Automotive",
+        "question": "What is the combined future demand for Option1, Option2, and Option3 in Automotive, broken down by quarter?",
+    },
+    {
+        "topic": "Current demand baselines",
+        "metric": "percentage change",
+        "breakdown": "for BL1 and BL2",
+        "scope": "Tier1",
+        "question": "Which percentage changes apply to Tier1 automotive for baselines BL1 and BL2?",
+    },
+    {
+        "topic": "Current demand baselines",
+        "metric": "average current-demand change",
+        "breakdown": "for BL1 and BL2",
+        "scope": "Tier1",
+        "question": "What is the average current-demand change for BL1 and BL2 products in the Tier1 Automotive segment?",
+    },
+    {
+        "topic": "Current demand baselines",
+        "metric": "difference between BL1 and BL2",
+        "breakdown": "overall",
+        "scope": "Tier1",
+        "question": "What is the total Tier1 current demand percentage change difference between BL1 and BL2?",
+    },
+    {
+        "topic": "Vehicle sales",
+        "metric": "actual vehicle sales",
+        "breakdown": "by month",
+        "scope": "all vehicle sales",
+        "question": "What are the monthly vehicle sales totals from actual transactions?",
+    },
+    {
+        "topic": "Vehicle sales",
+        "metric": "forecasted vehicle sales",
+        "breakdown": "by month",
+        "scope": "all vehicle sales",
+        "question": "How do the forecasted vehicle unit totals break down by month?",
+    },
+    {
+        "topic": "Vehicle sales",
+        "metric": "actual versus forecast",
+        "breakdown": "by month",
+        "scope": "all vehicle sales",
+        "question": "Show me the difference between actual and forecasted vehicle sales totals broken down by month.",
+    },
+    {
+        "topic": "Vehicle sales",
+        "metric": "total vehicle sales",
+        "breakdown": "by year and vehicle type",
+        "scope": "all vehicle sales",
+        "question": "Can you show the total number of vehicles sold each year, grouped by type?",
+    },
+    {
+        "topic": "Inventory",
+        "metric": "inventory entries",
+        "breakdown": "by component and trend",
+        "scope": "Tier1",
+        "question": "What is the overall Tier1 inventory amount for each component and trend?",
+    },
+    {
+        "topic": "Inventory",
+        "metric": "inventory entries",
+        "breakdown": "by technology category and trend",
+        "scope": "Semiconductor",
+        "question": "For each semiconductor technology category and inventory trend, how many inventory entries are recorded?",
+    },
+    {
+        "topic": "Inventory",
+        "metric": "total inventory participants",
+        "breakdown": "by component",
+        "scope": "Tier1",
+        "question": "Can you provide the total Tier1 inventory participant count broken down by component?",
+    },
+    {
+        "topic": "Shortage",
+        "metric": "companies reporting shortages",
+        "breakdown": "by shortage status",
+        "scope": "OEM",
+        "question": "What is the number of OEM companies with and without a shortage?",
+    },
+    {
+        "topic": "Shortage",
+        "metric": "companies reporting shortages",
+        "breakdown": "by shortage status",
+        "scope": "Tier1",
+        "question": "How many Tier1 companies are experiencing a shortage compared to those that are not?",
+    },
+    {
+        "topic": "Shortage",
+        "metric": "companies reporting shortages",
+        "breakdown": "by shortage status",
+        "scope": "Semiconductor",
+        "question": "How many semiconductor companies report a shortage versus no shortage?",
+    },
+    {
+        "topic": "Shortage",
+        "metric": "companies reporting shortages",
+        "breakdown": "by survey group",
+        "scope": "all surveys",
+        "question": "How many companies have indicated shortages, grouped by the type of survey?",
+    },
+    {
+        "topic": "Order cancellation",
+        "metric": "order-cancellation responses",
+        "breakdown": "by technology category",
+        "scope": "Semiconductor",
+        "question": "What is the total count of order cancellation responses per semiconductor technology category?",
+    },
+    {
+        "topic": "Order cancellation",
+        "metric": "order-cancellation responses",
+        "breakdown": "by technology category and response type",
+        "scope": "Semiconductor",
+        "question": "Can you provide the total count of semiconductor order-cancellation responses grouped by technology category and response type?",
+    },
+    {
+        "topic": "Order cancellation",
+        "metric": "response trends",
+        "breakdown": "by technology category",
+        "scope": "Semiconductor",
+        "question": "Summarize increase, decrease, and stable order-cancellation response trends by semiconductor technology category.",
+    },
+    {
+        "topic": "Autonomous driving",
+        "metric": "average autonomous-driving development",
+        "breakdown": "by vehicle type and SAE level",
+        "scope": "all autonomous data",
+        "question": "What is the average autonomous driving development broken down by vehicle type and SAE level?",
+    },
+    {
+        "topic": "Autonomous driving",
+        "metric": "average autonomous-driving development",
+        "breakdown": "by vehicle type, SAE level, and year",
+        "scope": "OEM",
+        "question": "What is the average autonomous driving development for OEMs by vehicle type, SAE level, and year?",
+    },
+    {
+        "topic": "Autonomous driving",
+        "metric": "average autonomous-driving development",
+        "breakdown": "by vehicle type, SAE level, and year",
+        "scope": "Tier1",
+        "question": "What is the average autonomous-driving development for Tier1 suppliers, grouped by vehicle type, SAE level, and year?",
+    },
+    {
+        "topic": "Autonomous driving",
+        "metric": "Level 5 autonomy percentage",
+        "breakdown": "by vehicle type",
+        "scope": "all autonomous data",
+        "question": "Which vehicle type makes up the largest percentage at Level 5 autonomy?",
+    },
+    {
+        "topic": "Catalog lookup",
+        "metric": "available names",
+        "breakdown": "regions",
+        "scope": "catalog",
+        "question": "What are the names of all regions recorded in our database?",
+    },
+    {
+        "topic": "Catalog lookup",
+        "metric": "available names",
+        "breakdown": "technology categories",
+        "scope": "catalog",
+        "question": "What are the names of all technology categories?",
+    },
+    {
+        "topic": "Catalog lookup",
+        "metric": "available names",
+        "breakdown": "quarter labels",
+        "scope": "catalog",
+        "question": "What are the quarter labels present in our dataset?",
+    },
+    {
+        "topic": "Catalog lookup",
+        "metric": "record count",
+        "breakdown": "companies",
+        "scope": "catalog",
+        "question": "Can you tell me how many companies are currently listed?",
+    },
+]
 
 
-def _guided_question(topic: str, metric: str, breakdown: str, survey: str) -> str:
-    survey_clean = (survey or "").strip()
-    topic_clean = (topic or "").strip().lower()
-    metric_clean = (metric or "").strip()
-    breakdown_clean = (breakdown or "").strip()
+def _unique_preserving_order(values: List[str]) -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        out.append(value)
+    return out
 
-    if topic_clean == "catalog lookup":
-        return f"Show me the {metric_clean} {breakdown_clean}."
 
-    survey_phrase = ""
-    if survey_clean and survey_clean.lower() != "all surveys":
-        survey_phrase = f" for {survey_clean}"
-
-    if breakdown_clean == "overall":
-        return f"What is the {metric_clean}{survey_phrase}?"
-    return f"Show the {metric_clean}{survey_phrase} {breakdown_clean}."
+def _selectbox_index(key: str, options: List[str]) -> int:
+    previous = st.session_state.get(key)
+    if previous in options:
+        return options.index(previous)
+    return 0
 
 
 def _render_question_guidance() -> None:
@@ -734,12 +948,45 @@ def _render_question_guidance() -> None:
                     args=(example,),
                 )
         with tabs[1]:
-            topic = st.selectbox("Topic", list(GUIDED_TOPICS), key="guided_topic")
-            config = GUIDED_TOPICS[topic]
-            metric = st.selectbox("Metric", list(config["metrics"]), key="guided_metric")
-            breakdown = st.selectbox("Breakdown", list(config["breakdowns"]), key="guided_breakdown")
-            survey = st.selectbox("Survey / scope", list(config["surveys"]), key="guided_survey")
-            built_question = _guided_question(topic, metric, breakdown, survey)
+            topic_options = _unique_preserving_order([row["topic"] for row in GUIDED_PATTERNS])
+            topic = st.selectbox(
+                "Topic",
+                topic_options,
+                index=_selectbox_index("guided_topic", topic_options),
+                key="guided_topic",
+            )
+            topic_rows = [row for row in GUIDED_PATTERNS if row["topic"] == topic]
+
+            metric_options = _unique_preserving_order([row["metric"] for row in topic_rows])
+            metric = st.selectbox(
+                "Metric",
+                metric_options,
+                index=_selectbox_index("guided_metric", metric_options),
+                key="guided_metric",
+            )
+            metric_rows = [row for row in topic_rows if row["metric"] == metric]
+
+            breakdown_options = _unique_preserving_order([row["breakdown"] for row in metric_rows])
+            breakdown = st.selectbox(
+                "Breakdown",
+                breakdown_options,
+                index=_selectbox_index("guided_breakdown", breakdown_options),
+                key="guided_breakdown",
+            )
+            breakdown_rows = [row for row in metric_rows if row["breakdown"] == breakdown]
+
+            scope_options = _unique_preserving_order([row["scope"] for row in breakdown_rows])
+            scope = st.selectbox(
+                "Survey / scope",
+                scope_options,
+                index=_selectbox_index("guided_scope", scope_options),
+                key="guided_scope",
+            )
+            selected_pattern = next(
+                row for row in breakdown_rows
+                if row["scope"] == scope
+            )
+            built_question = str(selected_pattern["question"])
             st.text_input("Generated question", value=built_question, disabled=True)
             st.button(
                 "Use generated question",
@@ -748,17 +995,24 @@ def _render_question_guidance() -> None:
                 on_click=_set_question_input,
                 args=(built_question,),
             )
+            st.caption("Only combinations represented in the guided pattern library are shown.")
         with tabs[2]:
-            topic_rows = [
-                {
-                    "Topic": topic,
-                    "Typical metrics": ", ".join(config["metrics"][:3]),
-                    "Useful breakdowns": ", ".join(config["breakdowns"][:3]),
-                    "Scopes": ", ".join(config["surveys"]),
-                }
-                for topic, config in GUIDED_TOPICS.items()
-            ]
+            topic_rows = []
+            for topic in _unique_preserving_order([row["topic"] for row in GUIDED_PATTERNS]):
+                rows = [row for row in GUIDED_PATTERNS if row["topic"] == topic]
+                topic_rows.append(
+                    {
+                        "Topic": topic,
+                        "Typical metrics": ", ".join(_unique_preserving_order([row["metric"] for row in rows])[:4]),
+                        "Useful breakdowns": ", ".join(_unique_preserving_order([row["breakdown"] for row in rows])[:4]),
+                        "Scopes": ", ".join(_unique_preserving_order([row["scope"] for row in rows])),
+                    }
+                )
             st.dataframe(topic_rows, width="stretch", hide_index=True)
+            st.caption(
+                "This list is intentionally constrained to common graph-backed question patterns. "
+                "Free text remains available for other questions."
+            )
 
 
 def _overview_topic_groups(schema_dict: Dict[str, Any]) -> List[Tuple[str, List[str]]]:
