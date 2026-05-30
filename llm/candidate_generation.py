@@ -117,7 +117,10 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} ORDER BY ?name"
         )
 
-    if ("survey-origin" in q or "survey origin" in q) and any(
+    if (
+        "demand" not in q
+        and ("survey-origin" in q or "survey origin" in q)
+    ) and any(
         w in q for w in ["class", "classes", "represented", "available"]
     ):
         add(
@@ -421,6 +424,23 @@ def _template_candidate_queries(question: str) -> List[str]:
                     "} GROUP BY ?regionName ORDER BY DESC(?totalDemand)"
                 )
 
+    if (
+        "demand" in q
+        and "region" in q
+        and any(w in q for w in ["survey-origin", "survey origin", "origin class", "survey group", "survey groups"])
+    ):
+        add(
+            "SELECT ?regionName ?surveyType (SUM(?unitsSold) AS ?totalDemand) WHERE { "
+            f"{survey_values}"
+            "?demandForRegion a survey:DemandForRegion ; "
+            "survey:hasSurveyOrigin ?origin ; "
+            "survey:inRegion ?region ; "
+            "survey:totalDemand ?unitsSold . "
+            "?origin a ?surveyClass . "
+            "?region a survey:Region ; survey:regionName ?regionName . "
+            "} GROUP BY ?regionName ?surveyType ORDER BY ?regionName ?surveyType"
+        )
+
     if "origin type" in q and "demand" in q:
         add(
             "SELECT ?surveyType (SUM(?unitsSold) AS ?totalDemand) WHERE { "
@@ -464,6 +484,39 @@ def _template_candidate_queries(question: str) -> List[str]:
             "BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) "
             "BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) "
             "} GROUP BY ?vehicleType ?quarterLabel ORDER BY ?vehicleType ?quarterLabel"
+        )
+
+    if (
+        "autonomous" in q
+        and "vehicle" in q
+        and any(w in q for w in ["year", "yearly", "across years", "over the years"])
+        and any(w in q for w in ["average", "avg", "mean", "percentages", "percentage"])
+    ):
+        add(
+            "SELECT ?year ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE { "
+            "?entry a survey:AutonomousDrivingDevelopment ; "
+            "survey:hasVehicleType ?vehicle ; "
+            "survey:hasSAELevel ?level ; "
+            "survey:hasYear ?year ; "
+            "survey:hasPercentage ?percentage . "
+            "BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) "
+            "} GROUP BY ?year ?vehicleType ORDER BY ?year ?vehicleType"
+        )
+
+    if (
+        ("autonomous" in q or "sae" in q)
+        and any(w in q for w in ["vehicle", "category", "type"])
+        and any(w in q for w in ["level 5", "sae level 5", "full autonomy", "fully autonomous"])
+        and any(w in q for w in ["highest", "strongest", "largest", "top"])
+    ):
+        add(
+            "SELECT ?vehicleType ?percentage WHERE { "
+            "?entry a survey:AutonomousDrivingDevelopment ; "
+            "survey:hasVehicleType ?vehicle ; "
+            "survey:hasSAELevel survey:SAE_Level_5 ; "
+            "survey:hasPercentage ?percentage . "
+            "BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) "
+            "} ORDER BY DESC(?percentage) LIMIT 1"
         )
 
     if (
@@ -585,6 +638,22 @@ def _template_candidate_queries(question: str) -> List[str]:
             "survey:conversionValue ?conversionValue . "
             "BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) "
             "} ORDER BY ?technologyCategory ?vehicleType"
+        )
+
+    if (
+        "forecast" in q
+        and "vehicle" in q
+        and any(w in q for w in ["unit", "units", "sales", "sold"])
+        and any(w in q for w in ["month", "monthly", "time period", "period"])
+    ):
+        add(
+            "SELECT ?month (SUM(?unitsSold) AS ?forecastUnits) WHERE { "
+            "?obs a survey:VehicleSalesObservation ; "
+            "survey:isForecastData true ; "
+            "survey:forTimePeriod ?period ; "
+            "survey:unitsSold ?unitsSold . "
+            "BIND(REPLACE(STR(?period), '^.*/', '') AS ?month) "
+            "} GROUP BY ?month ORDER BY ?month"
         )
 
     if "actual" in q and "forecast" in q and "vehicle sales" in q:
