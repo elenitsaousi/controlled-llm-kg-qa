@@ -857,15 +857,15 @@ def _guided_answerability(rows: List[Dict[str, str]], error: str = "") -> Dict[s
 
 
 EXAMPLE_QUESTIONS = [
-    "What is the current demand by region?",
-    "Show me the demand in the Americas region.",
-    "Show me demand for Tier1 and OEM by region.",
-    "What is the future demand by technology category and quarter?",
-    "Which companies have indicated semiconductor shortages?",
-    "Show inventory trends by component.",
-    "What are order-cancellation responses by technology category?",
-    "What is the average autonomous-driving development by vehicle type and SAE level?",
-    "How do actual and forecasted vehicle sales compare by month?",
+    "List OEM total demand by region.",
+    "Summarize Tier1 inventory participant totals by component.",
+    "Compare actual and forecast vehicle-sales totals by month.",
+    "List raw future-demand percentages by technology category and quarter.",
+    "What is the average BL1 and BL2 current-demand change for Tier1 Automotive?",
+    "List order-cancellation participant observations by technology category and response type.",
+    "Which vehicle type has the highest average future-demand change?",
+    "How many companies report shortage by survey type?",
+    "List companies that reported semiconductor shortage.",
 ]
 
 GUIDED_PATTERNS = [
@@ -1156,15 +1156,20 @@ def _render_question_guidance() -> None:
         )
         tabs = st.tabs(["Examples", "Guided builder", "Available topics"])
         with tabs[0]:
+            query_lookup = _load_guided_query_lookup()
             cols = st.columns(3)
             for idx, example in enumerate(EXAMPLE_QUESTIONS):
+                query = query_lookup.get(_normalize_question_key(example), "")
+                if not query:
+                    continue
                 cols[idx % 3].button(
                     example,
                     key=f"example_question_{idx}",
                     use_container_width=True,
-                    on_click=_set_question_input,
-                    args=(example,),
+                    on_click=_set_guided_question_input,
+                    args=(example, query),
                 )
+            st.caption("Examples use validated graph queries directly.")
         with tabs[1]:
             validated_patterns = _validated_guided_patterns()
             topic_options = _unique_preserving_order([row["topic"] for row in validated_patterns])
