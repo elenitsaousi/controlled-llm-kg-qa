@@ -809,6 +809,20 @@ def evaluate(
     total_questions = len(questions) + len(completed_details)
     query_cache: Dict[Tuple[Optional[float], str], Tuple[str, object]] = {}
     candidate_duplicates_removed = 0
+    checkpoint_every = _env_int("INFINEON_EVAL_CHECKPOINT_EVERY", 1, min_value=0)
+
+    def _checkpoint() -> None:
+        if not out_path or checkpoint_every <= 0:
+            return
+        if len(details) % checkpoint_every != 0:
+            return
+        _finalize_eval_payload(
+            summary=summary,
+            details=details,
+            query_cache_entries=len(query_cache),
+            candidate_duplicates_removed=candidate_duplicates_removed,
+            out_path=out_path,
+        )
 
     for idx, item in enumerate(questions):
         if progress:
@@ -865,6 +879,7 @@ def evaluate(
                     "gold_error": str(exc),
                 }
             )
+            _checkpoint()
             continue
         except Exception as exc:
             summary["gold_invalid"] += 1
@@ -880,6 +895,7 @@ def evaluate(
                     "gold_error": str(exc),
                 }
             )
+            _checkpoint()
             continue
 
         # Generate candidates (optionally multiple generation runs, merged uniquely).
@@ -957,6 +973,7 @@ def evaluate(
                     "any_correct": False,
                 }
             )
+            _checkpoint()
             continue
 
         if repair_enabled and candidates:
@@ -1182,6 +1199,7 @@ def evaluate(
             "any_correct": any_correct,
             "candidates": candidate_results,
         })
+        _checkpoint()
 
     return _finalize_eval_payload(
         summary=summary,
