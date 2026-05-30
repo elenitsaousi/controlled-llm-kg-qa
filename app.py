@@ -638,6 +638,80 @@ def _set_question_input(value: str) -> None:
     st.session_state["question_input"] = value
 
 
+def _set_guided_question_input(value: str, query: str) -> None:
+    st.session_state["question_input"] = value
+    st.session_state["guided_query_override_question"] = value
+    st.session_state["guided_query_override"] = query
+
+
+def _active_guided_query(question: str) -> str:
+    if str(st.session_state.get("guided_query_override_question", "")).strip() == (question or "").strip():
+        return str(st.session_state.get("guided_query_override", "") or "").strip()
+    return ""
+
+
+def _normalize_question_key(question: str) -> str:
+    return " ".join(str(question or "").strip().lower().rstrip("?.!").split())
+
+
+@st.cache_data(show_spinner=False)
+def _load_guided_query_lookup() -> Dict[str, str]:
+    lookup: Dict[str, str] = {}
+    for relative in (
+        "data/infineon/kgqa_seed_expansion_round1.json",
+        "data/infineon/infineon_dev.json",
+        "data/infineon/infineon_train.json",
+    ):
+        path = PROJECT_ROOT / relative
+        if not path.exists():
+            continue
+        try:
+            rows = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        for row in rows if isinstance(rows, list) else []:
+            question = str(row.get("question", "") or "").strip()
+            query = str(row.get("query", "") or "").strip()
+            if question and query:
+                lookup[_normalize_question_key(question)] = query
+    return lookup
+
+
+def _guided_pattern_query(pattern: Dict[str, str]) -> str:
+    direct = str(pattern.get("query", "") or "").strip()
+    if direct:
+        return direct
+    return _load_guided_query_lookup().get(_normalize_question_key(str(pattern.get("question", ""))), "")
+
+
+def _guided_answerability(rows: List[Dict[str, str]], error: str = "") -> Dict[str, Any]:
+    if error:
+        return {
+            "status": "query_execution_error",
+            "can_answer": False,
+            "reason": "The validated guided query could not be executed against the graph.",
+            "selected_error": error,
+        }
+    if rows:
+        return {
+            "status": "answer_available",
+            "can_answer": True,
+            "reason": "The validated guided query executed and returned graph rows.",
+            "selected_has_rows": True,
+            "selected_row_count": len(rows),
+        }
+    return {
+        "status": "no_rows_for_generated_queries",
+        "can_answer": False,
+        "reason": (
+            "The validated guided query returned 0 rows. This pattern should be reviewed "
+            "or removed from the guided builder."
+        ),
+        "selected_has_rows": False,
+        "selected_row_count": 0,
+    }
+
+
 EXAMPLE_QUESTIONS = [
     "What is the current demand by region?",
     "Show me the demand in the Americas region.",
@@ -803,7 +877,7 @@ GUIDED_PATTERNS = [
         "metric": "total inventory participants",
         "breakdown": "by component",
         "scope": "Tier1",
-        "question": "Can you provide the total Tier1 inventory participant count broken down by component?",
+        "question": "Summarize Tier1 inventory participant totals by component.",
     },
     {
         "topic": "Shortage",
@@ -948,14 +1022,22 @@ def _render_question_guidance() -> None:
                     args=(example,),
                 )
         with tabs[1]:
-            topic_options = _unique_preserving_order([row["topic"] for row in GUIDED_PATTERNS])
+            validated_patterns = [
+                dict(row, query=_guided_pattern_query(row))
+                for row in GUIDED_PATTERNS
+                if _guided_pattern_query(row)
+            ]
+            topic_options = _unique_preserving_order([row["topic"] for row in validated_patterns])
+            if not topic_options:
+                st.warning("No validated guided patterns are available.")
+                return
             topic = st.selectbox(
                 "Topic",
                 topic_options,
                 index=_selectbox_index("guided_topic", topic_options),
                 key="guided_topic",
             )
-            topic_rows = [row for row in GUIDED_PATTERNS if row["topic"] == topic]
+            topic_rows = [row for row in validated_patterns if row["topic"] == topic]
 
             metric_options = _unique_preserving_order([row["metric"] for row in topic_rows])
             metric = st.selectbox(
@@ -992,14 +1074,19 @@ def _render_question_guidance() -> None:
                 "Use generated question",
                 key="use_guided_question",
                 type="secondary",
-                on_click=_set_question_input,
-                args=(built_question,),
+                on_click=_set_guided_question_input,
+                args=(built_question, str(selected_pattern["query"])),
             )
-            st.caption("Only combinations represented in the guided pattern library are shown.")
+            st.caption("Only combinations with a validated graph query are shown.")
         with tabs[2]:
             topic_rows = []
-            for topic in _unique_preserving_order([row["topic"] for row in GUIDED_PATTERNS]):
-                rows = [row for row in GUIDED_PATTERNS if row["topic"] == topic]
+            validated_patterns = [
+                dict(row, query=_guided_pattern_query(row))
+                for row in GUIDED_PATTERNS
+                if _guided_pattern_query(row)
+            ]
+            for topic in _unique_preserving_order([row["topic"] for row in validated_patterns]):
+                rows = [row for row in validated_patterns if row["topic"] == topic]
                 topic_rows.append(
                     {
                         "Topic": topic,
@@ -1656,11 +1743,12 @@ asked = st.button("Ask", type="primary")
 clarification_rendered = False
 
 if asked:
+    guided_query = _active_guided_query(question)
     if not question.strip():
         st.warning("Please enter a question.")
     elif not api_url.strip():
         st.error("Missing API URL.")
-    elif not api_key.strip() and not (
+    elif not guided_query and not api_key.strip() and not (
         os.environ.get("USER_LLM")
         or os.environ.get("INFINEON_API_USER")
     ):
@@ -1672,31 +1760,62 @@ if asked:
             st.error(f"Schema load failed: {exc}")
             st.stop()
 
-        if show_prompt:
+        if show_prompt and not guided_query:
             prompt = generate_candidate_prompt(question, schema, k=5)
             st.subheader("Candidate Generation Prompt")
             st.code(prompt, language="text")
 
         request_started = time.perf_counter()
         try:
-            os.environ["INFINEON_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
-            client = InfineonGPTClient(
-                model=model_name.strip() or None,
-                base_url=api_url.strip() or None,
-                api_key=api_key.strip() or None,
-                temperature=float(temperature),
-            )
-            result = answer_question(
-                question,
-                schema,
-                llm_client=client,
-                enable_entity_linking=True,
-                use_ml_ranking=bool(use_ml_ranking),
-                ml_policy=ml_policy,
-                ml_model_path=ml_model_path.strip() or None,
-                ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
-                include_candidate_diagnostics=bool(show_candidate_diagnostics),
-            )
+            if guided_query:
+                result = {
+                    "answer": "Validated guided query selected.",
+                    "selected_query": guided_query,
+                    "candidates": [{"query": guided_query, "source": "guided"}],
+                    "schema_ranked": [],
+                    "learning_ranked": [],
+                    "metadata": {"guided_query": True},
+                    "errors": [],
+                    "prompt": "",
+                    "policy": "guided",
+                    "entropy": 0.0,
+                    "selection_reason": "Validated guided query pattern selected.",
+                    "used_ml": False,
+                    "effective_question": question,
+                    "selection_explanation": {
+                        "selected_policy": "guided",
+                        "selection_reason": "Validated guided query pattern selected.",
+                        "selected_query_valid": True,
+                        "selected_query_errors": [],
+                        "selected_execution_has_rows": None,
+                    },
+                    "answerability": {
+                        "status": "guided_pending_execution",
+                        "can_answer": None,
+                        "reason": "A validated guided query was selected and will be executed directly.",
+                    },
+                    "clarification": None,
+                    "request_clarification": None,
+                }
+            else:
+                os.environ["INFINEON_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
+                client = InfineonGPTClient(
+                    model=model_name.strip() or None,
+                    base_url=api_url.strip() or None,
+                    api_key=api_key.strip() or None,
+                    temperature=float(temperature),
+                )
+                result = answer_question(
+                    question,
+                    schema,
+                    llm_client=client,
+                    enable_entity_linking=True,
+                    use_ml_ranking=bool(use_ml_ranking),
+                    ml_policy=ml_policy,
+                    ml_model_path=ml_model_path.strip() or None,
+                    ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
+                    include_candidate_diagnostics=bool(show_candidate_diagnostics),
+                )
         except LLMAuthError as exc:
             st.error("Infineon GPT authentication failed.")
             st.write(str(exc))
@@ -1741,8 +1860,12 @@ if asked:
                     },
                     result.get("errors") or None,
                 )
+                if guided_query:
+                    result["answerability"] = _guided_answerability(graph_rows)
             except Exception as exc:
                 graph_exec_error = str(exc)
+                if guided_query:
+                    result["answerability"] = _guided_answerability([], graph_exec_error)
 
         st.session_state["last_qa_result"] = result
         st.session_state["last_graph_rows"] = graph_rows
