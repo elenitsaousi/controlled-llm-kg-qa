@@ -26,7 +26,7 @@ from ranking.ambiguity_policy import (
 )
 from ranking.clarification import build_clarification_payload
 from pipeline.request_routing import route_request
-from ranking.feature_extraction import extract_features
+from ranking.feature_extraction import extract_features, extract_query_plan
 from ranking.ranker import rank_candidates as rank_schema_candidates
 from validation.semantic import (
     semantic_coverage_report,
@@ -724,12 +724,30 @@ def _safe_graph_query(graph, query, timeout=2):
     except Exception as e:
         return None, str(e)
 
+
+def _format_runtime_value(value: object) -> str:
+    if value is None:
+        return ""
+    try:
+        if hasattr(value, "toPython"):
+            return str(value.toPython())
+    except Exception:
+        pass
+    text = str(value)
+    if "#" in text:
+        return text.rsplit("#", 1)[-1]
+    if "/" in text:
+        return text.rstrip("/").rsplit("/", 1)[-1]
+    return text
+
+
 def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
     graph = _get_default_graph()
     if graph is None:
         return {
             "has_rows": None,
             "row_count": 0,
+            "preview_rows": [],
             "unbound_vars": [],
             "error": "graph_unavailable",
         }
@@ -745,6 +763,7 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
             profile = {
                 "has_rows": False,   # treat timeout σαν empty
                 "row_count": 0,
+                "preview_rows": [],
                 "unbound_vars": [],
                 "error": error,
             }
@@ -754,16 +773,26 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
         vars_seen = [str(v) for v in getattr(results, "vars", [])]
         bound_counts = {v: 0 for v in vars_seen}
         row_count = 0
+        preview_rows: List[Dict[str, str]] = []
         for row in results:
             if row_count >= max_rows:
                 break
             row_count += 1
             if hasattr(row, "asdict"):
                 rd = row.asdict()
+                preview_rows.append(
+                    {str(k): _format_runtime_value(v) for k, v in rd.items()}
+                )
                 for var in vars_seen:
                     if rd.get(var) is not None:
                         bound_counts[var] = bound_counts.get(var, 0) + 1
             else:
+                preview_rows.append(
+                    {
+                        (vars_seen[idx] if idx < len(vars_seen) else f"col{idx + 1}"): _format_runtime_value(value)
+                        for idx, value in enumerate(row)
+                    }
+                )
                 for var, value in zip(vars_seen, row):
                     if value is not None:
                         bound_counts[var] = bound_counts.get(var, 0) + 1
@@ -773,6 +802,7 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
         profile = {
             "has_rows": row_count > 0,
             "row_count": row_count,
+            "preview_rows": preview_rows,
             "unbound_vars": unbound_vars,
             "error": None,
         }
@@ -782,6 +812,7 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
         profile = {
             "has_rows": None,
             "row_count": 0,
+            "preview_rows": [],
             "unbound_vars": [],
             "error": str(exc),
         }
@@ -792,6 +823,83 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
 def _query_has_runtime_rows(query: str) -> Tuple[Optional[bool], Optional[str]]:
     profile = _query_runtime_profile(query)
     return profile.get("has_rows"), profile.get("error")
+
+
+def _strip_answer_prefix(text: str) -> str:
+    cleaned = " ".join(str(text or "").split())
+    if cleaned.lower().startswith("answer:"):
+        cleaned = cleaned.split(":", 1)[1].strip()
+    return cleaned
+
+
+def _candidate_interpretation_label(
+    question: str,
+    query: str,
+    candidate: Optional[Dict[str, object]] = None,
+) -> str:
+    try:
+        plan = extract_query_plan(query)
+    except Exception:
+        plan = {}
+    aggregations = list(plan.get("aggregations") or [])
+    surveys = list(plan.get("survey_origins") or [])
+    classes = [
+        c
+        for c in list(plan.get("classes") or [])
+        if c not in {"OEM_Survey", "Tier1_Survey", "Semiconductor_Survey"}
+    ]
+    group_by = list(plan.get("group_by_predicates") or []) or list(plan.get("group_by_vars") or [])
+
+    if aggregations:
+        prefix = {
+            "AVG": "Average",
+            "SUM": "Total",
+            "COUNT": "Count of",
+            "MAX": "Maximum",
+            "MIN": "Minimum",
+        }.get(str(aggregations[0]).upper(), str(aggregations[0]).upper())
+    else:
+        prefix = "Values for"
+
+    topic = " / ".join(surveys[:1] + classes[:2]).strip(" /")
+    if not topic:
+        source = str((candidate or {}).get("source", "") or "").strip()
+        topic = source if source else "graph interpretation"
+    label = f"{prefix} {topic}".strip()
+    if group_by:
+        label += " by " + " and ".join(str(x).replace("_", " ") for x in group_by[:2])
+    return label
+
+
+def _answerable_option_preview(
+    *,
+    question: str,
+    query: str,
+    candidate: Dict[str, object],
+    rank: int,
+    profile: Dict[str, object],
+) -> Dict[str, object]:
+    preview_rows = list(profile.get("preview_rows") or [])
+    answer_preview = synthesize_answer(
+        question,
+        query,
+        {"rows": preview_rows[:5], "matched_question_id": None, "error": None},
+        None,
+    )
+    answer_preview = _strip_answer_prefix(answer_preview)
+    if len(answer_preview) > 320:
+        answer_preview = answer_preview[:317].rstrip() + "..."
+    return {
+        "id": f"answerable_{rank}",
+        "rank": rank,
+        "label": _candidate_interpretation_label(question, query, candidate),
+        "preview": answer_preview,
+        "row_count": profile.get("row_count"),
+        "query": query,
+        "source": candidate.get("source"),
+        "preview_rows": preview_rows[:5],
+        "query_preview": (query[:180] + "...") if len(query) > 180 else query,
+    }
 
 
 def _select_best_valid_query(
@@ -833,6 +941,7 @@ def _select_best_valid_query(
 
 def _answerability_assessment(
     *,
+    question: str,
     selected_query: Optional[str],
     selected_errors: Optional[List[Dict[str, str]]],
     ordered_candidates: Sequence[Dict[str, object]],
@@ -893,12 +1002,13 @@ def _answerability_assessment(
         profile = _query_runtime_profile(query)
         if profile.get("has_rows") is True:
             nonempty_alternatives.append(
-                {
-                    "rank": idx + 1,
-                    "source": candidate.get("source"),
-                    "row_count": profile.get("row_count"),
-                    "query_preview": (query[:180] + "...") if len(query) > 180 else query,
-                }
+                _answerable_option_preview(
+                    question=question,
+                    query=query,
+                    candidate=candidate,
+                    rank=idx + 1,
+                    profile=profile,
+                )
             )
 
     if selected_has_rows is True:
@@ -1738,7 +1848,7 @@ def answer_question(
         # Clarification is rare enough that profiling only the displayed plan
         # neighborhood is a worthwhile guardrail: users should not be offered
         # empty interpretations when viable alternatives already exist.
-        for candidate in ordered_candidates[:6]:
+        for candidate_rank, candidate in enumerate(ordered_candidates[:6], start=1):
             query = str(candidate.get("query", "") or "").strip()
             if not query:
                 continue
@@ -1747,6 +1857,16 @@ def answer_question(
             candidate["execution_error"] = profile.get("error")
             candidate["execution_row_count"] = profile.get("row_count")
             candidate["execution_unbound_vars"] = list(profile.get("unbound_vars") or [])
+            if profile.get("has_rows") is True:
+                option_preview = _answerable_option_preview(
+                    question=effective_question,
+                    query=query,
+                    candidate=candidate,
+                    rank=candidate_rank,
+                    profile=profile,
+                )
+                candidate["answer_preview"] = option_preview.get("preview")
+                candidate["preview_rows"] = option_preview.get("preview_rows")
         clarification = build_clarification_payload(
             effective_question,
             ordered_candidates,
@@ -1846,6 +1966,7 @@ def answer_question(
         )
 
     answerability = _answerability_assessment(
+        question=effective_question,
         selected_query=selected_query,
         selected_errors=errors,
         ordered_candidates=ordered_candidates,

@@ -330,7 +330,35 @@ def _render_answer_block(
             st.warning(reason)
             alternatives = answerability.get("nonempty_alternatives") or []
             if alternatives:
-                with st.expander("Non-empty alternative interpretations", expanded=False):
+                st.write("I found answerable alternative interpretations:")
+                chosen_alternative: Dict[str, Any] | None = None
+                for idx, alternative in enumerate(alternatives, start=1):
+                    label = str(alternative.get("label") or f"Alternative {idx}")
+                    preview = str(alternative.get("preview") or "This interpretation returned graph rows.")
+                    row_count = alternative.get("row_count")
+                    with st.container(border=True):
+                        st.markdown(f"**{label}**")
+                        st.write(preview)
+                        if row_count is not None:
+                            st.caption(f"Rows found in graph: {row_count}")
+                        if st.button(
+                            "Use this interpretation",
+                            key=f"answerability_alt_{idx}_{abs(hash(str(alternative.get('query', ''))))}",
+                            use_container_width=True,
+                        ):
+                            chosen_alternative = alternative
+                if chosen_alternative is not None:
+                    selected_query = str(chosen_alternative.get("query", "") or "").strip()
+                    graph_rows = list(chosen_alternative.get("preview_rows") or [])
+                    preview = str(chosen_alternative.get("preview") or "").strip()
+                    answer_text = f"Answer: {preview}" if preview and not preview.lower().startswith("answer:") else preview
+                    graph_exec_error = ""
+                    execute_selected = True
+                    st.session_state["last_selected_query"] = selected_query
+                    st.session_state["last_graph_rows"] = graph_rows
+                    st.session_state["last_graph_answer"] = answer_text
+                    st.success(f"Using alternative interpretation: {chosen_alternative.get('label')}")
+                with st.expander("Technical alternative details", expanded=False):
                     st.json(alternatives)
         elif status in {"no_rows_for_generated_queries", "query_invalid", "query_execution_error", "generation_failure"}:
             st.warning(reason or f"Answerability status: {status}")
@@ -433,24 +461,24 @@ def _render_clarification(
     st.write(str(clarification.get("question", "Which interpretation matches what you want?")))
     options = list(clarification.get("options") or [])
     for option in options:
-        cols = st.columns([3, 1])
-        cols[0].write(str(option.get("label", "Interpretation")))
-        if cols[1].button(
-            "Use",
-            key=f"clarify_{option.get('id')}",
-            use_container_width=True,
-        ):
-            chosen_query = str(option.get("query", "") or "").strip()
-            st.session_state["last_selected_query"] = chosen_query
-            st.session_state["clarification_choice_id"] = option.get("id")
-            if execute_selected and chosen_query and os.path.exists(graph_path):
-                try:
-                    graph = _load_graph_cached(graph_path)
-                    rows, _truncated = _execute_query_preview(
-                        graph,
-                        chosen_query,
-                        max_rows=int(max_preview_rows),
-                    )
+        with st.container(border=True):
+            st.markdown(f"**{str(option.get('label', 'Interpretation'))}**")
+            preview = str(option.get("preview") or "").strip()
+            if preview:
+                st.write(preview)
+            row_count = option.get("row_count")
+            if row_count is not None:
+                st.caption(f"Rows found in graph: {row_count}")
+            if st.button(
+                "Use this interpretation",
+                key=f"clarify_{option.get('id')}",
+                use_container_width=True,
+            ):
+                chosen_query = str(option.get("query", "") or "").strip()
+                st.session_state["last_selected_query"] = chosen_query
+                st.session_state["clarification_choice_id"] = option.get("id")
+                if option.get("preview_rows"):
+                    rows = list(option.get("preview_rows") or [])
                     st.session_state["last_graph_rows"] = rows
                     st.session_state["last_graph_answer"] = synthesize_answer(
                         str(st.session_state.get("last_question", "")),
@@ -462,9 +490,28 @@ def _render_clarification(
                         },
                         None,
                     )
-                except Exception:
-                    st.session_state["last_graph_rows"] = []
-                    st.session_state["last_graph_answer"] = ""
+                elif execute_selected and chosen_query and os.path.exists(graph_path):
+                    try:
+                        graph = _load_graph_cached(graph_path)
+                        rows, _truncated = _execute_query_preview(
+                            graph,
+                            chosen_query,
+                            max_rows=int(max_preview_rows),
+                        )
+                        st.session_state["last_graph_rows"] = rows
+                        st.session_state["last_graph_answer"] = synthesize_answer(
+                            str(st.session_state.get("last_question", "")),
+                            chosen_query,
+                            {
+                                "rows": rows,
+                                "matched_question_id": None,
+                                "error": None,
+                            },
+                            None,
+                        )
+                    except Exception:
+                        st.session_state["last_graph_rows"] = []
+                        st.session_state["last_graph_answer"] = ""
 
     chosen_id = st.session_state.get("clarification_choice_id")
     if chosen_id:

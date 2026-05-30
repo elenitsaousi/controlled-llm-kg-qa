@@ -369,6 +369,9 @@ def build_clarification_payload(
                 "query": row["query"],
                 "candidate_rank": row["rank"],
                 "support": len(grouped[row["key"]]),
+                "row_count": row["candidate"].get("execution_row_count"),
+                "preview": row["candidate"].get("answer_preview"),
+                "preview_rows": row["candidate"].get("preview_rows") or [],
                 "signature": {
                     axis: signature.get(axis)
                     for axis in ("aggregation", "answer_shape", "time_dimension", "dimensions", "filters", "origins")
