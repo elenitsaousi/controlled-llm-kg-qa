@@ -831,6 +831,123 @@ def _select_best_valid_query(
     return ordered_queries[0], first_errors, 0
 
 
+def _answerability_assessment(
+    *,
+    selected_query: Optional[str],
+    selected_errors: Optional[List[Dict[str, str]]],
+    ordered_candidates: Sequence[Dict[str, object]],
+) -> Dict[str, object]:
+    """Classify why a selected query can or cannot produce an answer.
+
+    This is intentionally diagnostic: it does not claim that the graph has no
+    possible answer unless all generated valid alternatives are also empty.
+    """
+    if not selected_query:
+        return {
+            "status": "generation_failure",
+            "can_answer": False,
+            "reason": "No query candidate was selected.",
+            "selected_has_rows": None,
+            "selected_error": None,
+            "alternative_nonempty_count": 0,
+            "valid_candidate_count": 0,
+        }
+
+    if selected_errors:
+        return {
+            "status": "query_invalid",
+            "can_answer": False,
+            "reason": "The selected query failed syntax or semantic validation.",
+            "selected_has_rows": None,
+            "selected_error": "; ".join(str(e.get("message", e)) for e in selected_errors),
+            "alternative_nonempty_count": 0,
+            "valid_candidate_count": 0,
+        }
+
+    selected_profile = _query_runtime_profile(selected_query)
+    selected_has_rows = selected_profile.get("has_rows")
+    selected_error = selected_profile.get("error")
+    if selected_error:
+        return {
+            "status": "query_execution_error",
+            "can_answer": False,
+            "reason": "The selected query could not be executed against the graph.",
+            "selected_has_rows": selected_has_rows,
+            "selected_error": selected_error,
+            "alternative_nonempty_count": 0,
+            "valid_candidate_count": 0,
+        }
+
+    valid_count = 0
+    nonempty_alternatives: List[Dict[str, object]] = []
+    selected_key = _candidate_key(selected_query)
+    for idx, candidate in enumerate(ordered_candidates[:8]):
+        query = str(candidate.get("query", "") or "").strip()
+        if not query:
+            continue
+        if _runtime_validate_query(query):
+            continue
+        valid_count += 1
+        if _candidate_key(query) == selected_key:
+            continue
+        profile = _query_runtime_profile(query)
+        if profile.get("has_rows") is True:
+            nonempty_alternatives.append(
+                {
+                    "rank": idx + 1,
+                    "source": candidate.get("source"),
+                    "row_count": profile.get("row_count"),
+                    "query_preview": (query[:180] + "...") if len(query) > 180 else query,
+                }
+            )
+
+    if selected_has_rows is True:
+        return {
+            "status": "answer_available",
+            "can_answer": True,
+            "reason": "The selected query executed and returned graph rows.",
+            "selected_has_rows": True,
+            "selected_error": None,
+            "selected_row_count": selected_profile.get("row_count"),
+            "alternative_nonempty_count": len(nonempty_alternatives),
+            "valid_candidate_count": valid_count,
+            "nonempty_alternatives": nonempty_alternatives[:3],
+        }
+
+    if nonempty_alternatives:
+        return {
+            "status": "selected_query_empty_but_alternatives_exist",
+            "can_answer": False,
+            "reason": (
+                "The selected query returned 0 rows, but other valid generated "
+                "interpretations returned rows. This usually indicates a wrong "
+                "interpretation, over-filtering, or ranking/selection failure."
+            ),
+            "selected_has_rows": False,
+            "selected_error": None,
+            "selected_row_count": selected_profile.get("row_count"),
+            "alternative_nonempty_count": len(nonempty_alternatives),
+            "valid_candidate_count": valid_count,
+            "nonempty_alternatives": nonempty_alternatives[:3],
+        }
+
+    return {
+        "status": "no_rows_for_generated_queries",
+        "can_answer": False,
+        "reason": (
+            "The selected query and the checked valid alternatives returned 0 rows. "
+            "This may mean no matching data exists for the requested interpretation, "
+            "or that the system did not generate the correct graph path."
+        ),
+        "selected_has_rows": False,
+        "selected_error": None,
+        "selected_row_count": selected_profile.get("row_count"),
+        "alternative_nonempty_count": 0,
+        "valid_candidate_count": valid_count,
+        "nonempty_alternatives": [],
+    }
+
+
 def _candidate_shape_score(question: str, query: str, profile: Dict[str, object]) -> Tuple[float, List[str]]:
     q = (question or "").lower()
     sparql = (query or "").lower()
@@ -1379,6 +1496,15 @@ def answer_question(
             "request_route": request_route,
             "request_clarification": request_route.get("request_clarification"),
             "clarification": None,
+            "answerability": {
+                "status": "non_kg_request",
+                "can_answer": bool(answer),
+                "reason": str(request_route.get("reason", request_route.get("route"))),
+                "selected_has_rows": None,
+                "selected_error": None,
+                "alternative_nonempty_count": 0,
+                "valid_candidate_count": 0,
+            },
         }
 
     query_plan_predictor = _load_query_plan_predictor_cached()
@@ -1456,6 +1582,15 @@ def answer_question(
             "query_plan_ml_used": bool(metadata.get("query_plan_predictor_applied")),
             "ml_ranker_applied": False,
             "candidate_duplicates_removed": duplicate_candidates_removed,
+            "answerability": {
+                "status": "generation_failure",
+                "can_answer": False,
+                "reason": "No query candidates were generated.",
+                "selected_has_rows": None,
+                "selected_error": None,
+                "alternative_nonempty_count": 0,
+                "valid_candidate_count": 0,
+            },
         }
 
     schema_ranked = _rerank_with_semantic_coverage(
@@ -1577,6 +1712,15 @@ def answer_question(
             "query_plan_ml_used": bool(metadata.get("query_plan_predictor_applied")),
             "ml_ranker_applied": False,
             "candidate_duplicates_removed": duplicate_candidates_removed,
+            "answerability": {
+                "status": "generation_failure",
+                "can_answer": False,
+                "reason": "No ranked query candidate was available after generation.",
+                "selected_has_rows": None,
+                "selected_error": None,
+                "alternative_nonempty_count": 0,
+                "valid_candidate_count": 0,
+            },
         }
 
     ordered_candidates = primary + fallback
@@ -1672,6 +1816,15 @@ def answer_question(
             "query_plan_ml_used": bool(metadata.get("query_plan_predictor_applied")),
             "ml_ranker_applied": False,
             "candidate_duplicates_removed": duplicate_candidates_removed,
+            "answerability": {
+                "status": "generation_failure",
+                "can_answer": False,
+                "reason": "No ordered query candidate was selected.",
+                "selected_has_rows": None,
+                "selected_error": None,
+                "alternative_nonempty_count": 0,
+                "valid_candidate_count": 0,
+            },
         }
 
     selected_key = " ".join(selected_query.split()).lower()
@@ -1691,6 +1844,12 @@ def answer_question(
             questions_path=questions_path,
             question=question,
         )
+
+    answerability = _answerability_assessment(
+        selected_query=selected_query,
+        selected_errors=errors,
+        ordered_candidates=ordered_candidates,
+    )
 
     answer = synthesize_answer(
         question, selected_query, results, errors or None
@@ -1743,6 +1902,7 @@ def answer_question(
         "selected_query_rank": selected_rank,
         "selected_query_from": selected_from,
         "selection_explanation": selection_explanation,
+        "answerability": answerability,
         "clarification": clarification,
         "request_route": request_route,
         "request_clarification": None,

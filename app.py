@@ -214,6 +214,21 @@ def _render_selection_explainability(result: Dict[str, Any]) -> None:
 def _confidence_summary(result: Dict[str, Any]) -> Tuple[str, str]:
     expl = result.get("selection_explanation")
     clarification = result.get("clarification")
+    answerability = result.get("answerability")
+    if isinstance(answerability, dict):
+        status = str(answerability.get("status", ""))
+        if status == "selected_query_empty_but_alternatives_exist":
+            return (
+                "Low",
+                "The selected query returned no rows while another valid generated interpretation returned data.",
+            )
+        if status in {"query_invalid", "query_execution_error", "generation_failure"}:
+            return ("Low", str(answerability.get("reason", "The system could not produce an answerable graph query.")))
+        if status == "no_rows_for_generated_queries":
+            return (
+                "Low",
+                "No generated valid query returned rows, so the system cannot distinguish missing data from a missing graph path.",
+            )
     if not isinstance(expl, dict):
         return "Unknown", "No selection diagnostics are available."
 
@@ -303,8 +318,23 @@ def _render_answer_block(
     graph_rows: List[Dict[str, str]],
     graph_exec_error: str,
     execute_selected: bool,
+    answerability: Dict[str, Any] | None = None,
 ) -> None:
     st.subheader("Answer")
+    if isinstance(answerability, dict):
+        status = str(answerability.get("status", "unknown"))
+        reason = str(answerability.get("reason", "")).strip()
+        if status == "answer_available":
+            st.caption("Answerability: answer available from graph execution.")
+        elif status == "selected_query_empty_but_alternatives_exist":
+            st.warning(reason)
+            alternatives = answerability.get("nonempty_alternatives") or []
+            if alternatives:
+                with st.expander("Non-empty alternative interpretations", expanded=False):
+                    st.json(alternatives)
+        elif status in {"no_rows_for_generated_queries", "query_invalid", "query_execution_error", "generation_failure"}:
+            st.warning(reason or f"Answerability status: {status}")
+
     if graph_exec_error:
         st.error(f"Query execution error: {graph_exec_error}")
         st.write(answer_text or "No answer.")
@@ -317,6 +347,30 @@ def _render_answer_block(
             st.write(answer_text or "No results were found for this question.")
     else:
         st.write(answer_text or "No answer.")
+
+
+def _clarified_answerability(graph_rows: List[Dict[str, str]], graph_exec_error: str = "") -> Dict[str, Any]:
+    if graph_exec_error:
+        return {
+            "status": "query_execution_error",
+            "can_answer": False,
+            "reason": "The clarified query could not be executed against the graph.",
+        }
+    if graph_rows:
+        return {
+            "status": "answer_available",
+            "can_answer": True,
+            "reason": "The clarified query returned graph rows.",
+        }
+    return {
+        "status": "no_rows_for_generated_queries",
+        "can_answer": False,
+        "reason": (
+            "The clarified query executed but returned 0 rows. This means no matching "
+            "data was found for that exact interpretation, or the generated graph path "
+            "is still too narrow."
+        ),
+    }
 
 
 def _render_answer_subgraph(
@@ -1218,6 +1272,9 @@ if asked:
                     graph_rows=list(st.session_state.get("last_graph_rows") or []),
                     graph_exec_error="",
                     execute_selected=bool(execute_selected),
+                    answerability=_clarified_answerability(
+                        list(st.session_state.get("last_graph_rows") or [])
+                    ),
                 )
                 _render_compact_explainability(result)
                 _render_answer_subgraph(
@@ -1233,6 +1290,7 @@ if asked:
                 graph_rows=graph_rows,
                 graph_exec_error=graph_exec_error,
                 execute_selected=bool(execute_selected),
+                answerability=result.get("answerability") if isinstance(result, dict) else None,
             )
             _render_compact_explainability(result)
             _render_answer_subgraph(
@@ -1273,6 +1331,10 @@ if asked:
                 removed = int(result.get("candidate_duplicates_removed") or 0)
                 if removed:
                     st.caption(f"Candidate deduplication removed {removed} duplicate query candidate(s).")
+                answerability = result.get("answerability")
+                if isinstance(answerability, dict):
+                    st.subheader("Answerability")
+                    st.json(answerability)
                 _render_selection_explainability(result)
 
                 if execute_selected and selected_query:
@@ -1325,6 +1387,9 @@ if not clarification_rendered:
                 graph_rows=list(st.session_state.get("last_graph_rows") or []),
                 graph_exec_error="",
                 execute_selected=bool(execute_selected),
+                answerability=_clarified_answerability(
+                    list(st.session_state.get("last_graph_rows") or [])
+                ),
             )
             if isinstance(last_result, dict):
                 _render_compact_explainability(last_result)
