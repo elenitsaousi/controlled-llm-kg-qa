@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#344054"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #172033; }
+      .title { font-size: 34px; font-weight: 700; }
+      .sub { font-size: 18px; fill: #526070; }
+      .node { fill: #ffffff; stroke: #8fa3b8; stroke-width: 2; rx: 10; }
+      .survey { fill: #eef4ff; stroke: #5d82c7; }
+      .measure { fill: #edf7f1; stroke: #4d9d69; }
+      .dim { fill: #fff7e8; stroke: #d79b35; }
+      .title2 { font-size: 18px; font-weight: 700; }
+      .txt { font-size: 14px; fill: #465466; }
+      .edge { stroke: #344054; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .label { font-size: 13px; fill: #344054; }
+    </style>
+  </defs>
+  <rect width="1400" height="900" fill="#fbfcfe"/>
+  <text class="title" x="70" y="65">True Demand Ontology: Key Areas Used for Q&amp;A</text>
+  <text class="sub" x="70" y="95">Simplified view of the classes and relationships used by the KGQA pipeline</text>
+
+  <rect class="node survey" x="90" y="160" width="250" height="115"/>
+  <text class="title2" x="120" y="198">Survey Origins</text>
+  <text class="txt" x="120" y="226">OEM_Survey</text>
+  <text class="txt" x="120" y="248">Tier1_Survey</text>
+  <text class="txt" x="120" y="270">Semiconductor_Survey</text>
+
+  <rect class="node dim" x="90" y="360" width="250" height="115"/>
+  <text class="title2" x="120" y="398">Companies</text>
+  <text class="txt" x="120" y="426">Company</text>
+  <text class="txt" x="120" y="448">companyName</text>
+
+  <rect class="node measure" x="450" y="150" width="270" height="120"/>
+  <text class="title2" x="480" y="188">Regional Demand</text>
+  <text class="txt" x="480" y="216">CurrentRegionalDemand</text>
+  <text class="txt" x="480" y="238">DemandForRegion</text>
+  <text class="txt" x="480" y="260">Demand / currentDemand</text>
+
+  <rect class="node measure" x="450" y="330" width="270" height="120"/>
+  <text class="title2" x="480" y="368">Demand Analysis</text>
+  <text class="txt" x="480" y="396">CurrentDemandAnalysis</text>
+  <text class="txt" x="480" y="418">FutureDemandAnalysis</text>
+  <text class="txt" x="480" y="440">AggregatedDemand</text>
+
+  <rect class="node measure" x="450" y="510" width="270" height="120"/>
+  <text class="title2" x="480" y="548">Inventory</text>
+  <text class="txt" x="480" y="576">InventoryDevelopment_Tier1</text>
+  <text class="txt" x="480" y="598">InventoryDevelopment_Semi</text>
+  <text class="txt" x="480" y="620">ComponentShare</text>
+
+  <rect class="node measure" x="820" y="150" width="280" height="120"/>
+  <text class="title2" x="850" y="188">Order Cancellation</text>
+  <text class="txt" x="850" y="216">OrderCancellation</text>
+  <text class="txt" x="850" y="238">response type</text>
+  <text class="txt" x="850" y="260">participantCount</text>
+
+  <rect class="node measure" x="820" y="330" width="280" height="120"/>
+  <text class="title2" x="850" y="368">Vehicle Sales</text>
+  <text class="txt" x="850" y="396">VehicleSalesObservation</text>
+  <text class="txt" x="850" y="418">YearlySalesData</text>
+  <text class="txt" x="850" y="440">actual / forecast</text>
+
+  <rect class="node measure" x="820" y="510" width="280" height="120"/>
+  <text class="title2" x="850" y="548">Autonomous Driving</text>
+  <text class="txt" x="850" y="576">AutonomousDrivingDevelopment</text>
+  <text class="txt" x="850" y="598">SAELevel</text>
+  <text class="txt" x="850" y="620">hasPercentage</text>
+
+  <rect class="node dim" x="1160" y="175" width="180" height="95"/>
+  <text class="title2" x="1185" y="212">Regions</text>
+  <text class="txt" x="1185" y="240">Region</text>
+  <text class="txt" x="1185" y="262">inRegion</text>
+
+  <rect class="node dim" x="1160" y="325" width="180" height="115"/>
+  <text class="title2" x="1185" y="362">Technology</text>
+  <text class="txt" x="1185" y="390">TechnologyCategory</text>
+  <text class="txt" x="1185" y="412">TechnologyNode</text>
+  <text class="txt" x="1185" y="434">ConversionFactor</text>
+
+  <rect class="node dim" x="1160" y="510" width="180" height="115"/>
+  <text class="title2" x="1185" y="548">Vehicles</text>
+  <text class="txt" x="1185" y="576">BEV / BEHV / ICE</text>
+  <text class="txt" x="1185" y="598">VehicleType</text>
+  <text class="txt" x="1185" y="620">SAELevel</text>
+
+  <path class="edge" d="M340 218 L450 210"/>
+  <text class="label" x="360" y="198">hasRegionalDemand</text>
+  <path class="edge" d="M340 228 L450 385"/>
+  <text class="label" x="348" y="324">hasSurveyOrigin</text>
+  <path class="edge" d="M340 418 L450 570"/>
+  <text class="label" x="350" y="520">forCompany</text>
+  <path class="edge" d="M720 210 L820 210"/>
+  <text class="label" x="742" y="198">hasOrderCancellation</text>
+  <path class="edge" d="M720 390 L820 390"/>
+  <text class="label" x="744" y="378">forTimePeriod</text>
+  <path class="edge" d="M720 570 L820 570"/>
+  <text class="label" x="744" y="558">hasDetail</text>
+  <path class="edge" d="M720 210 L1160 222"/>
+  <text class="label" x="910" y="190">inRegion</text>
+  <path class="edge" d="M720 390 L1160 382"/>
+  <text class="label" x="895" y="365">analyzesTechnologyCategory</text>
+  <path class="edge" d="M1100 390 L1160 568"/>
+  <text class="label" x="1112" y="484">forVehicleType</text>
+  <path class="edge" d="M1100 570 L1160 570"/>
+  <text class="label" x="1114" y="555">hasVehicleType</text>
+</svg>
+

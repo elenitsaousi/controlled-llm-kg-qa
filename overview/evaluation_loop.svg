@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="850" viewBox="0 0 1400 850">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#344054"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #172033; }
+      .title { font-size: 34px; font-weight: 700; }
+      .sub { font-size: 18px; fill: #526070; }
+      .box { fill: #ffffff; stroke: #8fa3b8; stroke-width: 2; rx: 10; }
+      .data { fill: #eef4ff; stroke: #5d82c7; }
+      .eval { fill: #edf7f1; stroke: #4d9d69; }
+      .fix { fill: #fff7e8; stroke: #d79b35; }
+      .box-title { font-size: 19px; font-weight: 700; }
+      .txt { font-size: 15px; fill: #465466; }
+      .edge { stroke: #344054; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1400" height="850" fill="#fbfcfe"/>
+  <text class="title" x="70" y="65">Evaluation and Improvement Loop</text>
+  <text class="sub" x="70" y="95">How progress is measured and how failures guide the next implementation step</text>
+
+  <rect class="box data" x="120" y="175" width="255" height="130"/>
+  <text class="box-title" x="150" y="215">Benchmark Dataset</text>
+  <text class="txt" x="150" y="245">360 natural-language questions</text>
+  <text class="txt" x="150" y="267">Balanced by family</text>
+  <text class="txt" x="150" y="289">Ambiguity labels</text>
+
+  <rect class="box data" x="465" y="175" width="255" height="130"/>
+  <text class="box-title" x="495" y="215">Gold SPARQL</text>
+  <text class="txt" x="495" y="245">Validated queries</text>
+  <text class="txt" x="495" y="267">Non-empty results</text>
+  <text class="txt" x="495" y="289">Duplicate checks</text>
+
+  <rect class="box eval" x="810" y="175" width="255" height="130"/>
+  <text class="box-title" x="840" y="215">System Run</text>
+  <text class="txt" x="840" y="245">LLM candidates</text>
+  <text class="txt" x="840" y="267">Validation and ranking</text>
+  <text class="txt" x="840" y="289">Graph execution</text>
+
+  <rect class="box eval" x="465" y="415" width="255" height="130"/>
+  <text class="box-title" x="495" y="455">Metrics</text>
+  <text class="txt" x="495" y="485">Top1 correct</text>
+  <text class="txt" x="495" y="507">Any correct candidate</text>
+  <text class="txt" x="495" y="529">Per-family performance</text>
+
+  <rect class="box eval" x="810" y="415" width="255" height="130"/>
+  <text class="box-title" x="840" y="455">Error Analysis</text>
+  <text class="txt" x="840" y="485">Generation failures</text>
+  <text class="txt" x="840" y="507">Ranking failures</text>
+  <text class="txt" x="840" y="529">Missing concepts</text>
+
+  <rect class="box fix" x="465" y="640" width="600" height="120"/>
+  <text class="box-title" x="495" y="680">Targeted Improvements</text>
+  <text class="txt" x="495" y="710">Improve candidate generation, entity grounding, ambiguity handling, and noisy KG support</text>
+  <text class="txt" x="495" y="732">Rerun benchmark to verify whether the change improved accuracy</text>
+
+  <path class="edge" d="M375 240 L465 240"/>
+  <path class="edge" d="M720 240 L810 240"/>
+  <path class="edge" d="M938 305 L938 415"/>
+  <path class="edge" d="M810 480 L720 480"/>
+  <path class="edge" d="M592 545 L680 640"/>
+  <path class="edge" d="M938 545 L850 640"/>
+  <path class="edge" d="M465 700 C260 690 210 420 245 305"/>
+</svg>

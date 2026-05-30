@@ -7,6 +7,12 @@ from kg.entity_profiles import (
     EntityProfile,
     build_profiles_for_iris,
 )
+from kg.schema_slices import (
+    build_schema_slice,
+    full_schema_fallback_enabled,
+    infer_schema_slice_names,
+    schema_slicing_enabled,
+)
 from llm.prompts import build_candidate_prompt, build_repair_prompt
 from llm.client import InfineonGPTClient
 import re
@@ -691,10 +697,19 @@ def generate_candidates(
         except Exception:
             predicted_query_plan_labels = []
 
+    slice_names: List[str] = []
+    sliced_schema: Optional[KGSchema] = None
+    if schema_slicing_enabled():
+        slice_names = infer_schema_slice_names(effective_question, predicted_query_plan_labels)
+        if slice_names:
+            sliced_schema = build_schema_slice(schema, slice_names)
+
+    prompt_schema = sliced_schema or schema
+
     # Build prompt
     prompt = build_candidate_prompt(
         question=question,
-        schema=schema,
+        schema=prompt_schema,
         k=k,
         canonical_question=effective_question,
         entity_mappings=entity_mappings,
@@ -710,6 +725,21 @@ def generate_candidates(
     try:
         # Call LLM
         generated = client.generate(prompt, k=k)
+
+        generated_full_schema: List[str] = []
+        if sliced_schema is not None and k > 1 and full_schema_fallback_enabled():
+            full_prompt = build_candidate_prompt(
+                question=question,
+                schema=schema,
+                k=k,
+                canonical_question=effective_question,
+                entity_mappings=entity_mappings,
+                entity_profiles=linked_profiles,
+                predicted_query_plan_labels=predicted_query_plan_labels,
+            )
+            generated_full_schema = _normalize_generated_output(
+                client.generate(full_prompt, k=max(1, k // 2))
+            )
 
 
         # -----------------------------
@@ -741,6 +771,18 @@ def generate_candidates(
             if len(candidates) >= k:
                 break
 
+        for text in generated_full_schema:
+            if len(candidates) >= k:
+                break
+            query = _normalize_candidate_query(str(text))
+            if not query:
+                continue
+            key = " ".join(query.split()).lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            candidates.append({"query": query, "source": "infineon_full_schema"})
+
         if not candidates:
             print("⚠️ WARNING: No candidates generated!")
 
@@ -766,6 +808,8 @@ def generate_candidates(
                 "entity_linking_applied": bool(entity_mappings),
                 "predicted_query_plan_labels": predicted_query_plan_labels,
                 "query_plan_predictor_applied": bool(predicted_query_plan_labels),
+                "schema_slicing_applied": bool(sliced_schema),
+                "schema_slice_names": slice_names,
             },
         }
 
