@@ -326,7 +326,12 @@ def _template_candidate_queries(question: str) -> List[str]:
     if "demand" in q and "region" in q and any(
         w in q for w in ["tier1", "tier 1", "oem", "semiconductor", "semi"]
     ):
-        if "quarter" in q or "trend" in q or "percentage change" in q:
+        if (
+            "quarter" in q
+            or "trend" in q
+            or "percentage change" in q
+            or ("future" in q and "percentage" in q)
+        ):
             if "tier1" in q or "tier 1" in q:
                 origin = "survey:Tier1_Survey"
             elif "oem" in q:
@@ -548,7 +553,16 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} GROUP BY ?vehicleType ?saeLevel ORDER BY ?vehicleType xsd:integer(?saeLevel)"
         )
 
-    if "order cancellation" in q and "technology" in q:
+    if ("order cancellation" in q or "order-cancellation" in q or ("order" in q and "cancellation" in q)) and "technology" in q:
+        add(
+            "SELECT ?technologyCategory ?responseType (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE { "
+            "?entry a survey:OrderCancellation ; "
+            "survey:forTechnologyCategory ?tech ; "
+            "survey:hasResponseType ?responseType ; "
+            "survey:participantCount ?participants . "
+            "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) "
+            "} GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType"
+        )
         add(
             "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { "
             "?entry a survey:OrderCancellation ; "
@@ -560,6 +574,25 @@ def _template_candidate_queries(question: str) -> List[str]:
         )
 
     if "inventory" in q and ("tier1" in q or "tier 1" in q):
+        if any(w in q for w in ["participant", "participants", "total", "amount", "amounts", "overall"]):
+            add(
+                "SELECT ?componentLabel ?trend (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE { "
+                "?entry a survey:InventoryDevelopment_Tier1 ; "
+                "survey:forComponent ?component ; "
+                "survey:inventoryTrend ?trend ; "
+                "survey:participantCount ?participants . "
+                "BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) "
+                "} GROUP BY ?componentLabel ?trend ORDER BY ?componentLabel ?trend"
+            )
+            add(
+                "SELECT ?componentLabel (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE { "
+                "?entry a survey:InventoryDevelopment_Tier1 ; "
+                "survey:forComponent ?component ; "
+                "survey:inventoryTrend ?trend ; "
+                "survey:participantCount ?participants . "
+                "BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) "
+                "} GROUP BY ?componentLabel ORDER BY DESC(?participantCount)"
+            )
         add(
             "SELECT ?componentLabel ?trend (COUNT(?entry) AS ?entryCount) WHERE { "
             "?entry a survey:InventoryDevelopment_Tier1 ; "
