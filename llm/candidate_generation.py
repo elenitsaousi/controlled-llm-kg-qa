@@ -105,6 +105,43 @@ def _template_candidate_queries(question: str) -> List[str]:
         "(survey:Semiconductor_Survey 'Semiconductor') "
         "} "
     )
+    asks_vehicle_sales = (
+        "vehicle sales" in q
+        or "vehicles sold" in q
+        or "vehicle unit" in q
+        or ("vehicle" in q and any(w in q for w in ["sold", "sales", "units"]))
+    )
+    asks_actual_sales = asks_vehicle_sales and any(
+        w in q for w in ["actual", "actually", "actuals", "transaction", "transactions", "logged"]
+    )
+    asks_forecast_sales = asks_vehicle_sales and any(
+        w in q for w in ["forecast", "forecasted", "projected", "expecting", "expected"]
+    )
+    asks_monthly_sales = asks_vehicle_sales and any(
+        w in q for w in ["month", "monthly", "time period", "period", "each month"]
+    )
+    asks_yearly_sales = asks_vehicle_sales and any(
+        w in q for w in ["year", "yearly", "annual", "annually", "each year", "per year"]
+    )
+    asks_order_cancellation = (
+        "order cancellation" in q
+        or "order-cancellation" in q
+        or ("order" in q and "cancellation" in q)
+    )
+    asks_count_or_sum = any(
+        w in q
+        for w in [
+            "how many",
+            "count",
+            "number",
+            "total",
+            "sum",
+            "summed",
+            "combined",
+            "participant",
+            "participants",
+        ]
+    )
 
     if (
         "region" in q
@@ -213,6 +250,34 @@ def _template_candidate_queries(question: str) -> List[str]:
         )
 
     if (
+        ("tier1" in q or "tier 1" in q or "oem" in q)
+        and "autonomous" in q
+        and "vehicle" in q
+        and "sae" in q
+        and "year" in q
+    ):
+        origin = "survey:Tier1_Survey" if ("tier1" in q or "tier 1" in q) else "survey:OEM_Survey"
+        detail_class = (
+            "survey:AutonomousDrivingDevelopment_Tier1"
+            if ("tier1" in q or "tier 1" in q)
+            else "survey:AutonomousDrivingDevelopment_OEM"
+        )
+        add(
+            "SELECT ?vehicle ?saeLabel ?year (AVG(?pct) AS ?avgPct) WHERE { "
+            f"?holder a {detail_class} ; "
+            f"survey:hasSurveyOrigin {origin} ; "
+            "survey:hasDetail ?entry . "
+            "?entry a survey:AutonomousDrivingDevelopment ; "
+            "survey:hasVehicleType ?veh ; "
+            "survey:hasSAELevel ?sae ; "
+            "survey:hasPercentage ?pct ; "
+            "survey:hasYear ?year . "
+            "BIND(REPLACE(STR(?veh), '^.*/', '') AS ?vehicle) "
+            "BIND(REPLACE(STR(?sae), '^.*/SAE_Level_', '') AS ?saeLabel) "
+            "} GROUP BY ?vehicle ?saeLabel ?year ORDER BY ?vehicle xsd:integer(?saeLabel) xsd:integer(?year)"
+        )
+
+    if (
         "future" in q
         and "demand" in q
         and "share" in q
@@ -253,6 +318,23 @@ def _template_candidate_queries(question: str) -> List[str]:
             "?origin a ?surveyClass . "
             "BIND(IF(?shortage = true, 'yes', 'no') AS ?shortageStatus) "
             "} GROUP BY ?surveyType ?shortageStatus ORDER BY ?surveyType ?shortageStatus"
+        )
+
+    if (
+        "shortage" in q
+        and "compan" in q
+        and any(w in q for w in ["which", "list", "show", "indicated", "reported", "mentioned", "facing"])
+        and not any(w in q for w in ["how many", "count", "number", "versus", "vs"])
+    ):
+        add(
+            "SELECT ?companyName ?surveyType WHERE { "
+            f"{survey_values}"
+            "?company a survey:Company ; "
+            "survey:companyName ?companyName ; "
+            "survey:hasSurveyOrigin ?origin ; "
+            "survey:reportsShortage true . "
+            "?origin a ?surveyClass . "
+            "} ORDER BY ?surveyType ?companyName"
         )
 
     if "shortage" in q and "split" in q and any(w in q for w in ["semiconductor", "semi", "oem", "tier1", "tier 1"]):
@@ -353,6 +435,18 @@ def _template_candidate_queries(question: str) -> List[str]:
                     "?q survey:periodLabel ?quarterLabel . "
                     "} GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName"
                 )
+                add(
+                    "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE { "
+                    "?d a survey:DemandForRegion ; "
+                    "survey:hasSurveyOrigin ?o ; "
+                    "survey:inRegion ?r ; "
+                    "survey:quarter ?q ; "
+                    "survey:totalDemandPercentageChange ?pct . "
+                    f"?o a {origin} . "
+                    "?r survey:regionName ?regionName . "
+                    "BIND(REPLACE(STR(?q), '^.*/', '') AS ?quarterLabel) "
+                    "} GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName"
+                )
         elif "oem" in q and ("tier1" in q or "tier 1" in q) and "semiconductor" in q:
             total_demand_query = (
                 "SELECT ?surveyType ?regionName (SUM(?units) AS ?totalDemand) WHERE { "
@@ -432,6 +526,32 @@ def _template_candidate_queries(question: str) -> List[str]:
     if (
         "demand" in q
         and "region" in q
+        and not any(w in q for w in ["tier1", "tier 1", "oem", "semiconductor", "semi"])
+        and not any(w in q for w in ["quarter", "future", "percentage change"])
+    ):
+        add(
+            "SELECT ?surveyType ?regionName (SUM(?unitsSold) AS ?totalDemand) WHERE { "
+            f"{survey_values}"
+            "?demandForRegion a survey:DemandForRegion ; "
+            "survey:hasSurveyOrigin ?origin ; "
+            "survey:inRegion ?region ; "
+            "survey:totalDemand ?unitsSold . "
+            "?origin a ?surveyClass . "
+            "?region a survey:Region ; survey:regionName ?regionName . "
+            "} GROUP BY ?surveyType ?regionName ORDER BY ?surveyType ?regionName"
+        )
+        add(
+            "SELECT ?regionName (SUM(?unitsSold) AS ?totalDemand) WHERE { "
+            "?demandForRegion a survey:DemandForRegion ; "
+            "survey:inRegion ?region ; "
+            "survey:totalDemand ?unitsSold . "
+            "?region a survey:Region ; survey:regionName ?regionName . "
+            "} GROUP BY ?regionName ORDER BY DESC(?totalDemand)"
+        )
+
+    if (
+        "demand" in q
+        and "region" in q
         and any(w in q for w in ["survey-origin", "survey origin", "origin class", "survey group", "survey groups"])
     ):
         add(
@@ -478,6 +598,25 @@ def _template_candidate_queries(question: str) -> List[str]:
             "BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) "
             "} GROUP BY ?techLabel ?quarterLabel ORDER BY ?techLabel ?quarterLabel"
         )
+        if any(w in q for w in ["semiconductor", "semi", "tier1", "tier 1", "oem"]):
+            if "oem" in q:
+                origin = "survey:OEM_Survey"
+            elif "tier1" in q or "tier 1" in q:
+                origin = "survey:Tier1_Survey"
+            else:
+                origin = "survey:Semiconductor_Survey"
+            add(
+                "SELECT ?techLabel ?quarterLabel (SUM(?pct) AS ?totalFutureChange) WHERE { "
+                "?entry a survey:FutureDemandAnalysis ; "
+                "survey:hasSurveyOrigin ?origin ; "
+                "survey:analyzesTechnologyCategory ?tech ; "
+                "survey:forTimePeriod ?quarter ; "
+                "survey:percentageChange ?pct . "
+                f"?origin a {origin} . "
+                "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?techLabel) "
+                "BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) "
+                "} GROUP BY ?techLabel ?quarterLabel ORDER BY ?techLabel ?quarterLabel"
+            )
 
     if "future" in q and "demand" in q and "vehicle" in q and "quarter" in q:
         add(
@@ -553,7 +692,28 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} GROUP BY ?vehicleType ?saeLevel ORDER BY ?vehicleType xsd:integer(?saeLevel)"
         )
 
-    if ("order cancellation" in q or "order-cancellation" in q or ("order" in q and "cancellation" in q)) and "technology" in q:
+    if asks_order_cancellation and "response type" in q and any(
+        w in q for w in ["highest", "largest", "top", "most", "overall"]
+    ):
+        add(
+            "SELECT ?responseType (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE { "
+            "?entry a survey:OrderCancellation ; "
+            "survey:hasResponseType ?responseType ; "
+            "survey:participantCount ?participants . "
+            "} GROUP BY ?responseType ORDER BY DESC(?participantCount) LIMIT 1"
+        )
+
+    if asks_order_cancellation and "technology" in q and asks_count_or_sum and "response type" not in q:
+        add(
+            "SELECT ?technologyCategory (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE { "
+            "?entry a survey:OrderCancellation ; "
+            "survey:forTechnologyCategory ?tech ; "
+            "survey:participantCount ?participants . "
+            "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) "
+            "} GROUP BY ?technologyCategory ORDER BY ?technologyCategory"
+        )
+
+    if asks_order_cancellation and "technology" in q:
         add(
             "SELECT ?technologyCategory ?responseType (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE { "
             "?entry a survey:OrderCancellation ; "
@@ -575,6 +735,15 @@ def _template_candidate_queries(question: str) -> List[str]:
 
     if "inventory" in q and ("tier1" in q or "tier 1" in q):
         if any(w in q for w in ["participant", "participants", "total", "amount", "amounts", "overall"]):
+            if "component" in q and "trend" not in q:
+                add(
+                    "SELECT ?componentLabel (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE { "
+                    "?entry a survey:InventoryDevelopment_Tier1 ; "
+                    "survey:forComponent ?component ; "
+                    "survey:participantCount ?participants . "
+                    "BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) "
+                    "} GROUP BY ?componentLabel ORDER BY DESC(?participantCount)"
+                )
             add(
                 "SELECT ?componentLabel ?trend (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE { "
                 "?entry a survey:InventoryDevelopment_Tier1 ; "
@@ -611,6 +780,15 @@ def _template_candidate_queries(question: str) -> List[str]:
             "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) "
             "} GROUP BY ?technologyCategory ?trend ORDER BY ?technologyCategory ?trend"
         )
+        if "most" in q or "highest" in q or "common" in q or "pairing" in q:
+            add(
+                "SELECT ?technologyCategory ?trend (COUNT(?entry) AS ?entryCount) WHERE { "
+                "?entry a survey:InventoryDevelopment_Semi ; "
+                "survey:forTechnologyCategory ?tech ; "
+                "survey:hasInventoryTrend ?trend . "
+                "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) "
+                "} GROUP BY ?technologyCategory ?trend ORDER BY DESC(?entryCount) LIMIT 1"
+            )
 
     if "future" in q and "demand" in q and "tech" in q and any(w in q for w in ["strongest", "largest", "highest"]):
         add(
@@ -673,12 +851,7 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} ORDER BY ?technologyCategory ?vehicleType"
         )
 
-    if (
-        "forecast" in q
-        and "vehicle" in q
-        and any(w in q for w in ["unit", "units", "sales", "sold"])
-        and any(w in q for w in ["month", "monthly", "time period", "period"])
-    ):
+    if asks_forecast_sales and asks_monthly_sales:
         add(
             "SELECT ?month (SUM(?unitsSold) AS ?forecastUnits) WHERE { "
             "?obs a survey:VehicleSalesObservation ; "
@@ -689,7 +862,20 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} GROUP BY ?month ORDER BY ?month"
         )
 
-    if "actual" in q and "forecast" in q and "vehicle sales" in q:
+    if asks_actual_sales and asks_forecast_sales and asks_monthly_sales:
+        add(
+            "SELECT ?monthLabel ?dataType (SUM(?unitsSold) AS ?totalUnitsSold) WHERE { "
+            "?obs a survey:VehicleSalesObservation ; "
+            "survey:forTimePeriod ?month ; "
+            "survey:unitsSold ?unitsSold . "
+            "OPTIONAL { ?obs survey:isActualData ?actual . } "
+            "OPTIONAL { ?obs survey:isForecastData ?forecast . } "
+            "BIND(IF(BOUND(?actual) && ?actual = true, 'actual', IF(BOUND(?forecast) && ?forecast = true, 'forecast', 'unknown')) AS ?dataType) "
+            "BIND(REPLACE(STR(?month), '^.*/', '') AS ?monthLabel) "
+            "} GROUP BY ?monthLabel ?dataType ORDER BY ?monthLabel ?dataType"
+        )
+
+    if asks_actual_sales and asks_forecast_sales:
         add(
             "SELECT ?dataType (COUNT(?obs) AS ?observationCount) WHERE { "
             "?obs a survey:VehicleSalesObservation . "
@@ -699,7 +885,7 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} GROUP BY ?dataType ORDER BY ?dataType"
         )
 
-    if "actual" in q and "monthly" in q and "vehicle sales" in q:
+    if asks_actual_sales and asks_monthly_sales:
         add(
             "SELECT ?monthLabel (SUM(?units) AS ?unitsSold) WHERE { "
             "?obs a survey:VehicleSalesObservation ; "
@@ -710,8 +896,8 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} GROUP BY ?monthLabel ORDER BY ?monthLabel"
         )
 
-    if "yearly sales" in q:
-        if any(w in q for w in ["leads", "lead", "highest", "top"]):
+    if asks_yearly_sales or "yearly sales" in q or "annual sales" in q:
+        if any(w in q for w in ["leads", "lead", "highest", "top", "largest", "most"]):
             add(
                 "SELECT ?vehicleType (SUM(?sales) AS ?totalSales) WHERE { "
                 "?entry a survey:YearlySalesData ; "

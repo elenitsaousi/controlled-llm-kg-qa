@@ -378,6 +378,36 @@ def _validated_candidate_score(question: str, validated_question: str) -> float:
 
     q_norm = " ".join(question.lower().split())
     v_norm = " ".join(validated_question.lower().split())
+    required_phrase_groups = [
+        (("by month", "monthly", "each month", "per month"), ("month", "monthly")),
+        (("by year", "yearly", "annual", "annually", "each year", "per year"), ("year", "yearly", "annual")),
+        (("by quarter", "each quarter", "per quarter"), ("quarter",)),
+        (("by region", "each region", "per region"), ("region",)),
+        (("technology category", "technology categories"), ("technology category", "technology categories")),
+        (("vehicle type", "vehicle category"), ("vehicle type", "vehicle category")),
+        (("sae level",), ("sae level",)),
+        (("response type",), ("response type",)),
+        (("inventory trend", "by trend"), ("trend", "inventory trend")),
+        (("by component", "per component"), ("component",)),
+        (("vehicle sales", "vehicles sold", "sales volume"), ("vehicle sales", "vehicles sold", "sales volume", "sold")),
+        (("actual", "actuals", "actual data"), ("actual", "actuals", "actual data")),
+        (("forecast", "forecasted", "forecast data"), ("forecast", "forecasted", "forecast data")),
+    ]
+    for required_terms, accepted_terms in required_phrase_groups:
+        if any(term in q_norm for term in required_terms) and not any(
+            term in v_norm for term in accepted_terms
+        ):
+            score -= 0.55
+    if (
+        ("which compan" in q_norm or "list compan" in q_norm or "show compan" in q_norm)
+        and any(term in v_norm for term in ["how many", "count", "number of"])
+    ):
+        score -= 0.7
+    if any(term in q_norm for term in ["sales", "sold", "vehicle units"]) and any(
+        term in v_norm for term in ["autonomous", "sae level", "driving development"]
+    ):
+        score -= 1.0
+
     for phrase in (
         "by region",
         "by quarter",
@@ -1112,10 +1142,19 @@ def _candidate_is_user_answerable(question: str, query: str) -> Tuple[bool, List
 
     asks_sales = any(token in q for token in ("sales", "sold", "units sold", "vehicle units"))
     asks_demand = "demand" in q and not asks_sales
+    asks_company_list = (
+        "which compan" in q
+        or "list compan" in q
+        or ("show" in q and "compan" in q)
+    )
     asks_count = any(
         token in q
         for token in ("how many", "number of", "count", "counts", "records", "entries")
     )
+    if asks_sales and "autonomousdrivingdevelopment" in sparql:
+        reasons.append("autonomous_query_for_sales_question")
+    if asks_company_list and re.search(r"\bCOUNT\s*\(", query or "", re.IGNORECASE):
+        reasons.append("count_query_for_company_list_question")
     if asks_demand and any(
         token in sparql
         for token in ("vehiclesalesobservation", "yearlysalesdata", "isforecast")
