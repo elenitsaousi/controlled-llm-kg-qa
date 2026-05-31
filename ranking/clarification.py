@@ -168,6 +168,11 @@ def _describe_signature(question: str, signature: Dict[str, object]) -> str:
     dimensions = _display_dimensions(question, signature)
     metric = _metric_phrase(question, signature)
     dimension_text = _dimension_phrase(dimensions)
+    intent = question_intent_report(question)
+    origins = tuple(signature.get("origins") or ())
+    origin_text = ""
+    if origins and not intent.get("origins"):
+        origin_text = " / ".join(_display_name(str(origin).replace("_Survey", "")) for origin in origins)
 
     if shape == "raw_values":
         prefix = f"Individual {metric} observations"
@@ -188,7 +193,7 @@ def _describe_signature(question: str, signature: Dict[str, object]) -> str:
     else:
         prefix = f"{aggregation} {metric}"
 
-    parts = [prefix]
+    parts = [f"{origin_text} {prefix}".strip() if origin_text else prefix]
     if dimension_text:
         if "time" == dimension_text:
             parts.append("over time")
