@@ -392,21 +392,28 @@ def _validated_candidate_score(question: str, validated_question: str) -> float:
         (("vehicle sales", "vehicles sold", "sales volume"), ("vehicle sales", "vehicles sold", "sales volume", "sold")),
         (("actual", "actuals", "actual data"), ("actual", "actuals", "actual data")),
         (("forecast", "forecasted", "forecast data"), ("forecast", "forecasted", "forecast data")),
+        (("future",), ("future",)),
+        (("current",), ("current",)),
     ]
     for required_terms, accepted_terms in required_phrase_groups:
         if any(term in q_norm for term in required_terms) and not any(
             term in v_norm for term in accepted_terms
         ):
-            score -= 0.55
+            score -= 0.85
     if (
         ("which compan" in q_norm or "list compan" in q_norm or "show compan" in q_norm)
         and any(term in v_norm for term in ["how many", "count", "number of"])
     ):
-        score -= 0.7
+        score -= 1.1
+    if ("which compan" in q_norm or "list compan" in q_norm or "show compan" in q_norm):
+        if any(term in v_norm for term in ["split", "status", "yes/no", "versus", "group"]):
+            score -= 1.0
+        if any(term in v_norm for term in ["list compan", "which compan", "reported semiconductor shortage"]):
+            score += 0.45
     if any(term in q_norm for term in ["sales", "sold", "vehicle units"]) and any(
         term in v_norm for term in ["autonomous", "sae level", "driving development"]
     ):
-        score -= 1.0
+        score -= 1.1
 
     for phrase in (
         "by region",
