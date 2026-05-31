@@ -642,12 +642,19 @@ def _render_request_clarification(clarification: Dict[str, Any]) -> None:
 
 def _set_question_input(value: str) -> None:
     st.session_state["question_input"] = value
+    st.session_state["guided_query_override_question"] = ""
+    st.session_state["guided_query_override"] = ""
 
 
 def _set_guided_question_input(value: str, query: str) -> None:
     st.session_state["question_input"] = value
     st.session_state["guided_query_override_question"] = value
     st.session_state["guided_query_override"] = query
+
+
+def _use_free_text_mode() -> None:
+    st.session_state["guided_query_override_question"] = ""
+    st.session_state["guided_query_override"] = ""
 
 
 def _active_guided_query(question: str) -> str:
@@ -1185,8 +1192,20 @@ def _render_question_guidance() -> None:
         st.caption(
             "Use free text, or pick an example/builder option to create a graph-relevant question."
         )
-        tabs = st.tabs(["Examples", "Guided builder", "Available topics"])
+        tabs = st.tabs(["Free text", "Examples", "Guided builder", "Available topics"])
         with tabs[0]:
+            st.write("Type any graph-related question in the question box below, then press Ask.")
+            st.button(
+                "Use free-text question",
+                key="use_free_text_mode",
+                type="secondary",
+                on_click=_use_free_text_mode,
+            )
+            st.caption(
+                "Free text uses the LLM candidate generator plus validated query fallback. "
+                "If the request is ambiguous, the app may ask you to choose an answerable interpretation."
+            )
+        with tabs[1]:
             query_lookup = _load_guided_query_lookup()
             cols = st.columns(3)
             for idx, example in enumerate(EXAMPLE_QUESTIONS):
@@ -1201,7 +1220,7 @@ def _render_question_guidance() -> None:
                     args=(example, query),
                 )
             st.caption("Examples use validated graph queries directly.")
-        with tabs[1]:
+        with tabs[2]:
             validated_patterns = _validated_guided_patterns()
             topic_options = _unique_preserving_order([row["topic"] for row in validated_patterns])
             if not topic_options:
@@ -1240,38 +1259,44 @@ def _render_question_guidance() -> None:
                 index=_selectbox_index("guided_scope", scope_options),
                 key="guided_scope",
             )
-            scope_rows = _answerable_guided_rows([row for row in breakdown_rows if row["scope"] == scope])
+            scope_rows = [row for row in breakdown_rows if row["scope"] == scope]
             if not scope_rows:
                 st.warning(
-                    "No validated question for this exact combination returned graph rows. "
+                    "No validated question exists for this exact combination. "
                     "Choose a different metric, breakdown, or scope."
                 )
-                return
-            question_options = [row["question"] for row in scope_rows]
-            selected_question = st.selectbox(
-                "Validated question",
-                question_options,
-                index=_selectbox_index("guided_question", question_options),
-                key="guided_question",
-            )
-            selected_pattern = next(
-                row for row in scope_rows
-                if row["question"] == selected_question
-            )
-            built_question = str(selected_pattern["question"])
-            st.text_input("Generated question", value=built_question, disabled=True)
-            st.caption(
-                f"This validated query returns graph rows. Preview row check: {selected_pattern.get('row_count', '1')} row(s)."
-            )
-            st.button(
-                "Use generated question",
-                key="use_guided_question",
-                type="secondary",
-                on_click=_set_guided_question_input,
-                args=(built_question, str(selected_pattern["query"])),
-            )
-            st.caption("Only combinations with a validated graph query that returns rows are shown.")
-        with tabs[2]:
+            else:
+                answerable_scope_rows = _answerable_guided_rows(scope_rows)
+                if answerable_scope_rows:
+                    scope_rows = answerable_scope_rows
+                question_options = [row["question"] for row in scope_rows]
+                selected_question = st.selectbox(
+                    "Validated question",
+                    question_options,
+                    index=_selectbox_index("guided_question", question_options),
+                    key="guided_question",
+                )
+                selected_pattern = next(
+                    row for row in scope_rows
+                    if row["question"] == selected_question
+                )
+                built_question = str(selected_pattern["question"])
+                st.text_input("Generated question", value=built_question, disabled=True)
+                if selected_pattern.get("row_count"):
+                    st.caption(
+                        f"This validated query returns graph rows. Preview row check: {selected_pattern.get('row_count')} row(s)."
+                    )
+                else:
+                    st.caption("This question comes from the validated graph-query library.")
+                st.button(
+                    "Use generated question",
+                    key="use_guided_question",
+                    type="secondary",
+                    on_click=_set_guided_question_input,
+                    args=(built_question, str(selected_pattern["query"])),
+                )
+                st.caption("Only combinations with a validated graph query are shown.")
+        with tabs[3]:
             topic_rows = []
             validated_patterns = _validated_guided_patterns()
             for topic in _unique_preserving_order([row["topic"] for row in validated_patterns]):
