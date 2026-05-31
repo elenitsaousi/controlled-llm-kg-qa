@@ -652,11 +652,6 @@ def _set_guided_question_input(value: str, query: str) -> None:
     st.session_state["guided_query_override"] = query
 
 
-def _use_free_text_mode() -> None:
-    st.session_state["guided_query_override_question"] = ""
-    st.session_state["guided_query_override"] = ""
-
-
 def _active_guided_query(question: str) -> str:
     if str(st.session_state.get("guided_query_override_question", "")).strip() == (question or "").strip():
         return str(st.session_state.get("guided_query_override", "") or "").strip()
@@ -1190,22 +1185,10 @@ def _selectbox_index(key: str, options: List[str]) -> int:
 def _render_question_guidance() -> None:
     with st.expander("Question guide", expanded=False):
         st.caption(
-            "Use free text, or pick an example/builder option to create a graph-relevant question."
+            "Use the question box above for free text, or pick an example/builder option here."
         )
-        tabs = st.tabs(["Free text", "Examples", "Guided builder", "Available topics"])
+        tabs = st.tabs(["Examples", "Guided builder", "Available topics"])
         with tabs[0]:
-            st.write("Type any graph-related question in the question box below, then press Ask.")
-            st.button(
-                "Use free-text question",
-                key="use_free_text_mode",
-                type="secondary",
-                on_click=_use_free_text_mode,
-            )
-            st.caption(
-                "Free text uses the LLM candidate generator plus validated query fallback. "
-                "If the request is ambiguous, the app may ask you to choose an answerable interpretation."
-            )
-        with tabs[1]:
             query_lookup = _load_guided_query_lookup()
             example_options = [
                 example
@@ -1231,7 +1214,7 @@ def _render_question_guidance() -> None:
                     ),
                 )
                 st.caption("Examples use validated graph queries directly. Press Ask after selecting one.")
-        with tabs[2]:
+        with tabs[1]:
             validated_patterns = _validated_guided_patterns()
             topic_options = _unique_preserving_order([row["topic"] for row in validated_patterns])
             if not topic_options:
@@ -1299,7 +1282,7 @@ def _render_question_guidance() -> None:
                     args=(built_question, str(selected_pattern["query"])),
                 )
                 st.caption("Press Ask after using the generated question.")
-        with tabs[3]:
+        with tabs[2]:
             topic_rows = []
             validated_patterns = _validated_guided_patterns()
             for topic in _unique_preserving_order([row["topic"] for row in validated_patterns]):
