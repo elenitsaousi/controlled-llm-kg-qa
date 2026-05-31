@@ -1201,6 +1201,8 @@ def _candidate_is_user_answerable(question: str, query: str) -> Tuple[bool, List
         token in sparql for token in ("totaldemand", "totaldemandpercentagechange")
     ):
         missing_required = [x for x in missing_required if x != "CurrentDemandAnalysis"]
+    if asks_sales and "yearlysalesdata" in sparql and "analyzesvehicletype" in sparql:
+        missing_required = [x for x in missing_required if x != "VehicleType"]
     if missing_required and float(coverage.get("coverage_score", 0.0)) < 0.75:
         reasons.extend(f"missing_required:{x}" for x in missing_required)
 
@@ -1559,7 +1561,7 @@ def _candidate_shape_score(question: str, query: str, profile: Dict[str, object]
 def _select_best_candidate_semantic(candidates, question):
     scored: List[Dict[str, object]] = []
     runtime_profile_enabled = (
-        os.getenv("INFINEON_ENABLE_SELECTION_RUNTIME_PROFILE", "0").strip().lower()
+        os.getenv("INFINEON_ENABLE_SELECTION_RUNTIME_PROFILE", "1").strip().lower()
         in {"1", "true", "yes", "on"}
     )
 
@@ -1592,14 +1594,20 @@ def _select_best_candidate_semantic(candidates, question):
 
         execution_component = 0.0
         if has_rows is True:
-            execution_component += 0.2
+            execution_component += 0.85
         elif has_rows is False:
-            execution_component += 0.0
+            execution_component -= 0.65
         if execution_error:
-            execution_component -= 0.75
+            execution_component -= 1.0
         if unbound_vars:
             execution_component -= 1.0
         shape_component, shape_reasons = _candidate_shape_score(question, query, profile)
+        source = str(cand.get("source", "") or "").strip().lower()
+        source_component = 0.0
+        if source == "validated_retrieval":
+            source_component += 0.25
+        elif source == "template":
+            source_component += 0.15
 
         semantic_component = 1.35 * semantic_score
         coverage_component = (8.0 * coverage_score) - (2.5 * missing_coverage)
@@ -1610,6 +1618,7 @@ def _select_best_candidate_semantic(candidates, question):
             + coverage_component
             + execution_component
             + shape_component
+            + source_component
             + ml_component
             + order_component
         )
@@ -1620,6 +1629,7 @@ def _select_best_candidate_semantic(candidates, question):
             "coverage_component": float(coverage_component),
             "execution_component": float(execution_component),
             "shape_component": float(shape_component),
+            "source_component": float(source_component),
             "ml_component": float(ml_component),
             "order_component": float(order_component),
         }
@@ -1678,7 +1688,7 @@ def _select_best_candidate_semantic(candidates, question):
     # Keep ML/top-order stable unless the rule-based selector has a clear,
     # structured reason to override it. This prevents coverage/execution noise
     # from degrading already-good top candidates.
-    override_margin = float(os.getenv("INFINEON_SELECTION_OVERRIDE_MARGIN", "5.0") or 5.0)
+    override_margin = float(os.getenv("INFINEON_SELECTION_OVERRIDE_MARGIN", "1.25") or 1.25)
     clear_score_win = best_score >= first_score + override_margin
     coverage_not_worse = best_coverage >= first_coverage and best_missing <= first_missing
     semantic_not_worse = best_semantic >= first_semantic
@@ -1709,6 +1719,24 @@ def _select_best_candidate_semantic(candidates, question):
     ):
         return best
     if fixes_bad_first and best_score >= first_score + 2.0 and coverage_not_worse:
+        return best
+    first_has_rows = first.get("execution_has_rows")
+    best_has_rows = best.get("execution_has_rows")
+    if (
+        first_has_rows is not True
+        and best_has_rows is True
+        and best_score >= first_score + 0.35
+        and coverage_not_worse
+        and not best_exec_error
+    ):
+        return best
+    high_confidence_semantic_win = (
+        best_score >= first_score + override_margin
+        and coverage_not_worse
+        and best_semantic >= first_semantic + 0.25
+        and not best_exec_error
+    )
+    if high_confidence_semantic_win:
         return best
     shape_defect_fixed = (
         "answer_shape_missing_expected_columns" in first_penalties
