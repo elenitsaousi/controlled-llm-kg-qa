@@ -1207,19 +1207,30 @@ def _render_question_guidance() -> None:
             )
         with tabs[1]:
             query_lookup = _load_guided_query_lookup()
-            cols = st.columns(3)
-            for idx, example in enumerate(EXAMPLE_QUESTIONS):
-                query = query_lookup.get(_normalize_question_key(example), "")
-                if not query:
-                    continue
-                cols[idx % 3].button(
-                    example,
-                    key=f"example_question_{idx}",
-                    use_container_width=True,
-                    on_click=_set_guided_question_input,
-                    args=(example, query),
+            example_options = [
+                example
+                for example in EXAMPLE_QUESTIONS
+                if query_lookup.get(_normalize_question_key(example), "")
+            ]
+            if not example_options:
+                st.warning("No validated examples are available.")
+            else:
+                selected_example = st.selectbox(
+                    "Example question",
+                    example_options,
+                    key="selected_example_question",
                 )
-            st.caption("Examples use validated graph queries directly.")
+                st.button(
+                    "Use selected example",
+                    key="use_selected_example",
+                    type="secondary",
+                    on_click=_set_guided_question_input,
+                    args=(
+                        selected_example,
+                        query_lookup.get(_normalize_question_key(selected_example), ""),
+                    ),
+                )
+                st.caption("Examples use validated graph queries directly. Press Ask after selecting one.")
         with tabs[2]:
             validated_patterns = _validated_guided_patterns()
             topic_options = _unique_preserving_order([row["topic"] for row in validated_patterns])
@@ -1266,9 +1277,6 @@ def _render_question_guidance() -> None:
                     "Choose a different metric, breakdown, or scope."
                 )
             else:
-                answerable_scope_rows = _answerable_guided_rows(scope_rows)
-                if answerable_scope_rows:
-                    scope_rows = answerable_scope_rows
                 question_options = [row["question"] for row in scope_rows]
                 selected_question = st.selectbox(
                     "Validated question",
@@ -1282,12 +1290,7 @@ def _render_question_guidance() -> None:
                 )
                 built_question = str(selected_pattern["question"])
                 st.text_input("Generated question", value=built_question, disabled=True)
-                if selected_pattern.get("row_count"):
-                    st.caption(
-                        f"This validated query returns graph rows. Preview row check: {selected_pattern.get('row_count')} row(s)."
-                    )
-                else:
-                    st.caption("This question comes from the validated graph-query library.")
+                st.caption("This question comes from the validated graph-query library.")
                 st.button(
                     "Use generated question",
                     key="use_guided_question",
@@ -1295,7 +1298,7 @@ def _render_question_guidance() -> None:
                     on_click=_set_guided_question_input,
                     args=(built_question, str(selected_pattern["query"])),
                 )
-                st.caption("Only combinations with a validated graph query are shown.")
+                st.caption("Press Ask after using the generated question.")
         with tabs[3]:
             topic_rows = []
             validated_patterns = _validated_guided_patterns()
@@ -1312,8 +1315,8 @@ def _render_question_guidance() -> None:
                 )
             st.dataframe(topic_rows, width="stretch", hide_index=True)
             st.caption(
-                "The builder is generated from validated question/query pairs and hides patterns "
-                "whose queries do not return graph rows. Free text remains available for other questions."
+                "The builder is generated from validated question/query pairs. "
+                "Free text remains available for other questions."
             )
 
 
@@ -1929,17 +1932,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-if "question_input" not in st.session_state:
-    st.session_state["question_input"] = ""
-
-_render_question_guidance()
-
 question = st.text_area(
     "Your question",
     placeholder="e.g., How does semiconductor future demand evolve across technology categories and quarters?",
     height=120,
     key="question_input",
 )
+asked = st.button("Ask", type="primary")
+
+_render_question_guidance()
 
 if "last_qa_result" not in st.session_state:
     st.session_state["last_qa_result"] = None
@@ -1954,7 +1955,6 @@ if "last_question" not in st.session_state:
 if "clarification_choice_id" not in st.session_state:
     st.session_state["clarification_choice_id"] = None
 
-asked = st.button("Ask", type="primary")
 clarification_rendered = False
 
 if asked:
