@@ -235,7 +235,7 @@ def _confidence_summary(result: Dict[str, Any]) -> Tuple[str, str]:
         if status == "no_rows_for_generated_queries":
             return (
                 "Low",
-                "No generated valid query returned rows, so the system cannot distinguish missing data from a missing graph path.",
+                "No checked valid interpretation returned graph rows for this request.",
             )
     if not isinstance(expl, dict):
         return "Unknown", "No selection diagnostics are available."
@@ -378,7 +378,13 @@ def _render_answer_block(
             "generation_failure",
             "selected_query_semantic_mismatch",
         }:
-            st.warning(reason or f"Answerability status: {status}")
+            if status == "no_rows_for_generated_queries":
+                st.warning(
+                    "I could not find a graph-backed answer for this exact request. "
+                    "No checked valid interpretation returned rows."
+                )
+            else:
+                st.warning(reason or f"Answerability status: {status}")
 
     if graph_exec_error:
         st.error(f"Query execution error: {graph_exec_error}")
@@ -388,7 +394,7 @@ def _render_answer_block(
             st.success(f"Returned {len(graph_rows)} rows from Infineon graph.")
             st.write(answer_text)
         else:
-            st.warning("Selected query returned 0 rows from Infineon graph.")
+            st.warning("No graph rows were found for the selected interpretation.")
             st.write(answer_text or "No results were found for this question.")
     else:
         st.write(answer_text or "No answer.")
@@ -682,6 +688,31 @@ def _guided_pattern_query(pattern: Dict[str, str]) -> str:
     if direct:
         return direct
     return _load_guided_query_lookup().get(_normalize_question_key(str(pattern.get("question", ""))), "")
+
+
+@st.cache_data(show_spinner=False)
+def _guided_query_row_count(graph_path: str, query: str) -> Tuple[int, str]:
+    if not query.strip() or not graph_path or not os.path.exists(graph_path):
+        return 0, "graph_or_query_missing"
+    try:
+        graph = _load_graph_cached(graph_path)
+        rows, _truncated = _execute_query_preview(graph, query, max_rows=1)
+        return len(rows), ""
+    except Exception as exc:
+        return 0, str(exc)
+
+
+def _answerable_guided_rows(rows: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    answerable: List[Dict[str, str]] = []
+    for row in rows:
+        row_count, query_error = _guided_query_row_count(str(DEFAULT_GRAPH_PATH), str(row.get("query", "")))
+        if row_count <= 0:
+            continue
+        enriched = dict(row)
+        enriched["row_count"] = str(row_count)
+        enriched["query_error"] = query_error
+        answerable.append(enriched)
+    return answerable
 
 
 def _guided_topic_for_question(question: str) -> str:
@@ -1209,12 +1240,29 @@ def _render_question_guidance() -> None:
                 index=_selectbox_index("guided_scope", scope_options),
                 key="guided_scope",
             )
+            scope_rows = _answerable_guided_rows([row for row in breakdown_rows if row["scope"] == scope])
+            if not scope_rows:
+                st.warning(
+                    "No validated question for this exact combination returned graph rows. "
+                    "Choose a different metric, breakdown, or scope."
+                )
+                return
+            question_options = [row["question"] for row in scope_rows]
+            selected_question = st.selectbox(
+                "Validated question",
+                question_options,
+                index=_selectbox_index("guided_question", question_options),
+                key="guided_question",
+            )
             selected_pattern = next(
-                row for row in breakdown_rows
-                if row["scope"] == scope
+                row for row in scope_rows
+                if row["question"] == selected_question
             )
             built_question = str(selected_pattern["question"])
             st.text_input("Generated question", value=built_question, disabled=True)
+            st.caption(
+                f"This validated query returns graph rows. Preview row check: {selected_pattern.get('row_count', '1')} row(s)."
+            )
             st.button(
                 "Use generated question",
                 key="use_guided_question",
@@ -1222,7 +1270,7 @@ def _render_question_guidance() -> None:
                 on_click=_set_guided_question_input,
                 args=(built_question, str(selected_pattern["query"])),
             )
-            st.caption("Only combinations with a validated graph query are shown.")
+            st.caption("Only combinations with a validated graph query that returns rows are shown.")
         with tabs[2]:
             topic_rows = []
             validated_patterns = _validated_guided_patterns()
@@ -1234,12 +1282,13 @@ def _render_question_guidance() -> None:
                         "Typical metrics": ", ".join(_unique_preserving_order([row["metric"] for row in rows])[:4]),
                         "Useful breakdowns": ", ".join(_unique_preserving_order([row["breakdown"] for row in rows])[:4]),
                         "Scopes": ", ".join(_unique_preserving_order([row["scope"] for row in rows])),
+                        "Answerable patterns": len(rows),
                     }
                 )
             st.dataframe(topic_rows, width="stretch", hide_index=True)
             st.caption(
-                "This list is intentionally constrained to common graph-backed question patterns. "
-                "Free text remains available for other questions."
+                "The builder is generated from validated question/query pairs and hides patterns "
+                "whose queries do not return graph rows. Free text remains available for other questions."
             )
 
 
