@@ -1561,7 +1561,7 @@ def _candidate_shape_score(question: str, query: str, profile: Dict[str, object]
 def _select_best_candidate_semantic(candidates, question):
     scored: List[Dict[str, object]] = []
     runtime_profile_enabled = (
-        os.getenv("INFINEON_ENABLE_SELECTION_RUNTIME_PROFILE", "1").strip().lower()
+        os.getenv("INFINEON_ENABLE_SELECTION_RUNTIME_PROFILE", "0").strip().lower()
         in {"1", "true", "yes", "on"}
     )
 
