@@ -54,6 +54,9 @@ def replay_selection(
             row = {
                 "query": query,
                 "ml_score": cand.get("ml_score"),
+                "source": cand.get("source"),
+                "validated_retrieval_score": cand.get("validated_retrieval_score"),
+                "validated_source": cand.get("validated_source"),
             }
             if use_stored_features:
                 row.update(

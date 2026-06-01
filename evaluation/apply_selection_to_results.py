@@ -26,6 +26,9 @@ def _selector_payload(cand: Dict[str, object], use_stored_features: bool) -> Dic
     row = {
         "query": str(cand.get("query", "") or ""),
         "ml_score": cand.get("ml_score"),
+        "source": cand.get("source"),
+        "validated_retrieval_score": cand.get("validated_retrieval_score"),
+        "validated_source": cand.get("validated_source"),
     }
     if use_stored_features:
         row.update(

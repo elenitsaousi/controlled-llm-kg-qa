@@ -1783,6 +1783,12 @@ def _select_best_candidate_semantic(candidates, question):
         source_component = 0.0
         if source == "validated_retrieval":
             source_component += 0.25
+            try:
+                retrieval_score = float(cand.get("validated_retrieval_score") or 0.0)
+            except (TypeError, ValueError):
+                retrieval_score = 0.0
+            if retrieval_score > 0:
+                source_component += min(0.25, max(0.0, retrieval_score - 0.70))
         elif source == "template":
             source_component += 0.15
 
@@ -1863,6 +1869,16 @@ def _select_best_candidate_semantic(candidates, question):
         for p in first_penalties
     )
     best_penalties = {str(p) for p in best_report.get("penalties", [])}
+    first_plan_component = float(
+        (first.get("selection_score_breakdown") or {}).get("plan_component", 0.0)
+    )
+    best_plan_component = float(
+        (best.get("selection_score_breakdown") or {}).get("plan_component", 0.0)
+    )
+    plan_override_enabled = (
+        os.getenv("INFINEON_ENABLE_PLAN_SELECTION_OVERRIDE", "1").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
 
     # Keep ML/top-order stable unless the rule-based selector has a clear,
     # structured reason to override it. This prevents coverage/execution noise
@@ -1916,6 +1932,19 @@ def _select_best_candidate_semantic(candidates, question):
         and not best_exec_error
     )
     if high_confidence_semantic_win:
+        return best
+    decisive_plan_win = (
+        plan_override_enabled
+        and best_score >= first_score + 1.35
+        and best_plan_component >= first_plan_component + 1.8
+        and coverage_not_worse
+        and not best_exec_error
+        and (
+            semantic_not_worse
+            or best_semantic >= first_semantic - 0.10
+        )
+    )
+    if decisive_plan_win:
         return best
     shape_defect_fixed = (
         "answer_shape_missing_expected_columns" in first_penalties
