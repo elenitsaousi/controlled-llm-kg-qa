@@ -24,9 +24,13 @@ EXTRA_FEATURE_NAMES = [
     "candidate_order_score",
     "source_is_llm",
     "source_is_template",
+    "source_is_validated_retrieval",
     "source_is_gold",
     "query_plan_label_count_log",
     "query_plan_token_overlap",
+    "question_aggregation_match",
+    "question_origin_match",
+    "question_dimension_match",
 ]
 
 
@@ -63,6 +67,72 @@ def _query_plan_token_overlap(question: str, labels: Sequence[str]) -> float:
     return len(q_tokens & label_tokens) / float(len(label_tokens))
 
 
+def _contains_any(text: str, terms: Sequence[str]) -> bool:
+    return any(term in text for term in terms)
+
+
+def _question_aggregation_match(question: str, labels: Sequence[str]) -> float:
+    q = " ".join(str(question or "").lower().split())
+    label_set = {str(label) for label in labels}
+    if _contains_any(q, ["average", "avg", "mean"]):
+        return 1.0 if "aggregation:AVG" in label_set else -1.0
+    if _contains_any(q, ["how many", "number of", "count", "records", "entries"]):
+        return 1.0 if "aggregation:COUNT" in label_set else -0.8
+    if _contains_any(q, ["total", "sum", "summed", "combined", "overall"]):
+        return 1.0 if "aggregation:SUM" in label_set else -0.7
+    if _contains_any(q, ["highest", "largest", "top", "most", "maximum", "lowest", "smallest"]):
+        return 1.0 if ("query_type:ranking" in label_set or "query_type:limited" in label_set) else -0.5
+    return 0.0
+
+
+def _question_origin_match(question: str, labels: Sequence[str]) -> float:
+    q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
+    label_set = {str(label) for label in labels}
+    requested = []
+    if "oem" in q:
+        requested.append("survey:OEM_Survey")
+    if "tier1" in q:
+        requested.append("survey:Tier1_Survey")
+    if "semiconductor" in q or "semi" in q:
+        requested.append("survey:Semiconductor_Survey")
+    if not requested:
+        return 0.0
+    hits = sum(1 for label in requested if label in label_set)
+    if hits == len(requested):
+        return 1.0
+    if hits:
+        return 0.25
+    return -1.0
+
+
+def _question_dimension_match(question: str, labels: Sequence[str]) -> float:
+    q = " ".join(str(question or "").lower().split())
+    label_text = " ".join(str(label).lower().replace("_", " ") for label in labels)
+    required_groups = [
+        (["region"], ["region", "inregion"]),
+        (["quarter"], ["quarter", "timeperiod", "for time period", "quarterlabel"]),
+        (["month", "monthly"], ["month", "timeperiod", "for time period", "monthlabel"]),
+        (["year", "yearly", "annual"], ["year", "foryear", "hasyear"]),
+        (["technology category", "technology categories"], ["technologycategory", "technology category", "analyzestechnologycategory", "fortechnologycategory"]),
+        (["vehicle type", "vehicle category"], ["vehicletype", "vehicle type", "analyzesvehicletype", "hasvehicletype"]),
+        (["sae level", "sae"], ["saelevel", "sae level", "hassaelevel"]),
+        (["component"], ["component", "forcomponent"]),
+        (["trend", "inventory trend"], ["trend", "inventorytrend", "hasinventorytrend"]),
+        (["response type"], ["responsetype", "response type", "hasresponsetype"]),
+    ]
+    requested = 0
+    matched = 0
+    for q_terms, label_terms in required_groups:
+        if not any(term in q for term in q_terms):
+            continue
+        requested += 1
+        if any(term in label_text for term in label_terms):
+            matched += 1
+    if requested == 0:
+        return 0.0
+    return (2.0 * matched / requested) - 1.0
+
+
 def _extract_plan_labels_from_query(
     query: str,
     schema_dict: Dict[str, object] | None = None,
@@ -91,9 +161,13 @@ def _extra_feature_values(
         _candidate_order_score(position),
         1.0 if source_norm == "llm" else 0.0,
         1.0 if source_norm == "template" else 0.0,
+        1.0 if source_norm == "validated_retrieval" else 0.0,
         1.0 if source_norm == "gold" else 0.0,
         math.log1p(float(len(labels))),
         _query_plan_token_overlap(question, labels),
+        _question_aggregation_match(question, labels),
+        _question_origin_match(question, labels),
+        _question_dimension_match(question, labels),
     ]
 
 
