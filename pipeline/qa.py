@@ -1565,6 +1565,175 @@ def _candidate_shape_score(question: str, query: str, profile: Dict[str, object]
     return float(score), reasons
 
 
+def _query_plan_alignment_score(question: str, query: str) -> Tuple[float, List[str]]:
+    q = " ".join((question or "").lower().replace("tier 1", "tier1").split())
+    sparql = (query or "").lower()
+    score = 0.0
+    reasons: List[str] = []
+    try:
+        plan = extract_query_plan(query)
+    except Exception:
+        plan = {}
+
+    labels = {str(label) for label in plan.get("labels", [])}
+    classes = {str(value).lower() for value in plan.get("classes", [])}
+    predicates = {str(value).lower() for value in plan.get("predicates", [])}
+    aggregations = {str(value).upper() for value in plan.get("aggregations", [])}
+    query_types = {str(value).lower() for value in plan.get("query_types", [])}
+
+    def has_query_any(*terms: str) -> bool:
+        return any(term in q for term in terms)
+
+    def has_plan_any(*terms: str) -> bool:
+        haystack = " ".join(sorted(labels)).lower().replace("_", " ")
+        return any(term.lower().replace("_", " ") in haystack for term in terms)
+
+    asks_count_records = has_query_any(
+        "number of records",
+        "count of records",
+        "record count",
+        "records are there",
+        "entries are there",
+        "number of entries",
+        "count of entries",
+        "observations",
+    )
+    asks_count_companies = "how many" in q and ("compan" in q or "oem" in q or "supplier" in q)
+    asks_count = asks_count_records or asks_count_companies
+    asks_average = has_query_any("average", "avg", "mean")
+    asks_ranking = has_query_any("highest", "largest", "top", "most", "maximum", "peak", "lowest", "smallest")
+    asks_sum = has_query_any("total", "sum", "summed", "combined", "overall") and not asks_count
+
+    if asks_average:
+        if "AVG" in aggregations:
+            score += 2.0
+            reasons.append("plan_avg_match")
+        elif aggregations & {"SUM", "COUNT", "MAX", "MIN"}:
+            score -= 2.4
+            reasons.append("plan_avg_mismatch")
+    if asks_count:
+        if "COUNT" in aggregations:
+            score += 2.0
+            reasons.append("plan_count_match")
+        elif aggregations & {"SUM", "AVG"}:
+            score -= 1.8
+            reasons.append("plan_count_mismatch")
+    if asks_sum:
+        if "SUM" in aggregations:
+            score += 1.8
+            reasons.append("plan_sum_match")
+        elif "AVG" in aggregations or "COUNT" in aggregations:
+            score -= 1.6
+            reasons.append("plan_sum_mismatch")
+    if asks_ranking:
+        if query_types & {"ranking", "limited"} or "limit 1" in sparql or "order by desc" in sparql:
+            score += 1.4
+            reasons.append("plan_ranking_match")
+        else:
+            score -= 0.8
+            reasons.append("plan_ranking_missing")
+
+    requested_origins = []
+    if "oem" in q:
+        requested_origins.append(("oem", "survey:OEM_Survey"))
+    if "tier1" in q:
+        requested_origins.append(("tier1", "survey:Tier1_Survey"))
+    if "semiconductor" in q or "semi" in q:
+        requested_origins.append(("semiconductor", "survey:Semiconductor_Survey"))
+    for name, label in requested_origins:
+        if label in labels or name in sparql:
+            score += 1.4
+            reasons.append(f"plan_origin_match:{name}")
+        else:
+            score -= 2.0
+            reasons.append(f"plan_origin_missing:{name}")
+    if not requested_origins and sum(origin in labels for origin in {"survey:OEM_Survey", "survey:Tier1_Survey", "survey:Semiconductor_Survey"}) > 0:
+        score -= 0.15
+        reasons.append("plan_unrequested_origin_scope")
+
+    dimension_checks = [
+        ("region", ("region", "inregion", "regionname")),
+        ("quarter", ("quarter", "quarterlabel", "fortimeperiod")),
+        ("month", ("month", "monthlabel", "fortimeperiod")),
+        ("year", ("year", "foryear", "hasyear")),
+        ("technology category", ("technologycategory", "analyzestechnologycategory", "fortechnologycategory")),
+        ("vehicle type", ("vehicletype", "analyzesvehicletype", "hasvehicletype", "forvehicletype")),
+        ("sae level", ("saelevel", "hassaelevel")),
+        ("component", ("component", "forcomponent")),
+        ("trend", ("trend", "inventorytrend", "hasinventorytrend")),
+        ("response type", ("responsetype", "hasresponsetype")),
+        ("baseline", ("baseline", "baselinetype")),
+    ]
+    for question_term, plan_terms in dimension_checks:
+        if question_term not in q:
+            continue
+        if any(term in predicates or term in sparql for term in plan_terms):
+            score += 0.9
+            reasons.append(f"plan_dimension_match:{question_term}")
+        else:
+            score -= 1.5
+            reasons.append(f"plan_dimension_missing:{question_term}")
+
+    if has_query_any("actual", "actuals", "actual data", "actually sold"):
+        if "isactualdata" in sparql:
+            score += 1.1
+            reasons.append("plan_actual_filter_match")
+        elif "isforecastdata" in sparql:
+            score -= 2.0
+            reasons.append("plan_actual_filter_mismatch")
+    if has_query_any("forecast", "forecasted", "projected"):
+        if "isforecastdata" in sparql:
+            score += 1.1
+            reasons.append("plan_forecast_filter_match")
+        elif "isactualdata" in sparql:
+            score -= 2.0
+            reasons.append("plan_forecast_filter_mismatch")
+
+    asks_sales = has_query_any("vehicle sales", "vehicles sold", "sales volume", "units sold")
+    asks_inventory = "inventory" in q
+    asks_cancellation = "cancellation" in q or "order cancellation" in q
+    asks_autonomous = "autonomous" in q or "sae" in q
+    asks_demand = "demand" in q and not asks_sales
+
+    if asks_sales:
+        if "yearlysalesdata" in sparql or "vehiclesalesobservation" in sparql:
+            score += 1.2
+            reasons.append("plan_metric_sales_match")
+        elif "autonomousdrivingdevelopment" in sparql or "demandforregion" in sparql:
+            score -= 2.0
+            reasons.append("plan_metric_sales_mismatch")
+    if asks_inventory:
+        if "inventorydevelopment" in sparql:
+            score += 1.2
+            reasons.append("plan_metric_inventory_match")
+        else:
+            score -= 1.8
+            reasons.append("plan_metric_inventory_mismatch")
+    if asks_cancellation:
+        if "ordercancellation" in sparql:
+            score += 1.2
+            reasons.append("plan_metric_cancellation_match")
+        else:
+            score -= 1.8
+            reasons.append("plan_metric_cancellation_mismatch")
+    if asks_autonomous:
+        if "autonomousdrivingdevelopment" in sparql:
+            score += 1.2
+            reasons.append("plan_metric_autonomous_match")
+        else:
+            score -= 1.8
+            reasons.append("plan_metric_autonomous_mismatch")
+    if asks_demand:
+        if any(term in sparql for term in ("demandforregion", "currentdemandanalysis", "futuredemandanalysis", "aggregateddemand")):
+            score += 0.9
+            reasons.append("plan_metric_demand_match")
+        elif any(term in sparql for term in ("yearlysalesdata", "vehiclesalesobservation", "inventorydevelopment")):
+            score -= 1.8
+            reasons.append("plan_metric_demand_mismatch")
+
+    return float(score), reasons
+
+
 def _select_best_candidate_semantic(candidates, question):
     scored: List[Dict[str, object]] = []
     runtime_profile_enabled = (
@@ -1609,6 +1778,7 @@ def _select_best_candidate_semantic(candidates, question):
         if unbound_vars:
             execution_component -= 1.0
         shape_component, shape_reasons = _candidate_shape_score(question, query, profile)
+        plan_component, plan_reasons = _query_plan_alignment_score(question, query)
         source = str(cand.get("source", "") or "").strip().lower()
         source_component = 0.0
         if source == "validated_retrieval":
@@ -1625,6 +1795,7 @@ def _select_best_candidate_semantic(candidates, question):
             + coverage_component
             + execution_component
             + shape_component
+            + plan_component
             + source_component
             + ml_component
             + order_component
@@ -1636,11 +1807,12 @@ def _select_best_candidate_semantic(candidates, question):
             "coverage_component": float(coverage_component),
             "execution_component": float(execution_component),
             "shape_component": float(shape_component),
+            "plan_component": float(plan_component),
             "source_component": float(source_component),
             "ml_component": float(ml_component),
             "order_component": float(order_component),
         }
-        cand["selection_shape_reasons"] = shape_reasons
+        cand["selection_shape_reasons"] = shape_reasons + plan_reasons
         cand["coverage_score"] = coverage_score
         cand["coverage_missing"] = list(coverage.get("missing", []))
         cand["coverage_required"] = list(coverage.get("required", []))
