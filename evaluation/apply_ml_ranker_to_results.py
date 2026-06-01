@@ -28,6 +28,10 @@ def _rank_detail(
     detail: Dict[str, object],
     ranker: NPTfidfRanker,
     schema_dict: Dict[str, object],
+    guarded: bool = False,
+    min_margin: float = 0.15,
+    min_score: float = 0.50,
+    max_rank: int = 4,
 ) -> Dict[str, object]:
     updated = deepcopy(detail)
     candidates = list(updated.get("candidates") or [])
@@ -43,6 +47,40 @@ def _rank_detail(
         for cand in candidates
     ]
     ranked_rows = rank_candidates_with_model(ranker, question, rank_rows, schema_dict)
+
+    score_by_key = {
+        _query_key(str(row.get("query", ""))): float(row.get("ml_score") or 0.0)
+        for row in ranked_rows
+    }
+    rank_by_key = {
+        _query_key(str(cand.get("query", ""))): idx
+        for idx, cand in enumerate(candidates)
+    }
+
+    if guarded:
+        current_key = _query_key(str(candidates[0].get("query", "")))
+        top_row = ranked_rows[0] if ranked_rows else {}
+        top_key = _query_key(str(top_row.get("query", "")))
+        current_score = float(score_by_key.get(current_key, 0.0))
+        top_score = float(score_by_key.get(top_key, 0.0))
+        top_original_rank = int(rank_by_key.get(top_key, 999))
+        should_switch = (
+            bool(top_key)
+            and top_key != current_key
+            and top_original_rank <= int(max_rank)
+            and top_score >= float(min_score)
+            and (top_score - current_score) >= float(min_margin)
+        )
+        if not should_switch:
+            updated_candidates = []
+            for cand in candidates:
+                cand_copy = deepcopy(cand)
+                cand_copy["ml_score"] = score_by_key.get(
+                    _query_key(str(cand_copy.get("query", "")))
+                )
+                updated_candidates.append(cand_copy)
+            updated["candidates"] = updated_candidates
+            return updated
 
     buckets: Dict[str, List[Dict[str, object]]] = {}
     for cand in candidates:
@@ -68,13 +106,40 @@ def _rank_detail(
     return updated
 
 
-def apply_ml_ranker(results_path: str, model_path: str, schema_path: str) -> Dict[str, object]:
+def apply_ml_ranker(
+    results_path: str,
+    model_path: str,
+    schema_path: str,
+    guarded: bool = False,
+    min_margin: float = 0.15,
+    min_score: float = 0.50,
+    max_rank: int = 4,
+) -> Dict[str, object]:
     payload = _load_json(results_path)
     schema_dict = _load_json(schema_path)
     ranker = NPTfidfRanker.load(model_path)
+    expected_features = len(ranker.feature_names)
+    actual_features = len(ranker.scaler_mean)
+    if expected_features != actual_features:
+        raise RuntimeError(
+            "The ML ranker model was trained with an older feature schema "
+            f"({actual_features} scaler features for {expected_features} configured features). "
+            "Retrain the ranker with the current code before applying it."
+        )
 
     original_details = list(payload.get("details") or [])
-    details = [_rank_detail(detail, ranker, schema_dict) for detail in original_details]
+    details = [
+        _rank_detail(
+            detail,
+            ranker,
+            schema_dict,
+            guarded=guarded,
+            min_margin=min_margin,
+            min_score=min_score,
+            max_rank=max_rank,
+        )
+        for detail in original_details
+    ]
 
     changed = []
     for before, after in zip(original_details, details):
@@ -105,6 +170,10 @@ def apply_ml_ranker(results_path: str, model_path: str, schema_path: str) -> Dic
         "schema": schema_path,
         "changed_count": len(changed),
         "changed": changed,
+        "guarded": bool(guarded),
+        "min_margin": float(min_margin),
+        "min_score": float(min_score),
+        "max_rank": int(max_rank),
         "note": (
             "If the model was trained on these same results, this is a diagnostic "
             "ranking upper-bound, not an unbiased held-out metric."
@@ -121,9 +190,25 @@ def main() -> None:
     parser.add_argument("--model", required=True)
     parser.add_argument("--schema", default="data/infineon/schema.json")
     parser.add_argument("--out", required=True)
+    parser.add_argument(
+        "--guarded",
+        action="store_true",
+        help="Only switch top1 when the ML winner has a clear confidence margin.",
+    )
+    parser.add_argument("--min-margin", type=float, default=0.15)
+    parser.add_argument("--min-score", type=float, default=0.50)
+    parser.add_argument("--max-rank", type=int, default=4)
     args = parser.parse_args()
 
-    updated = apply_ml_ranker(args.results, args.model, args.schema)
+    updated = apply_ml_ranker(
+        args.results,
+        args.model,
+        args.schema,
+        guarded=args.guarded,
+        min_margin=args.min_margin,
+        min_score=args.min_score,
+        max_rank=args.max_rank,
+    )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(updated, f, indent=2, ensure_ascii=False)
@@ -134,6 +219,12 @@ def main() -> None:
     print("===== APPLY ML RANKER TO RESULTS =====")
     print(f"Input: {args.results}")
     print(f"Model: {args.model}")
+    print(f"Guarded: {'yes' if rewrite['guarded'] else 'no'}")
+    if rewrite["guarded"]:
+        print(
+            f"Guard: min_margin={rewrite['min_margin']}, "
+            f"min_score={rewrite['min_score']}, max_rank={rewrite['max_rank']}"
+        )
     print(f"Changed selections: {rewrite['changed_count']}")
     print(f"Top1 correct: {summary['top1_correct']} ({summary['top1_correct_rate']:.3f})")
     print(f"Any correct: {summary['any_correct']} ({summary['any_correct_rate']:.3f})")
