@@ -1860,6 +1860,7 @@ def _select_best_candidate_semantic(candidates, question):
     first_report = first.get("semantic_judge_report") or {}
     best_report = best.get("semantic_judge_report") or {}
     first_penalties = {str(p) for p in first_report.get("penalties", [])}
+    first_shape_reasons = {str(r) for r in first.get("selection_shape_reasons", [])}
     best_shape_reasons = {str(r) for r in best.get("selection_shape_reasons", [])}
     first_extra_filters = len(first_report.get("extra_filters") or [])
     best_extra_filters = len(best_report.get("extra_filters") or [])
@@ -1945,6 +1946,38 @@ def _select_best_candidate_semantic(candidates, question):
         )
     )
     if decisive_plan_win:
+        return best
+    contract_override_enabled = (
+        os.getenv("INFINEON_ENABLE_CONTRACT_SELECTION_OVERRIDE", "1").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    first_contract_matches = sum(
+        1
+        for reason in first_shape_reasons
+        if reason.startswith("plan_origin_match:")
+        or reason.startswith("plan_metric_")
+        or reason in {"plan_sum_match", "plan_avg_match", "plan_count_match", "plan_ranking_match"}
+    )
+    best_contract_matches = sum(
+        1
+        for reason in best_shape_reasons
+        if reason.startswith("plan_origin_match:")
+        or reason.startswith("plan_metric_")
+        or reason in {"plan_sum_match", "plan_avg_match", "plan_count_match", "plan_ranking_match"}
+    )
+    best_has_origin_match = any(r.startswith("plan_origin_match:") for r in best_shape_reasons)
+    best_has_metric_match = any(r.startswith("plan_metric_") and r.endswith("_match") for r in best_shape_reasons)
+    contract_plan_win = (
+        contract_override_enabled
+        and best_score >= first_score + 1.45
+        and best_contract_matches >= first_contract_matches + 1
+        and best_has_origin_match
+        and best_has_metric_match
+        and coverage_not_worse
+        and not best_exec_error
+        and best_semantic >= first_semantic - 0.15
+    )
+    if contract_plan_win:
         return best
     shape_defect_fixed = (
         "answer_shape_missing_expected_columns" in first_penalties
