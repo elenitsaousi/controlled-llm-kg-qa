@@ -1948,7 +1948,7 @@ def _select_best_candidate_semantic(candidates, question):
     if decisive_plan_win:
         return best
     contract_override_enabled = (
-        os.getenv("INFINEON_ENABLE_CONTRACT_SELECTION_OVERRIDE", "1").strip().lower()
+        os.getenv("INFINEON_ENABLE_CONTRACT_SELECTION_OVERRIDE", "0").strip().lower()
         in {"1", "true", "yes", "on"}
     )
     first_contract_matches = sum(
