@@ -27,6 +27,11 @@ from ranking.ambiguity_policy import (
 from ranking.clarification import build_clarification_payload
 from pipeline.request_routing import route_request
 from ranking.feature_extraction import extract_features, extract_query_plan
+from ranking.query_contract import (
+    compare_contracts,
+    extract_query_contract,
+    extract_question_contract,
+)
 from ranking.ranker import rank_candidates as rank_schema_candidates
 from validation.semantic import (
     semantic_coverage_report,
@@ -1740,6 +1745,14 @@ def _select_best_candidate_semantic(candidates, question):
         os.getenv("INFINEON_ENABLE_SELECTION_RUNTIME_PROFILE", "0").strip().lower()
         in {"1", "true", "yes", "on"}
     )
+    contract_score_enabled = (
+        os.getenv("INFINEON_ENABLE_QUERY_CONTRACT_SCORE", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    contract_weight = float(os.getenv("INFINEON_QUERY_CONTRACT_WEIGHT", "0.75") or 0.75)
+    question_contract = (
+        extract_question_contract(question) if contract_score_enabled else None
+    )
 
     for original_rank, cand in enumerate(candidates):
         query = str(cand.get("query", ""))
@@ -1779,6 +1792,17 @@ def _select_best_candidate_semantic(candidates, question):
             execution_component -= 1.0
         shape_component, shape_reasons = _candidate_shape_score(question, query, profile)
         plan_component, plan_reasons = _query_plan_alignment_score(question, query)
+        contract_component = 0.0
+        contract_reasons: List[str] = []
+        contract_report: Dict[str, object] = {}
+        query_contract_report: Dict[str, object] = {}
+        if question_contract is not None:
+            query_contract = extract_query_contract(query)
+            comparison = compare_contracts(question_contract, query_contract)
+            contract_component = contract_weight * float(comparison.score)
+            contract_reasons = list(comparison.reasons)
+            contract_report = comparison.to_dict()
+            query_contract_report = query_contract.to_dict()
         source = str(cand.get("source", "") or "").strip().lower()
         source_component = 0.0
         if source == "validated_retrieval":
@@ -1802,6 +1826,7 @@ def _select_best_candidate_semantic(candidates, question):
             + execution_component
             + shape_component
             + plan_component
+            + contract_component
             + source_component
             + ml_component
             + order_component
@@ -1814,11 +1839,16 @@ def _select_best_candidate_semantic(candidates, question):
             "execution_component": float(execution_component),
             "shape_component": float(shape_component),
             "plan_component": float(plan_component),
+            "contract_component": float(contract_component),
             "source_component": float(source_component),
             "ml_component": float(ml_component),
             "order_component": float(order_component),
         }
-        cand["selection_shape_reasons"] = shape_reasons + plan_reasons
+        cand["selection_shape_reasons"] = shape_reasons + plan_reasons + contract_reasons
+        if question_contract is not None:
+            cand["question_contract"] = question_contract.to_dict()
+            cand["query_contract"] = query_contract_report
+            cand["query_contract_report"] = contract_report
         cand["coverage_score"] = coverage_score
         cand["coverage_missing"] = list(coverage.get("missing", []))
         cand["coverage_required"] = list(coverage.get("required", []))
@@ -1875,6 +1905,12 @@ def _select_best_candidate_semantic(candidates, question):
     )
     best_plan_component = float(
         (best.get("selection_score_breakdown") or {}).get("plan_component", 0.0)
+    )
+    first_contract_component = float(
+        (first.get("selection_score_breakdown") or {}).get("contract_component", 0.0)
+    )
+    best_contract_component = float(
+        (best.get("selection_score_breakdown") or {}).get("contract_component", 0.0)
     )
     plan_override_enabled = (
         os.getenv("INFINEON_ENABLE_PLAN_SELECTION_OVERRIDE", "1").strip().lower()
@@ -1946,6 +1982,55 @@ def _select_best_candidate_semantic(candidates, question):
         )
     )
     if decisive_plan_win:
+        return best
+    contract_reasons_enabled = (
+        os.getenv("INFINEON_ENABLE_QUERY_CONTRACT_SCORE", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    query_contract_override_enabled = (
+        os.getenv("INFINEON_ENABLE_QUERY_CONTRACT_OVERRIDE", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    first_contract_missing = sum(
+        1
+        for reason in first_shape_reasons
+        if reason.startswith("contract_") and "_missing:" in reason
+    )
+    best_contract_missing = sum(
+        1
+        for reason in best_shape_reasons
+        if reason.startswith("contract_") and "_missing:" in reason
+    )
+    first_contract_conflicts = sum(
+        1
+        for reason in first_shape_reasons
+        if reason.startswith("contract_") and "_conflict:" in reason
+    )
+    best_contract_conflicts = sum(
+        1
+        for reason in best_shape_reasons
+        if reason.startswith("contract_") and "_conflict:" in reason
+    )
+    best_contract_matches = sum(
+        1
+        for reason in best_shape_reasons
+        if reason.startswith("contract_") and "_match:" in reason
+    )
+    decisive_contract_win = (
+        contract_reasons_enabled
+        and query_contract_override_enabled
+        and best_score >= first_score + 1.10
+        and best_contract_component >= first_contract_component + 1.35
+        and best_contract_matches >= 2
+        and best_contract_missing <= first_contract_missing
+        and best_contract_conflicts <= first_contract_conflicts
+        and (best_contract_missing + best_contract_conflicts)
+        < (first_contract_missing + first_contract_conflicts)
+        and coverage_not_worse
+        and not best_exec_error
+        and best_semantic >= first_semantic - 0.15
+    )
+    if decisive_contract_win:
         return best
     contract_override_enabled = (
         os.getenv("INFINEON_ENABLE_CONTRACT_SELECTION_OVERRIDE", "0").strip().lower()
