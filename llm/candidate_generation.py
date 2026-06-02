@@ -1,5 +1,6 @@
 # candidate_generation.py
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 from kg.schema import KGSchema
@@ -16,10 +17,20 @@ from kg.schema_slices import (
 )
 from llm.prompts import build_candidate_prompt, build_repair_prompt
 from llm.client import InfineonGPTClient
+from rdflib.plugins.sparql.parser import parseQuery
+from validation.schema import validate_query_schema
+from validation.semantic import semantic_coverage_report, validate_query_semantic
+from validation.syntax import validate_query_syntax
 import re
 
 
 BASE = Path(__file__).resolve().parents[1]
+DEFAULT_PREFIX = """\
+PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+"""
 VALIDATED_RETRIEVAL_SOURCES = [
     BASE / "data" / "infineon" / "kgqa_seed_expansion_round1.json",
     BASE / "data" / "infineon" / "infineon_train.json",
@@ -101,6 +112,15 @@ def _normalize_generated_output(generated: object) -> List[str]:
 
 def _candidate_key(query: str) -> str:
     return " ".join(str(query or "").split()).lower()
+
+
+def _ensure_prefixes(query: str) -> str:
+    q = str(query or "").strip()
+    if not q:
+        return q
+    if re.search(r"^\s*PREFIX\b", q, flags=re.IGNORECASE):
+        return q
+    return DEFAULT_PREFIX + "\n" + q
 
 
 def _load_validated_query_pairs() -> List[Dict[str, str]]:
@@ -1182,6 +1202,102 @@ def repair_candidate_query(
     return repaired or None
 
 
+def _candidate_validation_errors(query: str, schema: KGSchema) -> List[Dict[str, str]]:
+    errors: List[Dict[str, str]] = []
+    errors.extend(validate_query_syntax(query))
+    errors.extend(validate_query_semantic(query))
+    errors.extend(validate_query_schema(query, schema))
+    if not errors:
+        try:
+            parseQuery(_ensure_prefixes(query))
+        except Exception as exc:
+            errors.append({"type": "syntax", "message": str(exc)})
+    return errors
+
+
+def _candidate_repair_feedback(question: str, query: str, schema: KGSchema) -> str:
+    errors = _candidate_validation_errors(query, schema)
+    messages = [
+        f"{err.get('type', 'error')}: {err.get('message', '')}".strip()
+        for err in errors
+        if err.get("message")
+    ]
+    repair_mode = os.getenv("INFINEON_GENERATION_REPAIR_MODE", "invalid").strip().lower()
+    if repair_mode in {"semantic", "intent", "coverage"}:
+        coverage = semantic_coverage_report(question, query)
+        missing = list(coverage.get("missing", []))
+        if missing:
+            messages.append(
+                "intent: query does not cover requested concepts: "
+                + ", ".join(missing[:8])
+            )
+    return "\n".join(messages)
+
+
+def _repair_generated_candidates(
+    question: str,
+    schema: KGSchema,
+    candidates: List[Dict[str, str]],
+    seen: set,
+    client: object,
+    max_repairs: int,
+) -> List[Dict[str, str]]:
+    repaired_rows: List[Dict[str, str]] = []
+    repair_mode = os.getenv("INFINEON_GENERATION_REPAIR_MODE", "invalid").strip().lower()
+    allow_semantic_repair = repair_mode in {"semantic", "intent", "coverage"}
+
+    for cand in candidates:
+        if len(repaired_rows) >= max_repairs:
+            break
+        source = str(cand.get("source", "") or "")
+        if source == "validated_retrieval":
+            continue
+        query = _normalize_candidate_query(str(cand.get("query", "")))
+        if not query:
+            continue
+        errors = _candidate_validation_errors(query, schema)
+        needs_repair = bool(errors)
+        if allow_semantic_repair and not needs_repair:
+            coverage = semantic_coverage_report(question, query)
+            needs_repair = int(coverage.get("missing_count", 0)) > 0
+        if not needs_repair:
+            continue
+
+        feedback = _candidate_repair_feedback(question, query, schema)
+        if not feedback:
+            continue
+        try:
+            repaired = repair_candidate_query(
+                question=question,
+                schema=schema,
+                invalid_query=query,
+                error_message=feedback,
+                llm_client=client,
+            )
+        except Exception:
+            continue
+        repaired = _normalize_candidate_query(repaired or "")
+        if not repaired:
+            continue
+        key = _candidate_key(repaired)
+        if key in seen:
+            continue
+        repaired_errors = _candidate_validation_errors(repaired, schema)
+        if repaired_errors:
+            continue
+        seen.add(key)
+        repaired_rows.append(
+            {
+                "query": repaired,
+                "source": "repair",
+                "repair_source": source or "unknown",
+                "repair_feedback": feedback,
+            }
+        )
+
+    return repaired_rows
+
+
 def generate_candidates(
     question: str,
     schema: KGSchema,
@@ -1317,6 +1433,36 @@ def generate_candidates(
             seen.add(key)
             candidates.append({"query": query, "source": "infineon_full_schema"})
 
+        repair_count = 0
+        repair_enabled = (
+            os.getenv("INFINEON_ENABLE_GENERATION_REPAIR", "0").strip().lower()
+            in {"1", "true", "yes", "on"}
+        )
+        if repair_enabled and candidates:
+            max_repairs = int(os.getenv("INFINEON_GENERATION_REPAIR_MAX", "2") or 2)
+            repaired_rows = _repair_generated_candidates(
+                question=effective_question,
+                schema=schema,
+                candidates=candidates,
+                seen=seen,
+                client=client,
+                max_repairs=max(0, max_repairs),
+            )
+            if repaired_rows:
+                candidates.extend(repaired_rows)
+                repair_count = len(repaired_rows)
+
+                protected_sources = {"validated_retrieval", "template", "repair"}
+                while len(candidates) > k:
+                    remove_idx = None
+                    for idx in range(len(candidates) - 1, -1, -1):
+                        if str(candidates[idx].get("source", "")) not in protected_sources:
+                            remove_idx = idx
+                            break
+                    if remove_idx is None:
+                        remove_idx = len(candidates) - 1
+                    candidates.pop(remove_idx)
+
         if not candidates:
             print("⚠️ WARNING: No candidates generated!")
 
@@ -1345,6 +1491,8 @@ def generate_candidates(
                 "validated_retrieval_count": sum(
                     1 for cand in candidates if cand.get("source") == "validated_retrieval"
                 ),
+                "generation_repair_enabled": repair_enabled,
+                "generation_repair_count": repair_count,
                 "schema_slicing_applied": bool(sliced_schema),
                 "schema_slice_names": slice_names,
             },
