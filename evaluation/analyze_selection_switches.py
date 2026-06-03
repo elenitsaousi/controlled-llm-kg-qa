@@ -40,6 +40,14 @@ def _first_correct_idx(detail: Dict[str, object]) -> int:
     return -1
 
 
+def _first_correct_candidate(detail: Dict[str, object]) -> Dict[str, object]:
+    idx = _first_correct_idx(detail)
+    candidates = detail.get("candidates") or []
+    if idx < 0 or idx >= len(candidates):
+        return {}
+    return candidates[idx]
+
+
 def _source(candidate: Dict[str, object]) -> str:
     return str(candidate.get("source") or "unknown")
 
@@ -100,6 +108,7 @@ def analyze(
         family = _family(before, dataset)
 
         if not changed and any_correct and before_label != "correct":
+            correct = _first_correct_candidate(before)
             missed.append(
                 {
                     "id": qid,
@@ -107,6 +116,11 @@ def analyze(
                     "first_correct_rank": _first_correct_idx(before) + 1,
                     "top_source": _source(before_top),
                     "top_label": before_label,
+                    "correct_source": _source(correct),
+                    "top_ml_score": before_top.get("ml_score"),
+                    "correct_ml_score": correct.get("ml_score"),
+                    "top_selection_score": before_top.get("selection_score"),
+                    "correct_selection_score": correct.get("selection_score"),
                     "question": before.get("question") or before.get("effective_question"),
                 }
             )
@@ -200,7 +214,9 @@ def _write_md(report: Dict[str, object], out_md: str) -> None:
     for row in report["missed"][:120]:
         lines.append(
             f"- `{row['id']}` [{row['family']}]: top={row['top_label']} "
-            f"source={row['top_source']}, first_correct_rank={row['first_correct_rank']}"
+            f"source={row['top_source']}, first_correct_rank={row['first_correct_rank']}, "
+            f"correct_source={row.get('correct_source')}, "
+            f"top_ml={row.get('top_ml_score')}, correct_ml={row.get('correct_ml_score')}"
         )
     Path(out_md).parent.mkdir(parents=True, exist_ok=True)
     with open(out_md, "w", encoding="utf-8") as f:
