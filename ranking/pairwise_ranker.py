@@ -16,6 +16,82 @@ from ranking.np_tfidf_ranker import (
     compose_feature_names,
     load_training_data,
 )
+from ranking.query_contract import (
+    compare_contracts,
+    extract_query_contract,
+    extract_question_contract,
+)
+from validation.semantic import semantic_coverage_report, semantic_judge_report
+
+
+PAIRWISE_SIGNAL_FEATURE_NAMES = [
+    "semantic_judge_score",
+    "semantic_penalty_count",
+    "semantic_extra_filter_count",
+    "coverage_score",
+    "coverage_missing_count",
+    "contract_score",
+    "contract_match_count",
+    "contract_missing_count",
+    "contract_conflict_count",
+    "source_trust_rank",
+]
+
+
+def compose_pairwise_feature_names() -> List[str]:
+    return compose_feature_names() + list(PAIRWISE_SIGNAL_FEATURE_NAMES)
+
+
+def _count_nested_values(payload: Dict[str, object], key: str) -> int:
+    section = payload.get(key)
+    if not isinstance(section, dict):
+        return 0
+    return sum(len(values or []) for values in section.values())
+
+
+def _source_trust_rank(source: str) -> float:
+    source = str(source or "").strip().lower()
+    if source == "gold":
+        return 4.0
+    if source == "validated_retrieval":
+        return 3.0
+    if source == "template":
+        return 2.0
+    return 1.0
+
+
+def _pairwise_signal_features(question: str, query: str, source: str) -> List[float]:
+    try:
+        judge = semantic_judge_report(question, query)
+    except Exception:
+        judge = {"score": 0.0, "penalties": [], "extra_filters": []}
+    try:
+        coverage = semantic_coverage_report(question, query)
+    except Exception:
+        coverage = {"coverage_score": 0.0, "missing": [], "missing_count": 0}
+    try:
+        comparison = compare_contracts(
+            extract_question_contract(question),
+            extract_query_contract(query),
+        ).to_dict()
+    except Exception:
+        comparison = {"score": 0.0, "matched": {}, "missing": {}, "conflicts": {}}
+
+    missing_count = coverage.get("missing_count")
+    if missing_count is None:
+        missing_count = len(coverage.get("missing") or [])
+    return [
+        float(judge.get("score", 0.0) or 0.0),
+        float(len(judge.get("penalties") or [])),
+        float(len(judge.get("extra_filters") or [])),
+        float(coverage.get("coverage_score", 0.0) or 0.0),
+        float(missing_count or 0.0),
+        float(comparison.get("score", 0.0) or 0.0),
+        float(_count_nested_values(comparison, "matched")),
+        float(_count_nested_values(comparison, "missing")),
+        float(_count_nested_values(comparison, "conflicts")),
+        _source_trust_rank(source),
+    ]
 
 
 def _candidate_feature_rows(
@@ -32,9 +108,11 @@ def _candidate_feature_rows(
             source=cand.source,
             position=position,
         )
-        rows.append(_build_feature_row(cand.features, sim, extra, FEATURE_NAMES))
+        row = _build_feature_row(cand.features, sim, extra, FEATURE_NAMES)
+        row.extend(_pairwise_signal_features(item.question, cand.query, cand.source))
+        rows.append(row)
     if not rows:
-        return np.zeros((0, len(compose_feature_names())), dtype=float)
+        return np.zeros((0, len(compose_pairwise_feature_names())), dtype=float)
     return np.array(rows, dtype=float)
 
 
@@ -62,7 +140,7 @@ def _candidate_rows_for_qids(
         if len(rows):
             all_rows.append(rows)
     if not all_rows:
-        return np.zeros((0, len(compose_feature_names())), dtype=float), by_qid
+        return np.zeros((0, len(compose_pairwise_feature_names())), dtype=float), by_qid
     return np.vstack(all_rows), by_qid
 
 
@@ -95,7 +173,7 @@ def _pairwise_training_rows(
             pair_rows.append(-diff)
             labels.append(0)
     if not pair_rows:
-        return np.zeros((0, len(compose_feature_names())), dtype=float), np.zeros((0,), dtype=int)
+        return np.zeros((0, len(compose_pairwise_feature_names())), dtype=float), np.zeros((0,), dtype=int)
     return np.array(pair_rows, dtype=float), np.array(labels, dtype=int)
 
 
@@ -107,7 +185,7 @@ def train_pairwise_logistic(
     epochs: int = 2500,
 ) -> np.ndarray:
     if X.size == 0:
-        return np.zeros((X.shape[1] if X.ndim == 2 else len(compose_feature_names())), dtype=float)
+        return np.zeros((X.shape[1] if X.ndim == 2 else len(compose_pairwise_feature_names())), dtype=float)
     n, d = X.shape
     w = np.zeros(d, dtype=float)
     for _ in range(int(epochs)):
@@ -160,7 +238,9 @@ class PairwiseRanker:
                 source=source,
                 position=position,
             )
-            rows.append(_build_feature_row(base_features, sim, extra, FEATURE_NAMES))
+            row = _build_feature_row(base_features, sim, extra, FEATURE_NAMES)
+            row.extend(_pairwise_signal_features(question, query, source))
+            rows.append(row)
         if not rows:
             return np.array([], dtype=float)
         X = _scale(np.array(rows, dtype=float), self.scaler_mean, self.scaler_std)
@@ -222,7 +302,7 @@ def train_final_pairwise_ranker(
     )
     weights = train_pairwise_logistic(X_pair, y_pair, lr=lr, reg=reg, epochs=epochs)
     return PairwiseRanker(
-        feature_names=compose_feature_names(),
+        feature_names=compose_pairwise_feature_names(),
         weights=weights,
         scaler_mean=mean,
         scaler_std=std,

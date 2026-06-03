@@ -16,12 +16,13 @@ from ranking.pairwise_ranker import (
     _candidate_rows_for_qids,
     _fit_vectorizer,
     _pairwise_training_rows,
+    compose_pairwise_feature_names,
     score_items,
     train_final_pairwise_ranker,
     train_pairwise_logistic,
     PairwiseRanker,
 )
-from ranking.np_tfidf_ranker import _fit_scaler, _scale, compose_feature_names
+from ranking.np_tfidf_ranker import _fit_scaler, _scale
 
 
 def _evaluate_scores(data, qids, score_rows):
@@ -85,7 +86,7 @@ def cross_validate_pairwise(data, folds=5, seed=42, lr=0.05, reg=0.02, epochs=25
         )
         weights = train_pairwise_logistic(X_pair, y_pair, lr=lr, reg=reg, epochs=epochs)
         model = PairwiseRanker(
-            feature_names=compose_feature_names(),
+            feature_names=compose_pairwise_feature_names(),
             weights=weights,
             scaler_mean=mean,
             scaler_std=std,
@@ -118,7 +119,7 @@ def cross_validate_pairwise(data, folds=5, seed=42, lr=0.05, reg=0.02, epochs=25
             "reg": reg,
             "epochs": epochs,
             "max_pairs_per_question": max_pairs_per_question,
-            "feature_names": compose_feature_names(),
+            "feature_names": compose_pairwise_feature_names(),
         },
         "overall": {
             "n_questions": len(all_rows),
