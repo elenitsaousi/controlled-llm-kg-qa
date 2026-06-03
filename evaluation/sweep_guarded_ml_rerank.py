@@ -35,6 +35,7 @@ def sweep(
     margins: List[float],
     scores: List[float],
     ranks: List[int],
+    structured_guard: bool = False,
 ) -> Dict[str, object]:
     rows: List[Dict[str, object]] = []
     for margin, score, max_rank in itertools.product(margins, scores, ranks):
@@ -46,6 +47,7 @@ def sweep(
             min_margin=margin,
             min_score=score,
             max_rank=max_rank,
+            structured_guard=structured_guard,
         )
         summary = updated["summary"]
         rewrite = updated["ml_rerank_rewrite"]
@@ -80,6 +82,7 @@ def sweep(
             "min_margin": margins,
             "min_score": scores,
             "max_rank": ranks,
+            "structured_guard": bool(structured_guard),
         },
         "best": rows[0] if rows else {},
         "rows": rows,
@@ -100,6 +103,11 @@ def main() -> None:
     parser.add_argument("--margins", default="0.05,0.10,0.15,0.20,0.25,0.30")
     parser.add_argument("--scores", default="0.45,0.50,0.55,0.60,0.65")
     parser.add_argument("--max-ranks", default="1,2,3,4,5,6,8")
+    parser.add_argument(
+        "--structured-guard",
+        action="store_true",
+        help="Tune guarded ML reranking with question/query contract safety checks.",
+    )
     args = parser.parse_args()
 
     report = sweep(
@@ -109,6 +117,7 @@ def main() -> None:
         margins=_parse_float_grid(args.margins),
         scores=_parse_float_grid(args.scores),
         ranks=_parse_int_grid(args.max_ranks),
+        structured_guard=args.structured_guard,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -120,6 +129,7 @@ def main() -> None:
     print(f"Results: {args.results}")
     print(f"Model: {args.model}")
     print(f"Runs: {len(report['rows'])}")
+    print(f"Structured guard: {'yes' if args.structured_guard else 'no'}")
     if best:
         print(
             "Best: "

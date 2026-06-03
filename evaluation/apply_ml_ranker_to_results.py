@@ -12,6 +12,11 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from evaluation.apply_selection_to_results import _recompute_summary
+from ranking.query_contract import (
+    compare_contracts,
+    extract_query_contract,
+    extract_question_contract,
+)
 from ranking.np_tfidf_ranker import NPTfidfRanker, rank_candidates_with_model
 
 
@@ -24,6 +29,97 @@ def _query_key(query: str) -> str:
     return " ".join(str(query or "").split()).lower()
 
 
+def _contract_counts(report: Dict[str, object]) -> Dict[str, int]:
+    def count(section: str) -> int:
+        payload = report.get(section)
+        if not isinstance(payload, dict):
+            return 0
+        return sum(len(values or []) for values in payload.values())
+
+    return {
+        "matched": count("matched"),
+        "missing": count("missing"),
+        "conflicts": count("conflicts"),
+    }
+
+
+def _axis_values(report: Dict[str, object], section: str, axis: str) -> set:
+    payload = report.get(section)
+    if not isinstance(payload, dict):
+        return set()
+    values = payload.get(axis) or []
+    return {str(v) for v in values}
+
+
+def _structured_guard_allows(
+    question: str,
+    current_query: str,
+    candidate_query: str,
+) -> bool:
+    """Reject ML switches that violate explicit question/query constraints."""
+
+    question_contract = extract_question_contract(question)
+    if not any(
+        [
+            question_contract.metrics,
+            question_contract.aggregation,
+            question_contract.scopes,
+            question_contract.dimensions,
+            question_contract.filters,
+            question_contract.answer_shape,
+        ]
+    ):
+        return True
+
+    current_report = compare_contracts(
+        question_contract,
+        extract_query_contract(current_query),
+    ).to_dict()
+    candidate_report = compare_contracts(
+        question_contract,
+        extract_query_contract(candidate_query),
+    ).to_dict()
+    current_counts = _contract_counts(current_report)
+    candidate_counts = _contract_counts(candidate_report)
+
+    if candidate_counts["conflicts"] > current_counts["conflicts"]:
+        return False
+    if candidate_counts["missing"] > current_counts["missing"]:
+        return False
+
+    requested_axes = [
+        axis
+        for axis, value in [
+            ("metrics", question_contract.metrics),
+            ("aggregation", {question_contract.aggregation} if question_contract.aggregation else set()),
+            ("scopes", question_contract.scopes),
+            ("dimensions", question_contract.dimensions),
+            ("filters", question_contract.filters),
+            ("answer_shape", {question_contract.answer_shape} if question_contract.answer_shape else set()),
+        ]
+        if value
+    ]
+    if not requested_axes:
+        return True
+
+    current_bad = set()
+    candidate_matches = set()
+    for axis in requested_axes:
+        if _axis_values(current_report, "missing", axis) or _axis_values(
+            current_report, "conflicts", axis
+        ):
+            current_bad.add(axis)
+        if _axis_values(candidate_report, "matched", axis):
+            candidate_matches.add(axis)
+
+    if current_bad:
+        return bool(current_bad & candidate_matches)
+
+    # If the current candidate already satisfies the explicit contract, allow a
+    # switch only when the ML candidate is at least as complete.
+    return candidate_counts["matched"] >= current_counts["matched"]
+
+
 def _rank_detail(
     detail: Dict[str, object],
     ranker: NPTfidfRanker,
@@ -32,6 +128,7 @@ def _rank_detail(
     min_margin: float = 0.15,
     min_score: float = 0.50,
     max_rank: int = 4,
+    structured_guard: bool = False,
 ) -> Dict[str, object]:
     updated = deepcopy(detail)
     candidates = list(updated.get("candidates") or [])
@@ -59,19 +156,32 @@ def _rank_detail(
 
     if guarded:
         current_key = _query_key(str(candidates[0].get("query", "")))
-        top_row = ranked_rows[0] if ranked_rows else {}
-        top_key = _query_key(str(top_row.get("query", "")))
         current_score = float(score_by_key.get(current_key, 0.0))
-        top_score = float(score_by_key.get(top_key, 0.0))
-        top_original_rank = int(rank_by_key.get(top_key, 999))
-        should_switch = (
-            bool(top_key)
-            and top_key != current_key
-            and top_original_rank <= int(max_rank)
-            and top_score >= float(min_score)
-            and (top_score - current_score) >= float(min_margin)
-        )
-        if not should_switch:
+        chosen_row = None
+        switch_allowed = False
+        for row in ranked_rows:
+            row_key = _query_key(str(row.get("query", "")))
+            row_score = float(score_by_key.get(row_key, 0.0))
+            row_original_rank = int(rank_by_key.get(row_key, 999))
+            should_switch = (
+                bool(row_key)
+                and row_key != current_key
+                and row_original_rank <= int(max_rank)
+                and row_score >= float(min_score)
+                and (row_score - current_score) >= float(min_margin)
+            )
+            if not should_switch:
+                continue
+            if structured_guard and not _structured_guard_allows(
+                question,
+                str(candidates[0].get("query", "")),
+                str(row.get("query", "")),
+                ):
+                continue
+            chosen_row = row
+            switch_allowed = True
+            break
+        if not switch_allowed:
             updated_candidates = []
             for cand in candidates:
                 cand_copy = deepcopy(cand)
@@ -81,6 +191,13 @@ def _rank_detail(
                 updated_candidates.append(cand_copy)
             updated["candidates"] = updated_candidates
             return updated
+        if chosen_row is not None:
+            ranked_rows = [chosen_row] + [
+                row
+                for row in ranked_rows
+                if _query_key(str(row.get("query", "")))
+                != _query_key(str(chosen_row.get("query", "")))
+            ]
 
     buckets: Dict[str, List[Dict[str, object]]] = {}
     for cand in candidates:
@@ -114,6 +231,7 @@ def apply_ml_ranker(
     min_margin: float = 0.15,
     min_score: float = 0.50,
     max_rank: int = 4,
+    structured_guard: bool = False,
 ) -> Dict[str, object]:
     payload = _load_json(results_path)
     schema_dict = _load_json(schema_path)
@@ -137,6 +255,7 @@ def apply_ml_ranker(
             min_margin=min_margin,
             min_score=min_score,
             max_rank=max_rank,
+            structured_guard=structured_guard,
         )
         for detail in original_details
     ]
@@ -174,6 +293,7 @@ def apply_ml_ranker(
         "min_margin": float(min_margin),
         "min_score": float(min_score),
         "max_rank": int(max_rank),
+        "structured_guard": bool(structured_guard),
         "note": (
             "If the model was trained on these same results, this is a diagnostic "
             "ranking upper-bound, not an unbiased held-out metric."
@@ -198,6 +318,11 @@ def main() -> None:
     parser.add_argument("--min-margin", type=float, default=0.15)
     parser.add_argument("--min-score", type=float, default=0.50)
     parser.add_argument("--max-rank", type=int, default=4)
+    parser.add_argument(
+        "--structured-guard",
+        action="store_true",
+        help="Reject ML top1 switches that violate the question/query contract.",
+    )
     args = parser.parse_args()
 
     updated = apply_ml_ranker(
@@ -208,6 +333,7 @@ def main() -> None:
         min_margin=args.min_margin,
         min_score=args.min_score,
         max_rank=args.max_rank,
+        structured_guard=args.structured_guard,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -223,7 +349,8 @@ def main() -> None:
     if rewrite["guarded"]:
         print(
             f"Guard: min_margin={rewrite['min_margin']}, "
-            f"min_score={rewrite['min_score']}, max_rank={rewrite['max_rank']}"
+            f"min_score={rewrite['min_score']}, max_rank={rewrite['max_rank']}, "
+            f"structured_guard={rewrite.get('structured_guard')}"
         )
     print(f"Changed selections: {rewrite['changed_count']}")
     print(f"Top1 correct: {summary['top1_correct']} ({summary['top1_correct_rate']:.3f})")
