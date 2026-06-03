@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Create leakage-safe train/dev/test splits for Infineon benchmark questions.
+Create train/dev/test splits for Infineon benchmark questions.
 
 Rules:
-- grouping by query family (no family appears in more than one split)
+- grouped mode: no query family appears in more than one split
+- within-family mode: each sufficiently large family is represented in all splits
 - approximate stratification by ambiguity label (low/mid/high)
 - configurable split ratios
 """
@@ -166,6 +167,57 @@ def _build_splits(
     return out
 
 
+def _target_counts(n: int, ratios: Tuple[float, float, float]) -> Tuple[int, int, int]:
+    raw = [ratios[i] * n for i in range(3)]
+    counts = [int(x) for x in raw]
+    remaining = n - sum(counts)
+    order = sorted(range(3), key=lambda i: raw[i] - counts[i], reverse=True)
+    for i in order[:remaining]:
+        counts[i] += 1
+    if n >= 3:
+        for i in range(3):
+            if counts[i] == 0:
+                donor = max(range(3), key=lambda j: counts[j])
+                if counts[donor] > 1:
+                    counts[donor] -= 1
+                    counts[i] += 1
+    return counts[0], counts[1], counts[2]
+
+
+def _build_within_family_splits(
+    groups: Dict[str, List[Dict]],
+    ratios: Tuple[float, float, float],
+    seed: int,
+) -> Dict[str, List[Dict]]:
+    split_names = ["train", "dev", "test"]
+    out = {name: [] for name in split_names}
+    rnd = random.Random(seed)
+
+    for fam in sorted(groups):
+        rows = list(groups[fam])
+        # Stratify inside each family by ambiguity label so labels are not all
+        # pushed to the same split for repeated templates.
+        by_label: Dict[str, List[Dict]] = defaultdict(list)
+        for row in rows:
+            by_label[_normalize_label(str(row.get("ambiguity_label", "")))].append(row)
+
+        family_split_rows = {name: [] for name in split_names}
+        for label in sorted(by_label):
+            bucket = list(by_label[label])
+            rnd.shuffle(bucket)
+            train_n, dev_n, test_n = _target_counts(len(bucket), ratios)
+            family_split_rows["train"].extend(bucket[:train_n])
+            family_split_rows["dev"].extend(bucket[train_n : train_n + dev_n])
+            family_split_rows["test"].extend(bucket[train_n + dev_n : train_n + dev_n + test_n])
+
+        for split in split_names:
+            out[split].extend(family_split_rows[split])
+
+    for split in split_names:
+        out[split].sort(key=lambda x: str(x.get("id", "")))
+    return out
+
+
 def _validate_no_family_leakage(splits: Dict[str, List[Dict]]) -> None:
     fam_sets = {}
     for split, rows in splits.items():
@@ -198,6 +250,7 @@ def run(
     out_dir: Path,
     ratios: Tuple[float, float, float],
     seed: int,
+    mode: str = "grouped",
 ) -> None:
     with open(dataset_path, "r", encoding="utf-8") as f:
         items = json.load(f)
@@ -205,8 +258,13 @@ def run(
         raise RuntimeError(f"Invalid or empty dataset file: {dataset_path}")
 
     groups = _group_items(items)
-    splits = _build_splits(groups=groups, ratios=ratios, seed=seed)
-    _validate_no_family_leakage(splits)
+    if mode == "grouped":
+        splits = _build_splits(groups=groups, ratios=ratios, seed=seed)
+        _validate_no_family_leakage(splits)
+    elif mode == "within-family":
+        splits = _build_within_family_splits(groups=groups, ratios=ratios, seed=seed)
+    else:
+        raise ValueError(f"Unsupported split mode: {mode}")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_files = {
@@ -223,6 +281,7 @@ def run(
         "dataset": str(dataset_path),
         "ratios": {"train": ratios[0], "dev": ratios[1], "test": ratios[2]},
         "seed": seed,
+        "mode": mode,
         "total_questions": len(items),
         "total_families": len(groups),
         "splits": {
@@ -256,6 +315,15 @@ def main() -> None:
         help="train,dev,test ratios (comma-separated).",
     )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--mode",
+        choices=["grouped", "within-family"],
+        default="grouped",
+        help=(
+            "grouped avoids family leakage; within-family keeps each family in "
+            "train/dev/test for ML selection experiments."
+        ),
+    )
     args = parser.parse_args()
 
     run(
@@ -263,6 +331,7 @@ def main() -> None:
         out_dir=Path(args.out_dir),
         ratios=_parse_ratios(args.ratios),
         seed=int(args.seed),
+        mode=args.mode,
     )
 
 
