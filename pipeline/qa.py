@@ -1753,6 +1753,10 @@ def _select_best_candidate_semantic(candidates, question):
         os.getenv("INFINEON_ENABLE_CONTRACT_SELECTION_OVERRIDE", "0").strip().lower()
         in {"1", "true", "yes", "on"}
     )
+    validated_source_rescue_enabled = (
+        os.getenv("INFINEON_ENABLE_VALIDATED_SOURCE_RESCUE", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
     contract_weight = float(os.getenv("INFINEON_QUERY_CONTRACT_WEIGHT", "0.75") or 0.75)
     question_contract = (
         extract_question_contract(question)
@@ -1873,6 +1877,11 @@ def _select_best_candidate_semantic(candidates, question):
         return None
 
     first = scored[0]
+    if validated_source_rescue_enabled:
+        source_choice = _validated_source_rescue_selection(scored, first)
+        if source_choice is not None and source_choice is not first:
+            return source_choice
+
     if contract_override_enabled and question_contract is not None:
         contract_choice = _contract_override_selection(scored, first)
         if contract_choice is not None and contract_choice is not first:
@@ -2235,6 +2244,115 @@ def _contract_override_selection(
             cand_score,
             cand_semantic,
             -int(cand.get("selection_original_rank", 99)),
+        )
+        if key > best_key:
+            best_key = key
+            best_candidate = cand
+
+    return best_candidate
+
+
+def _source_rank(source: str) -> int:
+    source = str(source or "").strip().lower()
+    if source == "validated_retrieval":
+        return 3
+    if source == "template":
+        return 2
+    if source in {"infineon", "llm", "generated"}:
+        return 1
+    return 0
+
+
+def _normalized_ml_score(row: Dict[str, object]) -> float:
+    try:
+        raw = float(row.get("ml_score") or 0.0)
+    except (TypeError, ValueError):
+        raw = 0.0
+    return raw / (1 + abs(raw))
+
+
+def _validated_source_rescue_selection(
+    scored: List[Dict[str, object]], first: Dict[str, object]
+) -> Optional[Dict[str, object]]:
+    """Conservatively promote validated/template candidates over generated top1.
+
+    Diagnostics showed many ranking failures where the top candidate is an LLM
+    generated query while the first correct candidate comes from validated
+    retrieval. This rescue only fires when the higher-trust source also has a
+    better ML signal and is not worse on coverage/contract safety.
+    """
+
+    first_source_rank = _source_rank(str(first.get("source") or ""))
+    if first_source_rank >= 3:
+        return None
+
+    first_ml = _normalized_ml_score(first)
+    first_coverage = float(first.get("coverage_score", 0.0))
+    first_missing = len(first.get("coverage_missing") or [])
+    first_semantic = float(first.get("semantic_judge_score", 0.0))
+    first_score = float(first.get("selection_score", 0.0))
+    first_contract = first.get("query_contract_report")
+    first_conflicts = _contract_issue_count(first_contract, "conflicts") if isinstance(first_contract, dict) else 0
+
+    min_ml_delta = float(os.getenv("INFINEON_VALIDATED_RESCUE_MIN_ML_DELTA", "0.04") or 0.04)
+    max_score_drop = float(os.getenv("INFINEON_VALIDATED_RESCUE_MAX_SCORE_DROP", "3.5") or 3.5)
+    max_semantic_drop = float(os.getenv("INFINEON_VALIDATED_RESCUE_MAX_SEMANTIC_DROP", "0.55") or 0.55)
+    max_coverage_drop = float(os.getenv("INFINEON_VALIDATED_RESCUE_MAX_COVERAGE_DROP", "0.10") or 0.10)
+    max_rank = int(os.getenv("INFINEON_VALIDATED_RESCUE_MAX_RANK", "8") or 8)
+
+    best_candidate: Optional[Dict[str, object]] = None
+    best_key: Tuple[float, int, float, float, int] = (float("-inf"), -99, float("-inf"), float("-inf"), -999)
+
+    for cand in scored[1:]:
+        cand_rank = int(cand.get("selection_original_rank", 99))
+        if cand_rank >= max_rank:
+            continue
+        cand_source_rank = _source_rank(str(cand.get("source") or ""))
+        if cand_source_rank <= first_source_rank:
+            continue
+
+        cand_ml = _normalized_ml_score(cand)
+        ml_delta = cand_ml - first_ml
+        if ml_delta < min_ml_delta:
+            continue
+
+        cand_coverage = float(cand.get("coverage_score", 0.0))
+        cand_missing = len(cand.get("coverage_missing") or [])
+        if cand_coverage < first_coverage - max_coverage_drop:
+            continue
+        if cand_missing > first_missing:
+            continue
+
+        cand_semantic = float(cand.get("semantic_judge_score", 0.0))
+        if cand_semantic < first_semantic - max_semantic_drop:
+            continue
+
+        cand_score = float(cand.get("selection_score", 0.0))
+        if cand_score < first_score - max_score_drop:
+            continue
+        if cand.get("execution_error") or cand.get("execution_unbound_vars"):
+            continue
+
+        cand_contract = cand.get("query_contract_report")
+        cand_conflicts = _contract_issue_count(cand_contract, "conflicts") if isinstance(cand_contract, dict) else 0
+        if cand_conflicts > first_conflicts:
+            continue
+
+        cand["validated_source_rescue_reason"] = {
+            "first_source": first.get("source"),
+            "candidate_source": cand.get("source"),
+            "first_ml": first_ml,
+            "candidate_ml": cand_ml,
+            "ml_delta": ml_delta,
+            "first_selection_score": first_score,
+            "candidate_selection_score": cand_score,
+        }
+        key = (
+            ml_delta,
+            cand_source_rank,
+            cand_coverage,
+            cand_semantic,
+            -cand_rank,
         )
         if key > best_key:
             best_key = key

@@ -129,3 +129,56 @@ def test_contract_selection_override_promotes_clear_aggregation_fix(monkeypatch)
 
     assert selected is not None
     assert "SUM(?demand)" in selected["query"]
+
+
+def test_validated_source_rescue_promotes_higher_trust_ml_candidate(monkeypatch):
+    monkeypatch.setenv("INFINEON_ENABLE_VALIDATED_SOURCE_RESCUE", "1")
+    question = "Show total OEM demand by region."
+    generated_query = """
+    PREFIX survey: <http://example/>
+    SELECT ?regionName (COUNT(?entry) AS ?count)
+    WHERE {
+      ?entry a survey:DemandForRegion ;
+        survey:hasSurveyOrigin survey:OEM_Survey ;
+        survey:inRegion ?region ;
+        survey:totalDemand ?demand .
+      ?region survey:regionName ?regionName .
+    }
+    GROUP BY ?regionName
+    """
+    validated_query = """
+    PREFIX survey: <http://example/>
+    SELECT ?regionName (SUM(?demand) AS ?totalDemand)
+    WHERE {
+      ?entry a survey:DemandForRegion ;
+        survey:hasSurveyOrigin survey:OEM_Survey ;
+        survey:inRegion ?region ;
+        survey:totalDemand ?demand .
+      ?region survey:regionName ?regionName .
+    }
+    GROUP BY ?regionName
+    """
+
+    selected = _select_best_candidate_semantic(
+        [
+            {
+                "query": generated_query,
+                "source": "infineon",
+                "ml_score": 0.10,
+                "semantic_judge_score": 0.80,
+                "semantic_judge_report": {"score": 0.80, "penalties": []},
+            },
+            {
+                "query": validated_query,
+                "source": "validated_retrieval",
+                "ml_score": 0.40,
+                "semantic_judge_score": 0.70,
+                "semantic_judge_report": {"score": 0.70, "penalties": []},
+            },
+        ],
+        question,
+    )
+
+    assert selected is not None
+    assert selected["source"] == "validated_retrieval"
+    assert "SUM(?demand)" in selected["query"]

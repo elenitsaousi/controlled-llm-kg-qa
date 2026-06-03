@@ -194,6 +194,7 @@ def main() -> None:
     parser.add_argument("--out", required=True)
     parser.add_argument("--enable-targeted-rescue", action="store_true")
     parser.add_argument("--enable-contract-selection-override", action="store_true")
+    parser.add_argument("--enable-validated-source-rescue", action="store_true")
     parser.add_argument("--use-stored-features", action="store_true")
     args = parser.parse_args()
 
@@ -201,6 +202,8 @@ def main() -> None:
         os.environ["INFINEON_ENABLE_TARGETED_SELECTION_RESCUE"] = "1"
     if args.enable_contract_selection_override:
         os.environ["INFINEON_ENABLE_CONTRACT_SELECTION_OVERRIDE"] = "1"
+    if args.enable_validated_source_rescue:
+        os.environ["INFINEON_ENABLE_VALIDATED_SOURCE_RESCUE"] = "1"
 
     updated = apply_selection(args.results, use_stored_features=args.use_stored_features)
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
