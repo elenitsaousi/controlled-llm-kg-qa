@@ -24,6 +24,7 @@ if PROJECT_ROOT not in sys.path:
 from evaluation.apply_selection_to_results import _recompute_summary
 from llm.client import InfineonGPTClient, LLMAuthError, LLMClientError
 from ranking.feature_extraction import extract_query_plan
+from ranking.np_tfidf_ranker import NPTfidfRanker, rank_candidates_with_model
 from ranking.query_contract import extract_question_contract
 
 
@@ -164,12 +165,60 @@ def _parse_selector_response(text: str, max_choice: int) -> Dict[str, object]:
     return {"choice": choice, "confidence": confidence, "reason": reason}
 
 
+def _guarded_ml_choice_key(
+    question: str,
+    candidates: Sequence[Dict[str, object]],
+    schema: Dict[str, object],
+    ranker: Optional[NPTfidfRanker],
+    min_margin: float,
+    min_score: float,
+    max_rank: int,
+) -> Optional[str]:
+    if ranker is None or len(candidates) < 2:
+        return None
+    current_key = _query_key(str(candidates[0].get("query", "")))
+    rank_rows = [
+        {
+            "query": str(cand.get("query", "") or ""),
+            "source": str(cand.get("source") or "llm"),
+        }
+        for cand in candidates
+    ]
+    ranked_rows = rank_candidates_with_model(ranker, question, rank_rows, schema)
+    score_by_key = {
+        _query_key(str(row.get("query", ""))): float(row.get("ml_score") or 0.0)
+        for row in ranked_rows
+    }
+    rank_by_key = {
+        _query_key(str(cand.get("query", ""))): idx
+        for idx, cand in enumerate(candidates)
+    }
+    current_score = float(score_by_key.get(current_key, 0.0))
+    for row in ranked_rows:
+        row_key = _query_key(str(row.get("query", "")))
+        row_score = float(score_by_key.get(row_key, 0.0))
+        row_original_rank = int(rank_by_key.get(row_key, 999))
+        if (
+            row_key
+            and row_key != current_key
+            and row_original_rank <= int(max_rank)
+            and row_score >= float(min_score)
+            and (row_score - current_score) >= float(min_margin)
+        ):
+            return row_key
+    return None
+
+
 def _select_detail(
     detail: Dict[str, object],
     client: InfineonGPTClient,
     schema: Dict[str, object],
     top_n: int,
     min_confidence: float,
+    agreement_ranker: Optional[NPTfidfRanker] = None,
+    ml_min_margin: float = 0.05,
+    ml_min_score: float = 0.50,
+    ml_max_rank: int = 3,
 ) -> Dict[str, object]:
     updated = deepcopy(detail)
     candidates = list(updated.get("candidates") or [])
@@ -183,6 +232,29 @@ def _select_detail(
     parsed = _parse_selector_response(response, len(window))
     choice_idx = int(parsed["choice"]) - 1
     confidence = float(parsed["confidence"])
+    chosen = window[choice_idx] if 0 <= choice_idx < len(window) else window[0]
+    chosen_key = _query_key(str(chosen.get("query", "")))
+    ml_choice_key = _guarded_ml_choice_key(
+        question,
+        candidates,
+        schema,
+        agreement_ranker,
+        min_margin=ml_min_margin,
+        min_score=ml_min_score,
+        max_rank=ml_max_rank,
+    )
+    if agreement_ranker is not None and chosen_key != ml_choice_key:
+        updated["llm_selector"] = {
+            "applied": False,
+            "choice": int(parsed["choice"]),
+            "confidence": confidence,
+            "reason": parsed.get("reason", ""),
+            "raw": response,
+            "ml_agreement_required": True,
+            "ml_choice_key": ml_choice_key,
+            "llm_choice_key": chosen_key,
+        }
+        return updated
     if choice_idx <= 0 or confidence < float(min_confidence):
         updated["llm_selector"] = {
             "applied": False,
@@ -190,11 +262,12 @@ def _select_detail(
             "confidence": confidence,
             "reason": parsed.get("reason", ""),
             "raw": response,
+            "ml_agreement_required": agreement_ranker is not None,
+            "ml_choice_key": ml_choice_key,
+            "llm_choice_key": chosen_key,
         }
         return updated
 
-    chosen = window[choice_idx]
-    chosen_key = _query_key(str(chosen.get("query", "")))
     reordered = []
     used = False
     for cand in candidates:
@@ -214,6 +287,9 @@ def _select_detail(
         "confidence": confidence,
         "reason": parsed.get("reason", ""),
         "raw": response,
+        "ml_agreement_required": agreement_ranker is not None,
+        "ml_choice_key": ml_choice_key,
+        "llm_choice_key": chosen_key,
     }
     return updated
 
@@ -234,6 +310,10 @@ def apply_llm_selector(
     min_confidence: float = 0.0,
     resume_from: Optional[str] = None,
     save_every: int = 1,
+    agreement_ml_model: Optional[str] = None,
+    ml_min_margin: float = 0.05,
+    ml_min_score: float = 0.50,
+    ml_max_rank: int = 3,
 ) -> Dict[str, object]:
     payload = _load_json(results_path)
     schema = _load_json(schema_path)
@@ -248,6 +328,7 @@ def apply_llm_selector(
             if isinstance(detail, dict) and detail.get("llm_selector") is not None
         }
 
+    agreement_ranker = NPTfidfRanker.load(agreement_ml_model) if agreement_ml_model else None
     client = InfineonGPTClient(temperature=0.0, max_tokens=300)
     details: List[Dict[str, object]] = []
     for idx, detail in enumerate(original_details, start=1):
@@ -262,6 +343,10 @@ def apply_llm_selector(
                 schema,
                 top_n=top_n,
                 min_confidence=min_confidence,
+                agreement_ranker=agreement_ranker,
+                ml_min_margin=ml_min_margin,
+                ml_min_score=ml_min_score,
+                ml_max_rank=ml_max_rank,
             )
         except (LLMAuthError, LLMClientError):
             partial = deepcopy(payload)
@@ -296,6 +381,10 @@ def apply_llm_selector(
         "schema": schema_path,
         "top_n": int(top_n),
         "min_confidence": float(min_confidence),
+        "agreement_ml_model": agreement_ml_model,
+        "ml_min_margin": float(ml_min_margin),
+        "ml_min_score": float(ml_min_score),
+        "ml_max_rank": int(ml_max_rank),
         "changed_count": changed,
         "note": "LLM selector chooses among existing candidates only; gold labels are not included in the prompt.",
     }
@@ -313,6 +402,13 @@ def main() -> None:
     parser.add_argument("--min-confidence", type=float, default=0.0)
     parser.add_argument("--resume-from")
     parser.add_argument("--save-every", type=int, default=1)
+    parser.add_argument(
+        "--agreement-ml-model",
+        help="Only apply an LLM switch when guarded ML selects the same candidate.",
+    )
+    parser.add_argument("--ml-min-margin", type=float, default=0.05)
+    parser.add_argument("--ml-min-score", type=float, default=0.50)
+    parser.add_argument("--ml-max-rank", type=int, default=3)
     args = parser.parse_args()
 
     updated = apply_llm_selector(
@@ -323,6 +419,10 @@ def main() -> None:
         min_confidence=args.min_confidence,
         resume_from=args.resume_from,
         save_every=args.save_every,
+        agreement_ml_model=args.agreement_ml_model,
+        ml_min_margin=args.ml_min_margin,
+        ml_min_score=args.ml_min_score,
+        ml_max_rank=args.ml_max_rank,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -333,6 +433,8 @@ def main() -> None:
     rewrite = updated["llm_selector_rewrite"]
     print("===== APPLY LLM SELECTOR TO RESULTS =====")
     print(f"Input: {args.results}")
+    if rewrite.get("agreement_ml_model"):
+        print(f"Agreement ML model: {rewrite['agreement_ml_model']}")
     print(f"Changed selections: {rewrite['changed_count']}")
     print(f"Top1 correct: {summary['top1_correct']} ({summary['top1_correct_rate']:.3f})")
     print(f"Any correct: {summary['any_correct']} ({summary['any_correct_rate']:.3f})")
