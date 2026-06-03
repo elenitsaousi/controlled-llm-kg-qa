@@ -2,6 +2,8 @@
 import json
 import os
 import re
+import contextlib
+import io
 import numpy as np
 from collections import defaultdict, deque
 from typing import Dict, Iterable, List, Optional, Sequence, Set
@@ -187,19 +189,85 @@ CAMEL_TOKEN_RE = re.compile(r"[A-Z]+(?=[A-Z][a-z]|[0-9]|_|$)|[A-Z]?[a-z]+|[0-9]+
 
 # Lazy load sentence transformer to avoid slow startup
 _semantic_model = None
+_semantic_model_failed = False
+_semantic_embedding_cache: Dict[str, np.ndarray] = {}
+_semantic_similarity_cache: Dict[str, float] = {}
 
 def _get_semantic_model():
     """Lazy load sentence transformer model."""
-    global _semantic_model
+    global _semantic_model, _semantic_model_failed
     if os.getenv("ENABLE_SEMANTIC_EMBEDDING", "0") != "1":
+        return None
+    if _semantic_model_failed:
         return None
     if _semantic_model is None:
         try:
-            from sentence_transformers import SentenceTransformer
-            _semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
+            with contextlib.redirect_stderr(io.StringIO()):
+                from sentence_transformers import SentenceTransformer
+
+                _semantic_model = SentenceTransformer('all-MiniLM-L6-v2')
         except Exception:
             _semantic_model = None
+            _semantic_model_failed = True
     return _semantic_model
+
+
+def _embedding_cache_key(text: str) -> str:
+    return normalize_text(text)[:4096]
+
+
+def _encode_for_similarity(text: str) -> Optional[np.ndarray]:
+    model = _get_semantic_model()
+    if model is None:
+        return None
+    key = _embedding_cache_key(text)
+    cached = _semantic_embedding_cache.get(key)
+    if cached is not None:
+        return cached
+    emb = np.asarray(model.encode([key])[0], dtype=float)
+    norm = float(np.linalg.norm(emb))
+    if norm <= 1e-12:
+        return None
+    emb = emb / norm
+    if len(_semantic_embedding_cache) < 10000:
+        _semantic_embedding_cache[key] = emb
+    return emb
+
+
+def _query_text_for_embedding(query: str) -> str:
+    """Turn SPARQL into a compact semantic summary before embedding it."""
+    q = re.sub(r"(?im)^\s*PREFIX\s+.*$", " ", str(query or ""))
+    q = re.sub(r"https?://[^\s>]+[/#]", " ", q)
+    q = q.replace("?", " ")
+    tokens: List[str] = []
+    for raw in re.findall(r"[A-Za-z_][A-Za-z0-9_%-]*", q):
+        if raw.upper() in {
+            "SELECT",
+            "WHERE",
+            "PREFIX",
+            "ORDER",
+            "BY",
+            "GROUP",
+            "LIMIT",
+            "FILTER",
+            "BIND",
+            "AS",
+            "OPTIONAL",
+            "DISTINCT",
+        }:
+            continue
+        if raw.lower() in {"xsd", "rdf", "rdfs", "survey", "http", "www"}:
+            continue
+        expanded = re.sub(r"[_%-]+", " ", raw)
+        expanded = re.sub(r"(?<!^)(?=[A-Z])", " ", expanded)
+        tokens.extend(t.lower() for t in expanded.split() if len(t) > 1)
+
+    aggregations = [m.lower() for m in AGG_PATTERN.findall(str(query or ""))]
+    if "GROUP BY" in str(query or "").upper():
+        aggregations.append("group by")
+    if "ORDER BY" in str(query or "").upper():
+        aggregations.append("ranking")
+    return " ".join(aggregations + tokens)
 
 
 def load_schema(schema_path: str) -> Dict[str, object]:
@@ -590,19 +658,25 @@ def expected_intermediates(
 
 def _semantic_similarity(question: str, query: str) -> float:
     """
-    Semantic similarity between question and SPARQL query. [7]
-    Uses sentence transformers if available, fallback to 0.0
+    Semantic similarity between the question and a readable query summary. [7]
+    Uses sentence transformers if enabled and available; otherwise returns 0.0.
     """
     try:
-        model = _get_semantic_model()
-        if model is None:
+        candidate_text = _query_text_for_embedding(query)
+        if not candidate_text:
             return 0.0
-        q_emb = np.asarray(model.encode([question])[0], dtype=float)
-        c_emb = np.asarray(model.encode([query])[0], dtype=float)
-        denom = float(np.linalg.norm(q_emb) * np.linalg.norm(c_emb))
-        if denom <= 1e-12:
+        cache_key = f"{_embedding_cache_key(question)}\n---\n{_embedding_cache_key(candidate_text)}"
+        cached = _semantic_similarity_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        q_emb = _encode_for_similarity(question)
+        c_emb = _encode_for_similarity(candidate_text)
+        if q_emb is None or c_emb is None:
             return 0.0
-        return float(np.dot(q_emb, c_emb) / denom)
+        score = float(np.dot(q_emb, c_emb))
+        if len(_semantic_similarity_cache) < 50000:
+            _semantic_similarity_cache[cache_key] = score
+        return score
     except Exception:
         return 0.0
 
