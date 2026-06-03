@@ -5,7 +5,7 @@ import os
 import sys
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional, Sequence
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -120,6 +120,86 @@ def _structured_guard_allows(
     return candidate_counts["matched"] >= current_counts["matched"]
 
 
+def _trusted_rescue_topic(question: str, topics: Sequence[str]) -> bool:
+    q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
+    allowed = {str(topic).strip().lower() for topic in topics if str(topic).strip()}
+    if "inventory" in allowed and "inventory" in q:
+        return True
+    if "order_cancellation" in allowed and ("order cancellation" in q or "cancellation" in q):
+        return True
+    if "vehicle_sales" in allowed and (
+        "vehicle sales" in q
+        or "vehicles sold" in q
+        or "units sold" in q
+        or "actual sales" in q
+        or "forecast" in q
+    ):
+        return True
+    return False
+
+
+def _trusted_source_rescue_row(
+    *,
+    question: str,
+    candidates: Sequence[Dict[str, object]],
+    ranked_rows: Sequence[Dict[str, object]],
+    score_by_key: Dict[str, float],
+    current_key: str,
+    current_score: float,
+    max_rank: int,
+    min_score: float,
+    min_margin: float,
+    topics: Sequence[str],
+    structured_guard: bool,
+) -> Optional[Dict[str, object]]:
+    if not _trusted_rescue_topic(question, topics):
+        return None
+
+    ranked_by_key = {
+        _query_key(str(row.get("query", ""))): row
+        for row in ranked_rows
+    }
+    trusted_sources = {"validated_retrieval", "template"}
+    best_row = None
+    best_key = (float("-inf"), float("-inf"), 999)
+    for original_index, cand in enumerate(candidates[1:], start=1):
+        original_rank = original_index + 1
+        if original_rank > int(max_rank):
+            continue
+        source = str(cand.get("source") or "").strip().lower()
+        if source not in trusted_sources:
+            continue
+        cand_key = _query_key(str(cand.get("query", "")))
+        if not cand_key or cand_key == current_key:
+            continue
+        cand_score = float(score_by_key.get(cand_key, 0.0))
+        if cand_score < float(min_score):
+            continue
+        if cand_score - current_score < float(min_margin):
+            continue
+        if structured_guard and not _structured_guard_allows(
+            question,
+            str(candidates[0].get("query", "")),
+            str(cand.get("query", "")),
+        ):
+            continue
+        row = ranked_by_key.get(cand_key)
+        if row is None:
+            continue
+        key = (cand_score - current_score, cand_score, -original_rank)
+        if key > best_key:
+            best_key = key
+            best_row = dict(row)
+            best_row["trusted_source_rescue_reason"] = {
+                "source": source,
+                "original_rank": original_rank,
+                "candidate_score": cand_score,
+                "current_score": current_score,
+                "score_delta": cand_score - current_score,
+            }
+    return best_row
+
+
 def _rank_detail(
     detail: Dict[str, object],
     ranker: NPTfidfRanker,
@@ -129,6 +209,11 @@ def _rank_detail(
     min_score: float = 0.50,
     max_rank: int = 4,
     structured_guard: bool = False,
+    enable_rank2_trusted_rescue: bool = False,
+    trusted_rescue_max_rank: int = 2,
+    trusted_rescue_min_score: float = 0.75,
+    trusted_rescue_min_margin: float = 0.25,
+    trusted_rescue_topics: Sequence[str] = ("inventory", "order_cancellation", "vehicle_sales"),
 ) -> Dict[str, object]:
     updated = deepcopy(detail)
     candidates = list(updated.get("candidates") or [])
@@ -182,15 +267,40 @@ def _rank_detail(
             switch_allowed = True
             break
         if not switch_allowed:
-            updated_candidates = []
-            for cand in candidates:
-                cand_copy = deepcopy(cand)
-                cand_copy["ml_score"] = score_by_key.get(
-                    _query_key(str(cand_copy.get("query", "")))
+            if enable_rank2_trusted_rescue:
+                rescue_row = _trusted_source_rescue_row(
+                    question=question,
+                    candidates=candidates,
+                    ranked_rows=ranked_rows,
+                    score_by_key=score_by_key,
+                    current_key=current_key,
+                    current_score=current_score,
+                    max_rank=trusted_rescue_max_rank,
+                    min_score=trusted_rescue_min_score,
+                    min_margin=trusted_rescue_min_margin,
+                    topics=trusted_rescue_topics,
+                    structured_guard=structured_guard,
                 )
-                updated_candidates.append(cand_copy)
-            updated["candidates"] = updated_candidates
-            return updated
+                if rescue_row is not None:
+                    chosen_key = _query_key(str(rescue_row.get("query", "")))
+                    ranked_rows = [rescue_row] + [
+                        row
+                        for row in ranked_rows
+                        if _query_key(str(row.get("query", ""))) != chosen_key
+                    ]
+                    switch_allowed = True
+            if switch_allowed:
+                pass
+            else:
+                updated_candidates = []
+                for cand in candidates:
+                    cand_copy = deepcopy(cand)
+                    cand_copy["ml_score"] = score_by_key.get(
+                        _query_key(str(cand_copy.get("query", "")))
+                    )
+                    updated_candidates.append(cand_copy)
+                updated["candidates"] = updated_candidates
+                return updated
         if chosen_row is not None:
             ranked_rows = [chosen_row] + [
                 row
@@ -211,6 +321,8 @@ def _rank_detail(
             continue
         cand = deepcopy(bucket.pop(0))
         cand["ml_score"] = row.get("ml_score")
+        if row.get("trusted_source_rescue_reason"):
+            cand["trusted_source_rescue_reason"] = row.get("trusted_source_rescue_reason")
         reordered.append(cand)
 
     # Keep any duplicate/unmatched candidates instead of dropping them.
@@ -232,6 +344,11 @@ def apply_ml_ranker(
     min_score: float = 0.50,
     max_rank: int = 4,
     structured_guard: bool = False,
+    enable_rank2_trusted_rescue: bool = False,
+    trusted_rescue_max_rank: int = 2,
+    trusted_rescue_min_score: float = 0.75,
+    trusted_rescue_min_margin: float = 0.25,
+    trusted_rescue_topics: Sequence[str] = ("inventory", "order_cancellation", "vehicle_sales"),
 ) -> Dict[str, object]:
     payload = _load_json(results_path)
     schema_dict = _load_json(schema_path)
@@ -256,6 +373,11 @@ def apply_ml_ranker(
             min_score=min_score,
             max_rank=max_rank,
             structured_guard=structured_guard,
+            enable_rank2_trusted_rescue=enable_rank2_trusted_rescue,
+            trusted_rescue_max_rank=trusted_rescue_max_rank,
+            trusted_rescue_min_score=trusted_rescue_min_score,
+            trusted_rescue_min_margin=trusted_rescue_min_margin,
+            trusted_rescue_topics=trusted_rescue_topics,
         )
         for detail in original_details
     ]
@@ -278,6 +400,9 @@ def apply_ml_ranker(
                 "from_index": before_candidates[0].get("index"),
                 "to_index": after_candidates[0].get("index"),
                 "to_ml_score": after_candidates[0].get("ml_score"),
+                "trusted_source_rescue_reason": after_candidates[0].get(
+                    "trusted_source_rescue_reason"
+                ),
             }
         )
 
@@ -294,6 +419,11 @@ def apply_ml_ranker(
         "min_score": float(min_score),
         "max_rank": int(max_rank),
         "structured_guard": bool(structured_guard),
+        "enable_rank2_trusted_rescue": bool(enable_rank2_trusted_rescue),
+        "trusted_rescue_max_rank": int(trusted_rescue_max_rank),
+        "trusted_rescue_min_score": float(trusted_rescue_min_score),
+        "trusted_rescue_min_margin": float(trusted_rescue_min_margin),
+        "trusted_rescue_topics": list(trusted_rescue_topics),
         "note": (
             "If the model was trained on these same results, this is a diagnostic "
             "ranking upper-bound, not an unbiased held-out metric."
@@ -323,7 +453,28 @@ def main() -> None:
         action="store_true",
         help="Reject ML top1 switches that violate the question/query contract.",
     )
+    parser.add_argument(
+        "--enable-rank2-trusted-rescue",
+        action="store_true",
+        help=(
+            "After guarded ML declines to switch, allow a very narrow rescue from "
+            "trusted generated sources for selected topics."
+        ),
+    )
+    parser.add_argument("--trusted-rescue-max-rank", type=int, default=2)
+    parser.add_argument("--trusted-rescue-min-score", type=float, default=0.75)
+    parser.add_argument("--trusted-rescue-min-margin", type=float, default=0.25)
+    parser.add_argument(
+        "--trusted-rescue-topics",
+        default="inventory,order_cancellation,vehicle_sales",
+        help="Comma-separated topics eligible for trusted-source rescue.",
+    )
     args = parser.parse_args()
+    trusted_rescue_topics = [
+        topic.strip()
+        for topic in str(args.trusted_rescue_topics).split(",")
+        if topic.strip()
+    ]
 
     updated = apply_ml_ranker(
         args.results,
@@ -334,6 +485,11 @@ def main() -> None:
         min_score=args.min_score,
         max_rank=args.max_rank,
         structured_guard=args.structured_guard,
+        enable_rank2_trusted_rescue=args.enable_rank2_trusted_rescue,
+        trusted_rescue_max_rank=args.trusted_rescue_max_rank,
+        trusted_rescue_min_score=args.trusted_rescue_min_score,
+        trusted_rescue_min_margin=args.trusted_rescue_min_margin,
+        trusted_rescue_topics=trusted_rescue_topics,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -351,6 +507,14 @@ def main() -> None:
             f"Guard: min_margin={rewrite['min_margin']}, "
             f"min_score={rewrite['min_score']}, max_rank={rewrite['max_rank']}, "
             f"structured_guard={rewrite.get('structured_guard')}"
+        )
+    if rewrite.get("enable_rank2_trusted_rescue"):
+        print(
+            "Trusted rescue: "
+            f"max_rank={rewrite['trusted_rescue_max_rank']}, "
+            f"min_score={rewrite['trusted_rescue_min_score']}, "
+            f"min_margin={rewrite['trusted_rescue_min_margin']}, "
+            f"topics={','.join(rewrite['trusted_rescue_topics'])}"
         )
     print(f"Changed selections: {rewrite['changed_count']}")
     print(f"Top1 correct: {summary['top1_correct']} ({summary['top1_correct_rate']:.3f})")

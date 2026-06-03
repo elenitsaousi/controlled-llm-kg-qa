@@ -5,7 +5,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Sequence
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -36,6 +36,11 @@ def sweep(
     scores: List[float],
     ranks: List[int],
     structured_guard: bool = False,
+    enable_rank2_trusted_rescue: bool = False,
+    trusted_rescue_max_rank: int = 2,
+    trusted_rescue_min_score: float = 0.75,
+    trusted_rescue_min_margin: float = 0.25,
+    trusted_rescue_topics: Sequence[str] = ("inventory", "order_cancellation", "vehicle_sales"),
 ) -> Dict[str, object]:
     rows: List[Dict[str, object]] = []
     for margin, score, max_rank in itertools.product(margins, scores, ranks):
@@ -48,6 +53,11 @@ def sweep(
             min_score=score,
             max_rank=max_rank,
             structured_guard=structured_guard,
+            enable_rank2_trusted_rescue=enable_rank2_trusted_rescue,
+            trusted_rescue_max_rank=trusted_rescue_max_rank,
+            trusted_rescue_min_score=trusted_rescue_min_score,
+            trusted_rescue_min_margin=trusted_rescue_min_margin,
+            trusted_rescue_topics=trusted_rescue_topics,
         )
         summary = updated["summary"]
         rewrite = updated["ml_rerank_rewrite"]
@@ -83,6 +93,11 @@ def sweep(
             "min_score": scores,
             "max_rank": ranks,
             "structured_guard": bool(structured_guard),
+            "enable_rank2_trusted_rescue": bool(enable_rank2_trusted_rescue),
+            "trusted_rescue_max_rank": int(trusted_rescue_max_rank),
+            "trusted_rescue_min_score": float(trusted_rescue_min_score),
+            "trusted_rescue_min_margin": float(trusted_rescue_min_margin),
+            "trusted_rescue_topics": list(trusted_rescue_topics),
         },
         "best": rows[0] if rows else {},
         "rows": rows,
@@ -108,7 +123,25 @@ def main() -> None:
         action="store_true",
         help="Tune guarded ML reranking with question/query contract safety checks.",
     )
+    parser.add_argument(
+        "--enable-rank2-trusted-rescue",
+        action="store_true",
+        help="Tune guarded ML reranking with the narrow trusted-source rescue enabled.",
+    )
+    parser.add_argument("--trusted-rescue-max-rank", type=int, default=2)
+    parser.add_argument("--trusted-rescue-min-score", type=float, default=0.75)
+    parser.add_argument("--trusted-rescue-min-margin", type=float, default=0.25)
+    parser.add_argument(
+        "--trusted-rescue-topics",
+        default="inventory,order_cancellation,vehicle_sales",
+        help="Comma-separated topics eligible for trusted-source rescue.",
+    )
     args = parser.parse_args()
+    trusted_rescue_topics = [
+        topic.strip()
+        for topic in str(args.trusted_rescue_topics).split(",")
+        if topic.strip()
+    ]
 
     report = sweep(
         results_path=args.results,
@@ -118,6 +151,11 @@ def main() -> None:
         scores=_parse_float_grid(args.scores),
         ranks=_parse_int_grid(args.max_ranks),
         structured_guard=args.structured_guard,
+        enable_rank2_trusted_rescue=args.enable_rank2_trusted_rescue,
+        trusted_rescue_max_rank=args.trusted_rescue_max_rank,
+        trusted_rescue_min_score=args.trusted_rescue_min_score,
+        trusted_rescue_min_margin=args.trusted_rescue_min_margin,
+        trusted_rescue_topics=trusted_rescue_topics,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -130,6 +168,7 @@ def main() -> None:
     print(f"Model: {args.model}")
     print(f"Runs: {len(report['rows'])}")
     print(f"Structured guard: {'yes' if args.structured_guard else 'no'}")
+    print(f"Trusted rescue: {'yes' if args.enable_rank2_trusted_rescue else 'no'}")
     if best:
         print(
             "Best: "
