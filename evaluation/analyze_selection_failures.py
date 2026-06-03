@@ -126,6 +126,78 @@ def _plan_summary(query: str, schema: Dict[str, object]) -> Dict[str, object]:
     return {key: _as_list(plan.get(key)) for key in keys if plan.get(key)}
 
 
+def _list_set(plan: Dict[str, object], key: str) -> set:
+    return {str(v) for v in _as_list(plan.get(key))}
+
+
+def _plan_issue_summary(
+    *,
+    top_plan: Dict[str, object],
+    correct_plan: Dict[str, object],
+    top_candidate: Dict[str, object],
+    correct_candidate: Dict[str, object],
+    top_semantic: Dict[str, object],
+    correct_semantic: Dict[str, object],
+) -> List[str]:
+    issues: List[str] = []
+    for key, name in [
+        ("aggregations", "plan_aggregation_diff"),
+        ("query_types", "plan_query_type_diff"),
+        ("group_by_vars", "plan_group_by_var_diff"),
+        ("group_by_predicates", "plan_group_by_predicate_diff"),
+        ("select_vars", "plan_select_var_diff"),
+        ("survey_origins", "plan_origin_diff"),
+        ("classes", "plan_class_diff"),
+        ("predicates", "plan_predicate_diff"),
+    ]:
+        top_values = _list_set(top_plan, key)
+        correct_values = _list_set(correct_plan, key)
+        if top_values != correct_values:
+            missing_from_top = correct_values - top_values
+            extra_in_top = top_values - correct_values
+            if missing_from_top:
+                issues.append(f"{name}:missing:{','.join(sorted(missing_from_top)[:4])}")
+            elif extra_in_top:
+                issues.append(f"{name}:extra:{','.join(sorted(extra_in_top)[:4])}")
+            else:
+                issues.append(name)
+
+    top_source = str(top_candidate.get("source") or "unknown")
+    correct_source = str(correct_candidate.get("source") or "unknown")
+    if top_source != correct_source:
+        issues.append(f"source_diff:{top_source}->{correct_source}")
+
+    top_selection = _score(top_candidate, "selection_score")
+    correct_selection = _score(correct_candidate, "selection_score")
+    if top_selection > correct_selection:
+        issues.append("selection_score_prefers_wrong")
+    elif correct_selection > top_selection:
+        issues.append("selection_score_prefers_correct")
+
+    top_ml = _score(top_candidate, "ml_score")
+    correct_ml = _score(correct_candidate, "ml_score")
+    if top_ml > correct_ml:
+        issues.append("ml_score_prefers_wrong")
+    elif correct_ml > top_ml:
+        issues.append("ml_score_prefers_correct")
+
+    top_judge = float(top_semantic.get("judge_score", 0.0))
+    correct_judge = float(correct_semantic.get("judge_score", 0.0))
+    if top_judge > correct_judge:
+        issues.append("semantic_score_prefers_wrong")
+    elif correct_judge > top_judge:
+        issues.append("semantic_score_prefers_correct")
+
+    top_coverage = float(top_semantic.get("coverage_score", 0.0))
+    correct_coverage = float(correct_semantic.get("coverage_score", 0.0))
+    if top_coverage > correct_coverage:
+        issues.append("coverage_prefers_wrong")
+    elif correct_coverage > top_coverage:
+        issues.append("coverage_prefers_correct")
+
+    return issues or ["no_plan_difference_detected"]
+
+
 def _score(candidate: Dict[str, object], key: str, default: float = 0.0) -> float:
     value = candidate.get(key)
     try:
@@ -150,6 +222,7 @@ def analyze_selection_failures(
     dataset = _dataset_by_id(dataset_path)
 
     axis_counts: Counter = Counter()
+    plan_issue_counts: Counter = Counter()
     correct_rank_counts: Counter = Counter()
     top_source_counts: Counter = Counter()
     correct_source_counts: Counter = Counter()
@@ -197,12 +270,25 @@ def analyze_selection_failures(
 
         top_semantic = _semantic_summary(question, top_candidate)
         correct_semantic = _semantic_summary(question, correct_candidate)
+        top_plan = _plan_summary(str(top_candidate.get("query", "") or ""), schema)
+        correct_plan = _plan_summary(str(correct_candidate.get("query", "") or ""), schema)
+        plan_issues = _plan_issue_summary(
+            top_plan=top_plan,
+            correct_plan=correct_plan,
+            top_candidate=top_candidate,
+            correct_candidate=correct_candidate,
+            top_semantic=top_semantic,
+            correct_semantic=correct_semantic,
+        )
+        for issue in plan_issues:
+            plan_issue_counts[issue] += 1
         case = {
             "id": qid,
             "family": family,
             "question": question,
             "first_correct_rank": correct_idx + 1,
             "axis_issues": issues,
+            "plan_issues": plan_issues,
             "question_contract": question_contract.to_dict(),
             "top1": {
                 "label": _label(top_candidate),
@@ -212,7 +298,7 @@ def analyze_selection_failures(
                 "semantic": top_semantic,
                 "contract": top_contract.to_dict(),
                 "contract_comparison": top_comparison,
-                "plan": _plan_summary(str(top_candidate.get("query", "") or ""), schema),
+                "plan": top_plan,
                 "query": str(top_candidate.get("query", "") or ""),
             },
             "first_correct": {
@@ -223,7 +309,7 @@ def analyze_selection_failures(
                 "semantic": correct_semantic,
                 "contract": correct_contract.to_dict(),
                 "contract_comparison": correct_comparison,
-                "plan": _plan_summary(str(correct_candidate.get("query", "") or ""), schema),
+                "plan": correct_plan,
                 "query": str(correct_candidate.get("query", "") or ""),
             },
             "deltas": {
@@ -251,6 +337,7 @@ def analyze_selection_failures(
             "selection_failures_with_correct_candidate": total_cases,
             "rendered_cases": len(rendered_cases),
             "axis_issue_counts": axis_counts.most_common(),
+            "plan_issue_counts": plan_issue_counts.most_common(),
             "first_correct_rank_counts": sorted(
                 ((int(k), v) for k, v in correct_rank_counts.items()), key=lambda row: row[0]
             ),
@@ -298,6 +385,13 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
     for rank, count in summary.get("first_correct_rank_counts") or []:
         lines.append(f"| {rank} | {count} |")
     lines.append("")
+    lines.append("## Plan Issues")
+    lines.append("")
+    lines.append("| Issue | Count |")
+    lines.append("|---|---:|")
+    for issue, count in summary.get("plan_issue_counts") or []:
+        lines.append(f"| `{issue}` | {count} |")
+    lines.append("")
     lines.append("## Cases")
     lines.append("")
     for case in report.get("cases") or []:
@@ -310,6 +404,7 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
         lines.append("")
         lines.append(f"- First correct rank: {case.get('first_correct_rank')}")
         lines.append(f"- Axis issues: {_format_list(case.get('axis_issues') or [])}")
+        lines.append(f"- Plan issues: {_format_list(case.get('plan_issues') or [])}")
         lines.append(
             "- Deltas correct-minus-top1: "
             f"contract={deltas.get('contract_score', 0):.3f}, "
@@ -371,6 +466,9 @@ def main() -> None:
     print(f"Failures with correct candidate: {summary['selection_failures_with_correct_candidate']}")
     print("Top axis issues:")
     for issue, count in summary["axis_issue_counts"][:15]:
+        print(f"  {issue}: {count}")
+    print("Top plan issues:")
+    for issue, count in summary["plan_issue_counts"][:15]:
         print(f"  {issue}: {count}")
     print(f"JSON: {args.out_json}")
     print(f"Markdown: {args.out_md}")
