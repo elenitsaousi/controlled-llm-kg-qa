@@ -209,6 +209,18 @@ def _guarded_ml_choice_key(
     return None
 
 
+def _candidate_by_key(
+    candidates: Sequence[Dict[str, object]],
+    key: Optional[str],
+) -> Optional[Dict[str, object]]:
+    if not key:
+        return None
+    for cand in candidates:
+        if _query_key(str(cand.get("query", ""))) == key:
+            return cand
+    return None
+
+
 def _select_detail(
     detail: Dict[str, object],
     client: InfineonGPTClient,
@@ -219,6 +231,7 @@ def _select_detail(
     ml_min_margin: float = 0.05,
     ml_min_score: float = 0.50,
     ml_max_rank: int = 3,
+    ml_gated: bool = False,
 ) -> Dict[str, object]:
     updated = deepcopy(detail)
     candidates = list(updated.get("candidates") or [])
@@ -226,14 +239,6 @@ def _select_detail(
         return updated
 
     question = str(updated.get("effective_question") or updated.get("question") or "")
-    window = candidates[: max(2, int(top_n))]
-    prompt = _selector_prompt(question, window, schema)
-    response = client.generate_text(prompt)
-    parsed = _parse_selector_response(response, len(window))
-    choice_idx = int(parsed["choice"]) - 1
-    confidence = float(parsed["confidence"])
-    chosen = window[choice_idx] if 0 <= choice_idx < len(window) else window[0]
-    chosen_key = _query_key(str(chosen.get("query", "")))
     ml_choice_key = _guarded_ml_choice_key(
         question,
         candidates,
@@ -243,7 +248,27 @@ def _select_detail(
         min_score=ml_min_score,
         max_rank=ml_max_rank,
     )
-    if agreement_ranker is not None and chosen_key != ml_choice_key:
+    if ml_gated:
+        ml_candidate = _candidate_by_key(candidates, ml_choice_key)
+        if agreement_ranker is None or ml_candidate is None:
+            updated["llm_selector"] = {
+                "applied": False,
+                "reason": "guarded_ml_did_not_request_switch",
+                "ml_gated": True,
+                "ml_choice_key": ml_choice_key,
+            }
+            return updated
+        window = [candidates[0], ml_candidate]
+    else:
+        window = candidates[: max(2, int(top_n))]
+    prompt = _selector_prompt(question, window, schema)
+    response = client.generate_text(prompt)
+    parsed = _parse_selector_response(response, len(window))
+    choice_idx = int(parsed["choice"]) - 1
+    confidence = float(parsed["confidence"])
+    chosen = window[choice_idx] if 0 <= choice_idx < len(window) else window[0]
+    chosen_key = _query_key(str(chosen.get("query", "")))
+    if agreement_ranker is not None and not ml_gated and chosen_key != ml_choice_key:
         updated["llm_selector"] = {
             "applied": False,
             "choice": int(parsed["choice"]),
@@ -251,6 +276,18 @@ def _select_detail(
             "reason": parsed.get("reason", ""),
             "raw": response,
             "ml_agreement_required": True,
+            "ml_choice_key": ml_choice_key,
+            "llm_choice_key": chosen_key,
+        }
+        return updated
+    if ml_gated and chosen_key != ml_choice_key:
+        updated["llm_selector"] = {
+            "applied": False,
+            "choice": int(parsed["choice"]),
+            "confidence": confidence,
+            "reason": parsed.get("reason", ""),
+            "raw": response,
+            "ml_gated": True,
             "ml_choice_key": ml_choice_key,
             "llm_choice_key": chosen_key,
         }
@@ -263,6 +300,7 @@ def _select_detail(
             "reason": parsed.get("reason", ""),
             "raw": response,
             "ml_agreement_required": agreement_ranker is not None,
+            "ml_gated": ml_gated,
             "ml_choice_key": ml_choice_key,
             "llm_choice_key": chosen_key,
         }
@@ -288,6 +326,7 @@ def _select_detail(
         "reason": parsed.get("reason", ""),
         "raw": response,
         "ml_agreement_required": agreement_ranker is not None,
+        "ml_gated": ml_gated,
         "ml_choice_key": ml_choice_key,
         "llm_choice_key": chosen_key,
     }
@@ -314,6 +353,7 @@ def apply_llm_selector(
     ml_min_margin: float = 0.05,
     ml_min_score: float = 0.50,
     ml_max_rank: int = 3,
+    ml_gated: bool = False,
 ) -> Dict[str, object]:
     payload = _load_json(results_path)
     schema = _load_json(schema_path)
@@ -347,6 +387,7 @@ def apply_llm_selector(
                 ml_min_margin=ml_min_margin,
                 ml_min_score=ml_min_score,
                 ml_max_rank=ml_max_rank,
+                ml_gated=ml_gated,
             )
         except (LLMAuthError, LLMClientError):
             partial = deepcopy(payload)
@@ -385,6 +426,7 @@ def apply_llm_selector(
         "ml_min_margin": float(ml_min_margin),
         "ml_min_score": float(ml_min_score),
         "ml_max_rank": int(ml_max_rank),
+        "ml_gated": bool(ml_gated),
         "changed_count": changed,
         "note": "LLM selector chooses among existing candidates only; gold labels are not included in the prompt.",
     }
@@ -409,6 +451,11 @@ def main() -> None:
     parser.add_argument("--ml-min-margin", type=float, default=0.05)
     parser.add_argument("--ml-min-score", type=float, default=0.50)
     parser.add_argument("--ml-max-rank", type=int, default=3)
+    parser.add_argument(
+        "--ml-gated",
+        action="store_true",
+        help="Ask the LLM only to accept/reject the guarded ML switch.",
+    )
     args = parser.parse_args()
 
     updated = apply_llm_selector(
@@ -423,6 +470,7 @@ def main() -> None:
         ml_min_margin=args.ml_min_margin,
         ml_min_score=args.ml_min_score,
         ml_max_rank=args.ml_max_rank,
+        ml_gated=args.ml_gated,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -435,6 +483,7 @@ def main() -> None:
     print(f"Input: {args.results}")
     if rewrite.get("agreement_ml_model"):
         print(f"Agreement ML model: {rewrite['agreement_ml_model']}")
+        print(f"ML gated: {rewrite.get('ml_gated')}")
     print(f"Changed selections: {rewrite['changed_count']}")
     print(f"Top1 correct: {summary['top1_correct']} ({summary['top1_correct_rate']:.3f})")
     print(f"Any correct: {summary['any_correct']} ({summary['any_correct_rate']:.3f})")
