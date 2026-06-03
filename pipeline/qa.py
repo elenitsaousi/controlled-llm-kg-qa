@@ -1749,9 +1749,15 @@ def _select_best_candidate_semantic(candidates, question):
         os.getenv("INFINEON_ENABLE_QUERY_CONTRACT_SCORE", "0").strip().lower()
         in {"1", "true", "yes", "on"}
     )
+    contract_override_enabled = (
+        os.getenv("INFINEON_ENABLE_CONTRACT_SELECTION_OVERRIDE", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
     contract_weight = float(os.getenv("INFINEON_QUERY_CONTRACT_WEIGHT", "0.75") or 0.75)
     question_contract = (
-        extract_question_contract(question) if contract_score_enabled else None
+        extract_question_contract(question)
+        if (contract_score_enabled or contract_override_enabled)
+        else None
     )
 
     for original_rank, cand in enumerate(candidates):
@@ -1799,7 +1805,8 @@ def _select_best_candidate_semantic(candidates, question):
         if question_contract is not None:
             query_contract = extract_query_contract(query)
             comparison = compare_contracts(question_contract, query_contract)
-            contract_component = contract_weight * float(comparison.score)
+            if contract_score_enabled:
+                contract_component = contract_weight * float(comparison.score)
             contract_reasons = list(comparison.reasons)
             contract_report = comparison.to_dict()
             query_contract_report = query_contract.to_dict()
@@ -1866,6 +1873,11 @@ def _select_best_candidate_semantic(candidates, question):
         return None
 
     first = scored[0]
+    if contract_override_enabled and question_contract is not None:
+        contract_choice = _contract_override_selection(scored, first)
+        if contract_choice is not None and contract_choice is not first:
+            return contract_choice
+
     best = max(
         scored,
         key=lambda row: (
@@ -2109,6 +2121,126 @@ def _select_best_candidate_semantic(candidates, question):
         ):
             return best
     return first
+
+
+def _contract_issue_count(report: Dict[str, object], key: str) -> int:
+    payload = report.get(key)
+    if not isinstance(payload, dict):
+        return 0
+    return sum(len(values or []) for values in payload.values())
+
+
+def _contract_match_count(report: Dict[str, object]) -> int:
+    payload = report.get("matched")
+    if not isinstance(payload, dict):
+        return 0
+    return sum(len(values or []) for values in payload.values())
+
+
+def _contract_axis_values(report: Dict[str, object], section: str, axis: str) -> set:
+    payload = report.get(section)
+    if not isinstance(payload, dict):
+        return set()
+    values = payload.get(axis) or []
+    return {str(v) for v in values}
+
+
+def _contract_override_selection(
+    scored: List[Dict[str, object]], first: Dict[str, object]
+) -> Optional[Dict[str, object]]:
+    """Promote only candidates that clearly satisfy requested query constraints.
+
+    This is deliberately stricter than adding the contract score to every
+    candidate. A candidate can override the first row only when it fixes a
+    concrete requested axis such as metric, aggregation, scope, dimension, or
+    filter, while not becoming substantially worse on semantic/coverage score.
+    """
+
+    first_report = first.get("query_contract_report")
+    if not isinstance(first_report, dict):
+        return None
+
+    first_score = float(first.get("selection_score", 0.0))
+    first_contract_score = float(first_report.get("score", 0.0))
+    first_semantic = float(first.get("semantic_judge_score", 0.0))
+    first_coverage = float(first.get("coverage_score", 0.0))
+    first_missing_coverage = len(first.get("coverage_missing") or [])
+    first_missing = _contract_issue_count(first_report, "missing")
+    first_conflicts = _contract_issue_count(first_report, "conflicts")
+    first_matches = _contract_match_count(first_report)
+
+    min_delta = float(os.getenv("INFINEON_CONTRACT_OVERRIDE_MIN_DELTA", "2.0") or 2.0)
+    max_score_drop = float(os.getenv("INFINEON_CONTRACT_OVERRIDE_MAX_SCORE_DROP", "2.25") or 2.25)
+    max_semantic_drop = float(os.getenv("INFINEON_CONTRACT_OVERRIDE_MAX_SEMANTIC_DROP", "0.35") or 0.35)
+    max_coverage_drop = float(os.getenv("INFINEON_CONTRACT_OVERRIDE_MAX_COVERAGE_DROP", "0.10") or 0.10)
+
+    best_candidate: Optional[Dict[str, object]] = None
+    best_key: Tuple[float, float, float, int] = (float("-inf"), float("-inf"), float("-inf"), -999)
+
+    for cand in scored[1:]:
+        report = cand.get("query_contract_report")
+        if not isinstance(report, dict):
+            continue
+        cand_contract_score = float(report.get("score", 0.0))
+        contract_delta = cand_contract_score - first_contract_score
+        if contract_delta < min_delta:
+            continue
+
+        cand_conflicts = _contract_issue_count(report, "conflicts")
+        cand_missing = _contract_issue_count(report, "missing")
+        cand_matches = _contract_match_count(report)
+        if cand_conflicts > first_conflicts:
+            continue
+        if cand_missing >= first_missing and cand_matches <= first_matches:
+            continue
+
+        fixes_axis = False
+        for axis in ("metrics", "aggregation", "scopes", "dimensions", "filters"):
+            first_bad = _contract_axis_values(first_report, "missing", axis) | _contract_axis_values(
+                first_report, "conflicts", axis
+            )
+            cand_good = _contract_axis_values(report, "matched", axis)
+            if first_bad & cand_good:
+                fixes_axis = True
+                break
+        if not fixes_axis:
+            continue
+
+        cand_score = float(cand.get("selection_score", 0.0))
+        cand_semantic = float(cand.get("semantic_judge_score", 0.0))
+        cand_coverage = float(cand.get("coverage_score", 0.0))
+        cand_missing_coverage = len(cand.get("coverage_missing") or [])
+        if cand_score < first_score - max_score_drop:
+            continue
+        if cand_semantic < first_semantic - max_semantic_drop:
+            continue
+        if cand_coverage < first_coverage - max_coverage_drop:
+            continue
+        if cand_missing_coverage > first_missing_coverage + 1:
+            continue
+        if cand.get("execution_error") or cand.get("execution_unbound_vars"):
+            continue
+
+        cand["contract_override_reason"] = {
+            "first_contract_score": first_contract_score,
+            "candidate_contract_score": cand_contract_score,
+            "contract_delta": contract_delta,
+            "first_missing": first_missing,
+            "candidate_missing": cand_missing,
+            "first_conflicts": first_conflicts,
+            "candidate_conflicts": cand_conflicts,
+        }
+        key = (
+            contract_delta,
+            cand_score,
+            cand_semantic,
+            -int(cand.get("selection_original_rank", 99)),
+        )
+        if key > best_key:
+            best_key = key
+            best_candidate = cand
+
+    return best_candidate
 
 
 def _build_selection_explanation(

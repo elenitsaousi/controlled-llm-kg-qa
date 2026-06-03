@@ -3,6 +3,7 @@ from ranking.query_contract import (
     extract_query_contract,
     extract_question_contract,
 )
+from pipeline.qa import _select_best_candidate_semantic
 
 
 def test_contract_matches_total_oem_demand_by_region():
@@ -80,3 +81,51 @@ def test_contract_penalizes_wrong_metric():
     assert "contract_metric_missing:inventory" in comparison.reasons
     assert "contract_metric_conflict:demand" in comparison.reasons
     assert comparison.score < 0
+
+
+def test_contract_selection_override_promotes_clear_aggregation_fix(monkeypatch):
+    monkeypatch.setenv("INFINEON_ENABLE_CONTRACT_SELECTION_OVERRIDE", "1")
+    question = "Show total OEM demand by region."
+    count_query = """
+    PREFIX survey: <http://example/>
+    SELECT ?regionName (COUNT(?entry) AS ?count)
+    WHERE {
+      ?entry a survey:DemandForRegion ;
+        survey:hasSurveyOrigin survey:OEM_Survey ;
+        survey:inRegion ?region ;
+        survey:totalDemand ?demand .
+      ?region survey:regionName ?regionName .
+    }
+    GROUP BY ?regionName
+    """
+    sum_query = """
+    PREFIX survey: <http://example/>
+    SELECT ?regionName (SUM(?demand) AS ?totalDemand)
+    WHERE {
+      ?entry a survey:DemandForRegion ;
+        survey:hasSurveyOrigin survey:OEM_Survey ;
+        survey:inRegion ?region ;
+        survey:totalDemand ?demand .
+      ?region survey:regionName ?regionName .
+    }
+    GROUP BY ?regionName
+    """
+
+    selected = _select_best_candidate_semantic(
+        [
+            {
+                "query": count_query,
+                "semantic_judge_score": 0.65,
+                "semantic_judge_report": {"score": 0.65, "penalties": []},
+            },
+            {
+                "query": sum_query,
+                "semantic_judge_score": 0.60,
+                "semantic_judge_report": {"score": 0.60, "penalties": []},
+            },
+        ],
+        question,
+    )
+
+    assert selected is not None
+    assert "SUM(?demand)" in selected["query"]
