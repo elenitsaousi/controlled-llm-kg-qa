@@ -82,6 +82,18 @@ def main() -> None:
     parser.add_argument("--query-plan-min-label-count", type=int, default=2)
     parser.add_argument("--query-plan-threshold", type=float, default=0.35)
     parser.add_argument("--query-plan-top-k", type=int, default=24)
+    parser.add_argument(
+        "--disable-feature",
+        action="append",
+        default=[],
+        help="Feature name to zero out during training and runtime scoring. Repeatable.",
+    )
+    parser.add_argument(
+        "--disable-feature-prefix",
+        action="append",
+        default=[],
+        help="Feature-name prefix to zero out during training and runtime scoring. Repeatable.",
+    )
     args = parser.parse_args()
 
     if args.train_query_plan:
@@ -141,6 +153,8 @@ def main() -> None:
         lr=args.lr,
         reg=args.reg,
         epochs=args.epochs,
+        disabled_feature_names=args.disable_feature,
+        disabled_feature_prefixes=args.disable_feature_prefix,
     )
     Path(args.cv_out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.cv_out, "w", encoding="utf-8") as f:
@@ -152,6 +166,8 @@ def main() -> None:
         lr=args.lr,
         reg=args.reg,
         epochs=args.epochs,
+        disabled_feature_names=args.disable_feature,
+        disabled_feature_prefixes=args.disable_feature_prefix,
     )
     model.save(
         args.model_out,
@@ -165,6 +181,8 @@ def main() -> None:
             "epochs": args.epochs,
             "include_gold": args.include_gold,
             "min_candidates": args.min_candidates,
+            "disabled_feature_names": list(args.disable_feature),
+            "disabled_feature_prefixes": list(args.disable_feature_prefix),
         },
     )
 

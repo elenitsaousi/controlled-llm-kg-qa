@@ -481,10 +481,18 @@ def _build_feature_row(
     tfidf_similarity: float,
     extra_features: Sequence[float] | None = None,
     base_feature_names: Sequence[str] = FEATURE_NAMES,
+    disabled_feature_names: Sequence[str] | None = None,
+    disabled_feature_prefixes: Sequence[str] | None = None,
 ) -> List[float]:
     row = [float(base_features.get(name, 0.0)) for name in base_feature_names]
     row.append(float(tfidf_similarity))
     row.extend(float(v) for v in (extra_features or [0.0] * len(EXTRA_FEATURE_NAMES)))
+    disabled_names = {str(name) for name in (disabled_feature_names or [])}
+    disabled_prefixes = tuple(str(prefix) for prefix in (disabled_feature_prefixes or []) if str(prefix))
+    if disabled_names or disabled_prefixes:
+        for idx, name in enumerate(compose_feature_names(base_feature_names)):
+            if name in disabled_names or any(name.startswith(prefix) for prefix in disabled_prefixes):
+                row[idx] = 0.0
     return row
 
 
@@ -538,6 +546,8 @@ class NPTfidfRanker:
         scaler_mean: np.ndarray,
         scaler_std: np.ndarray,
         idf: Dict[str, float],
+        disabled_feature_names: Sequence[str] | None = None,
+        disabled_feature_prefixes: Sequence[str] | None = None,
     ):
         self.feature_names = list(feature_names)
         self.weights = np.array(weights, dtype=float)
@@ -545,6 +555,8 @@ class NPTfidfRanker:
         self.scaler_mean = np.array(scaler_mean, dtype=float)
         self.scaler_std = np.array(scaler_std, dtype=float)
         self.vectorizer = SimpleTfidf(idf=idf)
+        self.disabled_feature_names = list(disabled_feature_names or [])
+        self.disabled_feature_prefixes = list(disabled_feature_prefixes or [])
 
     def score_rows(self, rows: np.ndarray) -> np.ndarray:
         rows_s = _scale(rows, self.scaler_mean, self.scaler_std)
@@ -581,7 +593,16 @@ class NPTfidfRanker:
                 position=position,
                 schema_dict=schema_dict,
             )
-            rows.append(_build_feature_row(base_features, sim, extra, FEATURE_NAMES))
+            rows.append(
+                _build_feature_row(
+                    base_features,
+                    sim,
+                    extra,
+                    FEATURE_NAMES,
+                    disabled_feature_names=self.disabled_feature_names,
+                    disabled_feature_prefixes=self.disabled_feature_prefixes,
+                )
+            )
         if not rows:
             return np.array([], dtype=float)
         X = np.array(rows, dtype=float)
@@ -596,6 +617,8 @@ class NPTfidfRanker:
             "scaler_mean": self.scaler_mean.tolist(),
             "scaler_std": self.scaler_std.tolist(),
             "idf": self.vectorizer.idf,
+            "disabled_feature_names": list(self.disabled_feature_names),
+            "disabled_feature_prefixes": list(self.disabled_feature_prefixes),
         }
 
     @classmethod
@@ -609,6 +632,8 @@ class NPTfidfRanker:
             scaler_mean=np.array(data["scaler_mean"], dtype=float),
             scaler_std=np.array(data["scaler_std"], dtype=float),
             idf={k: float(v) for k, v in data.get("idf", {}).items()},
+            disabled_feature_names=list(data.get("disabled_feature_names") or []),
+            disabled_feature_prefixes=list(data.get("disabled_feature_prefixes") or []),
         )
 
     @classmethod
@@ -630,6 +655,8 @@ def _build_rows_for_qids(
     data: Dict[str, QuestionItem],
     qids: Iterable[str],
     vectorizer: SimpleTfidf,
+    disabled_feature_names: Sequence[str] | None = None,
+    disabled_feature_prefixes: Sequence[str] | None = None,
 ) -> Tuple[np.ndarray, np.ndarray, List[Tuple[str, str]], Dict[str, bool]]:
     rows: List[List[float]] = []
     y: List[int] = []
@@ -648,7 +675,16 @@ def _build_rows_for_qids(
                 source=cand.source,
                 position=position,
             )
-            rows.append(_build_feature_row(cand.features, sim, extra, FEATURE_NAMES))
+            rows.append(
+                _build_feature_row(
+                    cand.features,
+                    sim,
+                    extra,
+                    FEATURE_NAMES,
+                    disabled_feature_names=disabled_feature_names,
+                    disabled_feature_prefixes=disabled_feature_prefixes,
+                )
+            )
             y.append(int(cand.is_correct))
             meta.append((qid, cand.query_id))
 
@@ -762,6 +798,8 @@ def cross_validate_ranker(
     lr: float = 0.05,
     reg: float = 0.02,
     epochs: int = 2500,
+    disabled_feature_names: Sequence[str] | None = None,
+    disabled_feature_prefixes: Sequence[str] | None = None,
 ) -> Dict[str, object]:
     folds = build_grouped_stratified_folds(data, n_folds=n_folds, seed=seed)
     all_qids = sorted(data.keys())
@@ -781,7 +819,13 @@ def cross_validate_ranker(
         vectorizer = SimpleTfidf()
         vectorizer.fit(train_texts)
 
-        X_train, y_train, _, _ = _build_rows_for_qids(data, train_qids, vectorizer)
+        X_train, y_train, _, _ = _build_rows_for_qids(
+            data,
+            train_qids,
+            vectorizer,
+            disabled_feature_names=disabled_feature_names,
+            disabled_feature_prefixes=disabled_feature_prefixes,
+        )
         mean, std = _fit_scaler(X_train)
         X_train_s = _scale(X_train, mean, std)
         w, b = train_logistic(X_train_s, y_train, lr=lr, reg=reg, epochs=epochs)
@@ -793,6 +837,8 @@ def cross_validate_ranker(
             scaler_mean=mean,
             scaler_std=std,
             idf=vectorizer.idf,
+            disabled_feature_names=disabled_feature_names,
+            disabled_feature_prefixes=disabled_feature_prefixes,
         )
 
         score_rows = _candidate_scores_by_question(data, test_qids, fold_model)
@@ -883,6 +929,8 @@ def cross_validate_ranker(
             "reg": reg,
             "epochs": epochs,
             "feature_names": compose_feature_names(),
+            "disabled_feature_names": list(disabled_feature_names or []),
+            "disabled_feature_prefixes": list(disabled_feature_prefixes or []),
         },
         "overall": overall,
         "per_ambiguity": per_ambiguity,
@@ -896,6 +944,8 @@ def train_final_ranker(
     lr: float = 0.05,
     reg: float = 0.02,
     epochs: int = 2500,
+    disabled_feature_names: Sequence[str] | None = None,
+    disabled_feature_prefixes: Sequence[str] | None = None,
 ) -> NPTfidfRanker:
     qids = sorted(data.keys())
 
@@ -908,7 +958,13 @@ def train_final_ranker(
     vectorizer = SimpleTfidf()
     vectorizer.fit(texts)
 
-    X, y, _, _ = _build_rows_for_qids(data, qids, vectorizer)
+    X, y, _, _ = _build_rows_for_qids(
+        data,
+        qids,
+        vectorizer,
+        disabled_feature_names=disabled_feature_names,
+        disabled_feature_prefixes=disabled_feature_prefixes,
+    )
     mean, std = _fit_scaler(X)
     X_s = _scale(X, mean, std)
     w, b = train_logistic(X_s, y, lr=lr, reg=reg, epochs=epochs)
@@ -920,6 +976,8 @@ def train_final_ranker(
         scaler_mean=mean,
         scaler_std=std,
         idf=vectorizer.idf,
+        disabled_feature_names=disabled_feature_names,
+        disabled_feature_prefixes=disabled_feature_prefixes,
     )
 
 
