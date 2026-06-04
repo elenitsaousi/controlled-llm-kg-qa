@@ -76,6 +76,22 @@ def _has_word(tokens: Set[str], *words: str) -> bool:
     return any(word in tokens for word in words)
 
 
+def _has_dimension_cue(text: str, tokens: Set[str], cue: str) -> bool:
+    """Match dimension cues without treating short tokens as substrings.
+
+    This avoids false positives such as matching ``ev`` inside ``level`` while
+    still allowing phrases like ``non-ev`` and ``technology category``.
+    """
+
+    normalized_cue = _normalize(cue)
+    cue_tokens = _tokens(normalized_cue)
+    if not cue_tokens:
+        return False
+    if len(cue_tokens) == 1:
+        return next(iter(cue_tokens)) in tokens
+    return normalized_cue in text
+
+
 def _add_if(condition: bool, target: Set[str], value: str) -> None:
     if condition:
         target.add(value)
@@ -139,7 +155,7 @@ def extract_question_contract(question: str) -> QueryContract:
         ("survey", ("survey", "surveys", "origin")),
     ]
     for dimension, cues in dimension_checks:
-        if any(cue in q for cue in cues):
+        if any(_has_dimension_cue(q, toks, cue) for cue in cues):
             contract.dimensions.add(dimension)
 
     _add_if("actual" in toks or "actuals" in toks or "actually sold" in q, contract.filters, "actual")
