@@ -42,6 +42,11 @@ Goal:
 - Do not mention SPARQL, RDF, graph internals, or "Infineon benchmark".
 - Do not add facts that are not present in the source question.
 - Keep the same business topic and requested dimensions.
+- Avoid near-duplicate wording:
+  - Do not only add a prefix such as "Can you", "Using data", or "In the graph".
+  - Use a noticeably different sentence structure from the source question and previous rewrites.
+  - Avoid reusing the same first five words as any previous rewrite for this template.
+  - Keep terminology precise, but vary verbs and clause order where possible.
 - Preserve the original measure nouns when they matter:
   - percentage / percentage change must stay percentage / percentage change.
   - Do not replace percentage with share.
@@ -55,14 +60,20 @@ Goal:
   - sum must still ask for total / sum.
 - raw_or_lookup must still ask for raw values / list / lookup values.
 
-Target ambiguity:
-- low: explicit about aggregation / requested result shape.
-- mid: realistic business wording; retain the core answer shape but allow some business shorthand.
-- high: genuinely plausible business wording; preserve the core answer shape, but allow ambiguity in secondary dimensions, filters, or phrasing when natural.
+Structural complexity:
+- low: the gold query uses one query class.
+- mid: the gold query uses two query classes.
+- high: the gold query uses three or more query classes.
+
+Runtime ambiguity is not assigned here. It is determined later from the generated candidate set:
+multiple valid candidate queries/answers are plausible and the selector cannot confidently distinguish the intended one.
 
 Family: {row["family"]}
 Answer shape intended by the gold query: {row["answer_shape"]}
-Target ambiguity label: {row["target_ambiguity_label"]}
+Structural complexity label: {row.get("target_complexity_label", row.get("target_ambiguity_label", "unknown"))}
+Structural complexity rule: low = one query class, mid = two query classes, high = three or more query classes.
+Query class count: {row.get("query_class_count", "unknown")}
+Query classes: {", ".join(str(item) for item in row.get("query_classes", [])) or "not explicit"}
 Source question: {_clean_question(str(row["example_question"]))}
 Gold-query measure clue: {row["answer_shape"]}
 Avoid exact reuse of these previous rewrites for this same template:
@@ -143,7 +154,8 @@ def generate_rows(
                 "topic": row["family"],
                 "family": row["family"],
                 "answer_shape": row["answer_shape"],
-                "ambiguity_label": row["target_ambiguity_label"],
+                "complexity_label": row.get("target_complexity_label", "unknown"),
+                "ambiguity_label": row.get("target_ambiguity_label", "runtime_candidate_disagreement"),
                 "template_id": row["template_id"],
                 "seed_id": row.get("source_id"),
                 "seed_ambiguity_label": row.get("seed_ambiguity_label"),
