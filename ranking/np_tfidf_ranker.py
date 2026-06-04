@@ -55,6 +55,13 @@ EXTRA_FEATURE_NAMES = [
     "contract_filter_conflict_count",
     "contract_shape_match",
     "contract_shape_conflict",
+    "grouped_requested_dimension_count",
+    "grouped_dimension_match_count",
+    "grouped_dimension_missing_count",
+    "grouped_dimension_match_ratio",
+    "query_is_grouped_when_requested",
+    "query_is_ranked_when_grouped_requested",
+    "query_is_filtered_when_grouped_requested",
 ]
 
 
@@ -199,6 +206,91 @@ def _contract_feature_values(question: str, query: str) -> List[float]:
     ]
 
 
+def _plan_values(plan: Dict[str, object], key: str) -> List[str]:
+    values = plan.get(key) or []
+    if isinstance(values, (str, bytes)):
+        return [str(values)]
+    try:
+        return [str(v) for v in values]
+    except TypeError:
+        return []
+
+
+def _extract_plan_for_grouped_features(
+    query: str,
+    labels: Sequence[str],
+    schema_dict: Dict[str, object] | None,
+) -> Dict[str, object]:
+    try:
+        return extract_query_plan(query, schema_dict) if schema_dict is not None else extract_query_plan(query)
+    except Exception:
+        return {"labels": list(labels or [])}
+
+
+def _dimension_present_in_grouped_output(plan: Dict[str, object], dimension: str) -> bool:
+    text = " ".join(
+        value.lower().replace("_", " ")
+        for key in ("group_by_vars", "group_by_predicates", "select_vars", "labels")
+        for value in _plan_values(plan, key)
+    )
+    compact = text.replace(" ", "")
+    patterns = {
+        "region": ("region", "inregion", "regionname"),
+        "quarter": ("quarter", "periodlabel", "fortimeperiod", "timeperiod"),
+        "month": ("month", "monthlabel", "periodlabel", "fortimeperiod", "timeperiod"),
+        "year": ("year", "foryear", "hasyear"),
+        "technology_category": ("technologycategory", "technology category", "category", "techlabel"),
+        "vehicle_type": ("vehicletype", "vehicle type", "vehicle"),
+        "sae_level": ("saelevel", "sae level", "sae"),
+        "component": ("component", "componentlabel", "forcomponent"),
+        "trend": ("trend", "inventorytrend", "hasinventorytrend"),
+        "response_type": ("responsetype", "response type", "category"),
+        "baseline": ("baseline", "baselinetype"),
+        "survey": ("survey", "hassurveyorigin", "origin"),
+    }
+    return any(pattern in text or pattern in compact for pattern in patterns.get(dimension, (dimension,)))
+
+
+def _grouped_dimension_feature_values(
+    question: str,
+    query: str,
+    labels: Sequence[str],
+    schema_dict: Dict[str, object] | None = None,
+) -> List[float]:
+    try:
+        question_contract = extract_question_contract(question)
+    except Exception:
+        return [0.0] * 7
+
+    if question_contract.answer_shape != "grouped_table" or not question_contract.dimensions:
+        return [0.0] * 7
+
+    plan = _extract_plan_for_grouped_features(query, labels, schema_dict)
+    requested = set(question_contract.dimensions)
+    matched = {
+        dimension
+        for dimension in requested
+        if _dimension_present_in_grouped_output(plan, dimension)
+    }
+    missing = requested - matched
+    query_types = {value.lower() for value in _plan_values(plan, "query_types")}
+    is_grouped = bool(plan.get("group_by_vars") or plan.get("group_by_predicates") or "grouped" in query_types)
+    is_ranked = bool({"ranking", "limited"} & query_types)
+    is_filtered = "filtered" in query_types
+    requested_count = float(len(requested))
+    matched_count = float(len(matched))
+    missing_count = float(len(missing))
+    return [
+        requested_count,
+        matched_count,
+        missing_count,
+        matched_count / requested_count if requested_count else 0.0,
+        1.0 if is_grouped else -1.0,
+        -1.0 if is_ranked else 0.0,
+        -0.5 if is_filtered and missing else 0.0,
+    ]
+
+
 def _extract_plan_labels_from_query(
     query: str,
     schema_dict: Dict[str, object] | None = None,
@@ -234,7 +326,12 @@ def _extra_feature_values(
         _question_aggregation_match(question, labels),
         _question_origin_match(question, labels),
         _question_dimension_match(question, labels),
-    ] + _contract_feature_values(question, query)
+    ] + _contract_feature_values(question, query) + _grouped_dimension_feature_values(
+        question,
+        query,
+        labels,
+        schema_dict,
+    )
 
 
 def _query_family_signature(query: str) -> str:
