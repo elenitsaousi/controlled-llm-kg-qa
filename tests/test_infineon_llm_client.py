@@ -51,6 +51,37 @@ def test_client_refreshes_token_after_sso_redirect(monkeypatch):
     assert os.environ["INFINEON_API_KEY"] == "fresh-token"
 
 
+@pytest.mark.parametrize("auth_status", [401, 403])
+def test_client_refreshes_token_after_auth_failure(monkeypatch, auth_status):
+    monkeypatch.setenv("INFINEON_API_URL", "https://example.invalid")
+    monkeypatch.setenv("INFINEON_API_KEY", "stale-token")
+    monkeypatch.setenv("USER_LLM", "user")
+    monkeypatch.setenv("PASSWORD_LLM", "password")
+
+    posts = []
+
+    def fake_post(url, headers, json, timeout, verify, allow_redirects):
+        posts.append(headers["Authorization"])
+        if len(posts) == 1:
+            return _Response(auth_status, text="expired token")
+        return _Response(
+            200,
+            payload={"choices": [{"message": {"content": "ok"}}]},
+        )
+
+    def fake_get(url, headers, auth, timeout, verify, allow_redirects):
+        assert auth == ("user", "password")
+        return _Response(200, text="fresh-token")
+
+    monkeypatch.setattr("requests.post", fake_post)
+    monkeypatch.setattr("requests.get", fake_get)
+
+    client = InfineonGPTClient()
+
+    assert client.generate_text("hello") == "ok"
+    assert posts == ["Bearer stale-token", "Bearer fresh-token"]
+
+
 def test_client_can_start_without_static_token_when_credentials_exist(monkeypatch):
     monkeypatch.setenv("INFINEON_API_URL", "https://example.invalid")
     monkeypatch.delenv("INFINEON_API_KEY", raising=False)

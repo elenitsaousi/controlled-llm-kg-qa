@@ -77,7 +77,10 @@ class InfineonGPTClient:
             "Content-Type": "application/json",
         }
         retryable_statuses = {429, 500, 502, 503, 504}
+        auth_failure_statuses = {401, 403}
+        redirect_statuses = {301, 302, 303, 307, 308}
         last_error = "unknown error"
+        token_refresh_attempted = False
 
         for attempt in range(self.max_retries + 1):
             try:
@@ -92,8 +95,14 @@ class InfineonGPTClient:
                 if response.status_code == 200:
                     data = response.json()
                     return str(data["choices"][0]["message"]["content"])
-                if response.status_code in {301, 302, 303, 307, 308}:
-                    if self.auto_refresh_token and self.api_user and self.api_password:
+                if response.status_code in auth_failure_statuses | redirect_statuses:
+                    if (
+                        not token_refresh_attempted
+                        and self.auto_refresh_token
+                        and self.api_user
+                        and self.api_password
+                    ):
+                        token_refresh_attempted = True
                         self.refresh_api_key()
                         headers["Authorization"] = f"Bearer {self.api_key}"
                         response = requests.post(
@@ -110,7 +119,8 @@ class InfineonGPTClient:
                     location = response.headers.get("location", "")
                     body = (response.text or "")[:500]
                     raise LLMAuthError(
-                        f"API redirect to SSO/gateway (status={response.status_code}, "
+                        f"API authentication failed or redirected to SSO/gateway "
+                        f"(status={response.status_code}, "
                         f"location={location!r}). Body preview: {body!r}. "
                         "This usually means INFINEON_API_KEY is missing, expired, or not valid "
                         "for machine API calls to INFINEON_API_URL + INFINEON_CHAT_ENDPOINT."
