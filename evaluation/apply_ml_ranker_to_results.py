@@ -18,11 +18,18 @@ from ranking.query_contract import (
     extract_question_contract,
 )
 from ranking.np_tfidf_ranker import NPTfidfRanker, rank_candidates_with_model
+from ranking.xgboost_ranker import XGBoostCandidateRanker
 
 
 def _load_json(path: str) -> Dict[str, object]:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def _load_ranker_model(path: str):
+    if str(path).lower().endswith((".pkl", ".pickle")):
+        return XGBoostCandidateRanker.load(path)
+    return NPTfidfRanker.load(path)
 
 
 def _query_key(query: str) -> str:
@@ -202,7 +209,7 @@ def _trusted_source_rescue_row(
 
 def _rank_detail(
     detail: Dict[str, object],
-    ranker: NPTfidfRanker,
+    ranker,
     schema_dict: Dict[str, object],
     guarded: bool = False,
     min_margin: float = 0.15,
@@ -352,7 +359,7 @@ def apply_ml_ranker(
 ) -> Dict[str, object]:
     payload = _load_json(results_path)
     schema_dict = _load_json(schema_path)
-    ranker = NPTfidfRanker.load(model_path)
+    ranker = _load_ranker_model(model_path)
     expected_features = len(ranker.feature_names)
     actual_features = len(ranker.scaler_mean)
     if expected_features != actual_features:
