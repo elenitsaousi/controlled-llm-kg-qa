@@ -11,6 +11,11 @@ import numpy as np
 
 from ranking.feature_config import FEATURE_NAMES
 from ranking.feature_extraction import extract_features, extract_query_plan
+from ranking.query_contract import (
+    compare_contracts,
+    extract_query_contract,
+    extract_question_contract,
+)
 
 
 TOKEN_RE = re.compile(r"[A-Za-z0-9_:%<>.=/-]+")
@@ -31,6 +36,25 @@ EXTRA_FEATURE_NAMES = [
     "question_aggregation_match",
     "question_origin_match",
     "question_dimension_match",
+    "contract_score",
+    "contract_matched_count",
+    "contract_missing_count",
+    "contract_conflict_count",
+    "contract_metric_match_count",
+    "contract_metric_missing_count",
+    "contract_metric_conflict_count",
+    "contract_aggregation_match",
+    "contract_aggregation_missing",
+    "contract_aggregation_conflict",
+    "contract_scope_match_count",
+    "contract_scope_missing_count",
+    "contract_dimension_match_count",
+    "contract_dimension_missing_count",
+    "contract_filter_match_count",
+    "contract_filter_missing_count",
+    "contract_filter_conflict_count",
+    "contract_shape_match",
+    "contract_shape_conflict",
 ]
 
 
@@ -133,6 +157,48 @@ def _question_dimension_match(question: str, labels: Sequence[str]) -> float:
     return (2.0 * matched / requested) - 1.0
 
 
+def _axis_count(report: Dict[str, object], section: str, axis: str | None = None) -> float:
+    payload = report.get(section)
+    if not isinstance(payload, dict):
+        return 0.0
+    if axis is not None:
+        values = payload.get(axis) or []
+        return float(len(values))
+    return float(sum(len(values or []) for values in payload.values()))
+
+
+def _contract_feature_values(question: str, query: str) -> List[float]:
+    try:
+        report = compare_contracts(
+            extract_question_contract(question),
+            extract_query_contract(query),
+        ).to_dict()
+    except Exception:
+        return [0.0] * 19
+
+    return [
+        float(report.get("score") or 0.0),
+        _axis_count(report, "matched"),
+        _axis_count(report, "missing"),
+        _axis_count(report, "conflicts"),
+        _axis_count(report, "matched", "metrics"),
+        _axis_count(report, "missing", "metrics"),
+        _axis_count(report, "conflicts", "metrics"),
+        _axis_count(report, "matched", "aggregation"),
+        _axis_count(report, "missing", "aggregation"),
+        _axis_count(report, "conflicts", "aggregation"),
+        _axis_count(report, "matched", "scopes"),
+        _axis_count(report, "missing", "scopes"),
+        _axis_count(report, "matched", "dimensions"),
+        _axis_count(report, "missing", "dimensions"),
+        _axis_count(report, "matched", "filters"),
+        _axis_count(report, "missing", "filters"),
+        _axis_count(report, "conflicts", "filters"),
+        _axis_count(report, "matched", "answer_shape"),
+        _axis_count(report, "conflicts", "answer_shape"),
+    ]
+
+
 def _extract_plan_labels_from_query(
     query: str,
     schema_dict: Dict[str, object] | None = None,
@@ -168,7 +234,7 @@ def _extra_feature_values(
         _question_aggregation_match(question, labels),
         _question_origin_match(question, labels),
         _question_dimension_match(question, labels),
-    ]
+    ] + _contract_feature_values(question, query)
 
 
 def _query_family_signature(query: str) -> str:
