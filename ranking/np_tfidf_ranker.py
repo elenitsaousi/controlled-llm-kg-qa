@@ -98,6 +98,17 @@ EXTRA_FEATURE_NAMES = [
     "query_missing_select_for_requested_dimensions",
     "query_missing_group_by_for_requested_dimensions",
     "query_has_select_group_mismatch",
+    "scope_requested_count",
+    "scope_match_count",
+    "scope_missing_count",
+    "scope_extra_count",
+    "scope_exact_match",
+    "scope_requested_oem",
+    "scope_requested_tier1",
+    "scope_requested_semiconductor",
+    "scope_query_has_oem",
+    "scope_query_has_tier1",
+    "scope_query_has_semiconductor",
 ]
 
 
@@ -276,7 +287,7 @@ def _dimension_patterns(dimension: str) -> Tuple[str, ...]:
         "component": ("component", "componentlabel", "forcomponent"),
         "trend": ("trend", "inventorytrend", "hasinventorytrend"),
         "response_type": ("responsetype", "response type", "category"),
-        "shortage_status": ("reportsshortage", "shortagestatus", "shortage status", "shortagelabel", "isshortage"),
+        "shortage_status": ("reportsshortage", "shortagestatus", "shortage status", "shortagelabel", "isshortage", "status"),
         "baseline": ("baseline", "baselinetype"),
         "survey": ("survey", "hassurveyorigin", "origin"),
     }
@@ -430,6 +441,30 @@ def _projection_grouping_feature_values(
         -1.0 if select_missing else 0.0,
         -1.0 if is_grouped and group_missing else 0.0,
         -1.0 if select_known != group_known and is_grouped else 0.0,
+    ]
+
+
+def _scope_origin_feature_values(question: str, query: str) -> List[float]:
+    try:
+        question_contract = extract_question_contract(question)
+        query_contract = extract_query_contract(query)
+    except Exception:
+        return [0.0] * 11
+
+    requested = set(question_contract.scopes or [])
+    actual = set(query_contract.scopes or [])
+    matched = requested & actual
+    missing = requested - actual
+    extra = actual - requested
+    known_scopes = ("oem", "tier1", "semiconductor")
+    return [
+        float(len(requested)),
+        float(len(matched)),
+        float(len(missing)),
+        float(len(extra)),
+        1.0 if requested and requested == actual else (0.0 if not requested else -1.0),
+        *[1.0 if scope in requested else 0.0 for scope in known_scopes],
+        *[1.0 if scope in actual else 0.0 for scope in known_scopes],
     ]
 
 
@@ -604,6 +639,9 @@ def _extra_feature_values(
         query,
         labels,
         schema_dict,
+    ) + _scope_origin_feature_values(
+        question,
+        query,
     )
 
 
