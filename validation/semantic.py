@@ -79,6 +79,7 @@ def _dimension_terms() -> Dict[str, Sequence[str]]:
         "vehicle_type": ["vehicletype", "hasvehicletype", "analyzesvehicletype"],
         "baseline": ["baselinetype", "?baseline", "bl1", "bl2"],
         "response_type": ["responsetype", "hasresponsetype"],
+        "shortage_status": ["reportsshortage", "shortagestatus", "shortagelabel", "isshortage"],
         "month": ["monthlabel", "survey:month", "?month"],
         "component": ["forcomponent", "componenttype"],
         "market_segment": ["marketsegment", "hasmarketsegment", "automotive"],
@@ -131,6 +132,15 @@ def _question_dimensions(question: str) -> Set[str]:
     ):
         if "order cancellation" in q or "cancellation" in q or "responses" in q:
             dims.add("response_type")
+    if (
+        "shortage status" in q
+        or "reported a shortage" in q
+        or "have not reported" in q
+        or "did not report" in q
+        or "shortage versus" in q
+        or "whether they experienced" in q
+    ):
+        dims.add("shortage_status")
     if _has_word(q, "month", "months", "monthly"):
         dims.add("month")
     if _has_word(q, "component", "components"):

@@ -107,6 +107,7 @@ def extract_question_contract(question: str) -> QueryContract:
     _add_if("order cancellation" in q or "cancellation" in toks, contract.metrics, "order_cancellation")
     _add_if("shortage" in q, contract.metrics, "shortage")
     _add_if("autonomous" in q or "sae" in toks, contract.metrics, "autonomous_driving")
+    _add_if("catalog" in toks or "database" in toks or "included in the data" in q, contract.metrics, "catalog_lookup")
     _add_if("demand" in toks and "vehicle_sales" not in contract.metrics, contract.metrics, "demand")
 
     asks_unit_quantity = (
@@ -151,6 +152,7 @@ def extract_question_contract(question: str) -> QueryContract:
         ("component", ("component", "components", "ev", "non-ev", "mixed")),
         ("trend", ("trend", "trends", "increase", "decrease", "stable")),
         ("response_type", ("response type", "response types", "responses")),
+        ("shortage_status", ("shortage status", "shortage statuses", "reported a shortage", "have not reported", "did not report", "shortage versus", "whether they experienced")),
         ("baseline", ("baseline", "bl1", "bl2", "option1", "option2", "option3")),
         ("survey", ("survey", "surveys", "origin")),
     ]
@@ -169,7 +171,9 @@ def extract_question_contract(question: str) -> QueryContract:
     _add_if("with shortage" in q or "experiencing a shortage" in q or "reported a shortage" in q, contract.filters, "shortage_yes")
 
     if contract.answer_shape is None:
-        if _has_any(q, " by ", " across ", " broken down ", " grouped ", " per ", " for each "):
+        if _has_any(q, "which ", "list ", "show me the set", "set of", "included in the catalog", "included in the data") and not contract.aggregation:
+            contract.answer_shape = "list_values"
+        elif _has_any(q, " by ", " across ", " broken down ", " grouped ", " per ", " for each "):
             contract.answer_shape = "grouped_table"
         elif contract.aggregation in {"sum", "count", "avg"} and not contract.dimensions:
             contract.answer_shape = "scalar"
@@ -207,6 +211,21 @@ def extract_query_contract(query: str) -> QueryContract:
     _add_if("shortage" in hay, contract.metrics, "shortage")
     _add_if("autonomous driving development" in hay or "autonomousdrivingdevelopment" in query_lower, contract.metrics, "autonomous_driving")
     _add_if(
+        any(
+            term in query_lower
+            for term in (
+                " a survey:technologycategory".lower(),
+                " a survey:region".lower(),
+                " a survey:quarter".lower(),
+                " a survey:company".lower(),
+                " a survey:vehicletype".lower(),
+            )
+        )
+        and not any(term in query_lower for term in ("sum(", "avg(", "count(")),
+        contract.metrics,
+        "catalog_lookup",
+    )
+    _add_if(
         _has_any(hay, "demand for region", "current demand analysis", "future demand analysis", "total demand", "percentage change", "aggregated demand")
         or any(term in query_lower for term in ("demandforregion", "currentdemandanalysis", "futuredemandanalysis", "aggregateddemand")),
         contract.metrics,
@@ -238,6 +257,7 @@ def extract_query_contract(query: str) -> QueryContract:
         ("component", ("component", "forcomponent")),
         ("trend", ("trend", "inventorytrend", "hasinventorytrend")),
         ("response_type", ("responsetype", "response type", "hasresponsetype")),
+        ("shortage_status", ("reportsshortage", "shortagestatus", "shortage status", "shortagelabel", "isshortage")),
         ("baseline", ("baseline", "baselinetype")),
         ("survey", ("survey", "hassurveyorigin")),
     ]
@@ -258,6 +278,8 @@ def extract_query_contract(query: str) -> QueryContract:
         contract.answer_shape = "ranked_one"
     elif "grouped" in query_types or plan.get("group_by_vars"):
         contract.answer_shape = "grouped_table"
+    elif "select distinct" in query_lower and not contract.aggregation:
+        contract.answer_shape = "list_values"
     elif contract.aggregation in {"sum", "count", "avg"}:
         contract.answer_shape = "scalar"
 

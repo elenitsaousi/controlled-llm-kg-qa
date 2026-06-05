@@ -68,6 +68,8 @@ EXTRA_FEATURE_NAMES = [
     "shape_query_is_ranking",
     "shape_query_is_grouped",
     "shape_query_is_filtered",
+    "shape_list_requested",
+    "shape_query_is_list",
     "shape_ranking_match",
     "shape_ranking_missing",
     "shape_ranking_extra",
@@ -77,6 +79,11 @@ EXTRA_FEATURE_NAMES = [
     "shape_filtered_match",
     "shape_filtered_missing",
     "shape_filtered_extra",
+    "shape_list_match",
+    "shape_list_missing",
+    "shape_list_extra",
+    "query_has_distinct_when_list_requested",
+    "query_has_shortage_status_when_requested",
 ]
 
 
@@ -165,6 +172,7 @@ def _question_dimension_match(question: str, labels: Sequence[str]) -> float:
         (["component"], ["component", "forcomponent"]),
         (["trend", "inventory trend"], ["trend", "inventorytrend", "hasinventorytrend"]),
         (["response type"], ["responsetype", "response type", "hasresponsetype"]),
+        (["shortage status", "reported a shortage", "have not reported"], ["reportsshortage", "shortagestatus", "shortage status", "shortagelabel"]),
     ]
     requested = 0
     matched = 0
@@ -260,6 +268,7 @@ def _dimension_present_in_grouped_output(plan: Dict[str, object], dimension: str
         "component": ("component", "componentlabel", "forcomponent"),
         "trend": ("trend", "inventorytrend", "hasinventorytrend"),
         "response_type": ("responsetype", "response type", "category"),
+        "shortage_status": ("reportsshortage", "shortagestatus", "shortage status", "shortagelabel", "isshortage"),
         "baseline": ("baseline", "baselinetype"),
         "survey": ("survey", "hassurveyorigin", "origin"),
     }
@@ -361,10 +370,25 @@ def _query_shape_requested(question: str) -> Dict[str, bool]:
         "bl1",
         "bl2",
     ]
+    list_terms = [
+        "which",
+        "list",
+        "show me the set",
+        "set of",
+        "included in the catalog",
+        "included in the data",
+        "present in the database",
+        "available",
+    ]
     return {
         "ranking": _contains_any(q, ranking_terms),
         "grouped": _contains_any(f" {q} ", grouped_terms),
         "filtered": _contains_any(q, filtered_terms),
+        "list": (
+            _contains_any(q, list_terms)
+            and not _contains_any(q, ranking_terms)
+            and not _contains_any(q, ["how many", "count", "number of", "total", "sum", "average", "avg"])
+        ),
     }
 
 
@@ -380,6 +404,10 @@ def _query_shape_feature_values(
     is_ranking = bool({"ranking", "limited", "ordered"} & query_types)
     is_grouped = bool(plan.get("group_by_vars") or plan.get("group_by_predicates") or "grouped" in query_types)
     is_filtered = "filtered" in query_types
+    query_lower = str(query or "").lower()
+    is_list = "select distinct" in query_lower and not is_grouped and "count(" not in query_lower
+    wants_shortage_status = "shortage_status" in extract_question_contract(question).dimensions
+    has_shortage_status = _dimension_present_in_grouped_output(plan, "shortage_status") or "reportsshortage" in query_lower
 
     def _match(req: bool, present: bool) -> float:
         if req and present:
@@ -401,6 +429,8 @@ def _query_shape_feature_values(
         1.0 if is_ranking else 0.0,
         1.0 if is_grouped else 0.0,
         1.0 if is_filtered else 0.0,
+        1.0 if requested["list"] else 0.0,
+        1.0 if is_list else 0.0,
         _match(requested["ranking"], is_ranking),
         _missing(requested["ranking"], is_ranking),
         _extra(requested["ranking"], is_ranking),
@@ -410,6 +440,11 @@ def _query_shape_feature_values(
         _match(requested["filtered"], is_filtered),
         _missing(requested["filtered"], is_filtered),
         _extra(requested["filtered"], is_filtered),
+        _match(requested["list"], is_list),
+        _missing(requested["list"], is_list),
+        _extra(requested["list"], is_list),
+        1.0 if requested["list"] and "select distinct" in query_lower else 0.0,
+        1.0 if wants_shortage_status and has_shortage_status else (-1.0 if wants_shortage_status else 0.0),
     ]
 
 
