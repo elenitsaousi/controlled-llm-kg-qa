@@ -60,6 +60,7 @@ SUM_TERMS = [
     "sum",
     "overall",
     "how much",
+    "how many",
     "aggregate",
     "aggregated",
     "combined",
@@ -69,6 +70,11 @@ SUM_TERMS = [
     "amount",
     "figure",
     "figures",
+    "distribution",
+    "broken down",
+    "breakdown",
+    "per ",
+    "for each",
 ]
 PERCENTAGE_TERMS = ["percentage", "percent", "proportion", "share"]
 PERCENTAGE_CHANGE_TERMS = [
@@ -79,7 +85,21 @@ PERCENTAGE_CHANGE_TERMS = [
     "percentage terms",
     "net change",
 ]
-TREND_TERMS = ["trend", "trends", "vary", "varies", "change", "changes", "evolve", "evolves", "distribution"]
+TREND_TERMS = [
+    "trend",
+    "trends",
+    "vary",
+    "varies",
+    "change",
+    "changes",
+    "evolve",
+    "evolves",
+    "distribution",
+    "broken down",
+    "grouped",
+    "per ",
+    "for each",
+]
 
 
 def infer_answer_shape(query: str, fallback: str = "") -> str:
@@ -103,9 +123,10 @@ def row_warnings(row: Dict[str, object]) -> List[str]:
     question = str(row.get("question") or "")
     warnings = []
     shape = infer_answer_shape(str(row.get("query") or ""), fallback=str(row.get("answer_shape") or ""))
+    source_has_ranking = _contains_any(source, RANKING_TERMS)
     if shape == "ranking_top" and not _contains_any(question, RANKING_TERMS):
         warnings.append("missing_ranking_language")
-    if shape != "ranking_top" and _contains_any(question, RANKING_TERMS):
+    if shape != "ranking_top" and _contains_any(question, RANKING_TERMS) and not source_has_ranking:
         warnings.append("unexpected_ranking_language")
     if shape == "count" and not _contains_any(question, COUNT_TERMS):
         warnings.append("missing_count_language")
