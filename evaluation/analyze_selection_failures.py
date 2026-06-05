@@ -272,6 +272,68 @@ def _semantic_category_opportunities(
     return sorted(set(opportunities)) or ["no_semantic_opportunity_detected"]
 
 
+def _latent_issue_summary(
+    *,
+    axis_issues: List[str],
+    top_plan: Dict[str, object],
+    correct_plan: Dict[str, object],
+    top_candidate: Dict[str, object],
+    correct_candidate: Dict[str, object],
+) -> List[str]:
+    """Coarser diagnostics for cases where the contract axes look identical.
+
+    These are not correctness labels. They identify which missing query-plan
+    axis may need to become a future contract/ranker feature.
+    """
+
+    if axis_issues != ["no_contract_axis_difference"]:
+        return []
+
+    issues: List[str] = []
+    plan_axes = [
+        ("aggregations", "latent_aggregation"),
+        ("query_types", "latent_query_shape"),
+        ("group_by_vars", "latent_group_by_var"),
+        ("group_by_predicates", "latent_group_by_predicate"),
+        ("select_vars", "latent_select_var"),
+        ("survey_origins", "latent_survey_origin"),
+        ("classes", "latent_class"),
+        ("predicates", "latent_predicate"),
+    ]
+    for key, prefix in plan_axes:
+        top_values = _list_set(top_plan, key)
+        correct_values = _list_set(correct_plan, key)
+        missing = correct_values - top_values
+        extra = top_values - correct_values
+        if missing:
+            issues.append(f"{prefix}_missing")
+        if extra:
+            issues.append(f"{prefix}_extra")
+
+    top_query = str(top_candidate.get("query", "") or "").lower()
+    correct_query = str(correct_candidate.get("query", "") or "").lower()
+    if "count(" in top_query and "count(" not in correct_query:
+        issues.append("latent_count_extra_in_top")
+    if "count(" not in top_query and "count(" in correct_query:
+        issues.append("latent_count_missing_in_top")
+    if "select distinct" in top_query and "select distinct" not in correct_query:
+        issues.append("latent_distinct_extra_in_top")
+    if "select distinct" not in top_query and "select distinct" in correct_query:
+        issues.append("latent_distinct_missing_in_top")
+
+    top_ml = _score(top_candidate, "ml_score")
+    correct_ml = _score(correct_candidate, "ml_score")
+    margin = top_ml - correct_ml
+    if margin > 0.25:
+        issues.append("latent_ml_wrong_high_margin")
+    elif margin > 0.0:
+        issues.append("latent_ml_wrong_low_margin")
+    elif margin < 0.0:
+        issues.append("latent_ml_correct_would_win")
+
+    return sorted(set(issues)) or ["latent_no_plan_difference_detected"]
+
+
 def _score(candidate: Dict[str, object], key: str, default: float = 0.0) -> float:
     value = candidate.get(key)
     try:
@@ -302,6 +364,7 @@ def analyze_selection_failures(
     correct_source_counts: Counter = Counter()
     family_counts: Dict[str, Counter] = defaultdict(Counter)
     opportunity_counts: Counter = Counter()
+    latent_issue_counts: Counter = Counter()
     margin_buckets: Counter = Counter()
     cases: List[Dict[str, object]] = []
 
@@ -367,6 +430,15 @@ def analyze_selection_failures(
         )
         for opportunity in opportunities:
             opportunity_counts[opportunity] += 1
+        latent_issues = _latent_issue_summary(
+            axis_issues=issues,
+            top_plan=top_plan,
+            correct_plan=correct_plan,
+            top_candidate=top_candidate,
+            correct_candidate=correct_candidate,
+        )
+        for issue in latent_issues:
+            latent_issue_counts[issue] += 1
         ml_margin = _score(top_candidate, "ml_score") - _score(correct_candidate, "ml_score")
         if ml_margin < 0:
             margin_buckets["ml_correct_scores_higher"] += 1
@@ -386,6 +458,7 @@ def analyze_selection_failures(
             "axis_issues": issues,
             "plan_issues": plan_issues,
             "semantic_opportunities": opportunities,
+            "latent_issues": latent_issues,
             "question_contract": question_contract.to_dict(),
             "top1": {
                 "label": _label(top_candidate),
@@ -437,6 +510,7 @@ def analyze_selection_failures(
             "axis_issue_counts": axis_counts.most_common(),
             "plan_issue_counts": plan_issue_counts.most_common(),
             "semantic_opportunity_counts": opportunity_counts.most_common(),
+            "latent_issue_counts": latent_issue_counts.most_common(),
             "ml_margin_buckets": margin_buckets.most_common(),
             "first_correct_rank_counts": sorted(
                 ((int(k), v) for k, v in correct_rank_counts.items()), key=lambda row: row[0]
@@ -499,6 +573,13 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
     for opportunity, count in summary.get("semantic_opportunity_counts") or []:
         lines.append(f"| `{opportunity}` | {count} |")
     lines.append("")
+    lines.append("## Latent Issues")
+    lines.append("")
+    lines.append("| Issue | Count |")
+    lines.append("|---|---:|")
+    for issue, count in summary.get("latent_issue_counts") or []:
+        lines.append(f"| `{issue}` | {count} |")
+    lines.append("")
     lines.append("## ML Margin Buckets")
     lines.append("")
     lines.append("| Bucket | Count |")
@@ -520,6 +601,7 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
         lines.append(f"- Axis issues: {_format_list(case.get('axis_issues') or [])}")
         lines.append(f"- Plan issues: {_format_list(case.get('plan_issues') or [])}")
         lines.append(f"- Semantic opportunities: {_format_list(case.get('semantic_opportunities') or [])}")
+        lines.append(f"- Latent issues: {_format_list(case.get('latent_issues') or [])}")
         lines.append(
             "- Deltas correct-minus-top1: "
             f"contract={deltas.get('contract_score', 0):.3f}, "
@@ -584,6 +666,9 @@ def main() -> None:
         print(f"  {issue}: {count}")
     print("Top plan issues:")
     for issue, count in summary["plan_issue_counts"][:15]:
+        print(f"  {issue}: {count}")
+    print("Top latent issues:")
+    for issue, count in summary["latent_issue_counts"][:15]:
         print(f"  {issue}: {count}")
     print(f"JSON: {args.out_json}")
     print(f"Markdown: {args.out_md}")
