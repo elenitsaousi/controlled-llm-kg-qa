@@ -138,6 +138,16 @@ def _fit_vectorizer(data: Dict[str, QuestionItem], qids: Sequence[str]) -> Simpl
     return vectorizer
 
 
+def _ltr_trainable_qids(data: Dict[str, QuestionItem], qids: Iterable[str]) -> List[str]:
+    trainable: List[str] = []
+    for qid in qids:
+        item = data[qid]
+        labels = [int(cand.is_correct) for cand in item.candidates]
+        if any(label == 1 for label in labels) and any(label == 0 for label in labels):
+            trainable.append(qid)
+    return trainable
+
+
 def _build_rows_for_qids(
     data: Dict[str, QuestionItem],
     qids: Iterable[str],
@@ -175,6 +185,50 @@ def _build_rows_for_qids(
     X = np.asarray(rows, dtype=float) if rows else np.zeros((0, len(compose_feature_names())))
     y = np.asarray(labels, dtype=int) if labels else np.zeros((0,), dtype=int)
     return X, y, by_qid
+
+
+def _build_rows_groups_for_qids(
+    data: Dict[str, QuestionItem],
+    qids: Iterable[str],
+    vectorizer: SimpleTfidf,
+    disabled_feature_names: Sequence[str] | None = None,
+    disabled_feature_prefixes: Sequence[str] | None = None,
+) -> Tuple[np.ndarray, np.ndarray, List[int], Dict[str, List[Tuple[str, int]]]]:
+    rows: List[List[float]] = []
+    labels: List[int] = []
+    groups: List[int] = []
+    by_qid: Dict[str, List[Tuple[str, int]]] = {}
+    for qid in qids:
+        item = data[qid]
+        by_qid[qid] = []
+        group_size = 0
+        for position, cand in enumerate(item.candidates):
+            sim = vectorizer.similarity(item.question, cand.query)
+            extra = _extra_feature_values(
+                question=item.question,
+                query=cand.query,
+                query_plan_labels=cand.query_plan_labels,
+                source=cand.source,
+                position=position,
+            )
+            rows.append(
+                _build_feature_row(
+                    cand.features,
+                    sim,
+                    extra,
+                    FEATURE_NAMES,
+                    disabled_feature_names=disabled_feature_names,
+                    disabled_feature_prefixes=disabled_feature_prefixes,
+                )
+            )
+            labels.append(int(cand.is_correct))
+            by_qid[qid].append((cand.query_id, int(cand.is_correct)))
+            group_size += 1
+        if group_size:
+            groups.append(group_size)
+    X = np.asarray(rows, dtype=float) if rows else np.zeros((0, len(compose_feature_names())))
+    y = np.asarray(labels, dtype=int) if labels else np.zeros((0,), dtype=int)
+    return X, y, groups, by_qid
 
 
 def _make_classifier(
@@ -241,6 +295,68 @@ def _train_classifier(
     return clf
 
 
+def _make_ltr_ranker(
+    *,
+    n_estimators: int,
+    max_depth: int,
+    learning_rate: float,
+    subsample: float,
+    colsample_bytree: float,
+    reg_lambda: float,
+    objective: str,
+    random_state: int,
+):
+    try:
+        from xgboost import XGBRanker
+    except Exception as exc:  # pragma: no cover - environment dependent
+        raise RuntimeError(
+            "xgboost is not available in this Python environment. Install it with "
+            "`python -m pip install xgboost` or use the existing logistic ranker."
+        ) from exc
+
+    return XGBRanker(
+        n_estimators=int(n_estimators),
+        max_depth=int(max_depth),
+        learning_rate=float(learning_rate),
+        subsample=float(subsample),
+        colsample_bytree=float(colsample_bytree),
+        reg_lambda=float(reg_lambda),
+        objective=str(objective),
+        eval_metric="ndcg",
+        tree_method="hist",
+        random_state=int(random_state),
+        n_jobs=1,
+    )
+
+
+def _train_ltr_ranker(
+    X: np.ndarray,
+    y: np.ndarray,
+    groups: Sequence[int],
+    *,
+    n_estimators: int,
+    max_depth: int,
+    learning_rate: float,
+    subsample: float,
+    colsample_bytree: float,
+    reg_lambda: float,
+    objective: str,
+    seed: int,
+):
+    ranker = _make_ltr_ranker(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        learning_rate=learning_rate,
+        subsample=subsample,
+        colsample_bytree=colsample_bytree,
+        reg_lambda=reg_lambda,
+        objective=objective,
+        random_state=seed,
+    )
+    ranker.fit(X, y, group=list(groups))
+    return ranker
+
+
 def train_final_xgboost_ranker(
     data: Dict[str, QuestionItem],
     *,
@@ -280,6 +396,58 @@ def train_final_xgboost_ranker(
         feature_names=compose_feature_names(),
         disabled_feature_names=disabled_feature_names,
         disabled_feature_prefixes=disabled_feature_prefixes,
+    )
+
+
+def train_final_xgboost_ltr_ranker(
+    data: Dict[str, QuestionItem],
+    *,
+    n_estimators: int = 120,
+    max_depth: int = 2,
+    learning_rate: float = 0.03,
+    subsample: float = 0.9,
+    colsample_bytree: float = 0.9,
+    reg_lambda: float = 10.0,
+    objective: str = "rank:pairwise",
+    seed: int = 42,
+    disabled_feature_names: Sequence[str] | None = None,
+    disabled_feature_prefixes: Sequence[str] | None = None,
+) -> XGBoostCandidateRanker:
+    qids = _ltr_trainable_qids(data, sorted(data.keys()))
+    if not qids:
+        raise RuntimeError("No trainable LTR question groups found.")
+    vectorizer = _fit_vectorizer(data, qids)
+    X, y, groups, _ = _build_rows_groups_for_qids(
+        data,
+        qids,
+        vectorizer,
+        disabled_feature_names=disabled_feature_names,
+        disabled_feature_prefixes=disabled_feature_prefixes,
+    )
+    ranker = _train_ltr_ranker(
+        X,
+        y,
+        groups,
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        learning_rate=learning_rate,
+        subsample=subsample,
+        colsample_bytree=colsample_bytree,
+        reg_lambda=reg_lambda,
+        objective=objective,
+        seed=seed,
+    )
+    return XGBoostCandidateRanker(
+        classifier=ranker,
+        idf=vectorizer.idf,
+        feature_names=compose_feature_names(),
+        disabled_feature_names=disabled_feature_names,
+        disabled_feature_prefixes=disabled_feature_prefixes,
+        metadata={
+            "training_mode": "learning_to_rank",
+            "objective": objective,
+            "trainable_question_groups": len(qids),
+        },
     )
 
 
@@ -413,9 +581,156 @@ def cross_validate_xgboost_ranker(
     }
 
 
+def cross_validate_xgboost_ltr_ranker(
+    data: Dict[str, QuestionItem],
+    *,
+    n_folds: int = 5,
+    seed: int = 42,
+    n_estimators: int = 120,
+    max_depth: int = 2,
+    learning_rate: float = 0.03,
+    subsample: float = 0.9,
+    colsample_bytree: float = 0.9,
+    reg_lambda: float = 10.0,
+    objective: str = "rank:pairwise",
+    disabled_feature_names: Sequence[str] | None = None,
+    disabled_feature_prefixes: Sequence[str] | None = None,
+) -> Dict[str, object]:
+    folds = build_grouped_stratified_folds(data, n_folds=n_folds, seed=seed)
+    all_qids = sorted(data.keys())
+    oof_rows: List[Dict[str, object]] = []
+    fold_summaries: List[Dict[str, object]] = []
+
+    for fold_idx, test_qids in enumerate(folds, start=1):
+        test_set = set(test_qids)
+        train_qids = _ltr_trainable_qids(
+            data,
+            [qid for qid in all_qids if qid not in test_set],
+        )
+        if not train_qids:
+            raise RuntimeError(f"No trainable LTR question groups found for fold {fold_idx}.")
+        vectorizer = _fit_vectorizer(data, train_qids)
+        X_train, y_train, groups, _ = _build_rows_groups_for_qids(
+            data,
+            train_qids,
+            vectorizer,
+            disabled_feature_names=disabled_feature_names,
+            disabled_feature_prefixes=disabled_feature_prefixes,
+        )
+        ranker = _train_ltr_ranker(
+            X_train,
+            y_train,
+            groups,
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            learning_rate=learning_rate,
+            subsample=subsample,
+            colsample_bytree=colsample_bytree,
+            reg_lambda=reg_lambda,
+            objective=objective,
+            seed=seed + fold_idx,
+        )
+        model = XGBoostCandidateRanker(
+            classifier=ranker,
+            idf=vectorizer.idf,
+            feature_names=compose_feature_names(),
+            disabled_feature_names=disabled_feature_names,
+            disabled_feature_prefixes=disabled_feature_prefixes,
+            metadata={
+                "training_mode": "learning_to_rank",
+                "objective": objective,
+                "trainable_question_groups": len(train_qids),
+            },
+        )
+
+        fold_top1: List[int] = []
+        fold_any: List[int] = []
+        fold_baseline: List[int] = []
+        for qid in test_qids:
+            item = data[qid]
+            scores = model.score_question_candidates(
+                item.question,
+                [cand.query for cand in item.candidates],
+                [cand.features for cand in item.candidates],
+                candidate_query_plan_labels=[cand.query_plan_labels or [] for cand in item.candidates],
+                candidate_sources=[cand.source for cand in item.candidates],
+            )
+            ranked = sorted(
+                zip(item.candidates, scores),
+                key=lambda row: float(row[1]),
+                reverse=True,
+            )
+            if not ranked:
+                continue
+            top1_correct = int(ranked[0][0].is_correct == 1)
+            any_correct = int(any(cand.is_correct == 1 for cand in item.candidates))
+            baseline_correct = int(item.candidates[0].is_correct == 1)
+            fold_top1.append(top1_correct)
+            fold_any.append(any_correct)
+            fold_baseline.append(baseline_correct)
+            oof_rows.append(
+                {
+                    "qid": qid,
+                    "ambiguity_label": item.ambiguity_label,
+                    "family": item.family,
+                    "fold": fold_idx,
+                    "top1_correct": top1_correct,
+                    "any_correct": any_correct,
+                    "baseline_top1_correct": baseline_correct,
+                    "top_query_id": ranked[0][0].query_id,
+                    "top_score": float(ranked[0][1]),
+                }
+            )
+        fold_summaries.append(
+            {
+                "fold": fold_idx,
+                "train_questions": len(train_qids),
+                "test_questions": len(test_qids),
+                "top1_rate": float(np.mean(fold_top1)) if fold_top1 else 0.0,
+                "any_rate": float(np.mean(fold_any)) if fold_any else 0.0,
+                "baseline_top1_rate": float(np.mean(fold_baseline)) if fold_baseline else 0.0,
+            }
+        )
+
+    top1_values = [int(row["top1_correct"]) for row in oof_rows]
+    any_values = [int(row["any_correct"]) for row in oof_rows]
+    base_values = [int(row["baseline_top1_correct"]) for row in oof_rows]
+    return {
+        "config": {
+            "model": "xgboost_learning_to_rank_v1",
+            "wrapper_model": XGBoostCandidateRanker.MODEL_TYPE,
+            "objective": objective,
+            "n_folds": n_folds,
+            "seed": seed,
+            "n_estimators": n_estimators,
+            "max_depth": max_depth,
+            "learning_rate": learning_rate,
+            "subsample": subsample,
+            "colsample_bytree": colsample_bytree,
+            "reg_lambda": reg_lambda,
+            "feature_names": compose_feature_names(),
+            "disabled_feature_names": list(disabled_feature_names or []),
+            "disabled_feature_prefixes": list(disabled_feature_prefixes or []),
+        },
+        "overall": {
+            "n_questions": len(oof_rows),
+            "top1_correct": int(sum(top1_values)),
+            "any_correct": int(sum(any_values)),
+            "baseline_top1_correct": int(sum(base_values)),
+            "top1_rate": float(np.mean(top1_values)) if top1_values else 0.0,
+            "any_rate": float(np.mean(any_values)) if any_values else 0.0,
+            "baseline_top1_rate": float(np.mean(base_values)) if base_values else 0.0,
+        },
+        "folds": fold_summaries,
+        "oof_predictions": sorted(oof_rows, key=lambda row: str(row["qid"])),
+    }
+
+
 __all__ = [
     "XGBoostCandidateRanker",
+    "cross_validate_xgboost_ltr_ranker",
     "cross_validate_xgboost_ranker",
     "load_training_data",
+    "train_final_xgboost_ltr_ranker",
     "train_final_xgboost_ranker",
 ]
