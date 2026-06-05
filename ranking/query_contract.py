@@ -134,7 +134,7 @@ def extract_question_contract(question: str) -> QueryContract:
         contract.answer_shape = "ranked_one"
     elif asks_unit_quantity or _has_any(q, "total", "sum", "summed", "combined", "overall", "aggregate"):
         contract.aggregation = "sum"
-    elif asks_record_count or asks_company_count or _has_any(q, "how many", "number of", "count of", "counts by"):
+    elif asks_record_count or asks_company_count or _has_any(q, "how many", "number of", "count of", "counts of", "counts by"):
         contract.aggregation = "count"
 
     _add_if("oem" in toks, contract.scopes, "oem")
@@ -167,8 +167,17 @@ def extract_question_contract(question: str) -> QueryContract:
     _add_if("option1" in toks, contract.filters, "option1")
     _add_if("option2" in toks, contract.filters, "option2")
     _add_if("option3" in toks, contract.filters, "option3")
-    _add_if("without shortage" in q or "not showing" in q or "not indicated" in q or "no shortage" in q, contract.filters, "shortage_no")
-    _add_if("with shortage" in q or "experiencing a shortage" in q or "reported a shortage" in q, contract.filters, "shortage_yes")
+    asks_shortage_status_split = (
+        "versus" in toks
+        or "whether" in toks
+        or "and those that have not" in q
+        or "and those that did not" in q
+        or "reported a shortage and those" in q
+        or "shortage or not" in q
+    )
+    if not asks_shortage_status_split:
+        _add_if("without shortage" in q or "not showing" in q or "not indicated" in q or "no shortage" in q, contract.filters, "shortage_no")
+        _add_if("with shortage" in q or "experiencing a shortage" in q or "reported a shortage" in q, contract.filters, "shortage_yes")
 
     if contract.answer_shape is None:
         if _has_any(q, "which ", "list ", "show me the set", "set of", "included in the catalog", "included in the data") and not contract.aggregation:

@@ -109,6 +109,14 @@ EXTRA_FEATURE_NAMES = [
     "scope_query_has_oem",
     "scope_query_has_tier1",
     "scope_query_has_semiconductor",
+    "shortage_status_grouped_count_requested",
+    "shortage_status_query_has_status_grouping",
+    "shortage_status_query_has_count_aggregation",
+    "shortage_status_query_has_company_projection",
+    "shortage_status_grouped_count_match",
+    "shortage_status_grouped_count_missing",
+    "shortage_status_scalar_count_extra",
+    "shortage_status_status_select_match",
 ]
 
 
@@ -468,6 +476,58 @@ def _scope_origin_feature_values(question: str, query: str) -> List[float]:
     ]
 
 
+def _shortage_status_grouped_count_feature_values(
+    question: str,
+    query: str,
+    labels: Sequence[str],
+    schema_dict: Dict[str, object] | None = None,
+) -> List[float]:
+    try:
+        question_contract = extract_question_contract(question)
+    except Exception:
+        return [0.0] * 8
+
+    q = " ".join(str(question or "").lower().split())
+    requested = (
+        "shortage" in question_contract.metrics
+        and (question_contract.aggregation == "count" or _contains_any(q, ["how many", "count", "counts", "number of"]))
+        and "shortage_status" in question_contract.dimensions
+    )
+    if not requested:
+        return [0.0] * 8
+
+    plan = _extract_plan_for_grouped_features(query, labels, schema_dict)
+    query_lower = str(query or "").lower()
+    query_types = {value.lower() for value in _plan_values(plan, "query_types")}
+    aggregations = {value.upper() for value in _plan_values(plan, "aggregations")}
+    select_text = " ".join(value.lower() for value in _plan_values(plan, "select_vars"))
+    group_has_status = _dimension_present_in_plan_fields(
+        plan,
+        "shortage_status",
+        ("group_by_vars", "group_by_predicates"),
+    )
+    select_has_status = _dimension_present_in_plan_fields(
+        plan,
+        "shortage_status",
+        ("select_vars",),
+    )
+    has_count = "COUNT" in aggregations or "count(" in query_lower
+    has_company_projection = "company" in select_text or "count" in select_text or "cnt" in select_text
+    is_grouped = bool(plan.get("group_by_vars") or plan.get("group_by_predicates") or "grouped" in query_types)
+    grouped_count_match = group_has_status and has_count and is_grouped
+
+    return [
+        1.0,
+        1.0 if group_has_status else 0.0,
+        1.0 if has_count else 0.0,
+        1.0 if has_company_projection else 0.0,
+        1.0 if grouped_count_match else -1.0,
+        -1.0 if not grouped_count_match else 0.0,
+        -1.0 if has_count and not is_grouped else 0.0,
+        1.0 if select_has_status else -1.0,
+    ]
+
+
 def _extract_plan_labels_from_query(
     query: str,
     schema_dict: Dict[str, object] | None = None,
@@ -642,6 +702,11 @@ def _extra_feature_values(
     ) + _scope_origin_feature_values(
         question,
         query,
+    ) + _shortage_status_grouped_count_feature_values(
+        question,
+        query,
+        labels,
+        schema_dict,
     )
 
 
