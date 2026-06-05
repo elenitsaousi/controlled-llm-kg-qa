@@ -62,6 +62,21 @@ EXTRA_FEATURE_NAMES = [
     "query_is_grouped_when_requested",
     "query_is_ranked_when_grouped_requested",
     "query_is_filtered_when_grouped_requested",
+    "shape_ranking_requested",
+    "shape_grouped_requested",
+    "shape_filtered_requested",
+    "shape_query_is_ranking",
+    "shape_query_is_grouped",
+    "shape_query_is_filtered",
+    "shape_ranking_match",
+    "shape_ranking_missing",
+    "shape_ranking_extra",
+    "shape_grouped_match",
+    "shape_grouped_missing",
+    "shape_grouped_extra",
+    "shape_filtered_match",
+    "shape_filtered_missing",
+    "shape_filtered_extra",
 ]
 
 
@@ -303,6 +318,101 @@ def _extract_plan_labels_from_query(
         return []
 
 
+def _query_shape_requested(question: str) -> Dict[str, bool]:
+    q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
+    ranking_terms = [
+        "highest",
+        "largest",
+        "lowest",
+        "smallest",
+        "top",
+        "most",
+        "least",
+        "maximum",
+        "minimum",
+        "greatest",
+    ]
+    grouped_terms = [
+        " by ",
+        "broken down",
+        "segmented",
+        "grouped",
+        "for each",
+        "per ",
+        "across",
+        "compare",
+        "distribution",
+        "vary",
+        "varies",
+    ]
+    filtered_terms = [
+        "only",
+        "restricted to",
+        "according to",
+        "based on",
+        "oem",
+        "tier1",
+        "semiconductor",
+        "actual",
+        "forecast",
+        "option1",
+        "option2",
+        "option3",
+        "bl1",
+        "bl2",
+    ]
+    return {
+        "ranking": _contains_any(q, ranking_terms),
+        "grouped": _contains_any(f" {q} ", grouped_terms),
+        "filtered": _contains_any(q, filtered_terms),
+    }
+
+
+def _query_shape_feature_values(
+    question: str,
+    query: str,
+    labels: Sequence[str],
+    schema_dict: Dict[str, object] | None = None,
+) -> List[float]:
+    requested = _query_shape_requested(question)
+    plan = _extract_plan_for_grouped_features(query, labels, schema_dict)
+    query_types = {value.lower() for value in _plan_values(plan, "query_types")}
+    is_ranking = bool({"ranking", "limited", "ordered"} & query_types)
+    is_grouped = bool(plan.get("group_by_vars") or plan.get("group_by_predicates") or "grouped" in query_types)
+    is_filtered = "filtered" in query_types
+
+    def _match(req: bool, present: bool) -> float:
+        if req and present:
+            return 1.0
+        if req and not present:
+            return -1.0
+        return 0.0
+
+    def _missing(req: bool, present: bool) -> float:
+        return 1.0 if req and not present else 0.0
+
+    def _extra(req: bool, present: bool) -> float:
+        return 1.0 if present and not req else 0.0
+
+    return [
+        1.0 if requested["ranking"] else 0.0,
+        1.0 if requested["grouped"] else 0.0,
+        1.0 if requested["filtered"] else 0.0,
+        1.0 if is_ranking else 0.0,
+        1.0 if is_grouped else 0.0,
+        1.0 if is_filtered else 0.0,
+        _match(requested["ranking"], is_ranking),
+        _missing(requested["ranking"], is_ranking),
+        _extra(requested["ranking"], is_ranking),
+        _match(requested["grouped"], is_grouped),
+        _missing(requested["grouped"], is_grouped),
+        _extra(requested["grouped"], is_grouped),
+        _match(requested["filtered"], is_filtered),
+        _missing(requested["filtered"], is_filtered),
+        _extra(requested["filtered"], is_filtered),
+    ]
+
+
 def _extra_feature_values(
     question: str,
     query: str,
@@ -327,6 +437,11 @@ def _extra_feature_values(
         _question_origin_match(question, labels),
         _question_dimension_match(question, labels),
     ] + _contract_feature_values(question, query) + _grouped_dimension_feature_values(
+        question,
+        query,
+        labels,
+        schema_dict,
+    ) + _query_shape_feature_values(
         question,
         query,
         labels,
