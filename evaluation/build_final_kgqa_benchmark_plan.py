@@ -14,6 +14,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from ranking.feature_extraction import extract_query_plan
+from evaluation.audit_generated_benchmark_wording import infer_answer_shape
 
 
 FINAL_BENCHMARK_QUOTAS = {
@@ -77,7 +78,7 @@ def _round_robin_assign(
                 "slot_index": slot + 1,
                 "template_id": seed["template_id"],
                 "family": seed["family"],
-                "answer_shape": seed["answer_shape"],
+                "answer_shape": infer_answer_shape(str(seed.get("query") or ""), fallback=str(seed["answer_shape"])),
                 "seed_ambiguity_label": seed.get("ambiguity_label"),
                 "source_id": seed.get("source_id"),
                 "example_question": seed.get("example_question"),

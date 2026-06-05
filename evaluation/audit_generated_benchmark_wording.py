@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -81,11 +82,27 @@ PERCENTAGE_CHANGE_TERMS = [
 TREND_TERMS = ["trend", "trends", "vary", "varies", "change", "changes", "evolve", "evolves", "distribution"]
 
 
+def infer_answer_shape(query: str, fallback: str = "") -> str:
+    q = str(query or "")
+    q_upper = q.upper()
+    if "LIMIT 1" in q_upper and "ORDER BY" in q_upper:
+        return "ranking_top"
+    if re.search(r"\b(MIN|MAX)\s*\(", q_upper):
+        return "ranking_top"
+    if re.search(r"\bCOUNT\s*\(", q_upper):
+        return "count"
+    if re.search(r"\bAVG\s*\(", q_upper):
+        return "average"
+    if re.search(r"\bSUM\s*\(", q_upper):
+        return "sum"
+    return fallback or "raw_or_lookup"
+
+
 def row_warnings(row: Dict[str, object]) -> List[str]:
     source = str(row.get("source_question") or "")
     question = str(row.get("question") or "")
     warnings = []
-    shape = str(row.get("answer_shape") or "")
+    shape = infer_answer_shape(str(row.get("query") or ""), fallback=str(row.get("answer_shape") or ""))
     if shape == "ranking_top" and not _contains_any(question, RANKING_TERMS):
         warnings.append("missing_ranking_language")
     if shape != "ranking_top" and _contains_any(question, RANKING_TERMS):
@@ -126,7 +143,7 @@ def audit_rows(rows: List[Dict[str, object]]) -> Dict[str, object]:
     for row in rows:
         source = str(row.get("source_question") or "")
         question = str(row.get("question") or "")
-        shape = str(row.get("answer_shape") or "")
+        shape = infer_answer_shape(str(row.get("query") or ""), fallback=str(row.get("answer_shape") or ""))
         warnings = row_warnings(row)
         if warnings:
             cases.append(
