@@ -198,6 +198,80 @@ def _plan_issue_summary(
     return issues or ["no_plan_difference_detected"]
 
 
+def _query_type_set(plan: Dict[str, object]) -> set:
+    return {str(v).lower() for v in _as_list(plan.get("query_types"))}
+
+
+def _plan_has_grouped_shortage_status(plan: Dict[str, object]) -> bool:
+    text = " ".join(
+        str(value).lower()
+        for key in ("group_by_vars", "group_by_predicates", "select_vars", "labels", "predicates")
+        for value in _as_list(plan.get(key))
+    )
+    compact = text.replace("_", "").replace(" ", "")
+    return "shortagestatus" in compact or "reportsshortage" in compact or "shortagelabel" in compact
+
+
+def _semantic_category_opportunities(
+    *,
+    question_contract,
+    top_plan: Dict[str, object],
+    correct_plan: Dict[str, object],
+    top_candidate: Dict[str, object],
+    correct_candidate: Dict[str, object],
+) -> List[str]:
+    opportunities: List[str] = []
+    top_types = _query_type_set(top_plan)
+    correct_types = _query_type_set(correct_plan)
+    top_query = str(top_candidate.get("query", "") or "").lower()
+    correct_query = str(correct_candidate.get("query", "") or "").lower()
+
+    if question_contract.answer_shape == "grouped_table":
+        if "grouped" not in top_types and "grouped" in correct_types:
+            opportunities.append("query_shape:grouped_missing_in_top")
+        if ({"ranking", "limited"} & top_types) and not ({"ranking", "limited"} & correct_types):
+            opportunities.append("query_shape:ranking_extra_in_top")
+
+    if question_contract.answer_shape == "ranked_one":
+        if not ({"ranking", "limited"} & top_types) and ({"ranking", "limited"} & correct_types):
+            opportunities.append("query_shape:ranking_missing_in_top")
+
+    if question_contract.aggregation:
+        top_aggs = _list_set(top_plan, "aggregations")
+        correct_aggs = _list_set(correct_plan, "aggregations")
+        requested = str(question_contract.aggregation).upper()
+        if requested == "RANK":
+            requested = "ranking"
+        elif requested not in {"SUM", "COUNT", "AVG"}:
+            requested = str(question_contract.aggregation)
+        if requested in {"SUM", "COUNT", "AVG"} and requested not in top_aggs and requested in correct_aggs:
+            opportunities.append(f"aggregation:{requested.lower()}_missing_in_top")
+        if top_aggs and correct_aggs and top_aggs != correct_aggs:
+            opportunities.append("aggregation:top_correct_mismatch")
+
+    if question_contract.answer_shape == "list_values":
+        if "select distinct" not in top_query and "select distinct" in correct_query:
+            opportunities.append("answer_shape:distinct_list_missing_in_top")
+        if "count(" in top_query and "count(" not in correct_query:
+            opportunities.append("answer_shape:count_extra_for_list")
+
+    if "shortage_status" in getattr(question_contract, "dimensions", set()):
+        if not _plan_has_grouped_shortage_status(top_plan) and _plan_has_grouped_shortage_status(correct_plan):
+            opportunities.append("dimension:shortage_status_missing_in_top")
+
+    top_group_vars = _list_set(top_plan, "group_by_vars")
+    correct_group_vars = _list_set(correct_plan, "group_by_vars")
+    if correct_group_vars - top_group_vars:
+        opportunities.append("group_by:vars_missing_in_top")
+
+    top_select_vars = _list_set(top_plan, "select_vars")
+    correct_select_vars = _list_set(correct_plan, "select_vars")
+    if correct_select_vars - top_select_vars:
+        opportunities.append("select:vars_missing_in_top")
+
+    return sorted(set(opportunities)) or ["no_semantic_opportunity_detected"]
+
+
 def _score(candidate: Dict[str, object], key: str, default: float = 0.0) -> float:
     value = candidate.get(key)
     try:
@@ -227,6 +301,8 @@ def analyze_selection_failures(
     top_source_counts: Counter = Counter()
     correct_source_counts: Counter = Counter()
     family_counts: Dict[str, Counter] = defaultdict(Counter)
+    opportunity_counts: Counter = Counter()
+    margin_buckets: Counter = Counter()
     cases: List[Dict[str, object]] = []
 
     for detail in results.get("details") or []:
@@ -282,6 +358,26 @@ def analyze_selection_failures(
         )
         for issue in plan_issues:
             plan_issue_counts[issue] += 1
+        opportunities = _semantic_category_opportunities(
+            question_contract=question_contract,
+            top_plan=top_plan,
+            correct_plan=correct_plan,
+            top_candidate=top_candidate,
+            correct_candidate=correct_candidate,
+        )
+        for opportunity in opportunities:
+            opportunity_counts[opportunity] += 1
+        ml_margin = _score(top_candidate, "ml_score") - _score(correct_candidate, "ml_score")
+        if ml_margin < 0:
+            margin_buckets["ml_correct_scores_higher"] += 1
+        elif ml_margin < 0.03:
+            margin_buckets["ml_margin_0_to_0.03"] += 1
+        elif ml_margin < 0.10:
+            margin_buckets["ml_margin_0.03_to_0.10"] += 1
+        elif ml_margin < 0.25:
+            margin_buckets["ml_margin_0.10_to_0.25"] += 1
+        else:
+            margin_buckets["ml_margin_over_0.25"] += 1
         case = {
             "id": qid,
             "family": family,
@@ -289,6 +385,7 @@ def analyze_selection_failures(
             "first_correct_rank": correct_idx + 1,
             "axis_issues": issues,
             "plan_issues": plan_issues,
+            "semantic_opportunities": opportunities,
             "question_contract": question_contract.to_dict(),
             "top1": {
                 "label": _label(top_candidate),
@@ -323,6 +420,7 @@ def analyze_selection_failures(
                 - _score(top_candidate, "selection_score"),
                 "ml_score": _score(correct_candidate, "ml_score")
                 - _score(top_candidate, "ml_score"),
+                "ml_margin_top_minus_correct": ml_margin,
             },
         }
         cases.append(case)
@@ -338,6 +436,8 @@ def analyze_selection_failures(
             "rendered_cases": len(rendered_cases),
             "axis_issue_counts": axis_counts.most_common(),
             "plan_issue_counts": plan_issue_counts.most_common(),
+            "semantic_opportunity_counts": opportunity_counts.most_common(),
+            "ml_margin_buckets": margin_buckets.most_common(),
             "first_correct_rank_counts": sorted(
                 ((int(k), v) for k, v in correct_rank_counts.items()), key=lambda row: row[0]
             ),
@@ -392,6 +492,20 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
     for issue, count in summary.get("plan_issue_counts") or []:
         lines.append(f"| `{issue}` | {count} |")
     lines.append("")
+    lines.append("## Semantic Opportunities")
+    lines.append("")
+    lines.append("| Opportunity | Count |")
+    lines.append("|---|---:|")
+    for opportunity, count in summary.get("semantic_opportunity_counts") or []:
+        lines.append(f"| `{opportunity}` | {count} |")
+    lines.append("")
+    lines.append("## ML Margin Buckets")
+    lines.append("")
+    lines.append("| Bucket | Count |")
+    lines.append("|---|---:|")
+    for bucket, count in summary.get("ml_margin_buckets") or []:
+        lines.append(f"| `{bucket}` | {count} |")
+    lines.append("")
     lines.append("## Cases")
     lines.append("")
     for case in report.get("cases") or []:
@@ -405,6 +519,7 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
         lines.append(f"- First correct rank: {case.get('first_correct_rank')}")
         lines.append(f"- Axis issues: {_format_list(case.get('axis_issues') or [])}")
         lines.append(f"- Plan issues: {_format_list(case.get('plan_issues') or [])}")
+        lines.append(f"- Semantic opportunities: {_format_list(case.get('semantic_opportunities') or [])}")
         lines.append(
             "- Deltas correct-minus-top1: "
             f"contract={deltas.get('contract_score', 0):.3f}, "
