@@ -84,6 +84,20 @@ EXTRA_FEATURE_NAMES = [
     "shape_list_extra",
     "query_has_distinct_when_list_requested",
     "query_has_shortage_status_when_requested",
+    "projection_requested_dimension_count",
+    "projection_select_dimension_match_count",
+    "projection_select_dimension_missing_count",
+    "projection_select_dimension_match_ratio",
+    "projection_select_dimension_extra_count",
+    "grouping_projection_requested_dimension_count",
+    "grouping_projection_dimension_match_count",
+    "grouping_projection_dimension_missing_count",
+    "grouping_projection_dimension_match_ratio",
+    "grouping_projection_dimension_extra_count",
+    "select_group_dimension_alignment_ratio",
+    "query_missing_select_for_requested_dimensions",
+    "query_missing_group_by_for_requested_dimensions",
+    "query_has_select_group_mismatch",
 ]
 
 
@@ -250,13 +264,7 @@ def _extract_plan_for_grouped_features(
         return {"labels": list(labels or [])}
 
 
-def _dimension_present_in_grouped_output(plan: Dict[str, object], dimension: str) -> bool:
-    text = " ".join(
-        value.lower().replace("_", " ")
-        for key in ("group_by_vars", "group_by_predicates", "select_vars", "labels")
-        for value in _plan_values(plan, key)
-    )
-    compact = text.replace(" ", "")
+def _dimension_patterns(dimension: str) -> Tuple[str, ...]:
     patterns = {
         "region": ("region", "inregion", "regionname"),
         "quarter": ("quarter", "periodlabel", "fortimeperiod", "timeperiod"),
@@ -272,7 +280,29 @@ def _dimension_present_in_grouped_output(plan: Dict[str, object], dimension: str
         "baseline": ("baseline", "baselinetype"),
         "survey": ("survey", "hassurveyorigin", "origin"),
     }
-    return any(pattern in text or pattern in compact for pattern in patterns.get(dimension, (dimension,)))
+    return patterns.get(dimension, (dimension,))
+
+
+def _dimension_present_in_plan_fields(
+    plan: Dict[str, object],
+    dimension: str,
+    fields: Sequence[str],
+) -> bool:
+    text = " ".join(
+        value.lower().replace("_", " ")
+        for key in fields
+        for value in _plan_values(plan, key)
+    )
+    compact = text.replace(" ", "")
+    return any(pattern in text or pattern in compact for pattern in _dimension_patterns(dimension))
+
+
+def _dimension_present_in_grouped_output(plan: Dict[str, object], dimension: str) -> bool:
+    return _dimension_present_in_plan_fields(
+        plan,
+        dimension,
+        ("group_by_vars", "group_by_predicates", "select_vars", "labels"),
+    )
 
 
 def _grouped_dimension_feature_values(
@@ -312,6 +342,94 @@ def _grouped_dimension_feature_values(
         1.0 if is_grouped else -1.0,
         -1.0 if is_ranked else 0.0,
         -0.5 if is_filtered and missing else 0.0,
+    ]
+
+
+def _dimensions_present_in_fields(
+    plan: Dict[str, object],
+    dimensions: Iterable[str],
+    fields: Sequence[str],
+) -> set[str]:
+    return {
+        dimension
+        for dimension in dimensions
+        if _dimension_present_in_plan_fields(plan, dimension, fields)
+    }
+
+
+def _known_dimensions_present_in_fields(
+    plan: Dict[str, object],
+    fields: Sequence[str],
+) -> set[str]:
+    known_dimensions = {
+        "region",
+        "quarter",
+        "month",
+        "year",
+        "technology_category",
+        "vehicle_type",
+        "sae_level",
+        "component",
+        "trend",
+        "response_type",
+        "shortage_status",
+        "baseline",
+        "survey",
+    }
+    return _dimensions_present_in_fields(plan, known_dimensions, fields)
+
+
+def _projection_grouping_feature_values(
+    question: str,
+    query: str,
+    labels: Sequence[str],
+    schema_dict: Dict[str, object] | None = None,
+) -> List[float]:
+    try:
+        question_contract = extract_question_contract(question)
+    except Exception:
+        return [0.0] * 14
+
+    requested = set(question_contract.dimensions or [])
+    if not requested:
+        return [0.0] * 14
+
+    plan = _extract_plan_for_grouped_features(query, labels, schema_dict)
+    query_types = {value.lower() for value in _plan_values(plan, "query_types")}
+    is_grouped = bool(plan.get("group_by_vars") or plan.get("group_by_predicates") or "grouped" in query_types)
+
+    select_fields = ("select_vars",)
+    group_fields = ("group_by_vars", "group_by_predicates")
+    select_matched = _dimensions_present_in_fields(plan, requested, select_fields)
+    group_matched = _dimensions_present_in_fields(plan, requested, group_fields)
+    select_known = _known_dimensions_present_in_fields(plan, select_fields)
+    group_known = _known_dimensions_present_in_fields(plan, group_fields)
+
+    select_missing = requested - select_matched
+    group_missing = requested - group_matched
+    select_extra = select_known - requested
+    group_extra = group_known - requested
+    union_known = select_known | group_known
+    intersection_known = select_known & group_known
+
+    requested_count = float(len(requested))
+    select_match_count = float(len(select_matched))
+    group_match_count = float(len(group_matched))
+    return [
+        requested_count,
+        select_match_count,
+        float(len(select_missing)),
+        select_match_count / requested_count if requested_count else 0.0,
+        float(len(select_extra)),
+        requested_count,
+        group_match_count,
+        float(len(group_missing)),
+        group_match_count / requested_count if requested_count else 0.0,
+        float(len(group_extra)),
+        float(len(intersection_known)) / float(len(union_known)) if union_known else 0.0,
+        -1.0 if select_missing else 0.0,
+        -1.0 if is_grouped and group_missing else 0.0,
+        -1.0 if select_known != group_known and is_grouped else 0.0,
     ]
 
 
@@ -477,6 +595,11 @@ def _extra_feature_values(
         labels,
         schema_dict,
     ) + _query_shape_feature_values(
+        question,
+        query,
+        labels,
+        schema_dict,
+    ) + _projection_grouping_feature_values(
         question,
         query,
         labels,
