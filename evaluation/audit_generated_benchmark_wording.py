@@ -25,8 +25,60 @@ RANKING_TERMS = [
     "strongest",
     "most common",
     "most frequently",
+    "most frequent",
+    "most often",
+    "most prevalent",
+    "most commonly",
+    "maximum",
+    "dominates",
+    "dominant",
+    "least",
+    "lowest",
+    "smallest",
 ]
 YEAR_TERMS = ["year", "annual"]
+COUNT_TERMS = [
+    "how many",
+    "number of",
+    "count",
+    "counts",
+    "quantity",
+    "amount of",
+    "total of",
+    "total number",
+    "distribution",
+    "frequency",
+    "frequent",
+    "occurrences",
+    "entries",
+    "records",
+    "volume",
+]
+SUM_TERMS = [
+    "total",
+    "sum",
+    "overall",
+    "how much",
+    "aggregate",
+    "aggregated",
+    "combined",
+    "cumulative",
+    "add up",
+    "volume",
+    "amount",
+    "figure",
+    "figures",
+]
+PERCENTAGE_TERMS = ["percentage", "percent", "proportion", "share"]
+PERCENTAGE_CHANGE_TERMS = [
+    "percentage change",
+    "percent change",
+    "change in",
+    "changed in percentage",
+    "percentage terms",
+    "net change",
+]
+TREND_TERMS = ["trend", "trends", "vary", "varies", "change", "changes", "evolve", "evolves", "distribution"]
 
 
 def row_warnings(row: Dict[str, object]) -> List[str]:
@@ -38,18 +90,18 @@ def row_warnings(row: Dict[str, object]) -> List[str]:
         warnings.append("missing_ranking_language")
     if shape != "ranking_top" and _contains_any(question, RANKING_TERMS):
         warnings.append("unexpected_ranking_language")
-    if shape == "count" and not _contains_any(question, ["how many", "number of", "count"]):
+    if shape == "count" and not _contains_any(question, COUNT_TERMS):
         warnings.append("missing_count_language")
     if shape == "average" and not _contains_any(question, ["average", "mean"]):
         warnings.append("missing_average_language")
-    if shape == "sum" and not _contains_any(question, ["total", "sum", "overall", "how much"]):
+    if shape == "sum" and not _contains_any(question, SUM_TERMS):
         warnings.append("missing_sum_language")
     if source:
-        if _contains_any(source, ["percentage", "percent"]) and not _contains_any(question, ["percentage", "percent"]):
+        if _contains_any(source, ["percentage", "percent"]) and not _contains_any(question, PERCENTAGE_TERMS):
             warnings.append("lost_percentage_measure")
         if _contains_any(source, ["percentage change", "percent change"]) and not _contains_any(
             question,
-            ["percentage change", "percent change"],
+            PERCENTAGE_CHANGE_TERMS,
         ):
             warnings.append("lost_percentage_change_measure")
         if _contains_any(source, ["participant"]) and not _contains_any(question, ["participant"]):
@@ -64,7 +116,7 @@ def row_warnings(row: Dict[str, object]) -> List[str]:
             aliases = YEAR_TERMS if term == "year" else [term]
             if _contains_any(source, aliases) and not _contains_any(question, aliases):
                 warnings.append(f"lost_{term}_dimension")
-        if _contains_any(source, ["trend"]) and not _contains_any(question, ["trend"]):
+        if _contains_any(source, ["trend"]) and not _contains_any(question, TREND_TERMS):
             warnings.append("lost_trend_dimension")
     return warnings
 
