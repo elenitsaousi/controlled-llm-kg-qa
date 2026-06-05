@@ -117,6 +117,18 @@ EXTRA_FEATURE_NAMES = [
     "shortage_status_grouped_count_missing",
     "shortage_status_scalar_count_extra",
     "shortage_status_status_select_match",
+    "output_select_var_count",
+    "output_group_by_var_count",
+    "output_group_by_predicate_count",
+    "output_select_group_var_overlap_ratio",
+    "output_question_select_token_overlap",
+    "output_question_group_token_overlap",
+    "output_question_label_token_overlap",
+    "output_grouped_select_var_coverage",
+    "output_grouped_group_var_coverage",
+    "output_grouped_missing_select_vars",
+    "output_grouped_missing_group_vars",
+    "output_scalar_extra_grouping",
 ]
 
 
@@ -528,6 +540,71 @@ def _shortage_status_grouped_count_feature_values(
     ]
 
 
+def _var_tokens(values: Sequence[str]) -> set[str]:
+    tokens: set[str] = set()
+    for value in values:
+        raw = str(value or "").replace("_", " ").replace("-", " ")
+        raw = CAMEL_RE.sub(" ", raw)
+        tokens.update(_tokenize(raw))
+    return tokens
+
+
+def _output_variable_feature_values(
+    question: str,
+    query: str,
+    labels: Sequence[str],
+    schema_dict: Dict[str, object] | None = None,
+) -> List[float]:
+    try:
+        question_contract = extract_question_contract(question)
+    except Exception:
+        question_contract = None
+
+    plan = _extract_plan_for_grouped_features(query, labels, schema_dict)
+    select_vars = _plan_values(plan, "select_vars")
+    group_vars = _plan_values(plan, "group_by_vars")
+    group_predicates = _plan_values(plan, "group_by_predicates")
+    query_types = {value.lower() for value in _plan_values(plan, "query_types")}
+    is_grouped = bool(group_vars or group_predicates or "grouped" in query_types)
+    answer_shape = getattr(question_contract, "answer_shape", None)
+    requested_dims = set(getattr(question_contract, "dimensions", set()) or set())
+
+    q_tokens = set(_tokenize(question))
+    select_tokens = _var_tokens(select_vars)
+    group_tokens = _var_tokens(group_vars + group_predicates)
+    label_tokens = set(_label_tokens(labels))
+    output_tokens = select_tokens | group_tokens | label_tokens
+
+    def _overlap(candidate_tokens: set[str]) -> float:
+        if not q_tokens or not candidate_tokens:
+            return 0.0
+        return len(q_tokens & candidate_tokens) / float(len(candidate_tokens))
+
+    select_count = float(len(select_vars))
+    group_var_count = float(len(group_vars))
+    group_predicate_count = float(len(group_predicates))
+    select_group_union = select_tokens | group_tokens
+    select_group_intersection = select_tokens & group_tokens
+    expected_output_count = max(1.0, float(len(requested_dims)))
+    grouped_requested = answer_shape == "grouped_table" or bool(requested_dims)
+    scalar_requested = answer_shape == "scalar"
+
+    return [
+        select_count,
+        group_var_count,
+        group_predicate_count,
+        float(len(select_group_intersection)) / float(len(select_group_union)) if select_group_union else 0.0,
+        _overlap(select_tokens),
+        _overlap(group_tokens),
+        _overlap(output_tokens),
+        min(select_count / expected_output_count, 2.0) if grouped_requested else 0.0,
+        min((group_var_count + group_predicate_count) / expected_output_count, 2.0) if grouped_requested else 0.0,
+        -1.0 if grouped_requested and select_count < expected_output_count else 0.0,
+        -1.0 if grouped_requested and is_grouped and (group_var_count + group_predicate_count) < expected_output_count else 0.0,
+        -1.0 if scalar_requested and is_grouped else 0.0,
+    ]
+
+
 def _extract_plan_labels_from_query(
     query: str,
     schema_dict: Dict[str, object] | None = None,
@@ -703,6 +780,11 @@ def _extra_feature_values(
         question,
         query,
     ) + _shortage_status_grouped_count_feature_values(
+        question,
+        query,
+        labels,
+        schema_dict,
+    ) + _output_variable_feature_values(
         question,
         query,
         labels,
