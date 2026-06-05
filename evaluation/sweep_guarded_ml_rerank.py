@@ -41,6 +41,10 @@ def sweep(
     trusted_rescue_min_score: float = 0.75,
     trusted_rescue_min_margin: float = 0.25,
     trusted_rescue_topics: Sequence[str] = ("inventory", "order_cancellation", "vehicle_sales"),
+    enable_shortage_status_rescue: bool = False,
+    shortage_status_rescue_max_rank: int = 3,
+    shortage_status_rescue_min_score: float = 0.45,
+    shortage_status_rescue_min_margin: float = -0.05,
 ) -> Dict[str, object]:
     rows: List[Dict[str, object]] = []
     for margin, score, max_rank in itertools.product(margins, scores, ranks):
@@ -58,6 +62,10 @@ def sweep(
             trusted_rescue_min_score=trusted_rescue_min_score,
             trusted_rescue_min_margin=trusted_rescue_min_margin,
             trusted_rescue_topics=trusted_rescue_topics,
+            enable_shortage_status_rescue=enable_shortage_status_rescue,
+            shortage_status_rescue_max_rank=shortage_status_rescue_max_rank,
+            shortage_status_rescue_min_score=shortage_status_rescue_min_score,
+            shortage_status_rescue_min_margin=shortage_status_rescue_min_margin,
         )
         summary = updated["summary"]
         rewrite = updated["ml_rerank_rewrite"]
@@ -98,6 +106,10 @@ def sweep(
             "trusted_rescue_min_score": float(trusted_rescue_min_score),
             "trusted_rescue_min_margin": float(trusted_rescue_min_margin),
             "trusted_rescue_topics": list(trusted_rescue_topics),
+            "enable_shortage_status_rescue": bool(enable_shortage_status_rescue),
+            "shortage_status_rescue_max_rank": int(shortage_status_rescue_max_rank),
+            "shortage_status_rescue_min_score": float(shortage_status_rescue_min_score),
+            "shortage_status_rescue_min_margin": float(shortage_status_rescue_min_margin),
         },
         "best": rows[0] if rows else {},
         "rows": rows,
@@ -136,6 +148,14 @@ def main() -> None:
         default="inventory,order_cancellation,vehicle_sales",
         help="Comma-separated topics eligible for trusted-source rescue.",
     )
+    parser.add_argument(
+        "--enable-shortage-status-rescue",
+        action="store_true",
+        help="Tune with the narrow shortage yes/no count rescue enabled.",
+    )
+    parser.add_argument("--shortage-status-rescue-max-rank", type=int, default=3)
+    parser.add_argument("--shortage-status-rescue-min-score", type=float, default=0.45)
+    parser.add_argument("--shortage-status-rescue-min-margin", type=float, default=-0.05)
     args = parser.parse_args()
     trusted_rescue_topics = [
         topic.strip()
@@ -156,6 +176,10 @@ def main() -> None:
         trusted_rescue_min_score=args.trusted_rescue_min_score,
         trusted_rescue_min_margin=args.trusted_rescue_min_margin,
         trusted_rescue_topics=trusted_rescue_topics,
+        enable_shortage_status_rescue=args.enable_shortage_status_rescue,
+        shortage_status_rescue_max_rank=args.shortage_status_rescue_max_rank,
+        shortage_status_rescue_min_score=args.shortage_status_rescue_min_score,
+        shortage_status_rescue_min_margin=args.shortage_status_rescue_min_margin,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -169,6 +193,7 @@ def main() -> None:
     print(f"Runs: {len(report['rows'])}")
     print(f"Structured guard: {'yes' if args.structured_guard else 'no'}")
     print(f"Trusted rescue: {'yes' if args.enable_rank2_trusted_rescue else 'no'}")
+    print(f"Shortage status rescue: {'yes' if args.enable_shortage_status_rescue else 'no'}")
     if best:
         print(
             "Best: "

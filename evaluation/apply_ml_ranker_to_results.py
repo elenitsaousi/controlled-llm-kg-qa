@@ -207,6 +207,105 @@ def _trusted_source_rescue_row(
     return best_row
 
 
+def _question_requests_shortage_status_breakdown(question: str) -> bool:
+    q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
+    if "shortage" not in q:
+        return False
+    count_requested = "how many" in q or "count" in q or "counts" in q or "number of" in q
+    yes_no_requested = any(
+        phrase in q
+        for phrase in (
+            "reported a shortage",
+            "reported shortages",
+            "have not",
+            "did not",
+            "has not",
+            "shortage versus",
+            "versus those",
+            "whether they",
+            "or not",
+            "not reported",
+            "not?",
+        )
+    )
+    return bool(count_requested and yes_no_requested)
+
+
+def _query_has_shortage_status_breakdown(query: str) -> bool:
+    q = str(query or "").lower()
+    if "reportsshortage" not in q and "shortagestatus" not in q and "shortagelabel" not in q:
+        return False
+    if "count(" not in q:
+        return False
+    return "group by" in q and (
+        "shortagestatus" in q
+        or "shortagelabel" in q
+        or "?status" in q
+        or "reportsshortage" in q
+    )
+
+
+def _shortage_status_rescue_row(
+    *,
+    question: str,
+    candidates: Sequence[Dict[str, object]],
+    ranked_rows: Sequence[Dict[str, object]],
+    score_by_key: Dict[str, float],
+    current_key: str,
+    current_score: float,
+    max_rank: int,
+    min_score: float,
+    min_margin: float,
+    structured_guard: bool,
+) -> Optional[Dict[str, object]]:
+    if not _question_requests_shortage_status_breakdown(question):
+        return None
+    if _query_has_shortage_status_breakdown(str(candidates[0].get("query", ""))):
+        return None
+
+    ranked_by_key = {
+        _query_key(str(row.get("query", ""))): row
+        for row in ranked_rows
+    }
+    best_row = None
+    best_key = (float("-inf"), float("-inf"), 999)
+    for original_index, cand in enumerate(candidates[1:], start=1):
+        original_rank = original_index + 1
+        if original_rank > int(max_rank):
+            continue
+        cand_query = str(cand.get("query", ""))
+        if not _query_has_shortage_status_breakdown(cand_query):
+            continue
+        cand_key = _query_key(cand_query)
+        if not cand_key or cand_key == current_key:
+            continue
+        cand_score = float(score_by_key.get(cand_key, 0.0))
+        if cand_score < float(min_score):
+            continue
+        if cand_score - current_score < float(min_margin):
+            continue
+        if structured_guard and not _structured_guard_allows(
+            question,
+            str(candidates[0].get("query", "")),
+            cand_query,
+        ):
+            continue
+        row = ranked_by_key.get(cand_key)
+        if row is None:
+            continue
+        key = (cand_score - current_score, cand_score, -original_rank)
+        if key > best_key:
+            best_key = key
+            best_row = dict(row)
+            best_row["shortage_status_rescue_reason"] = {
+                "original_rank": original_rank,
+                "candidate_score": cand_score,
+                "current_score": current_score,
+                "score_delta": cand_score - current_score,
+            }
+    return best_row
+
+
 def _rank_detail(
     detail: Dict[str, object],
     ranker,
@@ -221,6 +320,10 @@ def _rank_detail(
     trusted_rescue_min_score: float = 0.75,
     trusted_rescue_min_margin: float = 0.25,
     trusted_rescue_topics: Sequence[str] = ("inventory", "order_cancellation", "vehicle_sales"),
+    enable_shortage_status_rescue: bool = False,
+    shortage_status_rescue_max_rank: int = 3,
+    shortage_status_rescue_min_score: float = 0.45,
+    shortage_status_rescue_min_margin: float = -0.05,
 ) -> Dict[str, object]:
     updated = deepcopy(detail)
     candidates = list(updated.get("candidates") or [])
@@ -296,6 +399,27 @@ def _rank_detail(
                         if _query_key(str(row.get("query", ""))) != chosen_key
                     ]
                     switch_allowed = True
+            if not switch_allowed and enable_shortage_status_rescue:
+                rescue_row = _shortage_status_rescue_row(
+                    question=question,
+                    candidates=candidates,
+                    ranked_rows=ranked_rows,
+                    score_by_key=score_by_key,
+                    current_key=current_key,
+                    current_score=current_score,
+                    max_rank=shortage_status_rescue_max_rank,
+                    min_score=shortage_status_rescue_min_score,
+                    min_margin=shortage_status_rescue_min_margin,
+                    structured_guard=structured_guard,
+                )
+                if rescue_row is not None:
+                    chosen_key = _query_key(str(rescue_row.get("query", "")))
+                    ranked_rows = [rescue_row] + [
+                        row
+                        for row in ranked_rows
+                        if _query_key(str(row.get("query", ""))) != chosen_key
+                    ]
+                    switch_allowed = True
             if switch_allowed:
                 pass
             else:
@@ -330,6 +454,8 @@ def _rank_detail(
         cand["ml_score"] = row.get("ml_score")
         if row.get("trusted_source_rescue_reason"):
             cand["trusted_source_rescue_reason"] = row.get("trusted_source_rescue_reason")
+        if row.get("shortage_status_rescue_reason"):
+            cand["shortage_status_rescue_reason"] = row.get("shortage_status_rescue_reason")
         reordered.append(cand)
 
     # Keep any duplicate/unmatched candidates instead of dropping them.
@@ -356,6 +482,10 @@ def apply_ml_ranker(
     trusted_rescue_min_score: float = 0.75,
     trusted_rescue_min_margin: float = 0.25,
     trusted_rescue_topics: Sequence[str] = ("inventory", "order_cancellation", "vehicle_sales"),
+    enable_shortage_status_rescue: bool = False,
+    shortage_status_rescue_max_rank: int = 3,
+    shortage_status_rescue_min_score: float = 0.45,
+    shortage_status_rescue_min_margin: float = -0.05,
 ) -> Dict[str, object]:
     payload = _load_json(results_path)
     schema_dict = _load_json(schema_path)
@@ -385,6 +515,10 @@ def apply_ml_ranker(
             trusted_rescue_min_score=trusted_rescue_min_score,
             trusted_rescue_min_margin=trusted_rescue_min_margin,
             trusted_rescue_topics=trusted_rescue_topics,
+            enable_shortage_status_rescue=enable_shortage_status_rescue,
+            shortage_status_rescue_max_rank=shortage_status_rescue_max_rank,
+            shortage_status_rescue_min_score=shortage_status_rescue_min_score,
+            shortage_status_rescue_min_margin=shortage_status_rescue_min_margin,
         )
         for detail in original_details
     ]
@@ -410,6 +544,9 @@ def apply_ml_ranker(
                 "trusted_source_rescue_reason": after_candidates[0].get(
                     "trusted_source_rescue_reason"
                 ),
+                "shortage_status_rescue_reason": after_candidates[0].get(
+                    "shortage_status_rescue_reason"
+                ),
             }
         )
 
@@ -431,6 +568,10 @@ def apply_ml_ranker(
         "trusted_rescue_min_score": float(trusted_rescue_min_score),
         "trusted_rescue_min_margin": float(trusted_rescue_min_margin),
         "trusted_rescue_topics": list(trusted_rescue_topics),
+        "enable_shortage_status_rescue": bool(enable_shortage_status_rescue),
+        "shortage_status_rescue_max_rank": int(shortage_status_rescue_max_rank),
+        "shortage_status_rescue_min_score": float(shortage_status_rescue_min_score),
+        "shortage_status_rescue_min_margin": float(shortage_status_rescue_min_margin),
         "note": (
             "If the model was trained on these same results, this is a diagnostic "
             "ranking upper-bound, not an unbiased held-out metric."
@@ -476,6 +617,14 @@ def main() -> None:
         default="inventory,order_cancellation,vehicle_sales",
         help="Comma-separated topics eligible for trusted-source rescue.",
     )
+    parser.add_argument(
+        "--enable-shortage-status-rescue",
+        action="store_true",
+        help="Allow a narrow rescue for shortage yes/no count questions when a grouped shortage-status candidate is nearby.",
+    )
+    parser.add_argument("--shortage-status-rescue-max-rank", type=int, default=3)
+    parser.add_argument("--shortage-status-rescue-min-score", type=float, default=0.45)
+    parser.add_argument("--shortage-status-rescue-min-margin", type=float, default=-0.05)
     args = parser.parse_args()
     trusted_rescue_topics = [
         topic.strip()
@@ -497,6 +646,10 @@ def main() -> None:
         trusted_rescue_min_score=args.trusted_rescue_min_score,
         trusted_rescue_min_margin=args.trusted_rescue_min_margin,
         trusted_rescue_topics=trusted_rescue_topics,
+        enable_shortage_status_rescue=args.enable_shortage_status_rescue,
+        shortage_status_rescue_max_rank=args.shortage_status_rescue_max_rank,
+        shortage_status_rescue_min_score=args.shortage_status_rescue_min_score,
+        shortage_status_rescue_min_margin=args.shortage_status_rescue_min_margin,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -522,6 +675,13 @@ def main() -> None:
             f"min_score={rewrite['trusted_rescue_min_score']}, "
             f"min_margin={rewrite['trusted_rescue_min_margin']}, "
             f"topics={','.join(rewrite['trusted_rescue_topics'])}"
+        )
+    if rewrite.get("enable_shortage_status_rescue"):
+        print(
+            "Shortage status rescue: "
+            f"max_rank={rewrite['shortage_status_rescue_max_rank']}, "
+            f"min_score={rewrite['shortage_status_rescue_min_score']}, "
+            f"min_margin={rewrite['shortage_status_rescue_min_margin']}"
         )
     print(f"Changed selections: {rewrite['changed_count']}")
     print(f"Top1 correct: {summary['top1_correct']} ({summary['top1_correct_rate']:.3f})")
