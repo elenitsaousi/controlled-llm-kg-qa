@@ -73,19 +73,24 @@ def _summarize_bucket(rows: Iterable[Dict[str, object]]) -> Dict[str, object]:
     }
 
 
-def _ranked_candidates(detail: Dict[str, object], score_key: str) -> List[Dict[str, object]]:
+def _ranked_candidates(
+    detail: Dict[str, object],
+    score_key: str,
+    *,
+    sort_by_score: bool,
+) -> List[Dict[str, object]]:
     candidates = [c for c in list(detail.get("candidates") or []) if isinstance(c, dict)]
-    # The results are normally already reranked. Sorting here only makes the
-    # analysis robust when a result file stores candidate scores but not order.
-    return sorted(candidates, key=lambda c: _score(c, score_key), reverse=True)
+    if sort_by_score:
+        return sorted(candidates, key=lambda c: _score(c, score_key), reverse=True)
+    return candidates
 
 
-def _case_rows(results: Dict[str, object], score_key: str) -> List[Dict[str, object]]:
+def _case_rows(results: Dict[str, object], score_key: str, *, sort_by_score: bool) -> List[Dict[str, object]]:
     rows: List[Dict[str, object]] = []
     for detail in results.get("details") or []:
         if not isinstance(detail, dict):
             continue
-        candidates = _ranked_candidates(detail, score_key)
+        candidates = _ranked_candidates(detail, score_key, sort_by_score=sort_by_score)
         if not candidates:
             continue
         top1 = candidates[0]
@@ -160,12 +165,14 @@ def analyze(
     *,
     results_path: str,
     score_key: str,
+    sort_by_score: bool,
     margin_thresholds: List[float],
     score_thresholds: List[float],
     low_confidence_limit: int,
+    high_confidence_wrong_limit: int,
 ) -> Dict[str, object]:
     results = _load_json(results_path)
-    rows = _case_rows(results, score_key)
+    rows = _case_rows(results, score_key, sort_by_score=sort_by_score)
     total = len(rows)
     forced_correct = sum(1 for row in rows if row["top1_correct"])
     any_correct = sum(1 for row in rows if row["any_correct"])
@@ -177,7 +184,10 @@ def analyze(
         ("margin_lte_0.10", None, 0.10),
     ]
     score_buckets = [
-        ("score_gt_0.80", 0.80, None),
+        ("score_gt_0.95", 0.95, None),
+        ("score_0.90_to_0.95", 0.90, 0.95),
+        ("score_0.85_to_0.90", 0.85, 0.90),
+        ("score_0.80_to_0.85", 0.80, 0.85),
         ("score_0.60_to_0.80", 0.60, 0.80),
         ("score_lte_0.60", None, 0.60),
     ]
@@ -189,11 +199,17 @@ def analyze(
         score_rows[_bucket(float(row["score1"]), score_buckets)].append(row)
 
     low_confidence = sorted(rows, key=lambda row: (float(row["margin"]), float(row["score1"])))[:low_confidence_limit]
+    high_confidence_wrong = [
+        row
+        for row in sorted(rows, key=lambda row: (float(row["score1"]), float(row["margin"])), reverse=True)
+        if not row["top1_correct"]
+    ][:high_confidence_wrong_limit]
 
     return {
         "inputs": {
             "results": results_path,
             "score_key": score_key,
+            "sort_by_score": sort_by_score,
         },
         "summary": {
             "total": total,
@@ -216,6 +232,7 @@ def analyze(
             score_thresholds=score_thresholds,
         ),
         "low_confidence_examples": low_confidence,
+        "high_confidence_wrong_examples": high_confidence_wrong,
     }
 
 
@@ -226,6 +243,26 @@ def _format_pct(value: object) -> str:
         return "0.000"
 
 
+def _best_policy_at_target(report: Dict[str, object], target_accuracy: float) -> Optional[Dict[str, object]]:
+    eligible = [
+        dict(row)
+        for row in report.get("threshold_sweep") or []
+        if float(row.get("accuracy_when_answered") or 0.0) >= target_accuracy
+        and int(row.get("answered") or 0) > 0
+    ]
+    if not eligible:
+        return None
+    return sorted(
+        eligible,
+        key=lambda row: (
+            float(row.get("coverage") or 0.0),
+            float(row.get("accuracy_when_answered") or 0.0),
+            int(row.get("answered") or 0),
+        ),
+        reverse=True,
+    )[0]
+
+
 def write_markdown(report: Dict[str, object], out_path: str) -> None:
     summary = dict(report.get("summary") or {})
     lines: List[str] = []
@@ -233,6 +270,7 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
     lines.append("")
     lines.append(f"- Results: `{dict(report.get('inputs') or {}).get('results')}`")
     lines.append(f"- Score key: `{dict(report.get('inputs') or {}).get('score_key')}`")
+    lines.append(f"- Sort by score: `{dict(report.get('inputs') or {}).get('sort_by_score')}`")
     lines.append(f"- Total: {summary.get('total', 0)}")
     lines.append(
         f"- Forced Top1: {summary.get('forced_top1_correct', 0)}/{summary.get('total', 0)} "
@@ -242,6 +280,21 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
         f"- Any Correct: {summary.get('any_correct', 0)}/{summary.get('total', 0)} "
         f"({_format_pct(summary.get('any_correct_rate'))})"
     )
+    lines.append("")
+    lines.append("## Best Policies at Target Accuracy")
+    lines.append("")
+    lines.append("| Target accuracy | Min margin | Min score | Answered | Coverage | Accuracy | Clarified |")
+    lines.append("|---:|---:|---:|---:|---:|---:|---:|")
+    for target in (0.90, 0.85, 0.80):
+        row = _best_policy_at_target(report, target)
+        if not row:
+            lines.append(f"| {target:.2f} | - | - | 0 | 0.000 | - | {summary.get('total', 0)} |")
+            continue
+        lines.append(
+            f"| {target:.2f} | {row['min_margin']:.2f} | {row['min_score']:.2f} | "
+            f"{row['answered']} | {_format_pct(row['coverage'])} | "
+            f"{_format_pct(row['accuracy_when_answered'])} | {row['clarified']} |"
+        )
     lines.append("")
     lines.append("## Accuracy by Margin")
     lines.append("")
@@ -293,6 +346,26 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
                 f"`{candidate['query']}`"
             )
         lines.append("")
+    lines.append("## High-Confidence Wrong Examples")
+    lines.append("")
+    for row in report.get("high_confidence_wrong_examples") or []:
+        lines.append(f"### {row.get('id')}")
+        lines.append("")
+        lines.append(f"Question: {row.get('question')}")
+        lines.append("")
+        lines.append(
+            f"- score1={float(row.get('score1', 0.0)):.4f}, "
+            f"score2={float(row.get('score2', 0.0)):.4f}, "
+            f"margin={float(row.get('margin', 0.0)):.4f}"
+        )
+        lines.append("- Top interpretations:")
+        for candidate in row.get("top3") or []:
+            lines.append(
+                f"  {candidate['rank']}. score={float(candidate['score']):.4f}, "
+                f"label={candidate['label']}, source={candidate.get('source')}: "
+                f"`{candidate['query']}`"
+            )
+        lines.append("")
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     Path(out_path).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -305,9 +378,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze selective answer/clarification routing from candidate scores.")
     parser.add_argument("--results", required=True)
     parser.add_argument("--score-key", default="ml_score", choices=["ml_score", "selection_score"])
+    parser.add_argument(
+        "--sort-by-score",
+        action="store_true",
+        help="Diagnostic mode: sort candidates by score before computing routing metrics.",
+    )
     parser.add_argument("--margin-thresholds", default="0.00,0.03,0.05,0.10,0.15,0.20,0.30,0.40,0.50")
-    parser.add_argument("--score-thresholds", default="0.00,0.40,0.50,0.60,0.70,0.80")
+    parser.add_argument("--score-thresholds", default="0.00,0.40,0.50,0.60,0.70,0.80,0.85,0.90,0.95")
     parser.add_argument("--low-confidence-limit", type=int, default=12)
+    parser.add_argument("--high-confidence-wrong-limit", type=int, default=12)
     parser.add_argument("--out-json", required=True)
     parser.add_argument("--out-md", required=True)
     args = parser.parse_args()
@@ -315,9 +394,11 @@ def main() -> None:
     report = analyze(
         results_path=args.results,
         score_key=args.score_key,
+        sort_by_score=args.sort_by_score,
         margin_thresholds=_parse_float_list(args.margin_thresholds),
         score_thresholds=_parse_float_list(args.score_thresholds),
         low_confidence_limit=args.low_confidence_limit,
+        high_confidence_wrong_limit=args.high_confidence_wrong_limit,
     )
     Path(args.out_json).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out_json, "w", encoding="utf-8") as f:
@@ -349,6 +430,17 @@ def main() -> None:
             f"margin>={row['min_margin']:.2f}, score>={row['min_score']:.2f}: "
             f"answered={row['answered']} coverage={row['coverage']:.3f} "
             f"accuracy={row['accuracy_when_answered']:.3f}"
+        )
+    print("Best policies at target accuracy:")
+    for target in (0.90, 0.85, 0.80):
+        row = _best_policy_at_target(report, target)
+        if not row:
+            print(f"  target>={target:.2f}: no non-empty policy")
+            continue
+        print(
+            f"  target>={target:.2f}: margin>={row['min_margin']:.2f}, "
+            f"score>={row['min_score']:.2f}, answered={row['answered']} "
+            f"coverage={row['coverage']:.3f}, accuracy={row['accuracy_when_answered']:.3f}"
         )
     print(f"JSON: {args.out_json}")
     print(f"Markdown: {args.out_md}")
