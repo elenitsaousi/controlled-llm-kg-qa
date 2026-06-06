@@ -2485,6 +2485,10 @@ if asked:
         needs_clarification = bool(
             isinstance(clarification, dict) and clarification.get("needs_clarification")
         )
+        confidence_auto_answer = bool(
+            isinstance(confidence_route, dict)
+            and confidence_route.get("route") == "auto_answer"
+        )
         if isinstance(confidence_route, dict):
             _render_confidence_route_badge(confidence_route)
         if needs_request_clarification:
@@ -2515,7 +2519,7 @@ if asked:
                     graph_rows=list(st.session_state.get("last_graph_rows") or []),
                     graph_path=graph_path,
                 )
-        elif needs_clarification:
+        elif needs_clarification and not confidence_auto_answer:
             _render_clarification(
                 clarification,
                 execute_selected=bool(execute_selected),
@@ -2541,7 +2545,11 @@ if asked:
                     graph_path=graph_path,
                 )
 
-        if not needs_request_clarification and not needs_clarification and not route_needs_clarification:
+        if (
+            not needs_request_clarification
+            and (not needs_clarification or confidence_auto_answer)
+            and not route_needs_clarification
+        ):
             _render_answer_block(
                 answer_text=graph_answer or str(result.get("answer", "")),
                 selected_query=selected_query,
@@ -2631,6 +2639,10 @@ if not clarification_rendered:
         _render_request_clarification(request_clarification)
         clarification_rendered = True
     confidence_route = (last_result or {}).get("confidence_route") if isinstance(last_result, dict) else None
+    confidence_auto_answer = bool(
+        isinstance(confidence_route, dict)
+        and confidence_route.get("route") == "auto_answer"
+    )
     if (
         not clarification_rendered
         and isinstance(confidence_route, dict)
@@ -2663,7 +2675,12 @@ if not clarification_rendered:
                     graph_path=graph_path,
                 )
     clarification = (last_result or {}).get("clarification") if isinstance(last_result, dict) else None
-    if not clarification_rendered and isinstance(clarification, dict) and clarification.get("needs_clarification"):
+    if (
+        not clarification_rendered
+        and not confidence_auto_answer
+        and isinstance(clarification, dict)
+        and clarification.get("needs_clarification")
+    ):
         _render_clarification(
             clarification,
             execute_selected=bool(execute_selected),
