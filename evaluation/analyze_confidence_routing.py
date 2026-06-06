@@ -15,7 +15,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from ranking.query_contract import extract_question_contract
+from ranking.feature_extraction import extract_query_plan
+from ranking.query_contract import compare_contracts, extract_query_contract, extract_question_contract
 
 
 def _load_json(path: str) -> Dict[str, object]:
@@ -34,6 +35,17 @@ def _load_dataset(path: str) -> Dict[str, Dict[str, object]]:
     if not isinstance(rows, list):
         return {}
     return {str(row.get("id", "")): row for row in rows if isinstance(row, dict)}
+
+
+def _load_schema(path: str) -> Dict[str, object]:
+    if not path:
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        return payload if isinstance(payload, dict) else {}
+    except FileNotFoundError:
+        return {}
 
 
 def _label(candidate: Dict[str, object]) -> str:
@@ -104,12 +116,94 @@ def _ranked_candidates(
     return candidates
 
 
+def _expected_classes_from_question(question: str, contract: Dict[str, object]) -> set[str]:
+    q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
+    metrics = set(str(v) for v in contract.get("metrics") or [])
+    dimensions = set(str(v) for v in contract.get("dimensions") or [])
+    expected: set[str] = set()
+    if any(term in q for term in ["company", "companies", "firms", "oems", "suppliers"]):
+        expected.add("Company")
+    if "technology_category" in dimensions or "technology category" in q or "technology categories" in q:
+        expected.add("TechnologyCategory")
+    if "region" in dimensions:
+        expected.add("Region")
+    if "quarter" in dimensions:
+        expected.add("Quarter")
+    if "autonomous_driving" in metrics:
+        expected.add("AutonomousDrivingDevelopment")
+    if "vehicle_type" in dimensions:
+        expected.add("VehicleType")
+    if "shortage" in metrics and any(term in q for term in ["company", "companies", "survey type", "survey types"]):
+        expected.add("Company")
+    return expected
+
+
+def _safety_flags(
+    *,
+    question: str,
+    question_contract: Dict[str, object],
+    query: str,
+    schema: Dict[str, object],
+) -> List[str]:
+    try:
+        query_contract = extract_query_contract(query)
+        comparison = compare_contracts(
+            extract_question_contract(question),
+            query_contract,
+        ).to_dict()
+    except Exception:
+        query_contract = None
+        comparison = {"missing": {}, "conflicts": {}}
+    try:
+        plan = extract_query_plan(query, schema or None)
+    except Exception:
+        plan = {}
+
+    flags: List[str] = []
+    query_lower = str(query or "").lower()
+    answer_shape = str(question_contract.get("answer_shape") or "")
+    metrics = set(str(v) for v in question_contract.get("metrics") or [])
+    requested_scopes = set(str(v) for v in question_contract.get("scopes") or [])
+    actual_scopes = set(getattr(query_contract, "scopes", set()) or set()) if query_contract else set()
+    query_aggregation = getattr(query_contract, "aggregation", None) if query_contract else None
+    query_shape = getattr(query_contract, "answer_shape", None) if query_contract else None
+
+    if (answer_shape == "list_values" or "catalog_lookup" in metrics) and (
+        query_aggregation == "count" or "count(" in query_lower
+    ):
+        flags.append("list_count_conflict")
+    if answer_shape == "scalar" and query_shape == "grouped_table":
+        flags.append("scalar_grouping_conflict")
+    missing_scopes = requested_scopes - actual_scopes
+    for scope in sorted(missing_scopes):
+        flags.append(f"scope_missing:{scope}")
+
+    missing_payload = comparison.get("missing") if isinstance(comparison, dict) else {}
+    conflict_payload = comparison.get("conflicts") if isinstance(comparison, dict) else {}
+    if isinstance(missing_payload, dict):
+        for axis in ("metrics", "aggregation", "answer_shape"):
+            for value in missing_payload.get(axis) or []:
+                flags.append(f"contract_missing:{axis}:{value}")
+    if isinstance(conflict_payload, dict):
+        for axis in ("metrics", "aggregation", "answer_shape"):
+            for value in conflict_payload.get(axis) or []:
+                flags.append(f"contract_conflict:{axis}:{value}")
+
+    plan_classes = {str(v) for v in plan.get("classes") or []}
+    for expected_class in sorted(_expected_classes_from_question(question, question_contract)):
+        if expected_class not in plan_classes:
+            flags.append(f"class_missing:{expected_class}")
+
+    return sorted(set(flags))
+
+
 def _case_rows(
     results: Dict[str, object],
     score_key: str,
     *,
     sort_by_score: bool,
     dataset_by_id: Dict[str, Dict[str, object]],
+    schema: Dict[str, object],
 ) -> List[Dict[str, object]]:
     rows: List[Dict[str, object]] = []
     for detail in results.get("details") or []:
@@ -140,6 +234,12 @@ def _case_rows(
             contract = extract_question_contract(question).to_dict()
         except Exception:
             contract = {}
+        safety_flags = _safety_flags(
+            question=question,
+            question_contract=contract,
+            query=str(top1.get("query", "") or ""),
+            schema=schema,
+        )
         rows.append(
             {
                 "id": qid,
@@ -157,6 +257,7 @@ def _case_rows(
                     or "unknown"
                 ),
                 "question_contract": contract,
+                "safety_flags": safety_flags,
                 "score1": score1,
                 "score2": score2,
                 "margin": score1 - score2,
@@ -173,8 +274,11 @@ def _distribution(rows: List[Dict[str, object]], key: str, limit: int = 20) -> L
     for row in rows:
         value = row.get(key)
         if isinstance(value, (list, set, tuple)):
-            for item in value:
-                counter[str(item)] += 1
+            if value:
+                for item in value:
+                    counter[str(item)] += 1
+            else:
+                counter["none"] += 1
         else:
             counter[str(value or "unknown")] += 1
     return counter.most_common(limit)
@@ -215,6 +319,7 @@ def _policy_bucket_summary(rows: List[Dict[str, object]]) -> Dict[str, object]:
         "scopes": _contract_distribution(rows, "scopes"),
         "dimensions": _contract_distribution(rows, "dimensions"),
         "answer_shape": _contract_distribution(rows, "answer_shape"),
+        "safety_flags": _distribution(rows, "safety_flags"),
     }
 
 
@@ -223,6 +328,7 @@ def _threshold_sweep(
     *,
     margin_thresholds: List[float],
     score_thresholds: List[float],
+    enable_safety_guard: bool,
 ) -> List[Dict[str, object]]:
     total = len(rows)
     report: List[Dict[str, object]] = []
@@ -232,6 +338,7 @@ def _threshold_sweep(
                 row
                 for row in rows
                 if float(row["margin"]) >= min_margin and float(row["score1"]) >= min_score
+                and (not enable_safety_guard or not row.get("safety_flags"))
             ]
             correct = sum(1 for row in answered if row["top1_correct"])
             report.append(
@@ -260,10 +367,12 @@ def analyze(
     *,
     results_path: str,
     dataset_path: str,
+    schema_path: str,
     score_key: str,
     sort_by_score: bool,
     policy_min_margin: float,
     policy_min_score: float,
+    enable_safety_guard: bool,
     margin_thresholds: List[float],
     score_thresholds: List[float],
     low_confidence_limit: int,
@@ -271,11 +380,13 @@ def analyze(
 ) -> Dict[str, object]:
     results = _load_json(results_path)
     dataset_by_id = _load_dataset(dataset_path)
+    schema = _load_schema(schema_path)
     rows = _case_rows(
         results,
         score_key,
         sort_by_score=sort_by_score,
         dataset_by_id=dataset_by_id,
+        schema=schema,
     )
     total = len(rows)
     forced_correct = sum(1 for row in rows if row["top1_correct"])
@@ -312,6 +423,7 @@ def analyze(
         row
         for row in rows
         if float(row["margin"]) >= policy_min_margin and float(row["score1"]) >= policy_min_score
+        and (not enable_safety_guard or not row.get("safety_flags"))
     ]
     clarification = [row for row in rows if row not in auto_answer]
 
@@ -319,10 +431,12 @@ def analyze(
         "inputs": {
             "results": results_path,
             "dataset": dataset_path,
+            "schema": schema_path,
             "score_key": score_key,
             "sort_by_score": sort_by_score,
             "policy_min_margin": policy_min_margin,
             "policy_min_score": policy_min_score,
+            "enable_safety_guard": enable_safety_guard,
         },
         "summary": {
             "total": total,
@@ -343,6 +457,7 @@ def analyze(
             rows,
             margin_thresholds=margin_thresholds,
             score_thresholds=score_thresholds,
+            enable_safety_guard=enable_safety_guard,
         ),
         "policy_buckets": {
             "auto_answer": _policy_bucket_summary(auto_answer),
@@ -397,8 +512,10 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
     lines.append("")
     lines.append(f"- Results: `{dict(report.get('inputs') or {}).get('results')}`")
     lines.append(f"- Dataset: `{dict(report.get('inputs') or {}).get('dataset')}`")
+    lines.append(f"- Schema: `{dict(report.get('inputs') or {}).get('schema')}`")
     lines.append(f"- Score key: `{dict(report.get('inputs') or {}).get('score_key')}`")
     lines.append(f"- Sort by score: `{dict(report.get('inputs') or {}).get('sort_by_score')}`")
+    lines.append(f"- Safety guard: `{dict(report.get('inputs') or {}).get('enable_safety_guard')}`")
     lines.append(
         "- Policy: "
         f"margin >= {float(dict(report.get('inputs') or {}).get('policy_min_margin') or 0.0):.2f}, "
@@ -453,6 +570,7 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
         _append_distribution(lines, "Scopes", row.get("scopes") or [])
         _append_distribution(lines, "Dimensions", row.get("dimensions") or [])
         _append_distribution(lines, "Answer Shape", row.get("answer_shape") or [])
+        _append_distribution(lines, "Safety Flags", row.get("safety_flags") or [])
     lines.append("")
     lines.append("## Accuracy by Margin")
     lines.append("")
@@ -496,6 +614,7 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
             f"margin={float(row.get('margin', 0.0)):.4f}, "
             f"top1_correct={row.get('top1_correct')}"
         )
+        lines.append(f"- Safety flags: `{row.get('safety_flags') or []}`")
         lines.append("- Top interpretations:")
         for candidate in row.get("top3") or []:
             lines.append(
@@ -516,6 +635,7 @@ def write_markdown(report: Dict[str, object], out_path: str) -> None:
             f"score2={float(row.get('score2', 0.0)):.4f}, "
             f"margin={float(row.get('margin', 0.0)):.4f}"
         )
+        lines.append(f"- Safety flags: `{row.get('safety_flags') or []}`")
         lines.append("- Top interpretations:")
         for candidate in row.get("top3") or []:
             lines.append(
@@ -536,6 +656,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze selective answer/clarification routing from candidate scores.")
     parser.add_argument("--results", required=True)
     parser.add_argument("--dataset", default="")
+    parser.add_argument("--schema", default="data/infineon/schema.json")
     parser.add_argument("--score-key", default="ml_score", choices=["ml_score", "selection_score"])
     parser.add_argument(
         "--sort-by-score",
@@ -544,6 +665,7 @@ def main() -> None:
     )
     parser.add_argument("--policy-min-margin", type=float, default=0.0)
     parser.add_argument("--policy-min-score", type=float, default=0.90)
+    parser.add_argument("--enable-safety-guard", action="store_true")
     parser.add_argument("--margin-thresholds", default="0.00,0.03,0.05,0.10,0.15,0.20,0.30,0.40,0.50")
     parser.add_argument("--score-thresholds", default="0.00,0.40,0.50,0.60,0.70,0.80,0.85,0.90,0.95")
     parser.add_argument("--low-confidence-limit", type=int, default=12)
@@ -555,10 +677,12 @@ def main() -> None:
     report = analyze(
         results_path=args.results,
         dataset_path=args.dataset,
+        schema_path=args.schema,
         score_key=args.score_key,
         sort_by_score=args.sort_by_score,
         policy_min_margin=args.policy_min_margin,
         policy_min_score=args.policy_min_score,
+        enable_safety_guard=args.enable_safety_guard,
         margin_thresholds=_parse_float_list(args.margin_thresholds),
         score_thresholds=_parse_float_list(args.score_thresholds),
         low_confidence_limit=args.low_confidence_limit,
@@ -616,6 +740,7 @@ def main() -> None:
         print(f"    top aggregations: {row['aggregation'][:5]}")
         print(f"    top scopes: {row['scopes'][:5]}")
         print(f"    top dimensions: {row['dimensions'][:8]}")
+        print(f"    top safety flags: {row['safety_flags'][:8]}")
     print(f"JSON: {args.out_json}")
     print(f"Markdown: {args.out_md}")
 
