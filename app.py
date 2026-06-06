@@ -14,6 +14,8 @@ from llm.answer_synthesis import synthesize_answer
 from llm.candidate_generation import generate_candidate_prompt
 from llm.client import InfineonGPTClient, LLMAuthError, LLMClientError
 from pipeline.qa import answer_question
+from ranking.feature_extraction import extract_query_plan
+from ranking.query_contract import compare_contracts, extract_query_contract, extract_question_contract
 from visualization.interactive_graph import (
     build_graph_html,
     collect_answer_evidence_triples,
@@ -35,6 +37,9 @@ except Exception:
 DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
 DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
 DEFAULT_ML_MODEL_PATHS = [
+    PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_scope_origin.json",
+    PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_shortage_grouped.json",
+    PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_shape_features.json",
     PROJECT_ROOT / "ranking" / "models" / "infineon_np_tfidf_ranker_entitylink.json",
     PROJECT_ROOT / "ranking" / "models" / "infineon_np_tfidf_ranker.json",
     PROJECT_ROOT / "ranking" / "models" / "infineon_ranker.joblib",
@@ -290,6 +295,18 @@ def _render_compact_explainability(result: Dict[str, Any]) -> None:
         left, right = st.columns([1, 3])
         left.metric("Confidence", str(request_route.get("confidence", "Unknown")))
         right.write(str(request_route.get("reason", "The request was handled before graph querying.")))
+        return
+
+    confidence_route = result.get("confidence_route")
+    if isinstance(confidence_route, dict):
+        st.subheader("Why This Answer")
+        left, mid, right = st.columns([1, 1, 3])
+        left.metric("Confidence route", str(confidence_route.get("route", "unknown")).replace("_", " "))
+        mid.metric("Score", f"{float(confidence_route.get('score1') or 0.0):.3f}")
+        right.write(str(confidence_route.get("reason", "")))
+        flags = confidence_route.get("safety_flags") or []
+        if flags:
+            st.caption("Safety guard: " + ", ".join(map(str, flags)))
         return
 
     expl = result.get("selection_explanation")
@@ -656,6 +673,341 @@ def _active_guided_query(question: str) -> str:
     if str(st.session_state.get("guided_query_override_question", "")).strip() == (question or "").strip():
         return str(st.session_state.get("guided_query_override", "") or "").strip()
     return ""
+
+
+@st.cache_data(show_spinner=False)
+def _load_schema_dict_cached(schema_path: str) -> Dict[str, object]:
+    try:
+        with open(schema_path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        return payload if isinstance(payload, dict) else {}
+    except Exception:
+        return {}
+
+
+def _candidate_score(candidate: Dict[str, object]) -> float:
+    for key in ("ml_score", "score", "selection_score", "semantic_judge_score"):
+        try:
+            return float(candidate.get(key))
+        except (TypeError, ValueError):
+            continue
+    return 0.0
+
+
+def _ranked_confidence_candidates(
+    result: Dict[str, Any],
+    *,
+    sort_by_score: bool,
+) -> List[Dict[str, object]]:
+    candidates = [
+        dict(row)
+        for row in list(result.get("learning_ranked") or [])
+        if isinstance(row, dict) and str(row.get("query", "") or "").strip()
+    ]
+    if not candidates:
+        candidates = [
+            dict(row)
+            for row in list(result.get("schema_ranked") or [])
+            if isinstance(row, dict) and str(row.get("query", "") or "").strip()
+        ]
+    if not candidates:
+        candidates = [
+            dict(row)
+            for row in list(result.get("candidates") or [])
+            if isinstance(row, dict) and str(row.get("query", "") or "").strip()
+        ]
+    if sort_by_score:
+        candidates.sort(key=_candidate_score, reverse=True)
+    return candidates
+
+
+def _expected_classes_from_question(question: str, question_contract: Dict[str, object]) -> set[str]:
+    q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
+    metrics = set(str(v) for v in question_contract.get("metrics") or [])
+    dimensions = set(str(v) for v in question_contract.get("dimensions") or [])
+    expected: set[str] = set()
+    if any(term in q for term in ["company", "companies", "firms", "oems", "suppliers"]):
+        expected.add("Company")
+    if "technology_category" in dimensions or "technology category" in q or "technology categories" in q:
+        expected.add("TechnologyCategory")
+    if "region" in dimensions:
+        expected.add("Region")
+    if "quarter" in dimensions:
+        expected.add("Quarter")
+    if "autonomous_driving" in metrics:
+        expected.add("AutonomousDrivingDevelopment")
+    if "vehicle_type" in dimensions:
+        expected.add("VehicleType")
+    if "shortage" in metrics and any(term in q for term in ["company", "companies", "survey type", "survey types"]):
+        expected.add("Company")
+    return expected
+
+
+def _confidence_safety_flags(
+    *,
+    question: str,
+    query: str,
+    schema_dict: Dict[str, object],
+) -> List[str]:
+    try:
+        question_contract_obj = extract_question_contract(question)
+        question_contract = question_contract_obj.to_dict()
+    except Exception:
+        question_contract = {}
+    try:
+        query_contract = extract_query_contract(query)
+        comparison = compare_contracts(extract_question_contract(question), query_contract).to_dict()
+    except Exception:
+        query_contract = None
+        comparison = {"missing": {}, "conflicts": {}}
+    try:
+        plan = extract_query_plan(query, schema_dict or None)
+    except Exception:
+        plan = {}
+
+    flags: List[str] = []
+    query_lower = str(query or "").lower()
+    answer_shape = str(question_contract.get("answer_shape") or "")
+    metrics = set(str(v) for v in question_contract.get("metrics") or [])
+    requested_scopes = set(str(v) for v in question_contract.get("scopes") or [])
+    actual_scopes = set(getattr(query_contract, "scopes", set()) or set()) if query_contract else set()
+    query_aggregation = getattr(query_contract, "aggregation", None) if query_contract else None
+    query_shape = getattr(query_contract, "answer_shape", None) if query_contract else None
+
+    if (answer_shape == "list_values" or "catalog_lookup" in metrics) and (
+        query_aggregation == "count" or "count(" in query_lower
+    ):
+        flags.append("list_count_conflict")
+    if answer_shape == "scalar" and query_shape == "grouped_table":
+        flags.append("scalar_grouping_conflict")
+    for scope in sorted(requested_scopes - actual_scopes):
+        flags.append(f"scope_missing:{scope}")
+
+    missing_payload = comparison.get("missing") if isinstance(comparison, dict) else {}
+    conflict_payload = comparison.get("conflicts") if isinstance(comparison, dict) else {}
+    if isinstance(missing_payload, dict):
+        for axis in ("metrics", "aggregation", "answer_shape"):
+            for value in missing_payload.get(axis) or []:
+                flags.append(f"contract_missing:{axis}:{value}")
+    if isinstance(conflict_payload, dict):
+        for axis in ("metrics", "aggregation", "answer_shape"):
+            for value in conflict_payload.get(axis) or []:
+                flags.append(f"contract_conflict:{axis}:{value}")
+
+    plan_classes = {str(v) for v in plan.get("classes") or []}
+    for expected_class in sorted(_expected_classes_from_question(question, question_contract)):
+        if expected_class not in plan_classes:
+            flags.append(f"class_missing:{expected_class}")
+
+    return sorted(set(flags))
+
+
+def _humanize_axis_value(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    return text.replace("_", " ").replace("tier1", "Tier1").replace("oem", "OEM")
+
+
+def _candidate_interpretation_summary(question: str, query: str, candidate: Dict[str, object]) -> str:
+    try:
+        contract = extract_query_contract(query).to_dict()
+    except Exception:
+        contract = {}
+    try:
+        plan = extract_query_plan(query)
+    except Exception:
+        plan = {}
+
+    aggregation = str(contract.get("aggregation") or "").lower()
+    metrics = list(contract.get("metrics") or [])
+    dimensions = list(contract.get("dimensions") or [])
+    scopes = list(contract.get("scopes") or [])
+    answer_shape = str(contract.get("answer_shape") or "")
+
+    if aggregation == "avg":
+        prefix = "Average"
+    elif aggregation == "sum":
+        prefix = "Total"
+    elif aggregation == "count":
+        prefix = "Count"
+    elif answer_shape == "ranked_one":
+        prefix = "Top ranked"
+    elif answer_shape == "list_values":
+        prefix = "List"
+    else:
+        prefix = "Values"
+
+    metric = _humanize_axis_value(metrics[0]) if metrics else "graph data"
+    label = f"{prefix} {metric}".strip()
+    if scopes:
+        label += " for " + " / ".join(_humanize_axis_value(v) for v in scopes[:2])
+    if dimensions:
+        label += " by " + " and ".join(_humanize_axis_value(v) for v in dimensions[:3])
+    elif plan.get("group_by_predicates") or plan.get("group_by_vars"):
+        group_by = list(plan.get("group_by_predicates") or plan.get("group_by_vars") or [])
+        label += " by " + " and ".join(_humanize_axis_value(v) for v in group_by[:3])
+
+    source = str(candidate.get("source") or "").strip()
+    if source:
+        label += f" ({source})"
+    return label
+
+
+def _build_confidence_route(
+    result: Dict[str, Any],
+    *,
+    question: str,
+    schema_path: str,
+    min_score: float,
+    min_margin: float,
+    enable_safety_guard: bool,
+    sort_by_score: bool,
+) -> Dict[str, object] | None:
+    if not isinstance(result, dict) or result.get("request_route", {}).get("route") not in {None, "kg_query"}:
+        return None
+    candidates = _ranked_confidence_candidates(result, sort_by_score=sort_by_score)
+    if not candidates:
+        return None
+    schema_dict = _load_schema_dict_cached(schema_path)
+    top1 = candidates[0]
+    top2 = candidates[1] if len(candidates) > 1 else {}
+    score1 = _candidate_score(top1)
+    score2 = _candidate_score(top2) if top2 else 0.0
+    margin = score1 - score2
+    flags = _confidence_safety_flags(
+        question=question,
+        query=str(top1.get("query", "") or ""),
+        schema_dict=schema_dict,
+    )
+    reason_parts = []
+    if score1 < min_score:
+        reason_parts.append(f"score {score1:.3f} is below {min_score:.2f}")
+    if margin < min_margin:
+        reason_parts.append(f"margin {margin:.3f} is below {min_margin:.2f}")
+    if enable_safety_guard and flags:
+        reason_parts.append("safety guard found " + ", ".join(flags[:4]))
+    route = "auto_answer" if not reason_parts else "clarification"
+    options = []
+    seen = set()
+    for idx, candidate in enumerate(candidates, start=1):
+        query = str(candidate.get("query", "") or "").strip()
+        if not query:
+            continue
+        key = " ".join(query.split()).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        options.append(
+            {
+                "id": f"confidence_{len(options) + 1}",
+                "rank": idx,
+                "score": _candidate_score(candidate),
+                "source": candidate.get("source"),
+                "label": _candidate_interpretation_summary(question, query, candidate),
+                "query": query,
+                "safety_flags": _confidence_safety_flags(
+                    question=question,
+                    query=query,
+                    schema_dict=schema_dict,
+                ),
+            }
+        )
+        if len(options) >= 3:
+            break
+
+    return {
+        "enabled": True,
+        "route": route,
+        "score1": score1,
+        "score2": score2,
+        "margin": margin,
+        "min_score": min_score,
+        "min_margin": min_margin,
+        "safety_guard": bool(enable_safety_guard),
+        "safety_flags": flags,
+        "reason": "; ".join(reason_parts) if reason_parts else "high confidence and no safety flags",
+        "selected_query": str(top1.get("query", "") or "").strip(),
+        "options": options,
+    }
+
+
+def _render_confidence_route_badge(route: Dict[str, object]) -> None:
+    if route.get("route") == "auto_answer":
+        st.success(
+            "High-confidence graph answer "
+            f"(score={float(route.get('score1', 0.0)):.3f}, "
+            f"margin={float(route.get('margin', 0.0)):.3f})."
+        )
+    else:
+        st.warning(
+            "The system found multiple plausible interpretations. "
+            "Please choose one before it answers."
+        )
+        st.caption(str(route.get("reason", "")))
+
+
+def _render_confidence_clarification(
+    route: Dict[str, object],
+    *,
+    execute_selected: bool,
+    graph_path: str,
+    max_preview_rows: int,
+) -> None:
+    st.subheader("Clarify Interpretation")
+    st.write("I found multiple possible interpretations. Which one do you mean?")
+    options = list(route.get("options") or [])
+    if not options:
+        st.warning("No candidate interpretations are available for clarification.")
+        return
+    for option in options[:3]:
+        score = float(option.get("score") or 0.0)
+        with st.container(border=True):
+            st.markdown(f"**{str(option.get('label') or 'Interpretation')}**")
+            st.caption(
+                f"Rank {option.get('rank')} | score={score:.3f} | source={option.get('source') or 'unknown'}"
+            )
+            flags = list(option.get("safety_flags") or [])
+            if flags:
+                st.caption("Safety notes: " + ", ".join(map(str, flags[:4])))
+            with st.expander("Show SPARQL", expanded=False):
+                st.code(_format_sparql_for_display(str(option.get("query", ""))), language="sparql")
+            if st.button(
+                "Use this interpretation",
+                key=f"confidence_clarify_{option.get('id')}",
+                use_container_width=True,
+            ):
+                chosen_query = str(option.get("query", "") or "").strip()
+                st.session_state["last_selected_query"] = chosen_query
+                st.session_state["confidence_clarification_choice_id"] = option.get("id")
+                if execute_selected and chosen_query and os.path.exists(graph_path):
+                    try:
+                        graph = _load_graph_cached(graph_path)
+                        rows, _truncated = _execute_query_preview(
+                            graph,
+                            chosen_query,
+                            max_rows=int(max_preview_rows),
+                        )
+                        st.session_state["last_graph_rows"] = rows
+                        st.session_state["last_graph_answer"] = synthesize_answer(
+                            str(st.session_state.get("last_question", "")),
+                            chosen_query,
+                            {
+                                "rows": rows,
+                                "matched_question_id": None,
+                                "error": None,
+                            },
+                            None,
+                        )
+                    except Exception:
+                        st.session_state["last_graph_rows"] = []
+                        st.session_state["last_graph_answer"] = ""
+
+    chosen_id = st.session_state.get("confidence_clarification_choice_id")
+    if chosen_id:
+        chosen = next((opt for opt in options if opt.get("id") == chosen_id), None)
+        if chosen is not None:
+            st.success(f"Using clarified interpretation: {chosen.get('label')}")
 
 
 def _normalize_question_key(question: str) -> str:
@@ -1819,9 +2171,14 @@ with st.sidebar:
     schema_path = str(DEFAULT_SCHEMA_PATH)
     graph_path = str(DEFAULT_GRAPH_PATH)
     use_ml_ranking = True
-    ml_policy = "auto"
+    ml_policy = "all"
     ml_model_path = _default_ml_model_path()
     ambiguity_config_path = _default_ambiguity_config_path()
+    confidence_routing_enabled = True
+    confidence_min_score = 0.90
+    confidence_min_margin = 0.00
+    confidence_safety_guard = True
+    confidence_sort_by_score = True
     show_prompt = False
     show_candidates = False
     show_candidate_diagnostics = False
@@ -1861,6 +2218,29 @@ with st.sidebar:
             )
             if not use_ml_ranking:
                 ml_policy = "off"
+
+            st.subheader("Confidence Routing")
+            confidence_routing_enabled = st.checkbox("Ask for clarification when confidence is low", value=True)
+            confidence_min_score = st.slider(
+                "Auto-answer minimum score",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.90,
+                step=0.01,
+            )
+            confidence_min_margin = st.slider(
+                "Auto-answer minimum margin",
+                min_value=-0.25,
+                max_value=1.0,
+                value=0.00,
+                step=0.01,
+            )
+            confidence_safety_guard = st.checkbox("Enable safety guard", value=True)
+            confidence_sort_by_score = st.checkbox(
+                "Route by ML score order",
+                value=True,
+                help="Uses the ranker score order for confidence routing and top-3 clarification options.",
+            )
 
             st.subheader("Diagnostics")
             show_prompt = st.checkbox("Show candidate prompt", value=False)
@@ -1937,6 +2317,8 @@ if "last_question" not in st.session_state:
     st.session_state["last_question"] = ""
 if "clarification_choice_id" not in st.session_state:
     st.session_state["clarification_choice_id"] = None
+if "confidence_clarification_choice_id" not in st.session_state:
+    st.session_state["confidence_clarification_choice_id"] = None
 
 clarification_rendered = False
 
@@ -2035,12 +2417,33 @@ if asked:
         if effective_question and effective_question != question.strip():
             st.info(f"Canonicalized question: {effective_question}")
 
+        confidence_route = None
+        if confidence_routing_enabled and not guided_query:
+            confidence_route = _build_confidence_route(
+                result,
+                question=effective_question or question,
+                schema_path=schema_path,
+                min_score=float(confidence_min_score),
+                min_margin=float(confidence_min_margin),
+                enable_safety_guard=bool(confidence_safety_guard),
+                sort_by_score=bool(confidence_sort_by_score),
+            )
+            if confidence_route is not None:
+                result["confidence_route"] = confidence_route
+
         selected_query = str(result.get("selected_query") or "").strip()
+        if isinstance(confidence_route, dict) and confidence_route.get("route") == "auto_answer":
+            selected_query = str(confidence_route.get("selected_query") or selected_query).strip()
+            result["selected_query"] = selected_query
         graph_rows: List[Dict[str, str]] = []
         graph_rows_truncated = False
         graph_exec_error = ""
         graph_answer = ""
-        if execute_selected and selected_query and os.path.exists(graph_path):
+        route_needs_clarification = bool(
+            isinstance(confidence_route, dict)
+            and confidence_route.get("route") == "clarification"
+        )
+        if execute_selected and selected_query and os.path.exists(graph_path) and not route_needs_clarification:
             try:
                 graph = _load_graph_cached(graph_path)
                 graph_rows, graph_rows_truncated = _execute_query_preview(
@@ -2071,6 +2474,7 @@ if asked:
         st.session_state["last_graph_answer"] = graph_answer
         st.session_state["last_question"] = question
         st.session_state["clarification_choice_id"] = None
+        st.session_state["confidence_clarification_choice_id"] = None
 
         clarification = result.get("clarification")
         request_clarification = result.get("request_clarification")
@@ -2081,9 +2485,36 @@ if asked:
         needs_clarification = bool(
             isinstance(clarification, dict) and clarification.get("needs_clarification")
         )
+        if isinstance(confidence_route, dict):
+            _render_confidence_route_badge(confidence_route)
         if needs_request_clarification:
             _render_request_clarification(request_clarification)
             clarification_rendered = True
+        elif route_needs_clarification:
+            _render_confidence_clarification(
+                confidence_route,
+                execute_selected=bool(execute_selected),
+                graph_path=graph_path,
+                max_preview_rows=int(max_preview_rows),
+            )
+            clarification_rendered = True
+            if st.session_state.get("confidence_clarification_choice_id"):
+                _render_answer_block(
+                    answer_text=str(st.session_state.get("last_graph_answer", "")),
+                    selected_query=str(st.session_state.get("last_selected_query", "")),
+                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                    graph_exec_error="",
+                    execute_selected=bool(execute_selected),
+                    answerability=_clarified_answerability(
+                        list(st.session_state.get("last_graph_rows") or [])
+                    ),
+                )
+                _render_compact_explainability(result)
+                _render_answer_subgraph(
+                    selected_query=str(st.session_state.get("last_selected_query", "")),
+                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                    graph_path=graph_path,
+                )
         elif needs_clarification:
             _render_clarification(
                 clarification,
@@ -2110,7 +2541,7 @@ if asked:
                     graph_path=graph_path,
                 )
 
-        if not needs_request_clarification and not needs_clarification:
+        if not needs_request_clarification and not needs_clarification and not route_needs_clarification:
             _render_answer_block(
                 answer_text=graph_answer or str(result.get("answer", "")),
                 selected_query=selected_query,
@@ -2199,6 +2630,38 @@ if not clarification_rendered:
     if isinstance(request_clarification, dict) and request_clarification.get("needs_clarification"):
         _render_request_clarification(request_clarification)
         clarification_rendered = True
+    confidence_route = (last_result or {}).get("confidence_route") if isinstance(last_result, dict) else None
+    if (
+        not clarification_rendered
+        and isinstance(confidence_route, dict)
+        and confidence_route.get("route") == "clarification"
+    ):
+        _render_confidence_route_badge(confidence_route)
+        _render_confidence_clarification(
+            confidence_route,
+            execute_selected=bool(execute_selected),
+            graph_path=graph_path,
+            max_preview_rows=int(max_preview_rows),
+        )
+        clarification_rendered = True
+        if st.session_state.get("confidence_clarification_choice_id"):
+            _render_answer_block(
+                answer_text=str(st.session_state.get("last_graph_answer", "")),
+                selected_query=str(st.session_state.get("last_selected_query", "")),
+                graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                graph_exec_error="",
+                execute_selected=bool(execute_selected),
+                answerability=_clarified_answerability(
+                    list(st.session_state.get("last_graph_rows") or [])
+                ),
+            )
+            if isinstance(last_result, dict):
+                _render_compact_explainability(last_result)
+                _render_answer_subgraph(
+                    selected_query=str(st.session_state.get("last_selected_query", "")),
+                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                    graph_path=graph_path,
+                )
     clarification = (last_result or {}).get("clarification") if isinstance(last_result, dict) else None
     if not clarification_rendered and isinstance(clarification, dict) and clarification.get("needs_clarification"):
         _render_clarification(
