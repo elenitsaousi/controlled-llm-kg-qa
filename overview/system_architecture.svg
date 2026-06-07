@@ -1,113 +1,134 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="2100" viewBox="0 0 1600 2100">
   <defs>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M2,2 L12,7 L2,12 Z" fill="#111827"/>
     </marker>
     <style>
-      text { font-family: Arial, Helvetica, sans-serif; fill: #16242a; }
-      .title { font-size: 36px; font-weight: 700; }
-      .sub { font-size: 18px; fill: #5d6f78; }
-      .label { font-size: 13px; font-weight: 700; fill: #007f78; letter-spacing: .08em; text-transform: uppercase; }
-      .box { fill: #ffffff; stroke: #cfdde3; stroke-width: 2; rx: 12; }
-      .ui { fill: #edfafa; stroke: #19a99f; }
-      .llm { fill: #fff7e8; stroke: #d79b35; }
-      .ml { fill: #eef4ff; stroke: #5d82c7; }
-      .kg { fill: #f3fbf5; stroke: #4d9d69; }
-      .ops { fill: #f8fafc; stroke: #94a3b8; }
-      .box-title { font-size: 19px; font-weight: 700; }
-      .txt { font-size: 15px; fill: #465a63; }
-      .tiny { font-size: 13px; fill: #667984; }
-      .edge { stroke: #334155; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
-      .soft-edge { stroke: #6b7f88; stroke-width: 2; fill: none; marker-end: url(#arrow); stroke-dasharray: 7 7; }
+      text { font-family: Arial, Helvetica, sans-serif; fill: #111827; }
+      .page-title { font-size: 76px; font-weight: 800; letter-spacing: 0; }
+      .page-sub { font-size: 26px; fill: #526070; }
+      .scope { fill: #d9f2df; stroke: none; rx: 28; }
+      .block { fill: #ffffff; stroke: #111827; stroke-width: 4; rx: 14; }
+      .head { fill: #22a95a; stroke: #111827; stroke-width: 4; rx: 14; }
+      .head-flat { fill: #22a95a; stroke: #111827; stroke-width: 4; }
+      .head-text { fill: #ffffff; font-size: 34px; font-weight: 800; }
+      .body-title { font-size: 36px; font-weight: 800; }
+      .body-text { font-size: 23px; fill: #263238; }
+      .small { font-size: 20px; fill: #3d4e57; }
+      .edge { stroke: #111827; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .edge-back { stroke: #111827; stroke-width: 4; fill: none; }
+      .edge-label { font-size: 23px; fill: #111827; }
+      .mini { fill: #edfafa; stroke: #19a99f; stroke-width: 3; rx: 12; }
+      .mini-blue { fill: #eef4ff; stroke: #5d82c7; stroke-width: 3; rx: 12; }
+      .mini-gold { fill: #fff7e8; stroke: #d79b35; stroke-width: 3; rx: 12; }
+      .mini-green { fill: #f3fbf5; stroke: #4d9d69; stroke-width: 3; rx: 12; }
     </style>
   </defs>
 
-  <rect width="1600" height="980" fill="#fbfcfe"/>
-  <text class="label" x="70" y="48">Current implementation</text>
-  <text class="title" x="70" y="88">True Demand KGQA System Architecture</text>
-  <text class="sub" x="70" y="118">Controlled LLM-to-SPARQL question answering with Fuseki execution, ML selection, confidence routing, and clarification.</text>
+  <rect width="1600" height="2100" fill="#f8fafc"/>
+  <text class="page-title" x="120" y="135">True Demand KGQA</text>
+  <text class="page-title" x="120" y="225">System Architecture</text>
+  <text class="page-sub" x="125" y="275">Controlled LLM-to-SPARQL question answering over the True Demand knowledge graph.</text>
 
-  <rect class="box ui" x="70" y="175" width="250" height="150"/>
-  <text class="box-title" x="100" y="215">Streamlit UI</text>
-  <text class="txt" x="100" y="245">Natural-language question</text>
-  <text class="txt" x="100" y="268">Example picker / builder</text>
-  <text class="txt" x="100" y="291">Clarification choices</text>
+  <!-- User and browser -->
+  <rect class="block" x="155" y="360" width="420" height="290"/>
+  <path class="head" d="M155 360 H575 V455 H155 Z"/>
+  <text class="head-text" x="315" y="420" text-anchor="middle">User</text>
+  <circle cx="365" cy="530" r="35" fill="#22a95a" stroke="#111827" stroke-width="4"/>
+  <path d="M300 625 C305 565 425 565 430 625 Z" fill="#22a95a" stroke="#111827" stroke-width="4"/>
 
-  <rect class="box" x="380" y="175" width="250" height="150"/>
-  <text class="box-title" x="410" y="215">Request Preparation</text>
-  <text class="txt" x="410" y="245">Question normalization</text>
-  <text class="txt" x="410" y="268">Entity/schema context</text>
-  <text class="txt" x="410" y="291">Optional family routing</text>
+  <rect class="block" x="930" y="360" width="420" height="290"/>
+  <path class="head" d="M930 360 H1350 V455 H930 Z"/>
+  <text class="head-text" x="1140" y="420" text-anchor="middle">Web Browser</text>
+  <rect x="1012" y="500" width="255" height="125" fill="#ffffff" stroke="#111827" stroke-width="4" rx="8"/>
+  <line x1="1012" y1="530" x2="1267" y2="530" stroke="#111827" stroke-width="4"/>
+  <circle cx="1035" cy="516" r="5" fill="#111827"/>
+  <circle cx="1055" cy="516" r="5" fill="#111827"/>
+  <rect x="1034" y="548" width="100" height="58" fill="#22a95a" stroke="#111827" stroke-width="4" rx="4"/>
+  <rect x="1150" y="548" width="92" height="24" fill="#f8fafc" stroke="#111827" stroke-width="4" rx="4"/>
+  <rect x="1150" y="586" width="92" height="20" fill="#f8fafc" stroke="#111827" stroke-width="4" rx="4"/>
 
-  <rect class="box llm" x="690" y="175" width="270" height="150"/>
-  <text class="box-title" x="720" y="215">Infineon GPT</text>
-  <text class="txt" x="720" y="245">Prompt with compact schema</text>
-  <text class="txt" x="720" y="268">Generate SPARQL candidates</text>
-  <text class="txt" x="720" y="291">No direct answer from memory</text>
+  <path class="edge" d="M625 488 H860"/>
+  <path class="edge-back" d="M860 565 H625"/>
+  <text class="edge-label" x="675" y="455">asks question</text>
+  <text class="edge-label" x="665" y="610">receives answer / clarification</text>
 
-  <rect class="box ml" x="1020" y="175" width="280" height="150"/>
-  <text class="box-title" x="1050" y="215">Candidate Selection</text>
-  <text class="txt" x="1050" y="245">Schema/shape features</text>
-  <text class="txt" x="1050" y="268">Logistic ML reranker</text>
-  <text class="txt" x="1050" y="291">Safety guards</text>
+  <!-- System scope -->
+  <rect class="scope" x="105" y="760" width="1360" height="1130"/>
+  <text class="body-title" x="640" y="1830">True Demand KGQA System Scope</text>
 
-  <rect class="box kg" x="690" y="410" width="270" height="150"/>
-  <text class="box-title" x="720" y="450">Fuseki Execution</text>
-  <text class="txt" x="720" y="480">Default SPARQL backend</text>
-  <text class="txt" x="720" y="503">Full True Demand KG</text>
-  <text class="txt" x="720" y="526">RDFLib fallback available</text>
+  <!-- UI block -->
+  <rect class="block" x="175" y="875" width="420" height="290"/>
+  <path class="head" d="M175 875 H595 V970 H175 Z"/>
+  <text class="head-text" x="385" y="935" text-anchor="middle">Streamlit App</text>
+  <text class="body-title" x="235" y="1040">UI + Routing</text>
+  <text class="body-text" x="235" y="1085">Question input</text>
+  <text class="body-text" x="235" y="1120">Top-3 clarification</text>
+  <text class="body-text" x="235" y="1155">Confidence dashboard</text>
 
-  <rect class="box ui" x="1020" y="410" width="280" height="150"/>
-  <text class="box-title" x="1050" y="450">Decision Routing</text>
-  <text class="txt" x="1050" y="480">High confidence: answer</text>
-  <text class="txt" x="1050" y="503">Low confidence: top-3 intents</text>
-  <text class="txt" x="1050" y="526">Natural-language explanations</text>
+  <!-- Pipeline block -->
+  <rect class="block" x="960" y="875" width="420" height="290"/>
+  <path class="head" d="M960 875 H1380 V970 H960 Z"/>
+  <text class="head-text" x="1170" y="935" text-anchor="middle">KGQA Pipeline</text>
+  <text class="body-title" x="1020" y="1040">Server-side Code</text>
+  <text class="body-text" x="1020" y="1085">Python pipeline</text>
+  <text class="body-text" x="1020" y="1120">Validation + ranking</text>
+  <text class="body-text" x="1020" y="1155">Answer synthesis</text>
 
-  <rect class="box ui" x="380" y="410" width="250" height="150"/>
-  <text class="box-title" x="410" y="450">Graph-Grounded Answer</text>
-  <text class="txt" x="410" y="480">Executed query rows</text>
-  <text class="txt" x="410" y="503">Natural-language summary</text>
-  <text class="txt" x="410" y="526">Optional evidence graph</text>
+  <path class="edge" d="M1140 650 V815"/>
+  <path class="edge-back" d="M1210 815 V650"/>
+  <path class="edge" d="M595 1020 H900"/>
+  <path class="edge-back" d="M900 1100 H595"/>
+  <text class="edge-label" x="640" y="990">runs request</text>
+  <text class="edge-label" x="635" y="1140">answer or clarification</text>
 
-  <rect class="box ops" x="70" y="410" width="250" height="150"/>
-  <text class="box-title" x="100" y="450">App Operations</text>
-  <text class="txt" x="100" y="480">System status panel</text>
-  <text class="txt" x="100" y="503">Latency breakdown</text>
-  <text class="txt" x="100" y="526">Session + feedback logs</text>
+  <!-- LLM block -->
+  <rect class="block" x="175" y="1315" width="420" height="290"/>
+  <path class="head" d="M175 1315 H595 V1410 H175 Z"/>
+  <text class="head-text" x="385" y="1375" text-anchor="middle">Infineon GPT</text>
+  <text class="body-title" x="235" y="1480">LLM Candidate</text>
+  <text class="body-title" x="235" y="1520">Generation</text>
+  <text class="body-text" x="235" y="1565">Controlled prompt</text>
+  <text class="body-text" x="235" y="1600">SPARQL candidates</text>
 
-  <rect class="box kg" x="70" y="675" width="1230" height="185"/>
-  <text class="box-title" x="100" y="715">Core Assets</text>
+  <!-- Fuseki block -->
+  <rect class="block" x="960" y="1315" width="420" height="290"/>
+  <path class="head" d="M960 1315 H1380 V1410 H960 Z"/>
+  <text class="head-text" x="1170" y="1375" text-anchor="middle">Fuseki + KG</text>
+  <text class="body-title" x="1020" y="1480">SPARQL Backend</text>
+  <text class="body-text" x="1020" y="1525">True Demand RDF graph</text>
+  <text class="body-text" x="1020" y="1560">Full graph execution</text>
+  <text class="body-text" x="1020" y="1595">RDFLib fallback</text>
 
-  <rect class="box" x="105" y="745" width="220" height="80"/>
-  <text class="box-title" x="130" y="777">True Demand KG</text>
-  <text class="tiny" x="130" y="803">RDF triples loaded in Fuseki</text>
+  <path class="edge" d="M385 1165 V1260"/>
+  <path class="edge-back" d="M465 1260 V1165"/>
+  <text class="edge-label" x="205" y="1230">prompt + schema</text>
 
-  <rect class="box" x="365" y="745" width="220" height="80"/>
-  <text class="box-title" x="390" y="777">Schema JSON</text>
-  <text class="tiny" x="390" y="803">Classes, predicates, relations</text>
+  <path class="edge" d="M960 1460 H655"/>
+  <path class="edge-back" d="M655 1540 H960"/>
+  <text class="edge-label" x="690" y="1430">SPARQL execution</text>
+  <text class="edge-label" x="710" y="1585">rows / errors</text>
 
-  <rect class="box" x="625" y="745" width="220" height="80"/>
-  <text class="box-title" x="650" y="777">Ranker Model</text>
-  <text class="tiny" x="650" y="803">Shape/scope/origin features</text>
+  <path class="edge" d="M1170 1165 V1260"/>
+  <path class="edge-back" d="M1250 1260 V1165"/>
+  <text class="edge-label" x="1210" y="1230">selected query</text>
 
-  <rect class="box" x="885" y="745" width="220" height="80"/>
-  <text class="box-title" x="910" y="777">Benchmark</text>
-  <text class="tiny" x="910" y="803">1000 generated questions</text>
+  <!-- Internal pipeline chips -->
+  <rect class="mini" x="680" y="855" width="210" height="70"/>
+  <text class="small" x="785" y="898" text-anchor="middle">Schema routing</text>
+  <rect class="mini-blue" x="680" y="945" width="210" height="70"/>
+  <text class="small" x="785" y="988" text-anchor="middle">ML reranker</text>
+  <rect class="mini-gold" x="680" y="1035" width="210" height="70"/>
+  <text class="small" x="785" y="1078" text-anchor="middle">Confidence route</text>
+  <rect class="mini-green" x="680" y="1125" width="210" height="70"/>
+  <text class="small" x="785" y="1168" text-anchor="middle">Feedback logs</text>
 
-  <rect class="box" x="1145" y="745" width="120" height="80"/>
-  <text class="box-title" x="1168" y="777">Reports</text>
-  <text class="tiny" x="1168" y="803">Metrics</text>
-
-  <path class="edge" d="M320 250 L380 250"/>
-  <path class="edge" d="M630 250 L690 250"/>
-  <path class="edge" d="M960 250 L1020 250"/>
-  <path class="edge" d="M1160 325 L1160 410"/>
-  <path class="edge" d="M1020 485 L960 485"/>
-  <path class="edge" d="M690 485 L630 485"/>
-  <path class="edge" d="M380 485 L320 485"/>
-
-  <path class="soft-edge" d="M215 745 L720 560"/>
-  <path class="soft-edge" d="M475 745 L505 325"/>
-  <path class="soft-edge" d="M735 745 L1160 325"/>
-  <path class="soft-edge" d="M995 745 L1160 560"/>
+  <!-- Assets -->
+  <rect class="block" x="175" y="1710" width="1205" height="105"/>
+  <path class="head-flat" d="M175 1710 H1380 V1768 H175 Z"/>
+  <text class="head-text" x="778" y="1750" text-anchor="middle">Stored Assets</text>
+  <text class="body-text" x="230" y="1796">Schema JSON</text>
+  <text class="body-text" x="440" y="1796">Ranker model</text>
+  <text class="body-text" x="685" y="1796">Benchmark + gold SPARQL</text>
+  <text class="body-text" x="1035" y="1796">Evaluation reports</text>
 </svg>
