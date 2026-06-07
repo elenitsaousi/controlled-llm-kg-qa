@@ -3143,35 +3143,36 @@ if developer_mode:
 if developer_mode and not _graph_backend_available(graph_path):
     st.warning("Graph backend unavailable. Set a valid graph path or Fuseki query endpoint.")
 elif developer_mode:
-    tab_full, tab_question = st.tabs(["Full Graph", "Question Subgraph"])
+    tab_schema, tab_question, tab_raw = st.tabs(["Ontology Schema", "Question Subgraph", "Raw Data Triples"])
 
-    with tab_full:
+    with tab_schema:
         st.caption(
-            "Visualize entities/relationships with zoom, drag and node click. "
-            "Use a triple limit to keep the browser responsive."
+            "Ontology-level view built from declared class-to-class relationships. "
+            "This is the cleaner schema graph, not a random sample of data instances."
         )
-        if full_graph_limit == 0:
-            st.warning("Full graph without limit may be very heavy in browser.")
-        if st.button("Load Full Graph", key="load_full_graph_btn"):
-            with st.spinner("Loading graph and building visualization..."):
-                graph = _load_active_graph(graph_path)
-                triples, total = collect_full_graph_triples(graph, limit=int(full_graph_limit))
-                if not triples:
-                    st.warning("No triples available for visualization.")
-                else:
-                    html = build_graph_html(
-                        triples,
-                        height_px=int(graph_height),
-                        heading="Infineon Graph (Full View)",
-                    )
-                    st.caption(
-                        f"Showing {len(triples)} triples out of total {total}."
-                    )
-                    components.html(
-                        html,
-                        height=int(graph_height) + 40,
-                        scrolling=True,
-                    )
+        try:
+            raw_schema = _load_schema_dict_cached(schema_path)
+            triples = _overview_relationship_triples(raw_schema)
+        except Exception as exc:
+            triples = []
+            st.warning(f"Could not load schema relationships: {exc}")
+        if not triples:
+            st.warning("No declared ontology relationships available for visualization.")
+        else:
+            graph_nodes = {node for s, _p, o in triples for node in (s, o)}
+            st.caption(f"Showing {len(graph_nodes)} ontology nodes and {len(triples)} declared relationships.")
+            html = build_graph_html(
+                triples,
+                height_px=int(graph_height),
+                heading="Infineon Ontology Schema",
+                max_nodes=160,
+                max_edges=220,
+            )
+            components.html(
+                html,
+                height=int(graph_height) + 40,
+                scrolling=True,
+            )
 
     with tab_question:
         st.caption(
@@ -3193,22 +3194,50 @@ elif developer_mode:
                         hops=int(subgraph_hops),
                         limit=int(subgraph_edge_limit),
                     )
-                    if not triples:
-                        st.warning(
-                            "Could not extract a non-empty subgraph for this query."
-                        )
-                    else:
-                        html = build_graph_html(
-                            triples,
-                            height_px=int(graph_height),
-                            heading="Infineon Graph (Question Subgraph)",
-                        )
-                        st.caption(
-                            f"Seeds: {meta.get('seed_count', 0)} | "
-                            f"Edges shown: {meta.get('edge_count', 0)}"
-                        )
-                        components.html(
-                            html,
-                            height=int(graph_height) + 40,
-                            scrolling=True,
-                        )
+                if not triples:
+                    st.warning(
+                        "Could not extract a non-empty subgraph for this query."
+                    )
+                else:
+                    html = build_graph_html(
+                        triples,
+                        height_px=int(graph_height),
+                        heading="Infineon Graph (Question Subgraph)",
+                    )
+                    st.caption(
+                        f"Seeds: {meta.get('seed_count', 0)} | "
+                        f"Edges shown: {meta.get('edge_count', 0)}"
+                    )
+                    components.html(
+                        html,
+                        height=int(graph_height) + 40,
+                        scrolling=True,
+                    )
+
+    with tab_raw:
+        st.caption(
+            "Debug view over raw RDF data triples. This can look noisy because it includes "
+            "instances, observations, sample values, and literals. It is not the ontology map."
+        )
+        if full_graph_limit == 0:
+            st.warning("Raw full graph without limit may be very heavy in browser.")
+        if st.button("Load Raw Data Triples", key="load_raw_graph_btn"):
+            with st.spinner("Loading raw data triples and building visualization..."):
+                graph = _load_active_graph(graph_path)
+                triples, total = collect_full_graph_triples(graph, limit=int(full_graph_limit))
+                if not triples:
+                    st.warning("No triples available for visualization.")
+                else:
+                    html = build_graph_html(
+                        triples,
+                        height_px=int(graph_height),
+                        heading="Infineon Raw Data Triples",
+                    )
+                    st.caption(
+                        f"Showing {len(triples)} raw triples out of total {total}."
+                    )
+                    components.html(
+                        html,
+                        height=int(graph_height) + 40,
+                        scrolling=True,
+                    )
