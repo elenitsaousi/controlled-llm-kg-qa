@@ -3,6 +3,7 @@ import time
 import json
 import re
 import uuid
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
@@ -1071,6 +1072,63 @@ def _join_human(items: List[str], limit: int = 3) -> str:
     return ", ".join(shown[:-1]) + f", and {shown[-1]}"
 
 
+def _dedupe_keep_order(items: List[str]) -> List[str]:
+    seen = set()
+    out = []
+    for item in items:
+        text = str(item or "").strip()
+        if not text:
+            continue
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(text)
+    return out
+
+
+def _query_scope_hint(query: str, plan: Dict[str, object], scopes: List[str], surveys: List[str]) -> str:
+    text = str(query or "").lower()
+    class_names = " ".join(str(v).lower() for v in list(plan.get("classes") or []))
+    origin_names = " ".join(str(v).lower() for v in list(plan.get("origins") or []) + list(plan.get("survey_origins") or []))
+    combined = " ".join([text, class_names, origin_names, " ".join(scopes).lower(), " ".join(surveys).lower()])
+    hints = []
+    if "oem" in combined:
+        hints.append("OEM")
+    if "tier1" in combined or "tier 1" in combined:
+        hints.append("Tier1")
+    if "semiconductor" in combined or "_semi" in combined or " semi" in combined:
+        hints.append("Semiconductor")
+    return _join_human(_dedupe_keep_order(hints), limit=3)
+
+
+def _query_data_path_hint(query: str, plan: Dict[str, object]) -> str:
+    text = str(query or "")
+    lowered = text.lower()
+    classes = {str(v) for v in list(plan.get("classes") or [])}
+    if "hasdetail" in lowered:
+        return "detail records"
+    if "hassurveyorigin" in lowered:
+        return "survey-origin filtered records"
+    if any(name.endswith(("_OEM", "_Tier1", "_Semiconductor")) for name in classes):
+        return "survey-specific records"
+    if "autonomousdrivingdevelopment" in lowered:
+        return "all autonomous-driving records"
+    if "futuredemandanalysis" in lowered:
+        return "all future-demand records"
+    if "currentdemandanalysis" in lowered:
+        return "all current-demand records"
+    return ""
+
+
+def _query_difference_hint(details: Dict[str, object]) -> str:
+    scope_hint = str(details.get("scope_hint") or "").strip()
+    path_hint = str(details.get("path_hint") or "").strip()
+    if scope_hint and path_hint:
+        return f"{scope_hint} scope, {path_hint}"
+    return scope_hint or path_hint
+
+
 def _candidate_interpretation_details(question: str, query: str, candidate: Dict[str, object]) -> Dict[str, object]:
     try:
         contract = extract_query_contract(query).to_dict()
@@ -1101,6 +1159,8 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
     ]
     surveys = [_humanize_axis_value(v) for v in list(plan.get("survey_origins") or [])]
     query_types = {str(v) for v in plan.get("query_types") or []}
+    scope_hint = _query_scope_hint(query, plan, scopes, surveys)
+    path_hint = _query_data_path_hint(query, plan)
 
     if aggregation == "avg":
         action = "calculates the average of"
@@ -1134,6 +1194,8 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
         description += f", grouped by {grouping}"
     if scopes:
         description += f", restricted to {_join_human(scopes)}"
+    elif scope_hint:
+        description += f", for {scope_hint}"
     if surveys:
         description += f", using {_join_human(surveys)} data"
     description += "."
@@ -1143,6 +1205,8 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
         what_you_will_see += f", broken down by {grouping}"
     if scopes:
         what_you_will_see += f", filtered to {_join_human(scopes)}"
+    elif scope_hint:
+        what_you_will_see += f", for {scope_hint}"
     if surveys:
         what_you_will_see += f", using {_join_human(surveys)} survey data"
     what_you_will_see += "."
@@ -1152,6 +1216,8 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
         choose_if += f" by {grouping}"
     if scopes:
         choose_if += f" for {_join_human(scopes)}"
+    elif scope_hint:
+        choose_if += f" for {scope_hint}"
     if surveys:
         choose_if += f" from {_join_human(surveys)} survey data"
     choose_if += "."
@@ -1165,6 +1231,10 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
         bullets.append(f"Breakdown: {grouping}")
     if scopes:
         bullets.append(f"Scope: {_join_human(scopes)}")
+    elif scope_hint:
+        bullets.append(f"Scope: {scope_hint}")
+    if path_hint:
+        bullets.append(f"Data path: {path_hint}")
     if surveys:
         bullets.append(f"Survey source: {_join_human(surveys)}")
     if select_vars:
@@ -1183,6 +1253,9 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
         "grouping": grouping,
         "scopes": scopes,
         "surveys": surveys,
+        "scope_hint": scope_hint,
+        "path_hint": path_hint,
+        "difference_hint": _query_difference_hint({"scope_hint": scope_hint, "path_hint": path_hint}),
     }
 
 
@@ -1192,6 +1265,8 @@ def _candidate_interpretation_summary(question: str, query: str, candidate: Dict
     grouping = str(details.get("grouping") or "")
     scopes = list(details.get("scopes") or [])
     surveys = list(details.get("surveys") or [])
+    scope_hint = str(details.get("scope_hint") or "").strip()
+    path_hint = str(details.get("path_hint") or "").strip()
     try:
         contract = extract_query_contract(query).to_dict()
     except Exception:
@@ -1219,11 +1294,36 @@ def _candidate_interpretation_summary(question: str, query: str, candidate: Dict
     label = f"{prefix} {target}".strip()
     if scopes:
         label += " for " + _join_human([str(v) for v in scopes], limit=2)
+    elif scope_hint:
+        label += f" for {scope_hint}"
     if grouping:
         label += " by " + grouping
     elif surveys:
         label += " from " + _join_human([str(v) for v in surveys], limit=2)
+    elif path_hint and not scope_hint:
+        label += f" from {path_hint}"
     return label
+
+
+def _dedupe_confidence_option_labels(options: List[Dict[str, object]]) -> None:
+    label_counts = Counter(str(option.get("label") or "").strip().lower() for option in options)
+    grouped: Dict[str, List[Dict[str, object]]] = defaultdict(list)
+    for option in options:
+        grouped[str(option.get("label") or "").strip().lower()].append(option)
+    for label_key, duplicates in grouped.items():
+        if not label_key or label_counts[label_key] <= 1:
+            continue
+        used = set()
+        for option in duplicates:
+            base_label = str(option.get("label") or "Interpretation").strip()
+            hint = str(option.get("difference_hint") or "").strip()
+            if not hint:
+                hint = _humanize_axis_value(str(option.get("source") or "alternative"))
+            new_label = f"{base_label} ({hint})" if hint and hint.lower() not in base_label.lower() else base_label
+            if new_label.lower() in used:
+                new_label = f"{base_label} (rank {option.get('rank')})"
+            used.add(new_label.lower())
+            option["label"] = new_label
 
 
 def _build_confidence_route(
@@ -1283,6 +1383,9 @@ def _build_confidence_route(
                 "what_you_will_see": interpretation.get("what_you_will_see"),
                 "choose_if": interpretation.get("choose_if"),
                 "details": interpretation.get("bullets"),
+                "scope_hint": interpretation.get("scope_hint"),
+                "path_hint": interpretation.get("path_hint"),
+                "difference_hint": interpretation.get("difference_hint"),
                 "query": query,
                 "safety_flags": _confidence_safety_flags(
                     question=question,
@@ -1293,6 +1396,7 @@ def _build_confidence_route(
         )
         if len(options) >= 3:
             break
+    _dedupe_confidence_option_labels(options)
 
     return {
         "enabled": True,
