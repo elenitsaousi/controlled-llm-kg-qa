@@ -1042,11 +1042,17 @@ def _humanize_axis_value(value: object) -> str:
         return ""
     text = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", text)
     replacements = {
+        "avg": "average",
+        "sum": "total",
+        "count": "count",
+        "cnt": "count",
         "tier1": "Tier1",
         "oem": "OEM",
         "sae": "SAE",
         "ev": "EV",
         "nonev": "non-EV",
+        "list": "list",
+        "values": "values",
     }
     text = text.replace("_", " ").replace("-", " ")
     words = [replacements.get(word.lower(), word) for word in text.split()]
@@ -1097,17 +1103,29 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
     query_types = {str(v) for v in plan.get("query_types") or []}
 
     if aggregation == "avg":
-        action = "averages"
+        action = "calculates the average of"
+        result_shape = "an average value"
+        choose_prefix = "you want an average"
     elif aggregation == "sum":
-        action = "totals"
+        action = "calculates the total of"
+        result_shape = "a total value"
+        choose_prefix = "you want totals"
     elif aggregation == "count":
         action = "counts"
+        result_shape = "a count"
+        choose_prefix = "you want to count records or entities"
     elif answer_shape == "ranked_one" or "ranking" in query_types or "limited" in query_types:
         action = "finds the top matching value for"
+        result_shape = "the top matching result"
+        choose_prefix = "you want the highest, lowest, or top result"
     elif answer_shape == "list_values":
         action = "lists"
+        result_shape = "a list of values"
+        choose_prefix = "you want to see the values themselves"
     else:
         action = "returns"
+        result_shape = "matching graph rows"
+        choose_prefix = "you want the matching records"
 
     target = _join_human(metrics) or _join_human(classes) or _join_human(select_vars) or "graph values"
     description = f"This option {action} {target}"
@@ -1119,6 +1137,24 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
     if surveys:
         description += f", using {_join_human(surveys)} data"
     description += "."
+
+    what_you_will_see = f"{result_shape.capitalize()} for {target}"
+    if grouping:
+        what_you_will_see += f", broken down by {grouping}"
+    if scopes:
+        what_you_will_see += f", filtered to {_join_human(scopes)}"
+    if surveys:
+        what_you_will_see += f", using {_join_human(surveys)} survey data"
+    what_you_will_see += "."
+
+    choose_if = choose_prefix
+    if grouping:
+        choose_if += f" by {grouping}"
+    if scopes:
+        choose_if += f" for {_join_human(scopes)}"
+    if surveys:
+        choose_if += f" from {_join_human(surveys)} survey data"
+    choose_if += "."
 
     bullets: List[str] = []
     if aggregation:
@@ -1139,6 +1175,8 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
 
     return {
         "description": description,
+        "what_you_will_see": what_you_will_see,
+        "choose_if": choose_if,
         "bullets": bullets,
         "action": action,
         "target": target,
@@ -1224,6 +1262,8 @@ def _build_confidence_route(
                 "source": candidate.get("source"),
                 "label": _candidate_interpretation_summary(question, query, candidate),
                 "description": interpretation.get("description"),
+                "what_you_will_see": interpretation.get("what_you_will_see"),
+                "choose_if": interpretation.get("choose_if"),
                 "details": interpretation.get("bullets"),
                 "query": query,
                 "safety_flags": _confidence_safety_flags(
@@ -1279,13 +1319,17 @@ def _render_confidence_clarification(
     for option in options[:3]:
         with st.container(border=True):
             st.markdown(f"**{str(option.get('label') or 'Interpretation')}**")
-            description = str(option.get("description") or "").strip()
-            if description:
-                st.write(description)
+            what_you_will_see = str(option.get("what_you_will_see") or option.get("description") or "").strip()
+            choose_if = str(option.get("choose_if") or "").strip()
+            if what_you_will_see:
+                st.markdown(f"**What you will see:** {what_you_will_see}")
+            if choose_if:
+                st.markdown(f"**Choose this if:** {choose_if}")
             details = [str(item) for item in (option.get("details") or []) if str(item).strip()]
             if details:
-                st.markdown("\n".join(f"- {item}" for item in details))
-            st.caption(f"Option {option.get('rank')} | source={option.get('source') or 'unknown'}")
+                with st.expander("More details", expanded=False):
+                    st.markdown("\n".join(f"- {item}" for item in details))
+                    st.caption(f"Candidate source: {option.get('source') or 'unknown'}")
             with st.expander("Technical SPARQL query", expanded=False):
                 st.code(_format_sparql_for_display(str(option.get("query", ""))), language="sparql")
             if st.button(
@@ -2744,7 +2788,7 @@ with st.sidebar:
     show_prompt = False
     show_candidates = False
     show_candidate_diagnostics = False
-    show_answer_evidence_graph = False
+    show_answer_evidence_graph = True
     execute_selected = True
     max_preview_rows = 200
     full_graph_limit = 3000
@@ -2865,10 +2909,10 @@ with st.sidebar:
             )
             show_answer_evidence_graph = st.checkbox(
                 "Show answer evidence graph",
-                value=False,
+                value=True,
                 help=(
                     "Builds a small graph visualization after the answer. Useful for demos, "
-                    "but keep off for fastest response time."
+                    "Turn off only when measuring the fastest possible response time."
                 ),
             )
             execute_selected = st.checkbox("Execute selected query on graph", value=True)
