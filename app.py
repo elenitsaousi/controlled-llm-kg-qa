@@ -2397,6 +2397,7 @@ with st.sidebar:
     confidence_min_margin = 0.00
     confidence_safety_guard = True
     confidence_sort_by_score = True
+    fast_interactive_mode = True
     show_prompt = False
     show_candidates = False
     show_candidate_diagnostics = False
@@ -2458,6 +2459,14 @@ with st.sidebar:
                 "Route by ML score order",
                 value=True,
                 help="Uses the ranker score order for confidence routing and top-3 clarification options.",
+            )
+            fast_interactive_mode = st.checkbox(
+                "Fast interactive mode",
+                value=True,
+                help=(
+                    "Skips expensive legacy clarification/answerability profiling inside the pipeline. "
+                    "The UI still executes the selected or clarified query before showing an answer."
+                ),
             )
 
             st.subheader("Diagnostics")
@@ -2617,6 +2626,8 @@ if asked:
                     ml_model_path=ml_model_path.strip() or None,
                     ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
                     include_candidate_diagnostics=bool(show_candidate_diagnostics),
+                    enable_clarification=not bool(fast_interactive_mode),
+                    enable_answerability_assessment=not bool(fast_interactive_mode),
                 )
         except LLMAuthError as exc:
             st.error("Infineon GPT authentication failed.")

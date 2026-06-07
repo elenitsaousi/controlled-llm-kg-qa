@@ -2576,6 +2576,9 @@ def answer_question(
     ml_model_path: Optional[str] = None,
     ml_ambiguity_config_path: Optional[str] = None,
     include_candidate_diagnostics: bool = True,
+    enable_clarification: bool = True,
+    clarification_candidate_window: int = 8,
+    enable_answerability_assessment: bool = True,
 ) -> Dict[str, object]:
     alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
     request_route = route_request(question, schema=schema, alias_index=alias_index)
@@ -2855,51 +2858,53 @@ def answer_question(
         ordered_candidates,
         effective_question
     )
-    # Profile the top plan neighborhood before asking for clarification. This
-    # keeps user-facing choices constrained to interpretations that are both
-    # semantically close to the request and known to return graph rows.
-    clarification_candidate_window = 8
-    for candidate_rank, candidate in enumerate(ordered_candidates[:clarification_candidate_window], start=1):
-        query = str(candidate.get("query", "") or "").strip()
-        if not query:
-            continue
-        profile = _query_runtime_profile(query)
-        candidate["execution_has_rows"] = profile.get("has_rows")
-        candidate["execution_error"] = profile.get("error")
-        candidate["execution_row_count"] = profile.get("row_count")
-        candidate["execution_unbound_vars"] = list(profile.get("unbound_vars") or [])
-        is_answerable, reject_reasons = _candidate_is_user_answerable(effective_question, query)
-        candidate["semantic_answerable"] = bool(is_answerable)
-        candidate["answerability_reject_reasons"] = list(reject_reasons)
-        if profile.get("has_rows") is True and is_answerable:
-            option_preview = _answerable_option_preview(
-                question=effective_question,
-                query=query,
-                candidate=candidate,
-                rank=candidate_rank,
-                profile=profile,
-            )
-            candidate["answer_preview"] = option_preview.get("preview")
-            candidate["preview_rows"] = option_preview.get("preview_rows")
+    clarification = None
+    if enable_clarification and int(clarification_candidate_window) > 0:
+        # Profile the top plan neighborhood before asking for clarification.
+        # This is useful for offline diagnostics and safe alternatives, but can
+        # be expensive in the interactive UI over a large RDFLib graph.
+        clarification_window = max(1, int(clarification_candidate_window))
+        for candidate_rank, candidate in enumerate(ordered_candidates[:clarification_window], start=1):
+            query = str(candidate.get("query", "") or "").strip()
+            if not query:
+                continue
+            profile = _query_runtime_profile(query)
+            candidate["execution_has_rows"] = profile.get("has_rows")
+            candidate["execution_error"] = profile.get("error")
+            candidate["execution_row_count"] = profile.get("row_count")
+            candidate["execution_unbound_vars"] = list(profile.get("unbound_vars") or [])
+            is_answerable, reject_reasons = _candidate_is_user_answerable(effective_question, query)
+            candidate["semantic_answerable"] = bool(is_answerable)
+            candidate["answerability_reject_reasons"] = list(reject_reasons)
+            if profile.get("has_rows") is True and is_answerable:
+                option_preview = _answerable_option_preview(
+                    question=effective_question,
+                    query=query,
+                    candidate=candidate,
+                    rank=candidate_rank,
+                    profile=profile,
+                )
+                candidate["answer_preview"] = option_preview.get("preview")
+                candidate["preview_rows"] = option_preview.get("preview_rows")
 
-    clarification = build_clarification_payload(
-        effective_question,
-        ordered_candidates,
-        schema_dict=_load_schema_dict_for_ranking(schema),
-        max_candidates=clarification_candidate_window,
-    )
-    if clarification is not None and selected and selected.get("execution_has_rows") is False:
-        nonempty_candidates = [
-            candidate
-            for candidate in ordered_candidates[:clarification_candidate_window]
-            if candidate.get("execution_has_rows") is True
-            and candidate.get("semantic_answerable") is not False
-        ]
-        if nonempty_candidates:
-            selected = _select_best_candidate_semantic(
-                nonempty_candidates,
-                effective_question,
-            )
+        clarification = build_clarification_payload(
+            effective_question,
+            ordered_candidates,
+            schema_dict=_load_schema_dict_for_ranking(schema),
+            max_candidates=clarification_window,
+        )
+        if clarification is not None and selected and selected.get("execution_has_rows") is False:
+            nonempty_candidates = [
+                candidate
+                for candidate in ordered_candidates[:clarification_window]
+                if candidate.get("execution_has_rows") is True
+                and candidate.get("semantic_answerable") is not False
+            ]
+            if nonempty_candidates:
+                selected = _select_best_candidate_semantic(
+                    nonempty_candidates,
+                    effective_question,
+                )
 
     selected, selected_answerability_override = _prefer_answerable_selected_candidate(
         selected,
@@ -2989,12 +2994,27 @@ def answer_question(
             question=question,
         )
 
-    answerability = _answerability_assessment(
-        question=effective_question,
-        selected_query=selected_query,
-        selected_errors=errors,
-        ordered_candidates=ordered_candidates,
-    )
+    if enable_answerability_assessment:
+        answerability = _answerability_assessment(
+            question=effective_question,
+            selected_query=selected_query,
+            selected_errors=errors,
+            ordered_candidates=ordered_candidates,
+        )
+    else:
+        answerability = {
+            "status": "not_checked_fast_mode",
+            "can_answer": None,
+            "reason": (
+                "Interactive fast mode skipped expensive runtime answerability "
+                "checks. The selected query is executed by the UI before rendering."
+            ),
+            "selected_has_rows": None,
+            "selected_error": None,
+            "alternative_nonempty_count": 0,
+            "valid_candidate_count": 0,
+            "nonempty_alternatives": [],
+        }
 
     answer = synthesize_answer(
         question, selected_query, results, errors or None
