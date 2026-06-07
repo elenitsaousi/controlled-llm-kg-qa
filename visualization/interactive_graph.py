@@ -377,6 +377,27 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
         });
         nodes.update(updates);
       }
+      let kgDragState = null;
+      function kgPointerCanvas(params) {
+        return params && params.pointer && params.pointer.canvas ? params.pointer.canvas : null;
+      }
+      function kgMoveDirectNeighbors(centerId, dx, dy, strength) {
+        if (typeof network === 'undefined' || typeof nodes === 'undefined') return;
+        if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+        const positions = network.getPositions();
+        const updates = [];
+        (network.getConnectedNodes(centerId) || []).slice(0, 12).forEach((id) => {
+          const pos = positions[id];
+          if (!pos) return;
+          updates.push({
+            id,
+            x: pos.x + (dx * strength),
+            y: pos.y + (dy * strength),
+            fixed: { x: true, y: true }
+          });
+        });
+        if (updates.length) nodes.update(updates);
+      }
       function kgRelaxConnectedNodes(centerId) {
         if (typeof network === 'undefined' || typeof nodes === 'undefined') return;
         const positions = network.getPositions();
@@ -432,9 +453,25 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
         network.on('dragStart', (params) => {
           if (params.nodes && params.nodes.length) {
             const selectedId = params.nodes[0];
+            const pointer = kgPointerCanvas(params);
+            kgDragState = {
+              selectedId,
+              x: pointer ? pointer.x : null,
+              y: pointer ? pointer.y : null
+            };
             kgFreezeGraphExcept([selectedId]);
             network.setOptions({ physics: { enabled: false } });
           }
+        });
+        network.on('dragging', (params) => {
+          if (!kgDragState || !kgDragState.selectedId) return;
+          const pointer = kgPointerCanvas(params);
+          if (!pointer || kgDragState.x === null || kgDragState.y === null) return;
+          const dx = pointer.x - kgDragState.x;
+          const dy = pointer.y - kgDragState.y;
+          kgDragState.x = pointer.x;
+          kgDragState.y = pointer.y;
+          kgMoveDirectNeighbors(kgDragState.selectedId, dx, dy, 0.18);
         });
         network.on('dragEnd', (params) => {
           if (params.nodes && params.nodes.length) {
@@ -443,6 +480,7 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
             kgFreezeGraphExcept([]);
             network.selectNodes([selectedId]);
           }
+          kgDragState = null;
         });
       }
       window.addEventListener('load', () => kgInstallNodePanel(0));
