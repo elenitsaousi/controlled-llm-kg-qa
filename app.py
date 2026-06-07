@@ -48,6 +48,11 @@ DEFAULT_AMBIGUITY_CONFIG_PATHS = [
     PROJECT_ROOT / "ranking" / "models" / "infineon_ambiguity_config_500.json",
     PROJECT_ROOT / "ranking" / "models" / "infineon_ambiguity_config.json",
 ]
+DEFAULT_CONFIDENCE_ROUTING_REPORT_PATHS = [
+    PROJECT_ROOT / "results" / "final1000_wf_test_scope_origin_confidence_routing_safety.json",
+    PROJECT_ROOT / "results" / "final1000_wf_test_scope_origin_confidence_routing_sorted_v2.json",
+    PROJECT_ROOT / "results" / "final1000_wf_test_scope_origin_confidence_routing_v2.json",
+]
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
 PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -2147,11 +2152,224 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
             )
 
 
+def _default_confidence_routing_report_path() -> str:
+    for path in DEFAULT_CONFIDENCE_ROUTING_REPORT_PATHS:
+        if path.exists():
+            return str(path)
+    return str(DEFAULT_CONFIDENCE_ROUTING_REPORT_PATHS[0])
+
+
+def _load_confidence_routing_report(path: str) -> Dict[str, object]:
+    with open(path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    if not isinstance(payload, dict):
+        raise ValueError("Routing report must be a JSON object.")
+    return payload
+
+
+def _dashboard_policy_bucket(report: Dict[str, object], name: str) -> Dict[str, object]:
+    return dict(dict(report.get("policy_buckets") or {}).get(name) or {})
+
+
+def _dashboard_fmt_pct(value: object) -> str:
+    try:
+        return f"{100.0 * float(value):.1f}%"
+    except (TypeError, ValueError):
+        return "0.0%"
+
+
+def _dashboard_score(row: Dict[str, object], key: str) -> float:
+    try:
+        return float(row.get(key) or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _dashboard_distribution_rows(values: object) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    for item in values or []:
+        if isinstance(item, (list, tuple)) and len(item) == 2:
+            rows.append({"value": item[0], "count": item[1]})
+    return rows
+
+
+def _dashboard_cases(report: Dict[str, object], case_set: str) -> List[Dict[str, object]]:
+    if case_set == "low_confidence_examples":
+        return [dict(row) for row in report.get("low_confidence_examples") or []]
+    if case_set == "high_confidence_wrong_examples":
+        return [dict(row) for row in report.get("high_confidence_wrong_examples") or []]
+    return []
+
+
+def _dashboard_all_flags(cases: List[Dict[str, object]]) -> List[str]:
+    flags = set()
+    for row in cases:
+        for flag in row.get("safety_flags") or []:
+            flags.add(str(flag))
+    return sorted(flags)
+
+
+def _dashboard_top3_table(row: Dict[str, object]) -> List[Dict[str, object]]:
+    table: List[Dict[str, object]] = []
+    for candidate in row.get("top3") or []:
+        if not isinstance(candidate, dict):
+            continue
+        table.append(
+            {
+                "rank": candidate.get("rank"),
+                "score": round(float(candidate.get("score") or 0.0), 4),
+                "label": candidate.get("label"),
+                "source": candidate.get("source"),
+                "query": candidate.get("query"),
+            }
+        )
+    return table
+
+
+def _render_confidence_dashboard_summary(report: Dict[str, object]) -> None:
+    summary = dict(report.get("summary") or {})
+    inputs = dict(report.get("inputs") or {})
+    auto = _dashboard_policy_bucket(report, "auto_answer")
+    clarification = _dashboard_policy_bucket(report, "clarification")
+
+    st.subheader("System Metrics")
+    cols = st.columns(5)
+    cols[0].metric(
+        "Forced Top1",
+        f"{summary.get('forced_top1_correct', 0)}/{summary.get('total', 0)}",
+        _dashboard_fmt_pct(summary.get("forced_top1_accuracy")),
+    )
+    cols[1].metric(
+        "Any Correct",
+        f"{summary.get('any_correct', 0)}/{summary.get('total', 0)}",
+        _dashboard_fmt_pct(summary.get("any_correct_rate")),
+    )
+    cols[2].metric(
+        "Auto-answer",
+        f"{auto.get('correct', 0)}/{auto.get('count', 0)}",
+        _dashboard_fmt_pct(auto.get("accuracy")),
+    )
+    total = max(1, int(summary.get("total") or 1))
+    cols[3].metric(
+        "Auto coverage",
+        str(auto.get("count", 0)),
+        _dashboard_fmt_pct((auto.get("count", 0) or 0) / total),
+    )
+    cols[4].metric(
+        "Clarification Any",
+        f"{clarification.get('any_correct', 0)}/{clarification.get('count', 0)}",
+        _dashboard_fmt_pct(clarification.get("any_correct_rate")),
+    )
+
+    st.caption(
+        "Policy: "
+        f"score >= {float(inputs.get('policy_min_score') or 0.0):.2f}, "
+        f"margin >= {float(inputs.get('policy_min_margin') or 0.0):.2f}, "
+        f"safety guard = {inputs.get('enable_safety_guard')}"
+    )
+
+
+def _render_confidence_dashboard_distributions(report: Dict[str, object]) -> None:
+    st.subheader("Bucket Composition")
+    bucket_name = st.radio(
+        "Bucket",
+        ["auto_answer", "clarification"],
+        horizontal=True,
+        key="confidence_dashboard_bucket",
+    )
+    bucket = _dashboard_policy_bucket(report, str(bucket_name))
+    dimensions = [
+        ("families", "Families"),
+        ("aggregation", "Aggregation"),
+        ("scopes", "Scopes"),
+        ("dimensions", "Dimensions"),
+        ("answer_shape", "Answer Shape"),
+        ("safety_flags", "Safety Flags"),
+    ]
+    cols = st.columns(2)
+    for idx, (key, label) in enumerate(dimensions):
+        with cols[idx % 2]:
+            st.markdown(f"**{label}**")
+            st.dataframe(_dashboard_distribution_rows(bucket.get(key)), width="stretch", hide_index=True)
+
+
+def _render_confidence_dashboard_cases(report: Dict[str, object]) -> None:
+    st.subheader("Case Browser")
+    case_set = st.selectbox(
+        "Case set",
+        ["high_confidence_wrong_examples", "low_confidence_examples"],
+        index=0,
+    )
+    cases = _dashboard_cases(report, case_set)
+    if not cases:
+        st.info("No cases available in this report.")
+        return
+
+    family_options = sorted({str(row.get("family") or "unknown") for row in cases})
+    selected_families = st.multiselect("Families", family_options, default=family_options)
+    only_wrong = st.checkbox("Only top1 wrong", value=(case_set == "high_confidence_wrong_examples"))
+    min_score = st.slider("Minimum score", 0.0, 1.0, 0.0, 0.01)
+    selected_flags = st.multiselect("Safety flags", _dashboard_all_flags(cases))
+
+    filtered: List[Dict[str, object]] = []
+    for row in cases:
+        if str(row.get("family") or "unknown") not in selected_families:
+            continue
+        if only_wrong and row.get("top1_correct"):
+            continue
+        if _dashboard_score(row, "score1") < min_score:
+            continue
+        row_flags = {str(flag) for flag in row.get("safety_flags") or []}
+        if selected_flags and not row_flags.intersection(selected_flags):
+            continue
+        filtered.append(row)
+
+    st.caption(f"Showing {len(filtered)} / {len(cases)} cases")
+    for row in filtered:
+        title = (
+            f"{row.get('id')} | "
+            f"score={_dashboard_score(row, 'score1'):.3f} | "
+            f"margin={_dashboard_score(row, 'margin'):.3f}"
+        )
+        with st.expander(title, expanded=False):
+            st.markdown(f"**Question:** {row.get('question')}")
+            cols = st.columns(4)
+            cols[0].metric("Score1", f"{_dashboard_score(row, 'score1'):.4f}")
+            cols[1].metric("Score2", f"{_dashboard_score(row, 'score2'):.4f}")
+            cols[2].metric("Margin", f"{_dashboard_score(row, 'margin'):.4f}")
+            cols[3].metric("Top1 correct", str(bool(row.get("top1_correct"))))
+            st.markdown(f"**Safety flags:** `{row.get('safety_flags') or []}`")
+            st.markdown("**Top interpretations**")
+            st.dataframe(_dashboard_top3_table(row), width="stretch", hide_index=True)
+
+
+def _render_confidence_routing_dashboard() -> None:
+    st.title("KGQA Confidence Routing Dashboard")
+    report_path = st.text_input(
+        "Routing report JSON",
+        value=_default_confidence_routing_report_path(),
+    )
+    if not report_path.strip():
+        st.info("Enter a confidence routing JSON report path.")
+        return
+    try:
+        report = _load_confidence_routing_report(report_path.strip())
+    except Exception as exc:
+        st.error(f"Could not load report: {exc}")
+        return
+
+    _render_confidence_dashboard_summary(report)
+    st.divider()
+    _render_confidence_dashboard_distributions(report)
+    st.divider()
+    _render_confidence_dashboard_cases(report)
+
+
 st.set_page_config(page_title="Infineon KG QA", layout="wide")
 _inject_app_styles()
 
 with st.sidebar:
-    page = st.radio("Page", ["Ask", "Graph Overview"])
+    page = st.radio("Page", ["Ask", "Confidence Routing Dashboard", "Graph Overview"])
     st.markdown(
         '<div class="kg-sidebar-note">Ask questions over the Infineon knowledge graph or open the overview report.</div>',
         unsafe_allow_html=True,
@@ -2282,6 +2500,10 @@ with st.sidebar:
 
 if page == "Graph Overview":
     _render_graph_overview(schema_path, graph_path)
+    st.stop()
+
+if page == "Confidence Routing Dashboard":
+    _render_confidence_routing_dashboard()
     st.stop()
 
 st.markdown(
