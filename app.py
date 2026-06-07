@@ -807,6 +807,21 @@ def _confidence_safety_flags(
     return sorted(set(flags))
 
 
+def _blocking_confidence_safety_flags(flags: List[str]) -> List[str]:
+    blocking_prefixes = (
+        "list_count_conflict",
+        "scalar_grouping_conflict",
+        "scope_missing:",
+        "contract_conflict:",
+        "class_missing:",
+    )
+    return [
+        flag
+        for flag in flags
+        if any(str(flag).startswith(prefix) for prefix in blocking_prefixes)
+    ]
+
+
 def _humanize_axis_value(value: object) -> str:
     text = str(value or "").strip()
     if not text:
@@ -890,8 +905,9 @@ def _build_confidence_route(
         reason_parts.append(f"score {score1:.3f} is below {min_score:.2f}")
     if margin < min_margin:
         reason_parts.append(f"margin {margin:.3f} is below {min_margin:.2f}")
-    if enable_safety_guard and flags:
-        reason_parts.append("safety guard found " + ", ".join(flags[:4]))
+    blocking_flags = _blocking_confidence_safety_flags(flags)
+    if enable_safety_guard and blocking_flags:
+        reason_parts.append("safety guard found " + ", ".join(blocking_flags[:4]))
     route = "auto_answer" if not reason_parts else "clarification"
     options = []
     seen = set()
@@ -931,6 +947,7 @@ def _build_confidence_route(
         "min_margin": min_margin,
         "safety_guard": bool(enable_safety_guard),
         "safety_flags": flags,
+        "blocking_safety_flags": blocking_flags,
         "reason": "; ".join(reason_parts) if reason_parts else "high confidence and no safety flags",
         "selected_query": str(top1.get("query", "") or "").strip(),
         "options": options,
