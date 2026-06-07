@@ -2701,7 +2701,7 @@ _inject_app_styles()
 with st.sidebar:
     page = st.radio("Page", ["Ask", "Confidence Routing Dashboard", "Graph Overview"])
     st.markdown(
-        '<div class="kg-sidebar-note">Ask questions over the Infineon knowledge graph or open the overview report.</div>',
+        '<div class="kg-sidebar-note">Ask questions over the True Demand KG or open the overview report.</div>',
         unsafe_allow_html=True,
     )
     developer_mode = st.checkbox("Developer mode", value=False)
@@ -2718,7 +2718,7 @@ with st.sidebar:
     temperature = 0.2
     schema_path = str(DEFAULT_SCHEMA_PATH)
     graph_path = str(DEFAULT_GRAPH_PATH)
-    fuseki_query_url = os.getenv("FUSEKI_QUERY_URL", "").strip()
+    fuseki_query_url = os.getenv("FUSEKI_QUERY_URL", DEFAULT_FUSEKI_QUERY_URL).strip()
     use_ml_ranking = True
     ml_policy = "all"
     ml_model_path = _default_ml_model_path()
@@ -2773,8 +2773,9 @@ with st.sidebar:
                 value=fuseki_query_url,
                 placeholder=DEFAULT_FUSEKI_QUERY_URL,
                 help=(
-                    "Optional. When set, graph query execution uses this SPARQL endpoint "
-                    "instead of loading graph.ttl with RDFLib."
+                    "Default graph backend. Keep Fuseki running at this endpoint for the "
+                    "fastest interactive execution path. Clear only if you intentionally "
+                    "want to fall back to local graph.ttl with RDFLib."
                 ),
             )
 
