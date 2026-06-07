@@ -12,7 +12,7 @@ from kg.entity_profiles import (
 from kg.schema_slices import (
     build_schema_slice,
     full_schema_fallback_enabled,
-    infer_schema_slice_names,
+    infer_schema_slice_route,
     schema_slicing_enabled,
 )
 from llm.prompts import build_candidate_prompt, build_repair_prompt
@@ -1332,9 +1332,11 @@ def generate_candidates(
             predicted_query_plan_labels = []
 
     slice_names: List[str] = []
+    slice_route: Dict[str, object] = {"selected": [], "confidence": "disabled", "scores": []}
     sliced_schema: Optional[KGSchema] = None
     if schema_slicing_enabled():
-        slice_names = infer_schema_slice_names(effective_question, predicted_query_plan_labels)
+        slice_route = infer_schema_slice_route(effective_question, predicted_query_plan_labels)
+        slice_names = list(slice_route.get("selected") or [])
         if slice_names:
             sliced_schema = build_schema_slice(schema, slice_names)
 
@@ -1495,6 +1497,9 @@ def generate_candidates(
                 "generation_repair_count": repair_count,
                 "schema_slicing_applied": bool(sliced_schema),
                 "schema_slice_names": slice_names,
+                "schema_slice_confidence": str(slice_route.get("confidence", "disabled")),
+                "schema_slice_scores": list(slice_route.get("scores") or []),
+                "schema_slice_full_fallback_enabled": bool(full_schema_fallback_enabled()),
             },
         }
 

@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Dict, Iterable, List, Optional, Set
 
 from kg.schema import KGSchema
@@ -106,25 +107,101 @@ SLICE_CLASS_KEYWORDS: Dict[str, Set[str]] = {
 }
 
 SLICE_QUESTION_KEYWORDS: Dict[str, Set[str]] = {
-    "inventory": {"inventory", "component", "stock", "ev", "non-ev", "mixed"},
-    "future_demand": {"future", "forecast", "projected", "projection", "option1", "option2", "option3"},
-    "regional_demand": {"region", "regional", "americas", "europe", "asia", "demand by region"},
-    "vehicle_sales": {"vehicle sales", "sold", "sales", "forecasted vehicle", "actual vehicle", "month"},
+    "inventory": {"inventory", "component", "stock", "ev", "non-ev", "nonev", "mixed"},
+    "future_demand": {"future", "forecast", "forecasted", "projected", "projection", "option1", "option2", "option3"},
+    "regional_demand": {"region", "regional", "americas", "europe", "asia", "demand by region", "per region"},
+    "vehicle_sales": {"vehicle sales", "vehicle unit", "vehicles sold", "sold", "sales", "actual vehicle", "forecasted vehicle", "month", "yearly"},
     "autonomous_driving": {"autonomous", "sae", "driving", "level 5", "adas"},
-    "order_cancellation": {"order cancellation", "cancellation", "cancel"},
-    "shortage": {"shortage", "shortages"},
-    "current_demand_baselines": {"current demand", "baseline", "bl1", "bl2", "percentage change"},
-    "catalog_lookup": {"list", "names", "labels", "types", "how many", "number of"},
+    "order_cancellation": {"order cancellation", "order-cancellation", "cancellation", "cancel", "response type"},
+    "shortage": {"shortage", "shortages", "reported shortage", "shortage status"},
+    "current_demand_baselines": {"current demand", "baseline", "bl1", "bl2", "b1", "b2", "percentage change"},
+    "catalog_lookup": {"list", "names", "labels", "types", "catalog", "available", "which classes"},
 }
 
 
-def infer_schema_slice_names(question: str, predicted_labels: Optional[Iterable[str]] = None) -> List[str]:
+def _max_schema_slice_families() -> int:
+    try:
+        return max(1, min(4, int(os.environ.get("INFINEON_SCHEMA_SLICING_MAX_FAMILIES", "3") or 3)))
+    except Exception:
+        return 3
+
+
+def _tokenize(text: str) -> Set[str]:
+    tokens = set(re.findall(r"[a-z0-9]+", str(text or "").lower().replace("-", " ")))
+    if "tier" in tokens and "1" in tokens:
+        tokens.add("tier1")
+    if "non" in tokens and "ev" in tokens:
+        tokens.add("nonev")
+    return tokens
+
+
+def infer_schema_slice_route(
+    question: str,
+    predicted_labels: Optional[Iterable[str]] = None,
+    *,
+    max_families: Optional[int] = None,
+) -> Dict[str, object]:
+    """Cheap family router for prompt slicing.
+
+    It routes only the schema context sent to the LLM. Query execution still runs
+    against the full graph.
+    """
     text = " ".join([question or "", " ".join(str(x) for x in (predicted_labels or []))]).lower()
-    matches: List[str] = []
+    tokens = _tokenize(text)
+    scores: Dict[str, float] = {}
     for name, keywords in SLICE_QUESTION_KEYWORDS.items():
-        if any(keyword in text for keyword in keywords):
-            matches.append(name)
-    return matches[:2]
+        score = 0.0
+        for keyword in keywords:
+            key = keyword.lower()
+            key_tokens = _tokenize(key)
+            if " " in key and key in text:
+                score += 2.0
+            elif key in tokens:
+                score += 1.0
+            elif key_tokens and key_tokens.issubset(tokens):
+                score += 1.4
+        scores[name] = score
+
+    # Domain combinations that intentionally need multiple families.
+    if scores.get("future_demand", 0) > 0 and scores.get("regional_demand", 0) > 0:
+        scores["future_demand"] += 0.5
+        scores["regional_demand"] += 0.5
+    if "demand" in tokens and scores.get("regional_demand", 0) > 0:
+        scores["regional_demand"] += 0.5
+    if "vehicle" in tokens and "sales" in tokens:
+        scores["vehicle_sales"] += 1.0
+    if "company" in tokens or "companies" in tokens:
+        scores["catalog_lookup"] += 0.25
+        if "shortage" in tokens or "shortages" in tokens:
+            scores["shortage"] += 0.75
+
+    ranked = sorted(((name, score) for name, score in scores.items() if score > 0), key=lambda item: item[1], reverse=True)
+    if not ranked:
+        return {"selected": [], "confidence": "low", "scores": []}
+
+    top_score = ranked[0][1]
+    second_score = ranked[1][1] if len(ranked) > 1 else 0.0
+    max_selected = max_families or _max_schema_slice_families()
+    if top_score >= 2.0 and top_score - second_score >= 1.25:
+        selected = [ranked[0][0]]
+        confidence = "high"
+    elif top_score >= 1.5:
+        selected = [name for name, score in ranked if score >= max(1.0, top_score - 1.25)][:max_selected]
+        confidence = "medium"
+    else:
+        selected = []
+        confidence = "low"
+
+    return {
+        "selected": selected,
+        "confidence": confidence,
+        "scores": [{"family": name, "score": round(score, 3)} for name, score in ranked],
+    }
+
+
+def infer_schema_slice_names(question: str, predicted_labels: Optional[Iterable[str]] = None) -> List[str]:
+    route = infer_schema_slice_route(question, predicted_labels)
+    return list(route.get("selected") or [])
 
 
 def build_schema_slice(schema: KGSchema, slice_names: Iterable[str]) -> KGSchema:

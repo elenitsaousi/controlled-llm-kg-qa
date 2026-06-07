@@ -2434,6 +2434,18 @@ with st.sidebar:
     ml_policy = "all"
     ml_model_path = _default_ml_model_path()
     ambiguity_config_path = _default_ambiguity_config_path()
+    family_schema_routing_enabled = (
+        os.getenv("INFINEON_ENABLE_SCHEMA_SLICING", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    try:
+        family_schema_routing_max = int(os.getenv("INFINEON_SCHEMA_SLICING_MAX_FAMILIES", "3") or 3)
+    except Exception:
+        family_schema_routing_max = 3
+    family_schema_routing_fallback = (
+        os.getenv("INFINEON_SCHEMA_SLICING_FULL_FALLBACK", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
     confidence_routing_enabled = True
     confidence_min_score = 0.90
     confidence_min_margin = 0.00
@@ -2488,6 +2500,31 @@ with st.sidebar:
             )
             if not use_ml_ranking:
                 ml_policy = "off"
+
+            st.subheader("Schema Routing")
+            family_schema_routing_enabled = st.checkbox(
+                "Family-aware schema routing",
+                value=family_schema_routing_enabled,
+                help=(
+                    "Routes the LLM prompt to one or more ontology families. "
+                    "SPARQL still executes against the full graph/Fuseki dataset."
+                ),
+            )
+            family_schema_routing_max = st.number_input(
+                "Max routed families",
+                min_value=1,
+                max_value=4,
+                value=max(1, min(4, int(family_schema_routing_max))),
+                step=1,
+            )
+            family_schema_routing_fallback = st.checkbox(
+                "Retry full schema after sliced prompt",
+                value=family_schema_routing_fallback,
+                help=(
+                    "More robust but slower because it can add a second LLM call. "
+                    "Keep off for fast interactive testing."
+                ),
+            )
 
             st.subheader("Confidence Routing")
             confidence_routing_enabled = st.checkbox("Ask for clarification when confidence is low", value=True)
@@ -2562,6 +2599,9 @@ with st.sidebar:
         os.environ["FUSEKI_QUERY_URL"] = fuseki_query_url.strip()
     else:
         os.environ.pop("FUSEKI_QUERY_URL", None)
+    os.environ["INFINEON_ENABLE_SCHEMA_SLICING"] = "1" if family_schema_routing_enabled else "0"
+    os.environ["INFINEON_SCHEMA_SLICING_MAX_FAMILIES"] = str(int(family_schema_routing_max))
+    os.environ["INFINEON_SCHEMA_SLICING_FULL_FALLBACK"] = "1" if family_schema_routing_fallback else "0"
 
 if page == "Graph Overview":
     _render_graph_overview(schema_path, graph_path)
@@ -2886,6 +2926,15 @@ if asked:
                 removed = int(result.get("candidate_duplicates_removed") or 0)
                 if removed:
                     st.caption(f"Candidate deduplication removed {removed} duplicate query candidate(s).")
+                gen_meta = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+                if gen_meta:
+                    routed = ", ".join(str(x) for x in gen_meta.get("schema_slice_names", []) or [])
+                    st.caption(
+                        "Schema routing: "
+                        f"{'sliced' if gen_meta.get('schema_slicing_applied') else 'full'}"
+                        f" | confidence={gen_meta.get('schema_slice_confidence', 'n/a')}"
+                        + (f" | families={routed}" if routed else "")
+                    )
                 answerability = result.get("answerability")
                 if isinstance(answerability, dict):
                     st.subheader("Answerability")

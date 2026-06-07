@@ -67,6 +67,7 @@ _AMBIGUITY_CONFIG_CACHE: Dict[str, AmbiguityConfig] = {}
 _QUERY_PLAN_PREDICTOR_CACHE: Dict[str, object] = {}
 _RUNTIME_PROFILE_CACHE: Dict[Tuple[int, int, str], Dict[str, object]] = {}
 _VALIDATED_QUERY_PAIR_CACHE: Optional[List[Dict[str, str]]] = None
+_LOCAL_GRAPH_CACHE: Optional[Graph] = None
 
 NP_MODEL_TYPE = "np_tfidf_logreg_v1"
 INTENT_RANKING_WEIGHT = float(os.getenv("INFINEON_INTENT_RANKING_WEIGHT", "0") or 0)
@@ -142,7 +143,7 @@ def _get_default_entity_alias_index():
     if _ENTITY_ALIAS_INDEX is not None:
         return _ENTITY_ALIAS_INDEX
     try:
-        g = _get_default_graph()
+        g = _get_local_default_graph()
         if g is None:
             _ENTITY_ALIAS_INDEX = None
             return None
@@ -150,6 +151,23 @@ def _get_default_entity_alias_index():
     except Exception:
         _ENTITY_ALIAS_INDEX = None
     return _ENTITY_ALIAS_INDEX
+
+
+def _get_local_default_graph() -> Optional[Graph]:
+    global _LOCAL_GRAPH_CACHE
+    if _LOCAL_GRAPH_CACHE is not None:
+        return _LOCAL_GRAPH_CACHE
+    if not DEFAULT_INFINEON_GRAPH.exists():
+        _LOCAL_GRAPH_CACHE = None
+        return None
+    try:
+        g = Graph()
+        g.parse(str(DEFAULT_INFINEON_GRAPH), format="turtle")
+        _LOCAL_GRAPH_CACHE = g
+        return g
+    except Exception:
+        _LOCAL_GRAPH_CACHE = None
+        return None
 
 
 def _get_default_graph() -> Optional[Graph]:
@@ -165,17 +183,8 @@ def _get_default_graph() -> Optional[Graph]:
         except Exception:
             _DEFAULT_GRAPH_CACHE = None
             return None
-    if not DEFAULT_INFINEON_GRAPH.exists():
-        _DEFAULT_GRAPH_CACHE = None
-        return None
-    try:
-        g = Graph()
-        g.parse(str(DEFAULT_INFINEON_GRAPH), format="turtle")
-        _DEFAULT_GRAPH_CACHE = g
-        return g
-    except Exception:
-        _DEFAULT_GRAPH_CACHE = None
-        return None
+    _DEFAULT_GRAPH_CACHE = _get_local_default_graph()
+    return _DEFAULT_GRAPH_CACHE
 
 
 def _ensure_prefixes(query: str) -> str:
