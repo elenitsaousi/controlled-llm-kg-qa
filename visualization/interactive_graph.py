@@ -530,15 +530,22 @@ def _apply_force_layout(
 
 
 def collect_full_graph_triples(graph: Graph, limit: int = 3000) -> Tuple[List[Tuple], int]:
-    total = 0
-    out: List[Tuple] = []
     use_limit = int(limit) > 0
-    for triple in graph:
-        total += 1
-        if use_limit and len(out) >= int(limit):
-            continue
-        out.append(triple)
-    return out, total
+    try:
+        total_rows = list(graph.query("SELECT (COUNT(*) AS ?count) WHERE { ?s ?p ?o }"))
+        total = int(total_rows[0][0].toPython()) if total_rows else 0
+        limit_clause = f" LIMIT {int(limit)}" if use_limit else ""
+        rows = graph.query(f"SELECT ?s ?p ?o WHERE {{ ?s ?p ?o }}{limit_clause}")
+        return [(row[0], row[1], row[2]) for row in rows], total
+    except Exception:
+        total = 0
+        out: List[Tuple] = []
+        for triple in graph:
+            total += 1
+            if use_limit and len(out) >= int(limit):
+                continue
+            out.append(triple)
+        return out, total
 
 
 def _query_seed_uris(query: str) -> List[URIRef]:

@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple, Any
 import streamlit as st
 import streamlit.components.v1 as components
 from rdflib import Graph, BNode, URIRef
+from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 from kg.schema import load_schema
 from llm.answer_synthesis import synthesize_answer
@@ -36,6 +37,7 @@ except Exception:
 
 DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
 DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
+DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
 DEFAULT_ML_MODEL_PATHS = [
     PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_scope_origin.json",
     PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_shortage_grouped.json",
@@ -129,11 +131,25 @@ def _load_schema_from_path(schema_path: str):
     return load_schema(cleaned)
 
 
+def _active_fuseki_query_url() -> str:
+    return os.getenv("FUSEKI_QUERY_URL", "").strip()
+
+
+def _graph_backend_available(graph_path: str) -> bool:
+    return bool(_active_fuseki_query_url()) or bool(graph_path and os.path.exists(graph_path))
+
+
 @st.cache_resource(show_spinner=False)
-def _load_graph_cached(graph_path: str) -> Graph:
+def _load_graph_cached(graph_path: str, fuseki_query_url: str = "") -> Graph:
+    if fuseki_query_url.strip():
+        return Graph(store=SPARQLStore(fuseki_query_url.strip()))
     g = Graph()
     g.parse(graph_path, format="turtle")
     return g
+
+
+def _load_active_graph(graph_path: str) -> Graph:
+    return _load_graph_cached(graph_path, _active_fuseki_query_url())
 
 
 def _execute_query_preview(
@@ -440,8 +456,8 @@ def _clarified_answerability(graph_rows: List[Dict[str, str]], graph_exec_error:
         "can_answer": False,
         "reason": (
             "The clarified query executed but returned 0 rows. This means no matching "
-            "data was found for that exact interpretation, or the generated graph path "
-            "is still too narrow."
+            "data was found for that exact interpretation, or the selected graph backend "
+            "does not contain the expected data."
         ),
     }
 
@@ -452,7 +468,7 @@ def _render_answer_subgraph(
     graph_rows: List[Dict[str, str]],
     graph_path: str,
 ) -> None:
-    if not selected_query or not graph_path or not os.path.exists(graph_path):
+    if not selected_query or not graph_path or not _graph_backend_available(graph_path):
         return
     if not graph_rows:
         st.subheader("Inspected Query Path")
@@ -461,7 +477,7 @@ def _render_answer_subgraph(
         )
         return
     try:
-        graph = _load_graph_cached(graph_path)
+        graph = _load_active_graph(graph_path)
         triples, meta = collect_answer_evidence_triples(
             graph=graph,
             query=selected_query,
@@ -554,9 +570,9 @@ def _render_clarification(
                         },
                         None,
                     )
-                elif execute_selected and chosen_query and os.path.exists(graph_path):
+                elif execute_selected and chosen_query and _graph_backend_available(graph_path):
                     try:
-                        graph = _load_graph_cached(graph_path)
+                        graph = _load_active_graph(graph_path)
                         rows, _truncated = _execute_query_preview(
                             graph,
                             chosen_query,
@@ -991,9 +1007,9 @@ def _render_confidence_clarification(
                 chosen_query = str(option.get("query", "") or "").strip()
                 st.session_state["last_selected_query"] = chosen_query
                 st.session_state["confidence_clarification_choice_id"] = option.get("id")
-                if execute_selected and chosen_query and os.path.exists(graph_path):
+                if execute_selected and chosen_query and _graph_backend_available(graph_path):
                     try:
-                        graph = _load_graph_cached(graph_path)
+                        graph = _load_active_graph(graph_path)
                         rows, _truncated = _execute_query_preview(
                             graph,
                             chosen_query,
@@ -1057,10 +1073,10 @@ def _guided_pattern_query(pattern: Dict[str, str]) -> str:
 
 @st.cache_data(show_spinner=False)
 def _guided_query_row_count(graph_path: str, query: str) -> Tuple[int, str]:
-    if not query.strip() or not graph_path or not os.path.exists(graph_path):
-        return 0, "graph_or_query_missing"
+    if not query.strip() or not graph_path or not _graph_backend_available(graph_path):
+        return 0, "graph_backend_or_query_missing"
     try:
-        graph = _load_graph_cached(graph_path)
+        graph = _load_active_graph(graph_path)
         rows, _truncated = _execute_query_preview(graph, query, max_rows=1)
         return len(rows), ""
     except Exception as exc:
@@ -1699,9 +1715,32 @@ def _overview_relationship_triples(schema_dict: Dict[str, Any]) -> List[Tuple[st
 
 
 def _graph_data_stats(graph_path: str) -> Dict[str, int]:
-    if not graph_path or not os.path.exists(graph_path):
+    if not graph_path or not _graph_backend_available(graph_path):
         return {}
-    graph = _load_graph_cached(graph_path)
+    graph = _load_active_graph(graph_path)
+    if _active_fuseki_query_url():
+        try:
+            triples = list(graph.query("SELECT (COUNT(*) AS ?count) WHERE { ?s ?p ?o }"))
+            subjects = list(graph.query("SELECT (COUNT(DISTINCT ?s) AS ?count) WHERE { ?s ?p ?o }"))
+            resources = list(
+                graph.query(
+                    """
+                    SELECT (COUNT(DISTINCT ?x) AS ?count)
+                    WHERE {
+                      { ?x ?p ?o }
+                      UNION
+                      { ?s ?p ?x FILTER(isIRI(?x) || isBlank(?x)) }
+                    }
+                    """
+                )
+            )
+            return {
+                "triples": int(triples[0][0].toPython()) if triples else 0,
+                "resource_nodes": int(resources[0][0].toPython()) if resources else 0,
+                "subject_entities": int(subjects[0][0].toPython()) if subjects else 0,
+            }
+        except Exception:
+            return {}
     resources = set()
     subjects = set()
     for s, _p, o in graph:
@@ -2390,6 +2429,7 @@ with st.sidebar:
     temperature = 0.2
     schema_path = str(DEFAULT_SCHEMA_PATH)
     graph_path = str(DEFAULT_GRAPH_PATH)
+    fuseki_query_url = os.getenv("FUSEKI_QUERY_URL", "").strip()
     use_ml_ranking = True
     ml_policy = "all"
     ml_model_path = _default_ml_model_path()
@@ -2422,6 +2462,15 @@ with st.sidebar:
             st.subheader("Data")
             schema_path = st.text_input("Schema path", value=str(DEFAULT_SCHEMA_PATH))
             graph_path = st.text_input("Graph path", value=str(DEFAULT_GRAPH_PATH))
+            fuseki_query_url = st.text_input(
+                "Fuseki query endpoint",
+                value=fuseki_query_url,
+                placeholder=DEFAULT_FUSEKI_QUERY_URL,
+                help=(
+                    "Optional. When set, graph query execution uses this SPARQL endpoint "
+                    "instead of loading graph.ttl with RDFLib."
+                ),
+            )
 
             st.subheader("Ranking")
             use_ml_ranking = st.checkbox("Use ML ranking", value=True)
@@ -2508,6 +2557,11 @@ with st.sidebar:
             )
             subgraph_hops = st.slider("Question subgraph hops", min_value=1, max_value=3, value=1, step=1)
             graph_height = st.slider("Graph canvas height (px)", min_value=400, max_value=1200, value=760, step=20)
+
+    if fuseki_query_url.strip():
+        os.environ["FUSEKI_QUERY_URL"] = fuseki_query_url.strip()
+    else:
+        os.environ.pop("FUSEKI_QUERY_URL", None)
 
 if page == "Graph Overview":
     _render_graph_overview(schema_path, graph_path)
@@ -2678,9 +2732,9 @@ if asked:
             isinstance(confidence_route, dict)
             and confidence_route.get("route") == "clarification"
         )
-        if execute_selected and selected_query and os.path.exists(graph_path) and not route_needs_clarification:
+        if execute_selected and selected_query and _graph_backend_available(graph_path) and not route_needs_clarification:
             try:
-                graph = _load_graph_cached(graph_path)
+                graph = _load_active_graph(graph_path)
                 graph_rows, graph_rows_truncated = _execute_query_preview(
                     graph,
                     selected_query,
@@ -2839,8 +2893,8 @@ if asked:
                 _render_selection_explainability(result)
 
                 if execute_selected and selected_query:
-                    if not os.path.exists(graph_path):
-                        st.error(f"Graph path not found: {graph_path}")
+                    if not _graph_backend_available(graph_path):
+                        st.error("Graph backend unavailable. Set a valid graph path or FUSEKI_QUERY_URL.")
                     else:
                         st.subheader("Graph Result Rows")
                         if graph_exec_error:
@@ -2945,8 +2999,8 @@ if developer_mode:
     st.divider()
     st.subheader("Interactive Graph Explorer")
 
-if developer_mode and not os.path.exists(graph_path):
-    st.warning(f"Graph path not found: {graph_path}")
+if developer_mode and not _graph_backend_available(graph_path):
+    st.warning("Graph backend unavailable. Set a valid graph path or Fuseki query endpoint.")
 elif developer_mode:
     tab_full, tab_question = st.tabs(["Full Graph", "Question Subgraph"])
 
@@ -2959,7 +3013,7 @@ elif developer_mode:
             st.warning("Full graph without limit may be very heavy in browser.")
         if st.button("Load Full Graph", key="load_full_graph_btn"):
             with st.spinner("Loading graph and building visualization..."):
-                graph = _load_graph_cached(graph_path)
+                graph = _load_active_graph(graph_path)
                 triples, total = collect_full_graph_triples(graph, limit=int(full_graph_limit))
                 if not triples:
                     st.warning("No triples available for visualization.")
@@ -2989,7 +3043,7 @@ elif developer_mode:
             st.code(last_query, language="sparql")
             if st.button("Visualize Question Subgraph", key="load_question_subgraph_btn"):
                 with st.spinner("Building question-focused subgraph..."):
-                    graph = _load_graph_cached(graph_path)
+                    graph = _load_active_graph(graph_path)
                     rows = st.session_state.get("last_graph_rows") or []
                     triples, meta = collect_query_subgraph_triples(
                         graph=graph,
