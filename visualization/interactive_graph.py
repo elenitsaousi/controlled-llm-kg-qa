@@ -77,7 +77,7 @@ def build_graph_html(
         bgcolor="#ffffff",
         font_color="#17262b",
     )
-    net.barnes_hut()
+    net.force_atlas_2based()
     net.heading = heading
     seen_nodes = set()
     seen_edges = set()
@@ -158,15 +158,22 @@ def build_graph_html(
     net.set_options(
         """
         {
+          "layout": {
+            "improvedLayout": true
+          },
           "physics": {
             "enabled": true,
-            "stabilization": {"iterations": 260},
-            "barnesHut": {
-              "gravitationalConstant": -4200,
-              "springLength": 180,
+            "stabilization": {"enabled": true, "iterations": 420, "fit": true},
+            "solver": "forceAtlas2Based",
+            "forceAtlas2Based": {
+              "gravitationalConstant": -95,
+              "centralGravity": 0.008,
+              "springLength": 230,
               "springConstant": 0.035,
-              "damping": 0.22
-            }
+              "damping": 0.72,
+              "avoidOverlap": 1.0
+            },
+            "minVelocity": 0.75
           },
           "interaction": {
             "hover": true,
@@ -179,15 +186,16 @@ def build_graph_html(
           },
           "nodes": {
             "borderWidth": 1.5,
-            "size": 24,
+            "size": 20,
             "shadow": {"enabled": true, "color": "rgba(25,214,198,0.18)", "size": 18, "x": 0, "y": 0},
-            "font": {"size": 16, "color": "#17262b", "face": "Arial", "strokeWidth": 3, "strokeColor": "#ffffff"}
+            "font": {"size": 15, "color": "#17262b", "face": "Arial", "strokeWidth": 4, "strokeColor": "#ffffff"}
           },
           "edges": {
-            "smooth": {"type": "curvedCW", "roundness": 0.18},
-            "font": {"size": 11, "align": "middle", "color": "#50676e", "strokeWidth": 3, "strokeColor": "#ffffff"},
-            "color": {"color": "#6f8a91", "opacity": 0.78},
-            "width": 1.4
+            "smooth": {"enabled": true, "type": "dynamic", "roundness": 0.16},
+            "font": {"size": 10, "align": "middle", "color": "#49636a", "strokeWidth": 4, "strokeColor": "#ffffff"},
+            "color": {"color": "#6f8a91", "highlight": "#19a99f", "hover": "#19a99f", "opacity": 0.62},
+            "selectionWidth": 2,
+            "width": 1.1
           }
         }
         """
@@ -316,6 +324,77 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
             kgList(info.incoming, (r) => '<li>' + kgEscape(r.source) + ' &rarr; <strong>' + kgEscape(r.predicate) + '</strong></li>') +
           '</div>';
       }
+      function kgSetGraphLabelScale(scale) {
+        if (typeof edges === 'undefined' || typeof nodes === 'undefined') return;
+        let edgeSize = 10;
+        let edgeColor = '#49636a';
+        let edgeStroke = 4;
+        let edgeOpacity = 0.62;
+        let nodeSize = 15;
+        if (scale < 0.72) {
+          edgeSize = 0;
+          edgeColor = 'rgba(73,99,106,0)';
+          edgeStroke = 0;
+          edgeOpacity = 0.34;
+          nodeSize = 13;
+        } else if (scale > 1.35) {
+          edgeSize = 13;
+          edgeColor = '#244d55';
+          edgeStroke = 5;
+          edgeOpacity = 0.82;
+          nodeSize = 17;
+        }
+        const edgeUpdates = edges.getIds().map((id) => ({
+          id,
+          color: { color: '#6f8a91', highlight: '#19a99f', hover: '#19a99f', opacity: edgeOpacity },
+          font: {
+            size: edgeSize,
+            align: 'middle',
+            color: edgeColor,
+            strokeWidth: edgeStroke,
+            strokeColor: '#ffffff'
+          }
+        }));
+        const nodeUpdates = nodes.getIds().map((id) => ({
+          id,
+          font: { size: nodeSize, color: '#17262b', face: 'Arial', strokeWidth: 4, strokeColor: '#ffffff' }
+        }));
+        edges.update(edgeUpdates);
+        nodes.update(nodeUpdates);
+      }
+      function kgFreezeGraphExcept(nodeIds) {
+        if (typeof nodes === 'undefined' || typeof network === 'undefined') return;
+        const movable = new Set(nodeIds || []);
+        const positions = network.getPositions();
+        const updates = nodes.getIds().map((id) => {
+          const pos = positions[id] || {};
+          return {
+            id,
+            x: Number.isFinite(pos.x) ? pos.x : undefined,
+            y: Number.isFinite(pos.y) ? pos.y : undefined,
+            fixed: { x: !movable.has(id), y: !movable.has(id) }
+          };
+        });
+        nodes.update(updates);
+      }
+      function kgRelaxConnectedNodes(centerId) {
+        if (typeof network === 'undefined' || typeof nodes === 'undefined') return;
+        const positions = network.getPositions();
+        const center = positions[centerId];
+        if (!center) return;
+        const updates = [];
+        (network.getConnectedNodes(centerId) || []).slice(0, 10).forEach((id) => {
+          const pos = positions[id];
+          if (!pos) return;
+          updates.push({
+            id,
+            x: pos.x + ((center.x - pos.x) * 0.035),
+            y: pos.y + ((center.y - pos.y) * 0.035),
+            fixed: { x: true, y: true }
+          });
+        });
+        if (updates.length) nodes.update(updates);
+      }
       function kgInstallNodePanel(attempts) {
         const networkEl = document.getElementById('mynetwork');
         if (!networkEl || document.getElementById('kgGraphShell')) return;
@@ -337,8 +416,33 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
             network.selectNodes([params.nodes[0]]);
           }
         });
-        network.on('dragStart', () => {
-          network.setOptions({ physics: { enabled: true } });
+        network.once('stabilizationIterationsDone', () => {
+          kgFreezeGraphExcept([]);
+          network.setOptions({ physics: { enabled: false } });
+          kgSetGraphLabelScale(network.getScale());
+        });
+        window.setTimeout(() => {
+          kgFreezeGraphExcept([]);
+          network.setOptions({ physics: { enabled: false } });
+          kgSetGraphLabelScale(network.getScale());
+        }, 1800);
+        network.on('zoom', (params) => {
+          kgSetGraphLabelScale(params.scale || network.getScale());
+        });
+        network.on('dragStart', (params) => {
+          if (params.nodes && params.nodes.length) {
+            const selectedId = params.nodes[0];
+            kgFreezeGraphExcept([selectedId]);
+            network.setOptions({ physics: { enabled: false } });
+          }
+        });
+        network.on('dragEnd', (params) => {
+          if (params.nodes && params.nodes.length) {
+            const selectedId = params.nodes[0];
+            kgRelaxConnectedNodes(selectedId);
+            kgFreezeGraphExcept([]);
+            network.selectNodes([selectedId]);
+          }
         });
       }
       window.addEventListener('load', () => kgInstallNodePanel(0));

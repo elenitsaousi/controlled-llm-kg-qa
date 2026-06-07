@@ -2,6 +2,8 @@ import os
 import time
 import json
 import re
+import uuid
+from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
@@ -39,6 +41,9 @@ except Exception:
 DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
 DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
 DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
+APP_LOG_DIR = PROJECT_ROOT / "logs"
+SESSION_LOG_PATH = APP_LOG_DIR / "kgqa_sessions.jsonl"
+FEEDBACK_LOG_PATH = APP_LOG_DIR / "kgqa_feedback.jsonl"
 DEFAULT_ML_MODEL_PATHS = [
     PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_scope_origin.json",
     PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_shortage_grouped.json",
@@ -171,6 +176,192 @@ def _execute_query_preview(
         else:
             rows.append({f"col{j + 1}": _format_graph_value(v) for j, v in enumerate(row)})
     return rows, truncated
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _append_jsonl(path: Path, payload: Dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
+
+
+def _route_label(result: Dict[str, Any] | None) -> str:
+    if not isinstance(result, dict):
+        return "unknown"
+    route = result.get("confidence_route")
+    if isinstance(route, dict):
+        return str(route.get("route") or "unknown")
+    if isinstance(result.get("request_clarification"), dict):
+        return "request_clarification"
+    if isinstance(result.get("clarification"), dict) and result["clarification"].get("needs_clarification"):
+        return "legacy_clarification"
+    return "auto_answer"
+
+
+def _session_log_payload(
+    *,
+    request_id: str,
+    question: str,
+    result: Dict[str, Any],
+    selected_query: str,
+    graph_rows: List[Dict[str, str]],
+    graph_exec_error: str,
+    latency_s: float,
+) -> Dict[str, Any]:
+    confidence_route = result.get("confidence_route") if isinstance(result, dict) else None
+    route = _route_label(result)
+    metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    return {
+        "request_id": request_id,
+        "timestamp_utc": _utc_now_iso(),
+        "question": question,
+        "route": route,
+        "score1": confidence_route.get("score1") if isinstance(confidence_route, dict) else None,
+        "score2": confidence_route.get("score2") if isinstance(confidence_route, dict) else None,
+        "margin": confidence_route.get("margin") if isinstance(confidence_route, dict) else None,
+        "selected_source": _selected_candidate_source(result, selected_query),
+        "selected_query": selected_query,
+        "graph_row_count": len(graph_rows or []),
+        "graph_error": graph_exec_error,
+        "latency_s": round(float(latency_s), 3),
+        "candidate_count": len(result.get("candidates") or []),
+        "schema_route": {
+            "applied": bool(metadata.get("schema_slicing_applied")),
+            "confidence": metadata.get("schema_slice_confidence"),
+            "families": metadata.get("schema_slice_names") or [],
+        },
+    }
+
+
+def _selected_candidate_source(result: Dict[str, Any], selected_query: str) -> str:
+    selected_key = " ".join(str(selected_query or "").split()).lower()
+    if not selected_key:
+        return ""
+    for candidate in result.get("candidates") or []:
+        query_key = " ".join(str(candidate.get("query") or "").split()).lower()
+        if query_key == selected_key:
+            return str(candidate.get("source") or "")
+    return ""
+
+
+@st.cache_data(show_spinner=False, ttl=30)
+def _system_health_snapshot(
+    *,
+    schema_path: str,
+    graph_path: str,
+    fuseki_query_url: str,
+    model_path: str,
+    api_url: str,
+    api_key_present: bool,
+    user_credentials_present: bool,
+) -> Dict[str, Dict[str, str]]:
+    health: Dict[str, Dict[str, str]] = {}
+    health["Schema"] = {
+        "status": "ok" if schema_path and os.path.exists(schema_path) else "missing",
+        "detail": schema_path or "not configured",
+    }
+    health["Model"] = {
+        "status": "ok" if model_path and os.path.exists(model_path) else "missing",
+        "detail": model_path or "not configured",
+    }
+    if fuseki_query_url:
+        try:
+            graph = Graph(store=SPARQLStore(fuseki_query_url))
+            list(graph.query("SELECT * WHERE { ?s ?p ?o } LIMIT 1"))
+            health["Graph"] = {"status": "ok", "detail": "Fuseki endpoint reachable"}
+        except Exception as exc:
+            health["Graph"] = {"status": "error", "detail": f"Fuseki error: {exc}"}
+    else:
+        health["Graph"] = {
+            "status": "ok" if graph_path and os.path.exists(graph_path) else "missing",
+            "detail": graph_path or "not configured",
+        }
+    health["LLM config"] = {
+        "status": "ok" if api_url and (api_key_present or user_credentials_present) else "missing",
+        "detail": "token or refresh credentials present" if (api_key_present or user_credentials_present) else "missing token/credentials",
+    }
+    return health
+
+
+def _render_system_status(
+    *,
+    schema_path: str,
+    graph_path: str,
+    fuseki_query_url: str,
+    model_path: str,
+    api_url: str,
+    api_key: str,
+) -> None:
+    user_credentials_present = bool(
+        os.environ.get("USER_LLM")
+        or os.environ.get("INFINEON_API_USER")
+    )
+    try:
+        health = _system_health_snapshot(
+            schema_path=schema_path,
+            graph_path=graph_path,
+            fuseki_query_url=fuseki_query_url,
+            model_path=model_path,
+            api_url=api_url,
+            api_key_present=bool(api_key.strip() or os.environ.get("INFINEON_API_KEY")),
+            user_credentials_present=user_credentials_present,
+        )
+    except Exception as exc:
+        st.caption(f"System status unavailable: {exc}")
+        return
+    icon = {"ok": "OK", "missing": "Missing", "error": "Error"}
+    for name, row in health.items():
+        status = str(row.get("status") or "unknown")
+        st.caption(f"{name}: {icon.get(status, status)} - {row.get('detail', '')}")
+
+
+def _render_recommended_settings() -> None:
+    st.markdown(
+        """
+Recommended demo configuration:
+
+- Fuseki endpoint enabled
+- Use ML ranking: on
+- ML policy: `all`
+- Fast interactive mode: on
+- Candidate diagnostics: off
+- Confidence routing: on
+- Auto-answer score: `0.90`
+- Family-aware schema routing: optional, retry full schema: off
+"""
+    )
+
+
+def _render_feedback_panel() -> None:
+    result = st.session_state.get("last_qa_result")
+    question = str(st.session_state.get("last_question") or "").strip()
+    selected_query = str(st.session_state.get("last_selected_query") or "").strip()
+    if not isinstance(result, dict) or not question:
+        return
+
+    st.subheader("Feedback")
+    st.caption("Optional: record whether the answer matched your intended interpretation.")
+    col_ok, col_bad = st.columns(2)
+    request_id = str(st.session_state.get("last_request_id") or "")
+    base_payload = {
+        "request_id": request_id,
+        "timestamp_utc": _utc_now_iso(),
+        "question": question,
+        "route": _route_label(result),
+        "selected_query": selected_query,
+        "selected_source": _selected_candidate_source(result, selected_query),
+        "score": (result.get("confidence_route") or {}).get("score1") if isinstance(result.get("confidence_route"), dict) else None,
+        "margin": (result.get("confidence_route") or {}).get("margin") if isinstance(result.get("confidence_route"), dict) else None,
+    }
+    if col_ok.button("Answer was correct", use_container_width=True, key="feedback_correct"):
+        _append_jsonl(FEEDBACK_LOG_PATH, {**base_payload, "feedback": "correct"})
+        st.success("Feedback saved.")
+    if col_bad.button("Answer was wrong", use_container_width=True, key="feedback_wrong"):
+        _append_jsonl(FEEDBACK_LOG_PATH, {**base_payload, "feedback": "wrong"})
+        st.warning("Feedback saved for review.")
 
 
 def _render_selection_explainability(result: Dict[str, Any]) -> None:
@@ -2556,6 +2747,10 @@ with st.sidebar:
 
     if developer_mode:
         with st.expander("Developer settings", expanded=True):
+            st.markdown("##### Recommended demo settings")
+            _render_recommended_settings()
+            st.divider()
+
             st.subheader("Backend")
             api_url = st.text_input("INFINEON_API_URL", value=default_url)
             api_endpoint = st.text_input("INFINEON_CHAT_ENDPOINT", value=default_endpoint)
@@ -2695,6 +2890,16 @@ with st.sidebar:
     os.environ["INFINEON_SCHEMA_SLICING_MAX_FAMILIES"] = str(int(family_schema_routing_max))
     os.environ["INFINEON_SCHEMA_SLICING_FULL_FALLBACK"] = "1" if family_schema_routing_fallback else "0"
 
+    with st.expander("System status", expanded=False):
+        _render_system_status(
+            schema_path=schema_path,
+            graph_path=graph_path,
+            fuseki_query_url=fuseki_query_url.strip(),
+            model_path=ml_model_path,
+            api_url=api_url,
+            api_key=api_key,
+        )
+
 if page == "Graph Overview":
     _render_graph_overview(schema_path, graph_path)
     st.stop()
@@ -2764,6 +2969,7 @@ if asked:
             st.subheader("Candidate Generation Prompt")
             st.code(prompt, language="text")
 
+        request_id = uuid.uuid4().hex
         request_started = time.perf_counter()
         try:
             if guided_query:
@@ -2888,12 +3094,30 @@ if asked:
                 graph_exec_error = str(exc)
                 if guided_query:
                     result["answerability"] = _guided_answerability([], graph_exec_error)
+        total_elapsed = time.perf_counter() - request_started
+        try:
+            _append_jsonl(
+                SESSION_LOG_PATH,
+                _session_log_payload(
+                    request_id=request_id,
+                    question=question,
+                    result=result,
+                    selected_query=selected_query,
+                    graph_rows=graph_rows,
+                    graph_exec_error=graph_exec_error,
+                    latency_s=total_elapsed,
+                ),
+            )
+        except Exception:
+            pass
 
         st.session_state["last_qa_result"] = result
         st.session_state["last_graph_rows"] = graph_rows
         st.session_state["last_selected_query"] = selected_query
         st.session_state["last_graph_answer"] = graph_answer
         st.session_state["last_question"] = question
+        st.session_state["last_request_id"] = request_id
+        st.session_state["last_latency_s"] = total_elapsed
         st.session_state["clarification_choice_id"] = None
         st.session_state["confidence_clarification_choice_id"] = None
 
@@ -3135,6 +3359,18 @@ if not clarification_rendered:
                     graph_rows=list(st.session_state.get("last_graph_rows") or []),
                     graph_path=graph_path,
                 )
+
+if (
+    st.session_state.get("last_selected_query")
+    and (
+        st.session_state.get("last_graph_answer")
+        or st.session_state.get("last_graph_rows")
+    )
+):
+    latency_value = st.session_state.get("last_latency_s")
+    if isinstance(latency_value, (int, float)) and latency_value > 0:
+        st.caption(f"End-to-end response time: {float(latency_value):.1f}s")
+    _render_feedback_panel()
 
 if developer_mode:
     st.divider()
