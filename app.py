@@ -1188,23 +1188,41 @@ def _candidate_interpretation_details(question: str, query: str, candidate: Dict
 
 def _candidate_interpretation_summary(question: str, query: str, candidate: Dict[str, object]) -> str:
     details = _candidate_interpretation_details(question, query, candidate)
-    action = str(details.get("action") or "returns")
     target = str(details.get("target") or "graph data")
     grouping = str(details.get("grouping") or "")
     scopes = list(details.get("scopes") or [])
     surveys = list(details.get("surveys") or [])
+    try:
+        contract = extract_query_contract(query).to_dict()
+    except Exception:
+        contract = {}
+    try:
+        plan = extract_query_plan(query)
+    except Exception:
+        plan = {}
+    aggregation = str(contract.get("aggregation") or "").lower()
+    answer_shape = str(contract.get("answer_shape") or "")
+    query_types = {str(v) for v in plan.get("query_types") or []}
+    if aggregation == "avg":
+        prefix = "Average"
+    elif aggregation == "sum":
+        prefix = "Total"
+    elif aggregation == "count":
+        prefix = "Count of"
+    elif answer_shape == "ranked_one" or "ranking" in query_types or "limited" in query_types:
+        prefix = "Top"
+    elif answer_shape == "list_values":
+        prefix = "List of"
+    else:
+        prefix = "Individual"
 
-    label = f"{action.capitalize()} {target}".strip()
+    label = f"{prefix} {target}".strip()
     if scopes:
         label += " for " + _join_human([str(v) for v in scopes], limit=2)
     if grouping:
         label += " by " + grouping
     elif surveys:
         label += " from " + _join_human([str(v) for v in surveys], limit=2)
-
-    source = str(candidate.get("source") or "").strip()
-    if source:
-        label += f" ({_humanize_axis_value(source)})"
     return label
 
 
@@ -1311,7 +1329,8 @@ def _render_confidence_clarification(
     max_preview_rows: int,
 ) -> None:
     st.subheader("Clarify Interpretation")
-    st.write("I found multiple possible interpretations. Which one do you mean?")
+    st.write("I found multiple possible interpretations.")
+    st.markdown("**Did you mean...**")
     options = list(route.get("options") or [])
     if not options:
         st.warning("No candidate interpretations are available for clarification.")
@@ -1321,15 +1340,15 @@ def _render_confidence_clarification(
             st.markdown(f"**{str(option.get('label') or 'Interpretation')}**")
             what_you_will_see = str(option.get("what_you_will_see") or option.get("description") or "").strip()
             choose_if = str(option.get("choose_if") or "").strip()
-            if what_you_will_see:
-                st.markdown(f"**What you will see:** {what_you_will_see}")
-            if choose_if:
-                st.markdown(f"**Choose this if:** {choose_if}")
             details = [str(item) for item in (option.get("details") or []) if str(item).strip()]
-            if details:
-                with st.expander("More details", expanded=False):
+            with st.expander("More details", expanded=False):
+                if what_you_will_see:
+                    st.markdown(f"**What you will see:** {what_you_will_see}")
+                if choose_if:
+                    st.markdown(f"**Choose this if:** {choose_if}")
+                if details:
                     st.markdown("\n".join(f"- {item}" for item in details))
-                    st.caption(f"Candidate source: {option.get('source') or 'unknown'}")
+                st.caption(f"Candidate source: {option.get('source') or 'unknown'}")
             with st.expander("Technical SPARQL query", expanded=False):
                 st.code(_format_sparql_for_display(str(option.get("query", ""))), language="sparql")
             if st.button(
