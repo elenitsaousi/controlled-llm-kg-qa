@@ -210,6 +210,7 @@ def _session_log_payload(
     graph_rows: List[Dict[str, str]],
     graph_exec_error: str,
     latency_s: float,
+    latency_breakdown: Dict[str, float] | None = None,
 ) -> Dict[str, Any]:
     confidence_route = result.get("confidence_route") if isinstance(result, dict) else None
     route = _route_label(result)
@@ -227,6 +228,11 @@ def _session_log_payload(
         "graph_row_count": len(graph_rows or []),
         "graph_error": graph_exec_error,
         "latency_s": round(float(latency_s), 3),
+        "latency_breakdown": {
+            key: round(float(value), 3)
+            for key, value in (latency_breakdown or {}).items()
+            if isinstance(value, (int, float))
+        },
         "candidate_count": len(result.get("candidates") or []),
         "schema_route": {
             "applied": bool(metadata.get("schema_slicing_applied")),
@@ -621,7 +627,7 @@ def _render_answer_block(
         st.write(answer_text or "No answer.")
     elif execute_selected and selected_query:
         if graph_rows:
-            st.success(f"Returned {len(graph_rows)} rows from Infineon graph.")
+            st.success(f"Returned {len(graph_rows)} rows from the True Demand KG.")
             st.write(answer_text)
         else:
             st.warning("No graph rows were found for the selected interpretation.")
@@ -2078,7 +2084,7 @@ def _graph_overview_report(
         f"{', '.join(rel.get('to') or []) or '(literal / unspecified)'}"
         for rel in relationships
     )
-    summary = f"""# Infineon Knowledge Graph Overview
+    summary = f"""# True Demand KG Overview
 
 ## One-page summary
 This knowledge graph describes survey and analytical data around semiconductor and automotive demand. It connects regional demand, current- and future-demand analyses, vehicle sales, autonomous-driving development, order-cancellation responses, shortages, inventory trends, technology categories, vehicle types, companies, components, survey origins, and time periods. The graph is designed to support structured questions over business measures such as demand, percentage change, participant counts, sales units, shortage values, inventory trends, and autonomous-driving percentages.
@@ -2146,7 +2152,7 @@ def _report_html(markdown_report: str) -> str:
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Infineon Knowledge Graph Overview</title>
+  <title>True Demand KG Overview</title>
   <style>
     body {{ font-family: Arial, sans-serif; color: #1f2937; margin: 40px auto; max-width: 900px; line-height: 1.5; }}
     button {{ margin-bottom: 20px; padding: 10px 14px; }}
@@ -2420,7 +2426,7 @@ def _render_graph_overview(schema_path: str, graph_path: str) -> None:
     full_report = _graph_overview_report(raw_schema, graph_stats, include_inventory=True)
     html_report = _report_html(full_report)
 
-    st.title("Infineon Knowledge Graph Overview")
+    st.title("True Demand KG Overview")
     st.caption("A compact guide to what the graph contains and what users can ask.")
     col1, col2 = st.columns([1, 1])
     col1.download_button(
@@ -2689,7 +2695,7 @@ def _render_confidence_routing_dashboard() -> None:
     _render_confidence_dashboard_cases(report)
 
 
-st.set_page_config(page_title="Infineon KG QA", layout="wide")
+st.set_page_config(page_title="True Demand KG QA", layout="wide")
 _inject_app_styles()
 
 with st.sidebar:
@@ -2738,6 +2744,7 @@ with st.sidebar:
     show_prompt = False
     show_candidates = False
     show_candidate_diagnostics = False
+    show_answer_evidence_graph = False
     execute_selected = True
     max_preview_rows = 200
     full_graph_limit = 3000
@@ -2855,6 +2862,14 @@ with st.sidebar:
                     "but slower on large graph slices."
                 ),
             )
+            show_answer_evidence_graph = st.checkbox(
+                "Show answer evidence graph",
+                value=False,
+                help=(
+                    "Builds a small graph visualization after the answer. Useful for demos, "
+                    "but keep off for fastest response time."
+                ),
+            )
             execute_selected = st.checkbox("Execute selected query on graph", value=True)
             max_preview_rows = st.number_input(
                 "Max preview rows",
@@ -2912,7 +2927,7 @@ st.markdown(
     """
     <section class="kg-hero">
       <div class="kg-kicker">Knowledge graph assistant</div>
-      <h1>Infineon KG QA</h1>
+      <h1>True Demand KG QA</h1>
       <div class="kg-page-copy">Ask a natural-language question and receive a graph-grounded answer. When the request is genuinely ambiguous, the system asks for the intended interpretation first.</div>
     </section>
     """,
@@ -3066,18 +3081,26 @@ if asked:
         graph_rows_truncated = False
         graph_exec_error = ""
         graph_answer = ""
+        graph_load_elapsed = 0.0
+        graph_query_elapsed = 0.0
+        answer_synthesis_elapsed = 0.0
         route_needs_clarification = bool(
             isinstance(confidence_route, dict)
             and confidence_route.get("route") == "clarification"
         )
         if execute_selected and selected_query and _graph_backend_available(graph_path) and not route_needs_clarification:
             try:
+                graph_load_started = time.perf_counter()
                 graph = _load_active_graph(graph_path)
+                graph_load_elapsed = time.perf_counter() - graph_load_started
+                graph_query_started = time.perf_counter()
                 graph_rows, graph_rows_truncated = _execute_query_preview(
                     graph,
                     selected_query,
                     max_rows=int(max_preview_rows),
                 )
+                graph_query_elapsed = time.perf_counter() - graph_query_started
+                answer_synthesis_started = time.perf_counter()
                 graph_answer = synthesize_answer(
                     question,
                     selected_query,
@@ -3088,6 +3111,7 @@ if asked:
                     },
                     result.get("errors") or None,
                 )
+                answer_synthesis_elapsed = time.perf_counter() - answer_synthesis_started
                 if guided_query:
                     result["answerability"] = _guided_answerability(graph_rows)
             except Exception as exc:
@@ -3095,6 +3119,13 @@ if asked:
                 if guided_query:
                     result["answerability"] = _guided_answerability([], graph_exec_error)
         total_elapsed = time.perf_counter() - request_started
+        latency_breakdown = {
+            "pipeline_s": request_elapsed,
+            "graph_load_s": graph_load_elapsed,
+            "graph_query_s": graph_query_elapsed,
+            "answer_format_s": answer_synthesis_elapsed,
+            "total_s": total_elapsed,
+        }
         try:
             _append_jsonl(
                 SESSION_LOG_PATH,
@@ -3106,6 +3137,7 @@ if asked:
                     graph_rows=graph_rows,
                     graph_exec_error=graph_exec_error,
                     latency_s=total_elapsed,
+                    latency_breakdown=latency_breakdown,
                 ),
             )
         except Exception:
@@ -3118,6 +3150,7 @@ if asked:
         st.session_state["last_question"] = question
         st.session_state["last_request_id"] = request_id
         st.session_state["last_latency_s"] = total_elapsed
+        st.session_state["last_latency_breakdown"] = latency_breakdown
         st.session_state["clarification_choice_id"] = None
         st.session_state["confidence_clarification_choice_id"] = None
 
@@ -3159,11 +3192,12 @@ if asked:
                     ),
                 )
                 _render_compact_explainability(result)
-                _render_answer_subgraph(
-                    selected_query=str(st.session_state.get("last_selected_query", "")),
-                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
-                    graph_path=graph_path,
-                )
+                if show_answer_evidence_graph:
+                    _render_answer_subgraph(
+                        selected_query=str(st.session_state.get("last_selected_query", "")),
+                        graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                        graph_path=graph_path,
+                    )
         elif needs_clarification and not confidence_auto_answer:
             _render_clarification(
                 clarification,
@@ -3184,11 +3218,12 @@ if asked:
                     ),
                 )
                 _render_compact_explainability(result)
-                _render_answer_subgraph(
-                    selected_query=str(st.session_state.get("last_selected_query", "")),
-                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
-                    graph_path=graph_path,
-                )
+                if show_answer_evidence_graph:
+                    _render_answer_subgraph(
+                        selected_query=str(st.session_state.get("last_selected_query", "")),
+                        graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                        graph_path=graph_path,
+                    )
 
         if (
             not needs_request_clarification
@@ -3204,11 +3239,12 @@ if asked:
                 answerability=result.get("answerability") if isinstance(result, dict) else None,
             )
             _render_compact_explainability(result)
-            _render_answer_subgraph(
-                selected_query=selected_query,
-                graph_rows=graph_rows,
-                graph_path=graph_path,
-            )
+            if show_answer_evidence_graph:
+                _render_answer_subgraph(
+                    selected_query=selected_query,
+                    graph_rows=graph_rows,
+                    graph_path=graph_path,
+                )
 
         if developer_mode:
             with st.expander("Technical details", expanded=False):
@@ -3323,11 +3359,12 @@ if not clarification_rendered:
             )
             if isinstance(last_result, dict):
                 _render_compact_explainability(last_result)
-                _render_answer_subgraph(
-                    selected_query=str(st.session_state.get("last_selected_query", "")),
-                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
-                    graph_path=graph_path,
-                )
+                if show_answer_evidence_graph:
+                    _render_answer_subgraph(
+                        selected_query=str(st.session_state.get("last_selected_query", "")),
+                        graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                        graph_path=graph_path,
+                    )
     clarification = (last_result or {}).get("clarification") if isinstance(last_result, dict) else None
     if (
         not clarification_rendered
@@ -3354,11 +3391,12 @@ if not clarification_rendered:
             )
             if isinstance(last_result, dict):
                 _render_compact_explainability(last_result)
-                _render_answer_subgraph(
-                    selected_query=str(st.session_state.get("last_selected_query", "")),
-                    graph_rows=list(st.session_state.get("last_graph_rows") or []),
-                    graph_path=graph_path,
-                )
+                if show_answer_evidence_graph:
+                    _render_answer_subgraph(
+                        selected_query=str(st.session_state.get("last_selected_query", "")),
+                        graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                        graph_path=graph_path,
+                    )
 
 if (
     st.session_state.get("last_selected_query")
@@ -3370,6 +3408,15 @@ if (
     latency_value = st.session_state.get("last_latency_s")
     if isinstance(latency_value, (int, float)) and latency_value > 0:
         st.caption(f"End-to-end response time: {float(latency_value):.1f}s")
+    latency_breakdown = st.session_state.get("last_latency_breakdown")
+    if isinstance(latency_breakdown, dict):
+        st.caption(
+            "Timing: "
+            f"LLM/ranking {float(latency_breakdown.get('pipeline_s') or 0.0):.1f}s | "
+            f"graph load {float(latency_breakdown.get('graph_load_s') or 0.0):.1f}s | "
+            f"query {float(latency_breakdown.get('graph_query_s') or 0.0):.1f}s | "
+            f"answer formatting {float(latency_breakdown.get('answer_format_s') or 0.0):.1f}s"
+        )
     _render_feedback_panel()
 
 if developer_mode:
@@ -3438,7 +3485,7 @@ elif developer_mode:
                     html = build_graph_html(
                         triples,
                         height_px=int(graph_height),
-                        heading="Infineon Graph (Question Subgraph)",
+                        heading="True Demand KG (Question Subgraph)",
                     )
                     st.caption(
                         f"Seeds: {meta.get('seed_count', 0)} | "

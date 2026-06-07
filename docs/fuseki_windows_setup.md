@@ -14,7 +14,7 @@ Unzip Fuseki somewhere simple, for example:
 C:\tools\apache-jena-fuseki
 ```
 
-## 2. Start Fuseki with the Infineon graph
+## 2. Start Fuseki with the True Demand KG
 
 From the unzipped Fuseki directory:
 
@@ -34,7 +34,7 @@ The browser query UI is:
 http://localhost:3030/#/dataset/infineon/query
 ```
 
-Keep this PowerShell window open while using the KGQA app.
+Keep this PowerShell window open while using the True Demand KG QA app.
 
 ## 3. Point the KGQA app to Fuseki
 

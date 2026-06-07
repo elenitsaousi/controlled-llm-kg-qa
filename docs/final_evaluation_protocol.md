@@ -2,7 +2,7 @@
 
 ## Goal
 
-Evaluate the full Infineon KGQA system on three separate behaviors:
+Evaluate the full True Demand KGQA system on three separate behaviors:
 
 1. **KGQA answer quality**
 2. **Request routing**

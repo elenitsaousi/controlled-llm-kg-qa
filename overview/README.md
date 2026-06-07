@@ -1,4 +1,4 @@
-# Infineon KGQA Overview Assets
+# True Demand KGQA Overview Assets
 
 This folder contains slide-ready overview material for explaining the thesis work.
 
@@ -24,4 +24,3 @@ This folder contains slide-ready overview material for explaining the thesis wor
 4. Evaluation: benchmark, validation, metrics, error analysis.
 5. Current limitations: accuracy, candidate generation, ambiguity, noisy graph data, API token stability.
 6. Next steps: smaller task-specific subgraph, definition fallback with Digital Reference, stronger generation and ambiguity handling.
-
