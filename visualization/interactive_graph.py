@@ -362,6 +362,18 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
         edges.update(edgeUpdates);
         nodes.update(nodeUpdates);
       }
+      function kgDisablePhysics() {
+        if (typeof network === 'undefined') return;
+        if (typeof network.stopSimulation === 'function') {
+          network.stopSimulation();
+        }
+        network.setOptions({
+          physics: {
+            enabled: false,
+            stabilization: false
+          }
+        });
+      }
       function kgFreezeGraphExcept(nodeIds) {
         if (typeof nodes === 'undefined' || typeof network === 'undefined') return;
         const movable = new Set(nodeIds || []);
@@ -439,12 +451,17 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
         });
         network.once('stabilizationIterationsDone', () => {
           kgFreezeGraphExcept([]);
-          network.setOptions({ physics: { enabled: false } });
+          kgDisablePhysics();
+          kgSetGraphLabelScale(network.getScale());
+        });
+        network.once('stabilized', () => {
+          kgFreezeGraphExcept([]);
+          kgDisablePhysics();
           kgSetGraphLabelScale(network.getScale());
         });
         window.setTimeout(() => {
           kgFreezeGraphExcept([]);
-          network.setOptions({ physics: { enabled: false } });
+          kgDisablePhysics();
           kgSetGraphLabelScale(network.getScale());
         }, 1800);
         network.on('zoom', (params) => {
@@ -460,7 +477,7 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
               y: pointer ? pointer.y : null
             };
             kgFreezeGraphExcept([selectedId]);
-            network.setOptions({ physics: { enabled: false } });
+            kgDisablePhysics();
           }
         });
         network.on('dragging', (params) => {
@@ -478,6 +495,7 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
             const selectedId = params.nodes[0];
             kgRelaxConnectedNodes(selectedId);
             kgFreezeGraphExcept([]);
+            kgDisablePhysics();
             network.selectNodes([selectedId]);
           }
           kgDragState = null;
