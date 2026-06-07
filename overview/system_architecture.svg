@@ -1,100 +1,113 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#2f3a4a"/>
+      <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
     </marker>
     <style>
-      text { font-family: Arial, Helvetica, sans-serif; fill: #172033; }
-      .title { font-size: 34px; font-weight: 700; }
-      .sub { font-size: 18px; fill: #526070; }
+      text { font-family: Arial, Helvetica, sans-serif; fill: #16242a; }
+      .title { font-size: 36px; font-weight: 700; }
+      .sub { font-size: 18px; fill: #5d6f78; }
+      .label { font-size: 13px; font-weight: 700; fill: #007f78; letter-spacing: .08em; text-transform: uppercase; }
+      .box { fill: #ffffff; stroke: #cfdde3; stroke-width: 2; rx: 12; }
+      .ui { fill: #edfafa; stroke: #19a99f; }
+      .llm { fill: #fff7e8; stroke: #d79b35; }
+      .ml { fill: #eef4ff; stroke: #5d82c7; }
+      .kg { fill: #f3fbf5; stroke: #4d9d69; }
+      .ops { fill: #f8fafc; stroke: #94a3b8; }
       .box-title { font-size: 19px; font-weight: 700; }
-      .box-text { font-size: 15px; fill: #465466; }
-      .box { fill: #ffffff; stroke: #8fa3b8; stroke-width: 2; rx: 10; }
-      .store { fill: #f5f8fb; stroke: #8fa3b8; stroke-width: 2; rx: 10; }
-      .llm { fill: #fff7e8; stroke: #d79b35; stroke-width: 2; rx: 10; }
-      .rank { fill: #edf7f1; stroke: #4d9d69; stroke-width: 2; rx: 10; }
-      .out { fill: #eef4ff; stroke: #5d82c7; stroke-width: 2; rx: 10; }
-      .arrow { stroke: #2f3a4a; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
-      .dashed { stroke-dasharray: 7 7; }
+      .txt { font-size: 15px; fill: #465a63; }
+      .tiny { font-size: 13px; fill: #667984; }
+      .edge { stroke: #334155; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
+      .soft-edge { stroke: #6b7f88; stroke-width: 2; fill: none; marker-end: url(#arrow); stroke-dasharray: 7 7; }
     </style>
   </defs>
 
-  <rect width="1400" height="900" fill="#fbfcfe"/>
-  <text class="title" x="70" y="65">Infineon True Demand KGQA System Architecture</text>
-  <text class="sub" x="70" y="95">Natural language question answering over the ontology and RDF knowledge graph</text>
+  <rect width="1600" height="980" fill="#fbfcfe"/>
+  <text class="label" x="70" y="48">Current implementation</text>
+  <text class="title" x="70" y="88">True Demand KGQA System Architecture</text>
+  <text class="sub" x="70" y="118">Controlled LLM-to-SPARQL question answering with Fuseki execution, ML selection, confidence routing, and clarification.</text>
 
-  <rect class="box" x="70" y="160" width="210" height="95"/>
-  <text class="box-title" x="95" y="195">User Question</text>
-  <text class="box-text" x="95" y="222">Natural language input</text>
-  <text class="box-text" x="95" y="243">from business user</text>
+  <rect class="box ui" x="70" y="175" width="250" height="150"/>
+  <text class="box-title" x="100" y="215">Streamlit UI</text>
+  <text class="txt" x="100" y="245">Natural-language question</text>
+  <text class="txt" x="100" y="268">Example picker / builder</text>
+  <text class="txt" x="100" y="291">Clarification choices</text>
 
-  <rect class="box" x="340" y="145" width="250" height="125"/>
-  <text class="box-title" x="365" y="182">Preprocessing</text>
-  <text class="box-text" x="365" y="210">Canonicalization</text>
-  <text class="box-text" x="365" y="232">Entity linking</text>
-  <text class="box-text" x="365" y="254">Noisy label handling</text>
+  <rect class="box" x="380" y="175" width="250" height="150"/>
+  <text class="box-title" x="410" y="215">Request Preparation</text>
+  <text class="txt" x="410" y="245">Question normalization</text>
+  <text class="txt" x="410" y="268">Entity/schema context</text>
+  <text class="txt" x="410" y="291">Optional family routing</text>
 
-  <rect class="llm" x="650" y="145" width="260" height="125"/>
-  <text class="box-title" x="675" y="182">LLM Generation</text>
-  <text class="box-text" x="675" y="210">Prompt with schema context</text>
-  <text class="box-text" x="675" y="232">Generate SPARQL candidates</text>
-  <text class="box-text" x="675" y="254">Infineon GPT gateway</text>
+  <rect class="box llm" x="690" y="175" width="270" height="150"/>
+  <text class="box-title" x="720" y="215">Infineon GPT</text>
+  <text class="txt" x="720" y="245">Prompt with compact schema</text>
+  <text class="txt" x="720" y="268">Generate SPARQL candidates</text>
+  <text class="txt" x="720" y="291">No direct answer from memory</text>
 
-  <rect class="box" x="970" y="145" width="280" height="125"/>
-  <text class="box-title" x="995" y="182">Candidate Checks</text>
-  <text class="box-text" x="995" y="210">Syntax and schema validation</text>
-  <text class="box-text" x="995" y="232">Graph execution checks</text>
-  <text class="box-text" x="995" y="254">Semantic coverage</text>
+  <rect class="box ml" x="1020" y="175" width="280" height="150"/>
+  <text class="box-title" x="1050" y="215">Candidate Selection</text>
+  <text class="txt" x="1050" y="245">Schema/shape features</text>
+  <text class="txt" x="1050" y="268">Logistic ML reranker</text>
+  <text class="txt" x="1050" y="291">Safety guards</text>
 
-  <rect class="rank" x="970" y="345" width="280" height="125"/>
-  <text class="box-title" x="995" y="382">Selection and Ranking</text>
-  <text class="box-text" x="995" y="410">Rule/schema signals</text>
-  <text class="box-text" x="995" y="432">Semantic scoring</text>
-  <text class="box-text" x="995" y="454">ML reranker</text>
+  <rect class="box kg" x="690" y="410" width="270" height="150"/>
+  <text class="box-title" x="720" y="450">Fuseki Execution</text>
+  <text class="txt" x="720" y="480">Default SPARQL backend</text>
+  <text class="txt" x="720" y="503">Full True Demand KG</text>
+  <text class="txt" x="720" y="526">RDFLib fallback available</text>
 
-  <rect class="out" x="650" y="345" width="260" height="125"/>
-  <text class="box-title" x="675" y="382">Answer</text>
-  <text class="box-text" x="675" y="410">Selected SPARQL query</text>
-  <text class="box-text" x="675" y="432">Graph-grounded result</text>
-  <text class="box-text" x="675" y="454">Explanation and relevant graph</text>
+  <rect class="box ui" x="1020" y="410" width="280" height="150"/>
+  <text class="box-title" x="1050" y="450">Decision Routing</text>
+  <text class="txt" x="1050" y="480">High confidence: answer</text>
+  <text class="txt" x="1050" y="503">Low confidence: top-3 intents</text>
+  <text class="txt" x="1050" y="526">Natural-language explanations</text>
 
-  <rect class="box" x="340" y="345" width="250" height="125"/>
-  <text class="box-title" x="365" y="382">Clarification Layer</text>
-  <text class="box-text" x="365" y="410">Ask when intent is ambiguous</text>
-  <text class="box-text" x="365" y="432">Still needs improvement for</text>
-  <text class="box-text" x="365" y="454">vague pronouns</text>
+  <rect class="box ui" x="380" y="410" width="250" height="150"/>
+  <text class="box-title" x="410" y="450">Graph-Grounded Answer</text>
+  <text class="txt" x="410" y="480">Executed query rows</text>
+  <text class="txt" x="410" y="503">Natural-language summary</text>
+  <text class="txt" x="410" y="526">Optional evidence graph</text>
 
-  <rect class="store" x="70" y="565" width="1180" height="230"/>
-  <text class="box-title" x="100" y="605">Stored / Retrieved Context</text>
+  <rect class="box ops" x="70" y="410" width="250" height="150"/>
+  <text class="box-title" x="100" y="450">App Operations</text>
+  <text class="txt" x="100" y="480">System status panel</text>
+  <text class="txt" x="100" y="503">Latency breakdown</text>
+  <text class="txt" x="100" y="526">Session + feedback logs</text>
 
-  <rect class="box" x="105" y="635" width="220" height="100"/>
-  <text class="box-title" x="128" y="668">RDF Graph</text>
-  <text class="box-text" x="128" y="695">True Demand triples</text>
-  <text class="box-text" x="128" y="717">Executed by SPARQL</text>
+  <rect class="box kg" x="70" y="675" width="1230" height="185"/>
+  <text class="box-title" x="100" y="715">Core Assets</text>
 
-  <rect class="box" x="370" y="635" width="220" height="100"/>
-  <text class="box-title" x="393" y="668">Ontology Schema</text>
-  <text class="box-text" x="393" y="695">Classes, predicates</text>
-  <text class="box-text" x="393" y="717">Key relationships</text>
+  <rect class="box" x="105" y="745" width="220" height="80"/>
+  <text class="box-title" x="130" y="777">True Demand KG</text>
+  <text class="tiny" x="130" y="803">RDF triples loaded in Fuseki</text>
 
-  <rect class="box" x="635" y="635" width="220" height="100"/>
-  <text class="box-title" x="658" y="668">Entity Profiles</text>
-  <text class="box-text" x="658" y="695">Labels, URI aliases</text>
-  <text class="box-text" x="658" y="717">Types and predicates</text>
+  <rect class="box" x="365" y="745" width="220" height="80"/>
+  <text class="box-title" x="390" y="777">Schema JSON</text>
+  <text class="tiny" x="390" y="803">Classes, predicates, relations</text>
 
-  <rect class="box" x="900" y="635" width="300" height="100"/>
-  <text class="box-title" x="923" y="668">Evaluation Assets</text>
-  <text class="box-text" x="923" y="695">Benchmark, gold queries</text>
-  <text class="box-text" x="923" y="717">ML model, error analysis</text>
+  <rect class="box" x="625" y="745" width="220" height="80"/>
+  <text class="box-title" x="650" y="777">Ranker Model</text>
+  <text class="tiny" x="650" y="803">Shape/scope/origin features</text>
 
-  <path class="arrow" d="M280 208 L340 208"/>
-  <path class="arrow" d="M590 208 L650 208"/>
-  <path class="arrow" d="M910 208 L970 208"/>
-  <path class="arrow" d="M1110 270 L1110 345"/>
-  <path class="arrow" d="M970 408 L910 408"/>
-  <path class="arrow dashed" d="M465 270 L465 345"/>
-  <path class="arrow dashed" d="M745 635 L745 470"/>
-  <path class="arrow dashed" d="M480 635 L480 270"/>
-  <path class="arrow dashed" d="M215 635 L720 270"/>
+  <rect class="box" x="885" y="745" width="220" height="80"/>
+  <text class="box-title" x="910" y="777">Benchmark</text>
+  <text class="tiny" x="910" y="803">1000 generated questions</text>
+
+  <rect class="box" x="1145" y="745" width="120" height="80"/>
+  <text class="box-title" x="1168" y="777">Reports</text>
+  <text class="tiny" x="1168" y="803">Metrics</text>
+
+  <path class="edge" d="M320 250 L380 250"/>
+  <path class="edge" d="M630 250 L690 250"/>
+  <path class="edge" d="M960 250 L1020 250"/>
+  <path class="edge" d="M1160 325 L1160 410"/>
+  <path class="edge" d="M1020 485 L960 485"/>
+  <path class="edge" d="M690 485 L630 485"/>
+  <path class="edge" d="M380 485 L320 485"/>
+
+  <path class="soft-edge" d="M215 745 L720 560"/>
+  <path class="soft-edge" d="M475 745 L505 325"/>
+  <path class="soft-edge" d="M735 745 L1160 325"/>
+  <path class="soft-edge" d="M995 745 L1160 560"/>
 </svg>
-
