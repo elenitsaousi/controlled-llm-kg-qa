@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import re
 from html import escape
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
@@ -842,10 +843,32 @@ def _humanize_axis_value(value: object) -> str:
     text = str(value or "").strip()
     if not text:
         return ""
-    return text.replace("_", " ").replace("tier1", "Tier1").replace("oem", "OEM")
+    text = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", text)
+    replacements = {
+        "tier1": "Tier1",
+        "oem": "OEM",
+        "sae": "SAE",
+        "ev": "EV",
+        "nonev": "non-EV",
+    }
+    text = text.replace("_", " ").replace("-", " ")
+    words = [replacements.get(word.lower(), word) for word in text.split()]
+    return " ".join(words)
 
 
-def _candidate_interpretation_summary(question: str, query: str, candidate: Dict[str, object]) -> str:
+def _join_human(items: List[str], limit: int = 3) -> str:
+    cleaned = [item for item in items if item]
+    if not cleaned:
+        return ""
+    shown = cleaned[:limit]
+    if len(shown) == 1:
+        return shown[0]
+    if len(shown) == 2:
+        return f"{shown[0]} and {shown[1]}"
+    return ", ".join(shown[:-1]) + f", and {shown[-1]}"
+
+
+def _candidate_interpretation_details(question: str, query: str, candidate: Dict[str, object]) -> Dict[str, object]:
     try:
         contract = extract_query_contract(query).to_dict()
     except Exception:
@@ -856,37 +879,97 @@ def _candidate_interpretation_summary(question: str, query: str, candidate: Dict
         plan = {}
 
     aggregation = str(contract.get("aggregation") or "").lower()
-    metrics = list(contract.get("metrics") or [])
-    dimensions = list(contract.get("dimensions") or [])
-    scopes = list(contract.get("scopes") or [])
+    metrics = [_humanize_axis_value(v) for v in list(contract.get("metrics") or [])]
+    dimensions = [_humanize_axis_value(v) for v in list(contract.get("dimensions") or [])]
+    scopes = [_humanize_axis_value(v) for v in list(contract.get("scopes") or [])]
     answer_shape = str(contract.get("answer_shape") or "")
+    group_by = [_humanize_axis_value(v) for v in list(plan.get("group_by_predicates") or plan.get("group_by_vars") or [])]
+    raw_select_vars = [str(v) for v in list(plan.get("select_vars") or [])]
+    helper_select_names = {"count", "cnt", "total", "totaldemand", "avg", "average", "mean", "value"}
+    select_vars = [
+        _humanize_axis_value(v)
+        for v in raw_select_vars
+        if v.lower().replace("_", "") not in helper_select_names
+    ]
+    classes = [
+        _humanize_axis_value(v)
+        for v in list(plan.get("classes") or [])
+        if str(v) not in {"OEM_Survey", "Tier1_Survey", "Semiconductor_Survey"}
+    ]
+    surveys = [_humanize_axis_value(v) for v in list(plan.get("survey_origins") or [])]
+    query_types = {str(v) for v in plan.get("query_types") or []}
 
     if aggregation == "avg":
-        prefix = "Average"
+        action = "averages"
     elif aggregation == "sum":
-        prefix = "Total"
+        action = "totals"
     elif aggregation == "count":
-        prefix = "Count"
-    elif answer_shape == "ranked_one":
-        prefix = "Top ranked"
+        action = "counts"
+    elif answer_shape == "ranked_one" or "ranking" in query_types or "limited" in query_types:
+        action = "finds the top matching value for"
     elif answer_shape == "list_values":
-        prefix = "List"
+        action = "lists"
     else:
-        prefix = "Values"
+        action = "returns"
 
-    metric = _humanize_axis_value(metrics[0]) if metrics else "graph data"
-    label = f"{prefix} {metric}".strip()
+    target = _join_human(metrics) or _join_human(classes) or _join_human(select_vars) or "graph values"
+    description = f"This option {action} {target}"
+    grouping = _join_human(dimensions or group_by)
+    if grouping:
+        description += f", grouped by {grouping}"
     if scopes:
-        label += " for " + " / ".join(_humanize_axis_value(v) for v in scopes[:2])
-    if dimensions:
-        label += " by " + " and ".join(_humanize_axis_value(v) for v in dimensions[:3])
-    elif plan.get("group_by_predicates") or plan.get("group_by_vars"):
-        group_by = list(plan.get("group_by_predicates") or plan.get("group_by_vars") or [])
-        label += " by " + " and ".join(_humanize_axis_value(v) for v in group_by[:3])
+        description += f", restricted to {_join_human(scopes)}"
+    if surveys:
+        description += f", using {_join_human(surveys)} data"
+    description += "."
+
+    bullets: List[str] = []
+    if aggregation:
+        bullets.append(f"Calculation: {_humanize_axis_value(aggregation)}")
+    elif answer_shape:
+        bullets.append(f"Answer type: {_humanize_axis_value(answer_shape)}")
+    if grouping:
+        bullets.append(f"Breakdown: {grouping}")
+    if scopes:
+        bullets.append(f"Scope: {_join_human(scopes)}")
+    if surveys:
+        bullets.append(f"Survey source: {_join_human(surveys)}")
+    if select_vars:
+        bullets.append(f"Returned fields: {_join_human(select_vars, limit=4)}")
+    source = str(candidate.get("source") or "").strip()
+    if source:
+        bullets.append(f"Candidate source: {_humanize_axis_value(source)}")
+
+    return {
+        "description": description,
+        "bullets": bullets,
+        "action": action,
+        "target": target,
+        "grouping": grouping,
+        "scopes": scopes,
+        "surveys": surveys,
+    }
+
+
+def _candidate_interpretation_summary(question: str, query: str, candidate: Dict[str, object]) -> str:
+    details = _candidate_interpretation_details(question, query, candidate)
+    action = str(details.get("action") or "returns")
+    target = str(details.get("target") or "graph data")
+    grouping = str(details.get("grouping") or "")
+    scopes = list(details.get("scopes") or [])
+    surveys = list(details.get("surveys") or [])
+
+    label = f"{action.capitalize()} {target}".strip()
+    if scopes:
+        label += " for " + _join_human([str(v) for v in scopes], limit=2)
+    if grouping:
+        label += " by " + grouping
+    elif surveys:
+        label += " from " + _join_human([str(v) for v in surveys], limit=2)
 
     source = str(candidate.get("source") or "").strip()
     if source:
-        label += f" ({source})"
+        label += f" ({_humanize_axis_value(source)})"
     return label
 
 
@@ -935,6 +1018,7 @@ def _build_confidence_route(
         if key in seen:
             continue
         seen.add(key)
+        interpretation = _candidate_interpretation_details(question, query, candidate)
         options.append(
             {
                 "id": f"confidence_{len(options) + 1}",
@@ -942,6 +1026,8 @@ def _build_confidence_route(
                 "score": _candidate_score(candidate),
                 "source": candidate.get("source"),
                 "label": _candidate_interpretation_summary(question, query, candidate),
+                "description": interpretation.get("description"),
+                "details": interpretation.get("bullets"),
                 "query": query,
                 "safety_flags": _confidence_safety_flags(
                     question=question,
@@ -996,8 +1082,14 @@ def _render_confidence_clarification(
     for option in options[:3]:
         with st.container(border=True):
             st.markdown(f"**{str(option.get('label') or 'Interpretation')}**")
+            description = str(option.get("description") or "").strip()
+            if description:
+                st.write(description)
+            details = [str(item) for item in (option.get("details") or []) if str(item).strip()]
+            if details:
+                st.markdown("\n".join(f"- {item}" for item in details))
             st.caption(f"Option {option.get('rank')} | source={option.get('source') or 'unknown'}")
-            with st.expander("Show SPARQL", expanded=False):
+            with st.expander("Technical SPARQL query", expanded=False):
                 st.code(_format_sparql_for_display(str(option.get("query", ""))), language="sparql")
             if st.button(
                 "Use this interpretation",
