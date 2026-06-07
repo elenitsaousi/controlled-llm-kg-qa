@@ -305,13 +305,13 @@ def _render_compact_explainability(result: Dict[str, Any]) -> None:
     confidence_route = result.get("confidence_route")
     if isinstance(confidence_route, dict):
         st.subheader("Why This Answer")
-        left, mid, right = st.columns([1, 1, 3])
-        left.metric("Confidence route", str(confidence_route.get("route", "unknown")).replace("_", " "))
-        mid.metric("Score", f"{float(confidence_route.get('score1') or 0.0):.3f}")
-        right.write(str(confidence_route.get("reason", "")))
+        route = str(confidence_route.get("route", "unknown")).replace("_", " ")
+        left, right = st.columns([1.2, 3])
+        left.metric("Decision", route)
+        right.write("The selected query passed the confidence policy and safety checks.")
         flags = confidence_route.get("safety_flags") or []
         if flags:
-            st.caption("Safety guard: " + ", ".join(map(str, flags)))
+            st.caption("Technical safety notes are available in Developer mode.")
         return
 
     expl = result.get("selection_explanation")
@@ -956,17 +956,12 @@ def _build_confidence_route(
 
 def _render_confidence_route_badge(route: Dict[str, object]) -> None:
     if route.get("route") == "auto_answer":
-        st.success(
-            "High-confidence graph answer "
-            f"(score={float(route.get('score1', 0.0)):.3f}, "
-            f"margin={float(route.get('margin', 0.0)):.3f})."
-        )
+        st.success("High-confidence graph answer.")
     else:
         st.warning(
             "The system found multiple plausible interpretations. "
             "Please choose one before it answers."
         )
-        st.caption(str(route.get("reason", "")))
 
 
 def _render_confidence_clarification(
@@ -983,15 +978,9 @@ def _render_confidence_clarification(
         st.warning("No candidate interpretations are available for clarification.")
         return
     for option in options[:3]:
-        score = float(option.get("score") or 0.0)
         with st.container(border=True):
             st.markdown(f"**{str(option.get('label') or 'Interpretation')}**")
-            st.caption(
-                f"Rank {option.get('rank')} | score={score:.3f} | source={option.get('source') or 'unknown'}"
-            )
-            flags = list(option.get("safety_flags") or [])
-            if flags:
-                st.caption("Safety notes: " + ", ".join(map(str, flags[:4])))
+            st.caption(f"Option {option.get('rank')} | source={option.get('source') or 'unknown'}")
             with st.expander("Show SPARQL", expanded=False):
                 st.code(_format_sparql_for_display(str(option.get("query", ""))), language="sparql")
             if st.button(
@@ -1855,25 +1844,25 @@ def _inject_app_styles() -> None:
         """
         <style>
         :root {
-            --kg-bg: #101719;
-            --kg-panel: #172124;
-            --kg-panel-soft: #1d2a2d;
-            --kg-border: #26373a;
-            --kg-text: #edf4f3;
-            --kg-muted: #91a4a4;
-            --kg-accent: #19d6c6;
-            --kg-green: #31b67a;
-            --kg-green-soft: rgba(49, 182, 122, 0.16);
-            --kg-accent-soft: rgba(25, 214, 198, 0.16);
-            --kg-success: #153a34;
-            --kg-warning: #3a3118;
+            --kg-bg: #f6f9fb;
+            --kg-panel: #ffffff;
+            --kg-panel-soft: #eef5f7;
+            --kg-border: #d9e4e8;
+            --kg-text: #17262b;
+            --kg-muted: #60747b;
+            --kg-accent: #00a99d;
+            --kg-accent-dark: #007f78;
+            --kg-blue: #2166a5;
+            --kg-green: #2e9f6e;
+            --kg-green-soft: #e8f7f0;
+            --kg-accent-soft: #e4f7f5;
+            --kg-success: #e8f7f0;
+            --kg-warning: #fff6df;
+            --kg-shadow: 0 12px 32px rgba(24, 54, 64, 0.08);
         }
 
         .stApp {
-            background:
-                radial-gradient(circle at 88% 8%, rgba(25, 214, 198, 0.10), transparent 28rem),
-                radial-gradient(circle at 8% 96%, rgba(49, 182, 122, 0.16), transparent 24rem),
-                linear-gradient(180deg, #111719 0%, #101719 100%);
+            background: var(--kg-bg);
             color: var(--kg-text);
         }
         html, body,
@@ -1885,10 +1874,12 @@ def _inject_app_styles() -> None:
         }
         [data-testid="stHeader"] {
             border-bottom: 1px solid var(--kg-border);
+            box-shadow: 0 1px 8px rgba(24, 54, 64, 0.05);
         }
         [data-testid="stSidebar"] {
-            background: #070a0b;
+            background: #ffffff;
             border-right: 1px solid var(--kg-border);
+            box-shadow: 6px 0 24px rgba(24, 54, 64, 0.04);
         }
         [data-testid="stSidebar"] * {
             color: var(--kg-text);
@@ -1903,13 +1894,19 @@ def _inject_app_styles() -> None:
             color: var(--kg-text);
         }
         .block-container {
-            max-width: 1180px;
-            padding-top: 3.75rem;
+            max-width: 1160px;
+            padding-top: 2.5rem;
             padding-bottom: 3rem;
         }
         h1, h2, h3 {
             color: var(--kg-text);
             letter-spacing: 0;
+        }
+        h1 {
+            font-weight: 700;
+        }
+        h2 {
+            margin-top: 1.2rem;
         }
         .stCaption, [data-testid="stCaptionContainer"] {
             color: var(--kg-muted);
@@ -1921,22 +1918,29 @@ def _inject_app_styles() -> None:
         }
         textarea:focus, input:focus {
             border-color: var(--kg-accent) !important;
-            box-shadow: 0 0 0 1px var(--kg-accent) !important;
+            box-shadow: 0 0 0 2px rgba(0, 169, 157, 0.14) !important;
         }
         button[kind="primary"] {
             background: var(--kg-accent) !important;
             border-color: var(--kg-accent) !important;
-            color: #041514 !important;
+            color: #ffffff !important;
             font-weight: 600;
+            border-radius: 8px !important;
         }
         button[kind="secondary"] {
             border-color: var(--kg-border) !important;
             color: var(--kg-text) !important;
             background: var(--kg-panel) !important;
+            border-radius: 8px !important;
+        }
+        button[kind="secondary"]:hover {
+            border-color: var(--kg-accent) !important;
+            color: var(--kg-accent-dark) !important;
         }
         [data-testid="stAlert"] {
             border-radius: 8px;
             border: 1px solid var(--kg-border);
+            box-shadow: none;
         }
         [data-testid="stAlert"] div {
             color: var(--kg-text);
@@ -1945,127 +1949,102 @@ def _inject_app_styles() -> None:
             background: var(--kg-panel);
             border: 1px solid var(--kg-border);
             border-radius: 8px;
-            padding: 0.8rem 1rem;
+            padding: 0.95rem 1rem;
+            box-shadow: 0 8px 22px rgba(24, 54, 64, 0.05);
         }
         [data-testid="stExpander"] {
             background: var(--kg-panel);
             border: 1px solid var(--kg-border);
             border-radius: 8px;
+            box-shadow: 0 6px 18px rgba(24, 54, 64, 0.04);
         }
         [data-testid="stDataFrame"],
         pre {
             border: 1px solid var(--kg-border);
             border-radius: 8px;
+            background: var(--kg-panel) !important;
         }
         iframe {
-            border-radius: 14px;
+            border-radius: 8px;
         }
         .kg-hero {
-            isolation: isolate;
-            overflow: hidden;
-            position: relative;
-            padding: 0.2rem 0 1rem;
-        }
-        .kg-hero::before {
-            background:
-                radial-gradient(circle at 13% 130%, rgba(49, 182, 122, 0.46), transparent 18rem),
-                radial-gradient(circle at 23% 140%, rgba(25, 214, 198, 0.38), transparent 21rem);
-            border-radius: 999px;
-            bottom: -11rem;
-            content: "";
-            height: 24rem;
-            left: -6rem;
-            position: absolute;
-            width: 42rem;
-            z-index: -1;
-        }
-        .kg-hero::after {
-            background: linear-gradient(
-                118deg,
-                transparent 0%,
-                rgba(49, 182, 122, 0.08) 34%,
-                rgba(25, 214, 198, 0.20) 74%,
-                transparent 100%
-            );
-            border-radius: 999px;
-            bottom: -12rem;
-            content: "";
-            height: 18rem;
-            left: -2rem;
-            position: absolute;
-            transform: rotate(10deg);
-            width: 34rem;
-            z-index: -1;
+            background: linear-gradient(135deg, #ffffff 0%, #eef8f7 100%);
+            border: 1px solid var(--kg-border);
+            border-left: 6px solid var(--kg-accent);
+            border-radius: 8px;
+            box-shadow: var(--kg-shadow);
+            margin-bottom: 1.25rem;
+            padding: 1.35rem 1.5rem;
         }
         .kg-hero h1 {
-            margin-bottom: 0.25rem;
+            margin: 0.1rem 0 0.35rem;
         }
         .kg-kicker {
-            color: var(--kg-accent);
+            color: var(--kg-blue);
             font-size: 0.78rem;
-            font-weight: 600;
+            font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
         .kg-page-copy {
             color: var(--kg-muted);
-            max-width: 42rem;
+            max-width: 48rem;
         }
         .kg-sidebar-note {
-            background: linear-gradient(135deg, var(--kg-green-soft), var(--kg-accent-soft));
-            border: 1px solid rgba(49, 182, 122, 0.34);
+            background: var(--kg-accent-soft);
+            border: 1px solid #c8e9e5;
             border-radius: 8px;
             color: var(--kg-text);
             padding: 0.75rem;
             margin: 0.5rem 0 1rem;
         }
         .kg-side-legend {
-            background: rgba(11, 28, 40, 0.88);
-            border: 1px solid rgba(25, 214, 198, 0.48);
-            border-radius: 14px;
+            background: var(--kg-panel);
+            border: 1px solid var(--kg-border);
+            border-radius: 8px;
             min-height: 240px;
             padding: 1rem;
-            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+            box-shadow: var(--kg-shadow);
         }
         .kg-side-kicker {
-            color: #f5d96c;
+            color: var(--kg-blue);
             font-size: 0.78rem;
             font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
         }
         .kg-side-section {
-            border-top: 1px solid rgba(25, 214, 198, 0.2);
+            border-top: 1px solid var(--kg-border);
             margin-top: 0.9rem;
             padding-top: 0.9rem;
         }
         .kg-side-title {
-            color: #f5d96c;
+            color: var(--kg-text);
             font-weight: 600;
             margin-bottom: 0.45rem;
         }
         .kg-side-row {
             align-items: center;
-            color: #d7e4e4;
+            color: var(--kg-muted);
             display: flex;
             font-size: 0.82rem;
             gap: 0.55rem;
             margin: 0.45rem 0;
         }
         .kg-side-dot {
-            background: #b9f2f2;
-            border: 2px solid #7de4df;
+            background: var(--kg-accent-soft);
+            border: 2px solid var(--kg-accent);
             border-radius: 999px;
             display: inline-block;
             height: 12px;
             width: 12px;
         }
         .kg-side-dot.muted {
-            background: #54656d;
-            border-color: #70838b;
+            background: #e6edf1;
+            border-color: #91a4ad;
         }
         .kg-side-line {
-            border-top: 2px solid #6a8a8f;
+            border-top: 2px solid var(--kg-blue);
             display: inline-block;
             width: 24px;
         }
@@ -2075,7 +2054,7 @@ def _inject_app_styles() -> None:
             line-height: 1.6;
         }
         .kg-evidence-row {
-            border-top: 1px solid rgba(148, 163, 184, 0.18);
+            border-top: 1px solid var(--kg-border);
             display: grid;
             gap: 0.18rem;
             padding: 0.45rem 0;
@@ -2090,6 +2069,12 @@ def _inject_app_styles() -> None:
             font-size: 0.82rem;
             font-weight: 600;
             overflow-wrap: anywhere;
+        }
+        .stSuccess {
+            background: var(--kg-success) !important;
+        }
+        .stWarning {
+            background: var(--kg-warning) !important;
         }
         </style>
         """,
