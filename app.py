@@ -1014,6 +1014,82 @@ def _expected_classes_from_question(question: str, question_contract: Dict[str, 
     return expected
 
 
+def _required_query_terms_from_question(question: str) -> List[Tuple[str, Tuple[str, ...]]]:
+    q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
+    required: List[Tuple[str, Tuple[str, ...]]] = []
+    if "oem" in q:
+        required.append(("oem_scope", ("oem", "oem_survey")))
+    if "tier1" in q:
+        required.append(("tier1_scope", ("tier1", "tier1_survey")))
+    if "semiconductor" in q:
+        required.append(("semiconductor_scope", ("semiconductor", "semiconductor_survey")))
+    if "region" in q or "regional" in q:
+        required.append(("region", ("region", "inregion", "regionname", "demandforregion")))
+    if "vehicle" in q:
+        required.append(("vehicle", ("vehicle", "hasvehicletype", "forvehicletype")))
+    if "sae" in q:
+        required.append(("sae", ("sae", "hassaelevel")))
+    if "year" in q or "yearly" in q:
+        required.append(("year", ("year", "hasyear", "baselineyear")))
+    if "quarter" in q or "quarterly" in q:
+        required.append(("quarter", ("quarter", "fortimeperiod", "periodlabel")))
+    if "percentage change" in q or "percent change" in q or re.search(r"\bchange\b", q):
+        required.append(
+            (
+                "percentage_change",
+                (
+                    "percentagechange",
+                    "percentchange",
+                    "totaldemandpercentagechange",
+                    "baselineb1percent",
+                    "baselineb2percent",
+                ),
+            )
+        )
+    elif "percentage" in q or "percent" in q:
+        required.append(
+            (
+                "percentage",
+                (
+                    "percentage",
+                    "percent",
+                    "pct",
+                    "haspercentage",
+                    "splitpercentage",
+                ),
+            )
+        )
+    if re.search(r"\bb1\b|\bbl1\b", q):
+        required.append(
+            (
+                "b1_or_bl1",
+                (
+                    "b1",
+                    "bl1",
+                    "baselineb1",
+                    "percentchangeb1",
+                    "percentagechangeb1",
+                    "percentagechangebl1",
+                ),
+            )
+        )
+    if re.search(r"\bb2\b|\bbl2\b", q):
+        required.append(
+            (
+                "b2_or_bl2",
+                (
+                    "b2",
+                    "bl2",
+                    "baselineb2",
+                    "percentchangeb2",
+                    "percentagechangeb2",
+                    "percentagechangebl2",
+                ),
+            )
+        )
+    return required
+
+
 def _confidence_safety_flags(
     *,
     question: str,
@@ -1069,6 +1145,11 @@ def _confidence_safety_flags(
     for expected_class in sorted(_expected_classes_from_question(question, question_contract)):
         if expected_class not in plan_classes:
             flags.append(f"class_missing:{expected_class}")
+    normalized_query = re.sub(r"[^a-z0-9]+", "", query_lower)
+    loose_query = query_lower.replace("_", "").replace("-", "")
+    for name, terms in _required_query_terms_from_question(question):
+        if not any(term in normalized_query or term in loose_query for term in terms):
+            flags.append(f"required_missing:{name}")
 
     return sorted(set(flags))
 
@@ -1080,6 +1161,7 @@ def _blocking_confidence_safety_flags(flags: List[str]) -> List[str]:
         "scope_missing:",
         "contract_conflict:",
         "class_missing:",
+        "required_missing:",
     )
     return [
         flag
@@ -1494,8 +1576,20 @@ def _render_confidence_clarification(
     skipped_empty = 0
     if execute_selected and _graph_backend_available(graph_path):
         fuseki_url = _active_fuseki_query_url()
+        schema_dict = _load_schema_dict_cached(str(DEFAULT_SCHEMA_PATH))
+        active_question = str(st.session_state.get("last_question") or "")
         for option in options:
             query = str(option.get("query", "") or "").strip()
+            flags = _confidence_safety_flags(
+                question=active_question,
+                query=query,
+                schema_dict=schema_dict,
+            )
+            blocking = _blocking_confidence_safety_flags(flags)
+            if blocking:
+                skipped_empty += 1
+                option["preview_error"] = "blocked_by_semantic_guard:" + ",".join(blocking[:4])
+                continue
             rows, error = _preview_query_rows_cached(
                 graph_path,
                 fuseki_url,
