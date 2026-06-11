@@ -2182,10 +2182,15 @@ def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int 
         for dimension in SMART_QUERY_DIMENSIONS:
             dim_tokens = _smart_query_tokens(dimension)
             if not last or any(token.startswith(last) or last.startswith(token[: min(3, len(token))]) for token in dim_tokens):
-                suggestions.append({"label": dimension, "insert": dimension, "type": "dimension"})
+                suggestions.append({
+                    "label": dimension,
+                    "insert": dimension,
+                    "type": "dimension",
+                    "raw": dimension.upper().replace(" ", "_").replace("-", "_"),
+                })
     elif continuation_context:
         for label, suggestion_type in SMART_QUERY_CONTINUATIONS:
-            suggestions.append({"label": label, "insert": label, "type": suggestion_type})
+            suggestions.append({"label": label, "insert": label, "type": suggestion_type, "raw": ""})
     for term in SMART_QUERY_DOMAIN_TERMS:
         aliases = [str(v).lower() for v in term.get("aliases", [])]
         label = str(term.get("label", ""))
@@ -2198,6 +2203,7 @@ def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int 
                 "label": label,
                 "insert": str(term.get("insert", label)),
                 "type": str(term.get("type", "concept")),
+                "raw": label.upper().replace(" ", "_").replace("-", "_"),
             })
 
     schema_dict = _load_schema_dict_cached(schema_path)
@@ -2214,7 +2220,7 @@ def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int 
         contains_context = any(token in tokens for token in human_tokens)
         prefix_match = bool(last) and any(token.startswith(last) or last.startswith(token[: min(3, len(token))]) for token in human_tokens)
         if prefix_match or (contains_context and len(tokens) <= 5):
-            suggestions.append({"label": human, "insert": human, "type": value_type})
+            suggestions.append({"label": human, "insert": human, "type": value_type, "raw": str(value)})
 
     deduped = []
     seen = set()
@@ -2275,17 +2281,62 @@ def _render_smart_query_assistant(question: str, schema_path: str) -> None:
     if not term_suggestions:
         return
 
-    st.caption("Autocomplete suggestions from the True Demand KG/schema.")
-    cols = st.columns(min(5, max(1, len(term_suggestions))))
-    for idx, suggestion in enumerate(term_suggestions):
-        label = str(suggestion.get("label", ""))
-        suggestion_type = str(suggestion.get("type", "term"))
-        cols[idx % len(cols)].button(
-            f"{label} · {suggestion_type}",
-            key=f"smart_term_{idx}_{label}_{suggestion_type}",
-            use_container_width=True,
-            on_click=_complete_question_fragment,
-            args=(q, str(suggestion.get("insert", label))),
+    st.markdown(
+        """
+        <style>
+          .kg-autocomplete-title {
+            color: #008b84;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            margin: -0.45rem 0 0.2rem;
+            text-transform: uppercase;
+          }
+          .kg-autocomplete-footer {
+            border-top: 1px solid #d9e5e8;
+            color: #64748b;
+            font-size: 0.78rem;
+            margin-top: 0.15rem;
+            padding-top: 0.35rem;
+          }
+          .kg-type-badge {
+            background: #eef8f7;
+            border: 1px solid #c8e9e5;
+            border-radius: 999px;
+            color: #0f766e;
+            display: inline-block;
+            font-size: 0.76rem;
+            font-weight: 700;
+            padding: 0.18rem 0.55rem;
+          }
+          .kg-raw-token {
+            color: #475569;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+            font-size: 0.78rem;
+          }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True):
+        st.markdown("<div class='kg-autocomplete-title'>Graph-aware autocomplete</div>", unsafe_allow_html=True)
+        for idx, suggestion in enumerate(term_suggestions[:7]):
+            label = str(suggestion.get("label", ""))
+            suggestion_type = str(suggestion.get("type", "term"))
+            raw = str(suggestion.get("raw", "") or "")
+            cols = st.columns([4.3, 1.6, 3.1])
+            cols[0].button(
+                label,
+                key=f"smart_term_{idx}_{label}_{suggestion_type}",
+                use_container_width=True,
+                on_click=_complete_question_fragment,
+                args=(q, str(suggestion.get("insert", label))),
+            )
+            cols[1].markdown(f"<span class='kg-type-badge'>{escape(suggestion_type)}</span>", unsafe_allow_html=True)
+            cols[2].markdown(f"<span class='kg-raw-token'>{escape(raw)}</span>", unsafe_allow_html=True)
+        st.markdown(
+            f"<div class='kg-autocomplete-footer'>Showing {min(7, len(term_suggestions))} of {len(term_suggestions)} suggestions from the schema/query context.</div>",
+            unsafe_allow_html=True,
         )
 
 
