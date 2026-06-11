@@ -4644,7 +4644,7 @@ elif developer_mode:
             html = build_graph_html(
                 triples,
                 height_px=int(graph_height),
-                heading="Infineon Ontology Schema",
+                heading="True Demand Ontology Schema",
                 max_nodes=160,
                 max_edges=220,
             )
@@ -4711,7 +4711,7 @@ elif developer_mode:
                     html = build_graph_html(
                         triples,
                         height_px=int(graph_height),
-                        heading="Infineon Raw Data Triples",
+                        heading="True Demand Raw Data Triples",
                     )
                     st.caption(
                         f"Showing {len(triples)} raw triples out of total {total}."

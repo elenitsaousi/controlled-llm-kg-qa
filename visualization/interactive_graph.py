@@ -51,7 +51,88 @@ def _node_id(term) -> str:
 
 
 def _is_entity(term) -> bool:
-    return isinstance(term, URIRef)
+    if isinstance(term, URIRef):
+        return True
+    if isinstance(term, str):
+        value = term.strip()
+        if not value:
+            return False
+        if value.startswith(("http://", "https://", "survey:")):
+            return True
+        if re.fullmatch(r"[-+]?\d+(\.\d+)?", value):
+            return False
+        if len(value) <= 80 and not re.search(r"\s", value):
+            return True
+    return False
+
+
+def _node_kind(term, info: Optional[Dict[str, object]] = None) -> str:
+    if not _is_entity(term):
+        return "literal"
+    label = _short_term(term)
+    uri = str(term)
+    types = {str(t).lower() for t in ((info or {}).get("types") or [])}
+    if uri.startswith("http://www.w3.org/2001/XMLSchema#") or label in {"decimal", "string", "boolean"}:
+        return "datatype"
+    if any("property" in t for t in types):
+        return "property"
+    if any("class" in t for t in types) or label[:1].isupper() or isinstance(term, str):
+        return "class"
+    return "entity"
+
+
+def _node_visual_label(term) -> str:
+    label = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", _short_term(term)).replace("_", " ")
+    words = label.split()
+    if len(label) <= 20 or len(words) <= 1:
+        return label
+    lines: List[str] = []
+    line = ""
+    for word in words:
+        candidate = f"{line} {word}".strip()
+        if len(candidate) > 15 and line:
+            lines.append(line)
+            line = word
+        else:
+            line = candidate
+        if len(lines) >= 2:
+            break
+    if line and len(lines) < 3:
+        lines.append(line)
+    return "\n".join(lines[:3])
+
+
+def _node_visual_style(term, info: Optional[Dict[str, object]] = None) -> Dict[str, object]:
+    kind = _node_kind(term, info)
+    if kind == "literal":
+        return {
+            "shape": "box",
+            "size": 16,
+            "color": {
+                "background": "#d3d7d9",
+                "border": "#8c969c",
+                "highlight": {"background": "#ff4b4b", "border": "#d50000"},
+            },
+        }
+    if kind == "datatype":
+        return {
+            "shape": "dot",
+            "size": 18,
+            "color": {
+                "background": "#e2e4e5",
+                "border": "#9ca4aa",
+                "highlight": {"background": "#ff4b4b", "border": "#d50000"},
+            },
+        }
+    return {
+        "shape": "dot",
+        "size": 25,
+        "color": {
+            "background": "#b8d8ff",
+            "border": "#4e83c8",
+            "highlight": {"background": "#ff4b4b", "border": "#d50000"},
+        },
+    }
 
 
 def build_graph_html(
@@ -91,7 +172,7 @@ def build_graph_html(
                 "id": nid,
                 "label": _short_term(term),
                 "uri": str(term),
-                "kind": "entity" if _is_entity(term) else "value",
+                "kind": _node_kind(term),
                 "types": [],
                 "labels": [],
                 "comments": [],
@@ -117,35 +198,25 @@ def build_graph_html(
             sinfo.setdefault("outgoing", []).append({"predicate": pred_label, "target": _short_term(o)})
             oinfo.setdefault("incoming", []).append({"predicate": pred_label, "source": _short_term(s)})
         if sid not in seen_nodes:
+            style = _node_visual_style(s, sinfo)
             net.add_node(
                 sid,
-                label=_short_term(s),
+                label=_node_visual_label(s),
                 title=_short_term(s),
-                color={
-                    "background": "#b9f2f2" if _is_entity(s) else "#54656d",
-                    "border": "#7de4df" if _is_entity(s) else "#70838b",
-                    "highlight": {
-                        "background": "#d8ffff" if _is_entity(s) else "#738891",
-                        "border": "#19d6c6",
-                    },
-                },
-                shape="dot" if _is_entity(s) else "box",
+                color=style["color"],
+                shape=style["shape"],
+                size=style["size"],
             )
             seen_nodes.add(sid)
         if oid not in seen_nodes:
+            style = _node_visual_style(o, oinfo)
             net.add_node(
                 oid,
-                label=_short_term(o),
+                label=_node_visual_label(o),
                 title=_short_term(o),
-                color={
-                    "background": "#b9f2f2" if _is_entity(o) else "#54656d",
-                    "border": "#7de4df" if _is_entity(o) else "#70838b",
-                    "highlight": {
-                        "background": "#d8ffff" if _is_entity(o) else "#738891",
-                        "border": "#19d6c6",
-                    },
-                },
-                shape="dot" if _is_entity(o) else "box",
+                color=style["color"],
+                shape=style["shape"],
+                size=style["size"],
             )
             seen_nodes.add(oid)
 
@@ -153,7 +224,15 @@ def build_graph_html(
         if edge_key in seen_edges:
             continue
         seen_edges.add(edge_key)
-        net.add_edge(sid, oid, label=_short_term(p), title=_short_term(p), arrows="to")
+        pred_short = _short_term(p)
+        net.add_edge(
+            sid,
+            oid,
+            label=pred_short,
+            title=pred_short,
+            arrows="to",
+            dashes=pred_short in {"type", "subClassOf", "domain", "range"},
+        )
 
     net.set_options(
         """
@@ -167,9 +246,9 @@ def build_graph_html(
             "solver": "forceAtlas2Based",
             "forceAtlas2Based": {
               "gravitationalConstant": -95,
-              "centralGravity": 0.008,
-              "springLength": 230,
-              "springConstant": 0.035,
+              "centralGravity": 0.006,
+              "springLength": 285,
+              "springConstant": 0.028,
               "damping": 0.72,
               "avoidOverlap": 1.0
             },
@@ -188,12 +267,12 @@ def build_graph_html(
             "borderWidth": 1.5,
             "size": 20,
             "shadow": {"enabled": true, "color": "rgba(25,214,198,0.18)", "size": 18, "x": 0, "y": 0},
-            "font": {"size": 15, "color": "#17262b", "face": "Arial", "strokeWidth": 4, "strokeColor": "#ffffff"}
+            "font": {"size": 13, "color": "#17262b", "face": "Arial", "strokeWidth": 4, "strokeColor": "#ffffff"}
           },
           "edges": {
             "smooth": {"enabled": true, "type": "dynamic", "roundness": 0.16},
-            "font": {"size": 10, "align": "middle", "color": "#49636a", "strokeWidth": 4, "strokeColor": "#ffffff"},
-            "color": {"color": "#6f8a91", "highlight": "#19a99f", "hover": "#19a99f", "opacity": 0.62},
+            "font": {"size": 10, "align": "middle", "color": "#2f5f91", "background": "rgba(230,241,255,0.92)", "strokeWidth": 2, "strokeColor": "#e6f1ff"},
+            "color": {"color": "#7d8995", "highlight": "#ff4b4b", "hover": "#0067b1", "opacity": 0.74},
             "selectionWidth": 2,
             "width": 1.1
           }
@@ -201,57 +280,135 @@ def build_graph_html(
         """
     )
     html = net.generate_html(notebook=False)
-    return _inject_graph_theme(html, node_info=node_info)
+    graph_stats = {
+        "nodes": len(seen_nodes),
+        "edges": len(seen_edges),
+        "classes": sum(1 for info in node_info.values() if str(info.get("kind")) == "class"),
+        "literals": sum(1 for info in node_info.values() if str(info.get("kind")) == "literal"),
+    }
+    return _inject_graph_theme(html, node_info=node_info, graph_stats=graph_stats, heading=heading)
 
 
-def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, object]]] = None) -> str:
+def _inject_graph_theme(
+    html: str,
+    node_info: Optional[Dict[str, Dict[str, object]]] = None,
+    graph_stats: Optional[Dict[str, int]] = None,
+    heading: str = "Graph View",
+) -> str:
     safe_node_info = json.dumps(node_info or {}, ensure_ascii=False).replace("</", "<\\/")
+    safe_graph_stats = json.dumps(graph_stats or {}, ensure_ascii=False).replace("</", "<\\/")
+    safe_heading = json.dumps(heading, ensure_ascii=False).replace("</", "<\\/")
     theme = """
     <style>
       html, body {
-        background: #f6f9fb !important;
+        background: #f3f6f8 !important;
         color: #17262b !important;
         margin: 0;
         font-family: Arial, sans-serif;
       }
       #mynetwork {
-        border: 1px solid #d9e4e8 !important;
-        border-radius: 8px !important;
-        background: linear-gradient(135deg, #ffffff 0%, #eef8f7 100%) !important;
-        width: calc(100% - 300px) !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: #eef3f6 !important;
+        width: 100% !important;
         min-width: 520px !important;
       }
       #kgGraphShell {
         display: flex;
-        gap: 12px;
+        gap: 0;
         height: 100%;
         width: 100%;
+        border: 1px solid #cbd5dc;
+        border-radius: 6px;
+        overflow: hidden;
+        background: #eef3f6;
+      }
+      #kgCanvasPane {
+        background: #eef3f6;
+        flex: 1 1 auto;
+        min-width: 520px;
+        position: relative;
+      }
+      #kgGraphToolbar {
+        align-items: center;
+        background: rgba(255,255,255,0.86);
+        border-bottom: 1px solid #d7e0e7;
+        box-sizing: border-box;
+        color: #14213d;
+        display: flex;
+        gap: 8px;
+        height: 38px;
+        padding: 6px 10px;
+      }
+      #kgGraphToolbar strong {
+        font-size: 13px;
+        margin-right: 8px;
+      }
+      #kgGraphToolbar button {
+        background: #ffffff;
+        border: 1px solid #b7c6d1;
+        border-radius: 3px;
+        color: #14213d;
+        cursor: pointer;
+        font-size: 12px;
+        padding: 4px 8px;
+      }
+      #kgGraphToolbar button:hover {
+        border-color: #0067b1;
+      }
+      #kgBottomBar {
+        align-items: center;
+        background: rgba(255,255,255,0.9);
+        border-top: 1px solid #d7e0e7;
+        bottom: 0;
+        box-sizing: border-box;
+        display: flex;
+        gap: 10px;
+        left: 0;
+        padding: 6px 10px;
+        position: absolute;
+        right: 0;
+        z-index: 5;
+      }
+      #kgSearch {
+        border: 1px solid #b7c6d1;
+        border-radius: 3px;
+        font-size: 12px;
+        padding: 5px 8px;
+        width: 190px;
       }
       #kgNodePanel {
-        background: #ffffff;
-        border: 1px solid #d9e4e8;
-        border-radius: 8px;
+        background: #172331;
+        border-left: 1px solid #243344;
+        border-radius: 0;
         box-sizing: border-box;
-        color: #17262b;
+        color: #dbe7ee;
         font-size: 13px;
         line-height: 1.45;
         overflow: auto;
-        padding: 14px;
-        width: 288px;
+        padding: 0;
+        width: 310px;
       }
       #kgNodePanel h3 {
-        color: #17262b;
-        font-size: 16px;
+        color: #ffffff;
+        font-size: 20px;
+        font-weight: 500;
+        line-height: 1.08;
+        margin: 0;
+      }
+      #kgNodePanel h4 {
+        color: #dbe7ee;
+        font-size: 15px;
         margin: 0 0 8px;
       }
       #kgNodePanel .muted {
-        color: #60747b;
+        color: #8ea3b1;
       }
       #kgNodePanel .badge {
-        background: #e4f7f5;
-        border: 1px solid #c8e9e5;
+        background: #233446;
+        border: 1px solid #355069;
         border-radius: 999px;
-        color: #007f78;
+        color: #9bc8ff;
         display: inline-block;
         font-size: 11px;
         font-weight: 700;
@@ -259,9 +416,23 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
         padding: 3px 8px;
       }
       #kgNodePanel .section {
-        border-top: 1px solid #d9e4e8;
-        margin-top: 10px;
-        padding-top: 10px;
+        border-top: 1px solid #2a3c50;
+        padding: 13px 16px;
+      }
+      #kgNodePanel .panel-head {
+        background: #101927;
+        padding: 16px;
+      }
+      #kgNodePanel .panel-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 5px 0;
+      }
+      #kgNodePanel .panel-value {
+        color: #ffffff;
+        font-weight: 700;
+        text-align: right;
       }
       #kgNodePanel ul {
         margin: 6px 0 0 18px;
@@ -271,9 +442,9 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
         margin: 3px 0;
       }
       #kgNodePanel code {
-        background: #eef5f7;
+        background: #101927;
         border-radius: 4px;
-        color: #17262b;
+        color: #bfe4ff;
         display: block;
         overflow-wrap: anywhere;
         padding: 6px;
@@ -281,12 +452,14 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
       }
       @media (max-width: 820px) {
         #kgGraphShell { flex-direction: column; }
-        #mynetwork { width: 100% !important; min-width: 0 !important; }
+        #mynetwork, #kgCanvasPane { width: 100% !important; min-width: 0 !important; }
         #kgNodePanel { width: 100%; max-height: 220px; }
       }
     </style>
     <script>
       const KG_NODE_INFO = __KG_NODE_INFO__;
+      const KG_GRAPH_STATS = __KG_GRAPH_STATS__;
+      const KG_GRAPH_HEADING = __KG_GRAPH_HEADING__;
       function kgEscape(value) {
         return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
           '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
@@ -301,7 +474,7 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
         if (!panel) return;
         const info = KG_NODE_INFO[nodeId];
         if (!info) {
-          panel.innerHTML = '<h3>Node details</h3><p class="muted">No information available.</p>';
+          kgRenderDefaultPanel('<p class="muted">No information available for this selection.</p>');
           return;
         }
         const labels = info.labels && info.labels.length ? info.labels : [info.label];
@@ -311,48 +484,67 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
         const description = comments.length
           ? comments.map((c) => '<p>' + kgEscape(c) + '</p>').join('')
           : '<p class="muted">No description available.</p>';
-        panel.innerHTML =
-          '<h3>' + kgEscape(labels[0] || info.label) + '</h3>' +
-          '<span class="badge">' + kgEscape(info.kind || 'node') + '</span>' +
+        panel.innerHTML = kgPanelHeader() +
+          '<div class="section"><h4>Selection Details</h4><p><strong>Name:</strong> <em>' + kgEscape(labels[0] || info.label) + '</em></p>' +
+          '<p><strong>Type:</strong> ' + kgEscape(info.kind || 'node') + '</p>' +
           typeBadges +
-          '<div class="section"><strong>Identifier</strong><code>' + kgEscape(info.uri || info.id) + '</code></div>' +
-          '<div class="section"><strong>Description</strong>' + description + '</div>' +
-          '<div class="section"><strong>Outgoing relationships</strong>' +
+          '<code>' + kgEscape(info.uri || info.id) + '</code></div>' +
+          '<div class="section"><h4>Description</h4>' + description + '</div>' +
+          '<div class="section"><h4>Outgoing relationships</h4>' +
             kgList(info.outgoing, (r) => '<li><strong>' + kgEscape(r.predicate) + '</strong> &rarr; ' + kgEscape(r.target) + '</li>') +
           '</div>' +
-          '<div class="section"><strong>Incoming relationships</strong>' +
+          '<div class="section"><h4>Incoming relationships</h4>' +
             kgList(info.incoming, (r) => '<li>' + kgEscape(r.source) + ' &rarr; <strong>' + kgEscape(r.predicate) + '</strong></li>') +
+          '</div>';
+      }
+      function kgPanelHeader() {
+        return '<div class="panel-head"><h3>True Demand KG<br>Ontology View</h3>' +
+          '<p class="muted">' + kgEscape(KG_GRAPH_HEADING || 'Ontology visualization') + '</p></div>' +
+          '<div class="section"><h4>Statistics</h4>' +
+          '<div class="panel-row"><span>Nodes</span><span class="panel-value">' + kgEscape(KG_GRAPH_STATS.nodes || 0) + '</span></div>' +
+          '<div class="panel-row"><span>Relationships</span><span class="panel-value">' + kgEscape(KG_GRAPH_STATS.edges || 0) + '</span></div>' +
+          '<div class="panel-row"><span>Classes/entities</span><span class="panel-value">' + kgEscape(KG_GRAPH_STATS.classes || 0) + '</span></div>' +
+          '</div>';
+      }
+      function kgRenderDefaultPanel(extraHtml) {
+        const panel = document.getElementById('kgNodePanel');
+        if (!panel) return;
+        panel.innerHTML = kgPanelHeader() +
+          '<div class="section"><h4>Description</h4><p>Interactive ontology-style view of graph relationships used by the True Demand KG QA system.</p></div>' +
+          '<div class="section"><h4>Selection Details</h4>' +
+          (extraHtml || '<p class="muted">Click a class or node to inspect details available in this view.</p>') +
           '</div>';
       }
       function kgSetGraphLabelScale(scale) {
         if (typeof edges === 'undefined' || typeof nodes === 'undefined') return;
         let edgeSize = 10;
-        let edgeColor = '#49636a';
-        let edgeStroke = 4;
-        let edgeOpacity = 0.62;
+        let edgeColor = '#2f5f91';
+        let edgeStroke = 2;
+        let edgeOpacity = 0.74;
         let nodeSize = 15;
         if (scale < 0.72) {
           edgeSize = 0;
-          edgeColor = 'rgba(73,99,106,0)';
+          edgeColor = 'rgba(47,95,145,0)';
           edgeStroke = 0;
           edgeOpacity = 0.34;
           nodeSize = 13;
         } else if (scale > 1.35) {
           edgeSize = 13;
-          edgeColor = '#244d55';
-          edgeStroke = 5;
+          edgeColor = '#0a4f82';
+          edgeStroke = 2;
           edgeOpacity = 0.82;
           nodeSize = 17;
         }
         const edgeUpdates = edges.getIds().map((id) => ({
           id,
-          color: { color: '#6f8a91', highlight: '#19a99f', hover: '#19a99f', opacity: edgeOpacity },
+          color: { color: '#7d8995', highlight: '#ff4b4b', hover: '#0067b1', opacity: edgeOpacity },
           font: {
             size: edgeSize,
             align: 'middle',
             color: edgeColor,
+            background: 'rgba(230,241,255,0.92)',
             strokeWidth: edgeStroke,
-            strokeColor: '#ffffff'
+            strokeColor: '#e6f1ff'
           }
         }));
         const nodeUpdates = nodes.getIds().map((id) => ({
@@ -434,19 +626,54 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
         const shell = document.createElement('div');
         shell.id = 'kgGraphShell';
         networkEl.parentNode.insertBefore(shell, networkEl);
-        shell.appendChild(networkEl);
+        const canvasPane = document.createElement('div');
+        canvasPane.id = 'kgCanvasPane';
+        const toolbar = document.createElement('div');
+        toolbar.id = 'kgGraphToolbar';
+        toolbar.innerHTML = '<strong>' + kgEscape(KG_GRAPH_HEADING || 'Ontology view') + '</strong>' +
+          '<button type="button" id="kgFitBtn">Fit</button>' +
+          '<button type="button" id="kgZoomInBtn">+</button>' +
+          '<button type="button" id="kgZoomOutBtn">-</button>' +
+          '<button type="button" id="kgPauseBtn">Pause</button>';
+        const bottom = document.createElement('div');
+        bottom.id = 'kgBottomBar';
+        bottom.innerHTML = '<input id="kgSearch" type="search" placeholder="Search class or entity" />' +
+          '<span class="muted">Zoom, drag nodes, click to inspect details.</span>';
+        shell.appendChild(canvasPane);
+        canvasPane.appendChild(toolbar);
+        canvasPane.appendChild(networkEl);
+        canvasPane.appendChild(bottom);
         const panel = document.createElement('aside');
         panel.id = 'kgNodePanel';
-        panel.innerHTML = '<h3>Node details</h3><p class="muted">Click a class or node to inspect the information available in the graph view.</p>';
         shell.appendChild(panel);
+        kgRenderDefaultPanel();
         if (typeof network === 'undefined') {
           if ((attempts || 0) < 20) window.setTimeout(() => kgInstallNodePanel((attempts || 0) + 1), 100);
           return;
         }
+        document.getElementById('kgFitBtn').addEventListener('click', () => network.fit({animation: true}));
+        document.getElementById('kgZoomInBtn').addEventListener('click', () => network.moveTo({scale: network.getScale() * 1.18}));
+        document.getElementById('kgZoomOutBtn').addEventListener('click', () => network.moveTo({scale: network.getScale() * 0.85}));
+        document.getElementById('kgPauseBtn').addEventListener('click', () => kgDisablePhysics());
+        document.getElementById('kgSearch').addEventListener('input', (event) => {
+          const term = String(event.target.value || '').trim().toLowerCase();
+          if (!term || term.length < 2) return;
+          const match = nodes.getIds().find((id) => {
+            const info = KG_NODE_INFO[id] || {};
+            return String(info.label || id).toLowerCase().includes(term);
+          });
+          if (match) {
+            network.selectNodes([match]);
+            network.focus(match, {scale: Math.max(network.getScale(), 1.1), animation: true});
+            kgRenderNodePanel(match);
+          }
+        });
         network.on('click', (params) => {
           if (params.nodes && params.nodes.length) {
             kgRenderNodePanel(params.nodes[0]);
             network.selectNodes([params.nodes[0]]);
+          } else {
+            kgRenderDefaultPanel();
           }
         });
         network.once('stabilizationIterationsDone', () => {
@@ -505,6 +732,8 @@ def _inject_graph_theme(html: str, node_info: Optional[Dict[str, Dict[str, objec
     </script>
     """
     theme = theme.replace("__KG_NODE_INFO__", safe_node_info)
+    theme = theme.replace("__KG_GRAPH_STATS__", safe_graph_stats)
+    theme = theme.replace("__KG_GRAPH_HEADING__", safe_heading)
     return html.replace("</body>", theme + "</body>")
 
 
