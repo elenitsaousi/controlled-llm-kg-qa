@@ -2451,25 +2451,58 @@ def _kg_autocomplete_entries(
     belongs to at least one validated query pattern that returned graph rows.
     """
     schema_dict = _load_schema_dict_cached(schema_path)
+
     entries: Dict[Tuple[str, str], Dict[str, object]] = {}
+    capability_inventory = {}
+
     answerable_patterns = 0
+
     for row in _validated_guided_patterns():
+
         query = str(row.get("query", "") or "").strip()
+
         if not query:
             continue
+
         rows, _error = _preview_query_rows_cached(
             graph_path,
             fuseki_query_url,
             query,
             max_rows=1,
         )
+
         if not rows:
             continue
+
         answerable_patterns += 1
+
         contexts = _capability_context_terms(row)
+
         topic = str(row.get("topic", "") or "").strip()
         metric = str(row.get("metric", "") or "").strip()
         scope = str(row.get("scope", "") or "").strip()
+
+        dimensions = _breakdown_dimensions(
+            str(row.get("breakdown", "") or "")
+        )
+
+        # DEBUG OUTPUT
+        print(
+            {
+                "topic": topic,
+                "metric": metric,
+                "scope": scope,
+                "breakdown": str(row.get("breakdown", "") or ""),
+            }
+        )
+
+        # CAPABILITY INVENTORY
+        if topic:
+            capability_inventory.setdefault(topic, set())
+
+            for dim in dimensions:
+                capability_inventory[topic].add(dim)
+
         if topic:
             _add_autocomplete_entry(
                 entries,
@@ -2479,6 +2512,7 @@ def _kg_autocomplete_entries(
                 aliases=_smart_query_tokens(topic),
                 contexts=contexts,
             )
+
         if metric and metric.lower() not in {"available names", "record count"}:
             _add_autocomplete_entry(
                 entries,
@@ -2488,6 +2522,7 @@ def _kg_autocomplete_entries(
                 aliases=_smart_query_tokens(metric),
                 contexts=contexts,
             )
+
         if scope and scope.lower() not in {"all graph data", "all surveys", "catalog"}:
             _add_autocomplete_entry(
                 entries,
@@ -2497,7 +2532,8 @@ def _kg_autocomplete_entries(
                 aliases=_smart_query_tokens(scope),
                 contexts=contexts,
             )
-        for dimension in _breakdown_dimensions(str(row.get("breakdown", "") or "")):
+
+        for dimension in dimensions:
             _add_autocomplete_entry(
                 entries,
                 label=dimension,
@@ -2506,35 +2542,15 @@ def _kg_autocomplete_entries(
                 aliases=_smart_query_tokens(dimension),
                 contexts=contexts,
             )
-        try:
-            plan = extract_query_plan(query, schema_dict or None)
-        except Exception:
-            plan = {}
-        for class_name in list(plan.get("classes") or []):
-            label = _humanize_axis_value(str(class_name))
-            if not label:
-                continue
-            _add_autocomplete_entry(
-                entries,
-                label=label,
-                entry_type="class",
-                raw=str(class_name),
-                aliases=_smart_query_tokens(label) + _smart_query_tokens(str(class_name)),
-                contexts=contexts,
-            )
-        for predicate in list(plan.get("group_by_predicates") or []):
-            label = _humanize_axis_value(str(predicate))
-            if not label:
-                continue
-            _add_autocomplete_entry(
-                entries,
-                label=label,
-                entry_type="dimension",
-                raw=str(predicate),
-                aliases=_smart_query_tokens(label) + _smart_query_tokens(str(predicate)),
-                contexts=contexts,
-            )
+
+    print("\n=== CAPABILITY INVENTORY ===")
+
+    for topic_name, dims in sorted(capability_inventory.items()):
+        print(topic_name)
+        print("  ->", sorted(dims))
+
     out = list(entries.values())
+
     out.sort(
         key=lambda entry: (
             0 if str(entry.get("type")) in {"concept", "metric"} else 1,
@@ -2542,9 +2558,11 @@ def _kg_autocomplete_entries(
             str(entry.get("label", "")).lower(),
         )
     )
+
     for entry in out:
         entry["source"] = "answerable_capability"
         entry["inventory_patterns"] = answerable_patterns
+
     return out
 
 
