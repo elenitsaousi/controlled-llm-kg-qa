@@ -766,6 +766,15 @@ def semantic_coverage_report(question: str, query: str) -> Dict[str, object]:
     required_count = len(required)
     covered_count = len(covered)
     score = 1.0 if required_count == 0 else covered_count / required_count
+
+    print("\n=== SEMANTIC COVERAGE ===")
+    print("QUESTION:", question)
+    print("QUERY:", query)
+    print("REQUIRED:", required)
+    print("COVERED:", covered)
+    print("MISSING:", missing)
+    print("SCORE:", score)
+
     return {
         "required": required,
         "covered": covered,
