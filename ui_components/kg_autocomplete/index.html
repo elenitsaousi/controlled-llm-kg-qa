@@ -191,9 +191,22 @@
       const textTokens = tokens(text);
       const byCtx = isByContext(text);
       const contCtx = isContinuationContext(text);
+      if (!byCtx && !contCtx && fragment.length < 2) return [];
       return entries
         .map(e => ({ ...e, _score: scoreEntry(e, fragment, textTokens, byCtx, contCtx) }))
-        .filter(e => e._score > 0)
+        .filter(e => {
+          if (e._score <= 0) return false;
+          if (byCtx) return e.type === "dimension";
+          if (contCtx) return ["keyword", "comparison", "detail level", "breakdown"].includes(e.type);
+          const label = (e.label || "").toLowerCase();
+          const raw = (e.raw || "").toLowerCase();
+          const aliases = (e.aliases || []).map(a => String(a).toLowerCase());
+          return Boolean(fragment) && (
+            label.startsWith(fragment) ||
+            raw.startsWith(fragment) ||
+            aliases.some(a => a.startsWith(fragment))
+          );
+        })
         .sort((a, b) => b._score - a._score || String(a.label).localeCompare(String(b.label)))
         .slice(0, 8);
     }
