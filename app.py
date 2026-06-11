@@ -62,6 +62,10 @@ DEFAULT_CONFIDENCE_ROUTING_REPORT_PATHS = [
     PROJECT_ROOT / "results" / "final1000_wf_test_scope_origin_confidence_routing_sorted_v2.json",
     PROJECT_ROOT / "results" / "final1000_wf_test_scope_origin_confidence_routing_v2.json",
 ]
+KG_AUTOCOMPLETE_COMPONENT = components.declare_component(
+    "kg_autocomplete",
+    path=str(PROJECT_ROOT / "ui_components" / "kg_autocomplete"),
+)
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
 PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -2240,6 +2244,73 @@ def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int 
     return deduped[:limit]
 
 
+@st.cache_data(show_spinner=False)
+def _kg_autocomplete_entries(schema_path: str) -> List[Dict[str, object]]:
+    entries: List[Dict[str, object]] = []
+    for term in SMART_QUERY_DOMAIN_TERMS:
+        label = str(term.get("label", "")).strip()
+        if not label:
+            continue
+        entries.append(
+            {
+                "label": label,
+                "insert": str(term.get("insert", label)),
+                "type": str(term.get("type", "concept")),
+                "raw": label.upper().replace(" ", "_").replace("-", "_"),
+                "aliases": list(term.get("aliases") or []),
+            }
+        )
+    for dimension in SMART_QUERY_DIMENSIONS:
+        entries.append(
+            {
+                "label": dimension,
+                "insert": dimension,
+                "type": "dimension",
+                "raw": dimension.upper().replace(" ", "_").replace("-", "_"),
+                "aliases": _smart_query_tokens(dimension),
+            }
+        )
+    for label, suggestion_type in SMART_QUERY_CONTINUATIONS:
+        entries.append(
+            {
+                "label": label,
+                "insert": label,
+                "type": suggestion_type,
+                "raw": "",
+                "aliases": _smart_query_tokens(label),
+            }
+        )
+
+    schema_dict = _load_schema_dict_cached(schema_path)
+    schema_values: List[Tuple[str, str]] = []
+    schema_values.extend((str(v), "class") for v in list(schema_dict.get("classes") or []))
+    schema_values.extend((str(v), "relationship") for v in list(schema_dict.get("predicates") or []))
+    schema_values.extend((str(v), "property") for v in list(schema_dict.get("properties") or []))
+    schema_values.extend((str(v.get("type", "")), "relationship") for v in list(schema_dict.get("relationships") or []) if isinstance(v, dict))
+    for value, value_type in schema_values:
+        human = _humanize_axis_value(str(value))
+        if not human or len(human) > 48:
+            continue
+        entries.append(
+            {
+                "label": human,
+                "insert": human,
+                "type": value_type,
+                "raw": str(value),
+                "aliases": _smart_query_tokens(human) + _smart_query_tokens(str(value)),
+            }
+        )
+    deduped = []
+    seen = set()
+    for entry in entries:
+        key = (str(entry.get("label", "")).lower(), str(entry.get("type", "")).lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(entry)
+    return deduped
+
+
 def _smart_query_pattern_suggestions(question: str, limit: int = 5) -> List[Dict[str, str]]:
     tokens = _smart_query_tokens(question)
     if not tokens:
@@ -2338,6 +2409,23 @@ def _render_smart_query_assistant(question: str, schema_path: str) -> None:
             f"<div class='kg-autocomplete-footer'>Showing {min(7, len(term_suggestions))} of {len(term_suggestions)} suggestions from the schema/query context.</div>",
             unsafe_allow_html=True,
         )
+
+
+def _render_kg_autocomplete_input(schema_path: str) -> str:
+    current = str(st.session_state.get("question_input", "") or "")
+    result = KG_AUTOCOMPLETE_COMPONENT(
+        label="Your question",
+        value=current,
+        entries=_kg_autocomplete_entries(schema_path),
+        key="kg_question_autocomplete",
+        default={"text": current},
+    )
+    if isinstance(result, dict):
+        text = str(result.get("text", "") or "")
+    else:
+        text = current
+    st.session_state["question_input"] = text
+    return text
 
 
 def _render_question_guidance() -> None:
@@ -3425,13 +3513,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-question = st.text_area(
-    "Your question",
-    placeholder="e.g., How does semiconductor future demand evolve across technology categories and quarters?",
-    height=120,
-    key="question_input",
-)
-_render_smart_query_assistant(question, schema_path=schema_path)
+question = _render_kg_autocomplete_input(schema_path)
 asked = st.button("Ask", type="primary")
 
 _render_question_guidance()

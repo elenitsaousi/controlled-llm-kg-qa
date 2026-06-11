@@ -1,0 +1,292 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --accent: #008b84;
+      --accent-soft: #e7f7f5;
+      --border: #cfdde3;
+      --text: #14212b;
+      --muted: #64748b;
+      --panel: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      background: transparent;
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0 0 12px;
+    }
+    .wrap { position: relative; width: 100%; }
+    label {
+      color: #425466;
+      display: block;
+      font-size: 0.9rem;
+      margin: 0 0 0.35rem;
+    }
+    .box {
+      align-items: stretch;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      overflow: hidden;
+      transition: border 0.12s ease, box-shadow 0.12s ease;
+    }
+    .box:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 139, 132, 0.12);
+    }
+    textarea {
+      background: var(--panel);
+      border: 0;
+      color: var(--text);
+      font: inherit;
+      font-size: 1rem;
+      height: 116px;
+      line-height: 1.45;
+      outline: none;
+      padding: 1rem;
+      resize: vertical;
+      width: 100%;
+    }
+    .send {
+      align-items: flex-end;
+      background: var(--panel);
+      color: var(--muted);
+      display: flex;
+      flex: 0 0 160px;
+      font-size: 0.78rem;
+      justify-content: flex-end;
+      padding: 0 1rem 0.85rem 0.5rem;
+      white-space: nowrap;
+    }
+    .menu {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
+      left: 9rem;
+      max-height: 270px;
+      overflow: hidden;
+      position: absolute;
+      right: 2rem;
+      top: 74px;
+      z-index: 20;
+    }
+    .row {
+      align-items: center;
+      border-bottom: 1px solid #edf2f5;
+      cursor: pointer;
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: minmax(160px, 1fr) 145px minmax(120px, 0.75fr);
+      min-height: 34px;
+      padding: 0.42rem 0.8rem;
+    }
+    .row:last-child { border-bottom: 0; }
+    .row.active,
+    .row:hover { background: var(--accent-soft); }
+    .label { font-weight: 700; }
+    .type {
+      color: #334155;
+      font-size: 0.86rem;
+    }
+    .raw {
+      color: #475569;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 0.8rem;
+      text-align: left;
+    }
+    .footer {
+      align-items: center;
+      border-top: 1px solid #d9e5e8;
+      color: var(--muted);
+      display: flex;
+      font-size: 0.78rem;
+      justify-content: space-between;
+      padding: 0.45rem 0.8rem;
+    }
+    .hint { color: var(--accent); font-weight: 700; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <label id="label">Your question</label>
+    <div class="box">
+      <textarea id="input" spellcheck="false"></textarea>
+      <div class="send">Press Ctrl+Enter to apply</div>
+    </div>
+    <div id="menu" class="menu hidden"></div>
+  </div>
+  <script>
+    const input = document.getElementById("input");
+    const menu = document.getElementById("menu");
+    const labelEl = document.getElementById("label");
+    let entries = [];
+    let value = "";
+    let activeIndex = 0;
+    let lastSent = "";
+    let sendTimer = null;
+
+    function post(type, payload) {
+      window.parent.postMessage({ isStreamlitMessage: true, type, ...payload }, "*");
+    }
+    function setFrameHeight() {
+      post("streamlit:setFrameHeight", { height: document.body.scrollHeight + 4 });
+    }
+    function setValueNow() {
+      if (input.value === lastSent) return;
+      lastSent = input.value;
+      post("streamlit:setComponentValue", { value: { text: input.value } });
+    }
+    function scheduleSetValue() {
+      clearTimeout(sendTimer);
+      sendTimer = setTimeout(setValueNow, 180);
+    }
+    function tokens(text) {
+      return (text.toLowerCase().match(/[a-z0-9_+-]+/g) || []).filter(t => t.length >= 1);
+    }
+    function currentFragment(text) {
+      const match = text.match(/([A-Za-z0-9_+-]*)$/);
+      return match ? match[1].toLowerCase() : "";
+    }
+    function hasConcept(text) {
+      const lower = text.toLowerCase();
+      return entries.some(e => ["concept", "class", "metric"].includes(e.type) && e.label && lower.includes(e.label.toLowerCase()));
+    }
+    function isByContext(text) {
+      return /\b(by|per|grouped|breakdown)\s+[A-Za-z0-9_+-]*$/i.test(text);
+    }
+    function isContinuationContext(text) {
+      return /\s$/.test(text) && hasConcept(text);
+    }
+    function scoreEntry(entry, fragment, textTokens, byContext, continuationContext) {
+      const label = (entry.label || "").toLowerCase();
+      const raw = (entry.raw || "").toLowerCase();
+      const aliases = (entry.aliases || []).map(a => String(a).toLowerCase());
+      const hay = [label, raw, ...aliases].join(" ");
+      let score = 0;
+      if (byContext && entry.type === "dimension") score += 100;
+      if (continuationContext && ["keyword", "comparison", "analysis", "time pattern", "detail level", "breakdown"].includes(entry.type)) score += 90;
+      if (fragment) {
+        if (label.startsWith(fragment)) score += 80;
+        if (raw.startsWith(fragment)) score += 70;
+        if (aliases.some(a => a.startsWith(fragment))) score += 75;
+        if (hay.includes(fragment)) score += 25;
+      }
+      for (const token of textTokens) {
+        if (token.length < 3) continue;
+        if (label.includes(token) || raw.includes(token) || aliases.some(a => a.includes(token))) score += 4;
+      }
+      return score;
+    }
+    function filteredEntries() {
+      const text = input.value;
+      const fragment = currentFragment(text);
+      if (text.trim().length < 2) return [];
+      const textTokens = tokens(text);
+      const byCtx = isByContext(text);
+      const contCtx = isContinuationContext(text);
+      return entries
+        .map(e => ({ ...e, _score: scoreEntry(e, fragment, textTokens, byCtx, contCtx) }))
+        .filter(e => e._score > 0)
+        .sort((a, b) => b._score - a._score || String(a.label).localeCompare(String(b.label)))
+        .slice(0, 8);
+    }
+    function renderMenu() {
+      const items = filteredEntries();
+      if (!items.length) {
+        menu.classList.add("hidden");
+        menu.innerHTML = "";
+        setFrameHeight();
+        return;
+      }
+      activeIndex = Math.min(activeIndex, items.length - 1);
+      menu.classList.remove("hidden");
+      menu.innerHTML = items.map((item, idx) => `
+        <div class="row ${idx === activeIndex ? "active" : ""}" data-index="${idx}">
+          <div class="label">${escapeHtml(item.label || "")}</div>
+          <div class="type">${escapeHtml(item.type || "term")}</div>
+          <div class="raw">${escapeHtml(item.raw || "")}</div>
+        </div>
+      `).join("") + `
+        <div class="footer">
+          <span><span class="hint">Showing ${items.length}</span> suggestions from the KG/schema</span>
+          <span>Use ↑ ↓, Enter/Tab</span>
+        </div>
+      `;
+      [...menu.querySelectorAll(".row")].forEach(row => {
+        row.addEventListener("mousedown", event => {
+          event.preventDefault();
+          applyEntry(items[Number(row.dataset.index)]);
+        });
+      });
+      setFrameHeight();
+    }
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+    function applyEntry(entry) {
+      if (!entry) return;
+      const completion = entry.insert || entry.label || "";
+      const match = input.value.match(/([A-Za-z0-9_+-]*)$/);
+      if (match && match[1] && completion.toLowerCase().startsWith(match[1].toLowerCase())) {
+        input.value = input.value.slice(0, match.index) + completion + " ";
+      } else {
+        const sep = input.value.endsWith(" ") || input.value.length === 0 ? "" : " ";
+        input.value = input.value + sep + completion + " ";
+      }
+      activeIndex = 0;
+      renderMenu();
+      setValueNow();
+      input.focus();
+    }
+    input.addEventListener("input", () => {
+      activeIndex = 0;
+      renderMenu();
+      scheduleSetValue();
+    });
+    input.addEventListener("keydown", event => {
+      const items = filteredEntries();
+      if ((event.key === "ArrowDown" || event.key === "ArrowUp") && items.length) {
+        event.preventDefault();
+        activeIndex = event.key === "ArrowDown"
+          ? (activeIndex + 1) % items.length
+          : (activeIndex - 1 + items.length) % items.length;
+        renderMenu();
+      } else if ((event.key === "Enter" || event.key === "Tab") && items.length && !event.ctrlKey && !event.shiftKey) {
+        event.preventDefault();
+        applyEntry(items[activeIndex]);
+      } else if (event.key === "Enter" && event.ctrlKey) {
+        setValueNow();
+      } else if (event.key === "Escape") {
+        menu.classList.add("hidden");
+        setFrameHeight();
+      }
+    });
+    window.addEventListener("message", event => {
+      if (!event.data || event.data.type !== "streamlit:render") return;
+      const args = event.data.args || {};
+      entries = Array.isArray(args.entries) ? args.entries : [];
+      labelEl.textContent = args.label || "Your question";
+      const nextValue = args.value || "";
+      if (document.activeElement !== input && nextValue !== input.value) {
+        input.value = nextValue;
+        lastSent = nextValue;
+      }
+      renderMenu();
+      setFrameHeight();
+    });
+    post("streamlit:componentReady", { apiVersion: 1 });
+    setFrameHeight();
+  </script>
+</body>
+</html>
