@@ -903,6 +903,22 @@ def _append_question_input(current: str, phrase: str) -> None:
     st.session_state["question_input"] = f"{base}{separator}{addition}".strip()
 
 
+def _complete_question_fragment(current: str, phrase: str) -> None:
+    text = str(current or "")
+    completion = str(phrase or "").strip()
+    if not completion:
+        return
+    match = re.search(r"([A-Za-z0-9_+-]*)$", text)
+    if match:
+        prefix = text[: match.start(1)]
+        fragment = match.group(1)
+        if fragment and completion.lower().startswith(fragment.lower()):
+            st.session_state["question_input"] = f"{prefix}{completion} "
+            return
+    separator = "" if text.endswith((" ", "\n", "\t", "-", "/", ",")) or not text else " "
+    st.session_state["question_input"] = f"{text}{separator}{completion} "
+
+
 def _active_guided_query(question: str) -> str:
     if str(st.session_state.get("guided_query_override_question", "")).strip() == (question or "").strip():
         return str(st.session_state.get("guided_query_override", "") or "").strip()
@@ -2034,59 +2050,85 @@ def _selectbox_index(key: str, options: List[str]) -> int:
 SMART_QUERY_DOMAIN_TERMS = [
     {
         "label": "future demand",
+        "type": "concept",
         "aliases": ["future", "forecast", "projected", "demand"],
         "insert": "future demand",
     },
     {
         "label": "current demand",
+        "type": "concept",
         "aliases": ["current", "baseline", "bl1", "bl2", "demand"],
         "insert": "current demand",
     },
     {
         "label": "vehicle sales",
+        "type": "concept",
         "aliases": ["vehicle", "sales", "sold", "units"],
         "insert": "vehicle sales",
     },
     {
         "label": "inventory",
+        "type": "concept",
         "aliases": ["inventory", "stock", "component"],
         "insert": "inventory",
     },
     {
         "label": "shortage status",
+        "type": "concept",
         "aliases": ["shortage", "shortages", "reported"],
         "insert": "shortage status",
     },
     {
         "label": "order cancellation",
+        "type": "concept",
         "aliases": ["order", "cancellation", "cancel"],
         "insert": "order cancellation",
     },
     {
         "label": "autonomous driving",
+        "type": "concept",
         "aliases": ["autonomous", "driving", "sae"],
         "insert": "autonomous driving",
     },
     {
         "label": "technology category",
+        "type": "dimension",
         "aliases": ["technology", "category", "semiconductor"],
         "insert": "technology category",
     },
     {
         "label": "OEM",
+        "type": "scope",
         "aliases": ["oem"],
         "insert": "OEM",
     },
     {
         "label": "Tier1",
+        "type": "scope",
         "aliases": ["tier", "tier1", "supplier"],
         "insert": "Tier1",
     },
     {
         "label": "Semiconductor",
+        "type": "scope",
         "aliases": ["semiconductor", "chip"],
         "insert": "Semiconductor",
     },
+]
+
+SMART_QUERY_DIMENSIONS = [
+    "region",
+    "quarter",
+    "year",
+    "month",
+    "technology category",
+    "vehicle type",
+    "SAE level",
+    "survey",
+    "response type",
+    "shortage status",
+    "component",
+    "baseline",
 ]
 
 
@@ -2106,10 +2148,17 @@ def _smart_query_relevance(text: str, values: List[str]) -> int:
     return score
 
 
-def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int = 8) -> List[Dict[str, str]]:
+def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int = 10) -> List[Dict[str, str]]:
     tokens = _smart_query_tokens(question)
     last = tokens[-1] if tokens else ""
     suggestions: List[Dict[str, str]] = []
+    q_lower = str(question or "").lower()
+    by_context = bool(re.search(r"\b(by|per|grouped|breakdown)\s+[a-zA-Z0-9_+-]*$", q_lower))
+    if by_context:
+        for dimension in SMART_QUERY_DIMENSIONS:
+            dim_tokens = _smart_query_tokens(dimension)
+            if not last or any(token.startswith(last) or last.startswith(token[: min(3, len(token))]) for token in dim_tokens):
+                suggestions.append({"label": dimension, "insert": dimension, "type": "dimension"})
     for term in SMART_QUERY_DOMAIN_TERMS:
         aliases = [str(v).lower() for v in term.get("aliases", [])]
         label = str(term.get("label", ""))
@@ -2118,17 +2167,27 @@ def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int 
         exact = any(alias in tokens for alias in aliases)
         prefix = bool(last) and any(alias.startswith(last) or last.startswith(alias[: min(3, len(alias))]) for alias in aliases)
         if exact or prefix:
-            suggestions.append({"label": label, "insert": str(term.get("insert", label))})
+            suggestions.append({
+                "label": label,
+                "insert": str(term.get("insert", label)),
+                "type": str(term.get("type", "concept")),
+            })
 
     schema_dict = _load_schema_dict_cached(schema_path)
-    schema_values = list(schema_dict.get("classes") or []) + list(schema_dict.get("predicates") or []) + list(schema_dict.get("properties") or [])
-    for value in schema_values:
+    schema_values: List[Tuple[str, str]] = []
+    schema_values.extend((str(v), "class") for v in list(schema_dict.get("classes") or []))
+    schema_values.extend((str(v), "relationship") for v in list(schema_dict.get("predicates") or []))
+    schema_values.extend((str(v), "property") for v in list(schema_dict.get("properties") or []))
+    schema_values.extend((str(v.get("type", "")), "relationship") for v in list(schema_dict.get("relationships") or []) if isinstance(v, dict))
+    for value, value_type in schema_values:
         human = _humanize_axis_value(str(value))
         if not human or len(human) > 42:
             continue
         human_tokens = _smart_query_tokens(human)
-        if last and any(token.startswith(last) for token in human_tokens):
-            suggestions.append({"label": human, "insert": human})
+        contains_context = any(token in tokens for token in human_tokens)
+        prefix_match = bool(last) and any(token.startswith(last) or last.startswith(token[: min(3, len(token))]) for token in human_tokens)
+        if prefix_match or (contains_context and len(tokens) <= 5):
+            suggestions.append({"label": human, "insert": human, "type": value_type})
 
     deduped = []
     seen = set()
@@ -2138,6 +2197,13 @@ def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int 
             continue
         seen.add(key)
         deduped.append(suggestion)
+    deduped.sort(
+        key=lambda item: (
+            0 if str(item.get("label", "")).lower().startswith(last) else 1,
+            0 if str(item.get("type")) == "dimension" and by_context else 1,
+            str(item.get("label", "")).lower(),
+        )
+    )
     return deduped[:limit]
 
 
@@ -2180,40 +2246,24 @@ def _render_smart_query_assistant(question: str, schema_path: str) -> None:
         return
     term_suggestions = _smart_query_domain_suggestions(q, schema_path=schema_path)
     pattern_suggestions = _smart_query_pattern_suggestions(q)
-    dimension_suggestions = _smart_query_dimension_suggestions(pattern_suggestions)
-    if not term_suggestions and not pattern_suggestions and not dimension_suggestions:
+    if not term_suggestions and not pattern_suggestions:
         return
 
-    with st.expander("Smart query assistant", expanded=True):
-        st.caption(
-            "Graph-backed suggestions to make the question more precise before calling the LLM. "
-            "Use them when they match the intended meaning."
-        )
-        if term_suggestions:
-            st.markdown("**Recognized graph terms**")
-            cols = st.columns(min(4, max(1, len(term_suggestions))))
-            for idx, suggestion in enumerate(term_suggestions):
-                cols[idx % len(cols)].button(
-                    str(suggestion["label"]),
-                    key=f"smart_term_{idx}_{suggestion['label']}",
-                    use_container_width=True,
-                    on_click=_append_question_input,
-                    args=(q, str(suggestion["insert"])),
-                )
-        if dimension_suggestions:
-            st.markdown("**Possible breakdowns for this topic**")
-            cols = st.columns(min(3, max(1, len(dimension_suggestions))))
-            for idx, dimension in enumerate(dimension_suggestions):
-                phrase = f"by {dimension}"
-                cols[idx % len(cols)].button(
-                    phrase,
-                    key=f"smart_dimension_{idx}_{dimension}",
-                    use_container_width=True,
-                    on_click=_append_question_input,
-                    args=(q, phrase),
-                )
-        if pattern_suggestions:
-            st.markdown("**Validated question patterns**")
+    st.caption("Suggestions from the True Demand KG/schema. Click a term to complete the current word.")
+    if term_suggestions:
+        cols = st.columns(min(5, max(1, len(term_suggestions))))
+        for idx, suggestion in enumerate(term_suggestions):
+            label = str(suggestion.get("label", ""))
+            suggestion_type = str(suggestion.get("type", "term"))
+            cols[idx % len(cols)].button(
+                f"{label} · {suggestion_type}",
+                key=f"smart_term_{idx}_{label}_{suggestion_type}",
+                use_container_width=True,
+                on_click=_complete_question_fragment,
+                args=(q, str(suggestion.get("insert", label))),
+            )
+    if pattern_suggestions:
+        with st.expander("Validated matching question patterns", expanded=False):
             for idx, row in enumerate(pattern_suggestions[:4]):
                 label = str(row.get("question", ""))
                 if not label:
@@ -2225,9 +2275,7 @@ def _render_smart_query_assistant(question: str, schema_path: str) -> None:
                     on_click=_set_guided_question_input,
                     args=(label, str(row.get("query", ""))),
                 )
-            st.caption(
-                "Validated patterns use known graph-backed query structures and can avoid an unnecessary clarification round."
-            )
+            st.caption("These patterns are already linked to graph-backed SPARQL queries.")
 
 
 def _render_question_guidance() -> None:
