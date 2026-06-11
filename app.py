@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
-from typing import Dict, List, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -2370,60 +2370,182 @@ def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int 
     return deduped[:limit]
 
 
+def _breakdown_dimensions(breakdown: str) -> List[str]:
+    cleaned = str(breakdown or "").strip()
+    if not cleaned or cleaned.lower() == "overall":
+        return []
+    cleaned = re.sub(r"^by\s+", "", cleaned, flags=re.I).strip()
+    if not cleaned:
+        return []
+    return [
+        part.strip()
+        for part in re.split(r"\s+and\s+|,\s*", cleaned)
+        if part.strip()
+    ]
+
+
+def _capability_context_terms(row: Dict[str, str]) -> List[str]:
+    values = [
+        str(row.get("topic", "") or ""),
+        str(row.get("metric", "") or ""),
+        str(row.get("scope", "") or ""),
+    ]
+    values.extend(_breakdown_dimensions(str(row.get("breakdown", "") or "")))
+    contexts: List[str] = []
+    for value in values:
+        value = value.strip()
+        if not value:
+            continue
+        contexts.append(value)
+        contexts.extend(_smart_query_tokens(value))
+    return _unique_preserving_order([c for c in contexts if len(c) >= 2])
+
+
+def _autocomplete_raw_token(label: str) -> str:
+    return re.sub(r"[^A-Z0-9]+", "_", str(label).upper()).strip("_")
+
+
+def _add_autocomplete_entry(
+    entries: Dict[Tuple[str, str], Dict[str, object]],
+    *,
+    label: str,
+    entry_type: str,
+    raw: str = "",
+    aliases: Optional[List[str]] = None,
+    contexts: Optional[List[str]] = None,
+    support: int = 1,
+) -> None:
+    label = str(label or "").strip()
+    if not label or len(label) > 58:
+        return
+    entry_type = str(entry_type or "term").strip().lower()
+    key = (label.lower(), entry_type)
+    next_aliases = list(aliases or []) + _smart_query_tokens(label) + _smart_query_tokens(raw)
+    next_contexts = list(contexts or [])
+    if key not in entries:
+        entries[key] = {
+            "label": label,
+            "insert": label,
+            "type": entry_type,
+            "raw": raw or _autocomplete_raw_token(label),
+            "aliases": _unique_preserving_order([a for a in next_aliases if len(str(a)) >= 2]),
+            "contexts": _unique_preserving_order([c for c in next_contexts if len(str(c)) >= 2]),
+            "support": int(support),
+        }
+        return
+    current = entries[key]
+    current["aliases"] = _unique_preserving_order(list(current.get("aliases") or []) + next_aliases)
+    current["contexts"] = _unique_preserving_order(list(current.get("contexts") or []) + next_contexts)
+    current["support"] = int(current.get("support") or 0) + int(support)
+
+
 @st.cache_data(show_spinner=False)
-def _kg_autocomplete_entries(schema_path: str) -> List[Dict[str, object]]:
-    entries: List[Dict[str, object]] = []
-    for term in SMART_QUERY_DOMAIN_TERMS:
-        label = str(term.get("label", "")).strip()
-        if not label:
-            continue
-        entries.append(
-            {
-                "label": label,
-                "insert": str(term.get("insert", label)),
-                "type": str(term.get("type", "concept")),
-                "raw": label.upper().replace(" ", "_").replace("-", "_"),
-                "aliases": list(term.get("aliases") or []),
-            }
-        )
-    for dimension in SMART_QUERY_DIMENSIONS:
-        entries.append(
-            {
-                "label": dimension,
-                "insert": dimension,
-                "type": "dimension",
-                "raw": dimension.upper().replace(" ", "_").replace("-", "_"),
-                "aliases": _smart_query_tokens(dimension),
-            }
-        )
+def _kg_autocomplete_entries(
+    schema_path: str,
+    graph_path: str,
+    fuseki_query_url: str,
+) -> List[Dict[str, object]]:
+    """Build answerable autocomplete terms from executable KGQA capabilities.
+
+    This intentionally avoids raw schema-wide completion. A term is shown only when it
+    belongs to at least one validated query pattern that returned graph rows.
+    """
     schema_dict = _load_schema_dict_cached(schema_path)
-    schema_values: List[Tuple[str, str]] = []
-    schema_values.extend((str(v), "class") for v in list(schema_dict.get("classes") or []))
-    schema_values.extend((str(v), "relationship") for v in list(schema_dict.get("predicates") or []))
-    schema_values.extend((str(v), "property") for v in list(schema_dict.get("properties") or []))
-    schema_values.extend((str(v.get("type", "")), "relationship") for v in list(schema_dict.get("relationships") or []) if isinstance(v, dict))
-    for value, value_type in schema_values:
-        human = _humanize_axis_value(str(value))
-        if not human or len(human) > 48:
+    entries: Dict[Tuple[str, str], Dict[str, object]] = {}
+    answerable_patterns = 0
+    for row in _validated_guided_patterns():
+        query = str(row.get("query", "") or "").strip()
+        if not query:
             continue
-        entries.append(
-            {
-                "label": human,
-                "insert": human,
-                "type": value_type,
-                "raw": str(value),
-                "aliases": _smart_query_tokens(human) + _smart_query_tokens(str(value)),
-            }
+        rows, _error = _preview_query_rows_cached(
+            graph_path,
+            fuseki_query_url,
+            query,
+            max_rows=1,
         )
-    deduped = []
-    seen = set()
-    for entry in entries:
-        key = (str(entry.get("label", "")).lower(), str(entry.get("type", "")).lower())
-        if key in seen:
+        if not rows:
             continue
-        seen.add(key)
-        deduped.append(entry)
-    return deduped
+        answerable_patterns += 1
+        contexts = _capability_context_terms(row)
+        topic = str(row.get("topic", "") or "").strip()
+        metric = str(row.get("metric", "") or "").strip()
+        scope = str(row.get("scope", "") or "").strip()
+        if topic:
+            _add_autocomplete_entry(
+                entries,
+                label=topic,
+                entry_type="concept",
+                raw=_autocomplete_raw_token(topic),
+                aliases=_smart_query_tokens(topic),
+                contexts=contexts,
+            )
+        if metric and metric.lower() not in {"available names", "record count"}:
+            _add_autocomplete_entry(
+                entries,
+                label=metric,
+                entry_type="metric",
+                raw=_autocomplete_raw_token(metric),
+                aliases=_smart_query_tokens(metric),
+                contexts=contexts,
+            )
+        if scope and scope.lower() not in {"all graph data", "all surveys", "catalog"}:
+            _add_autocomplete_entry(
+                entries,
+                label=scope,
+                entry_type="scope",
+                raw=_autocomplete_raw_token(scope),
+                aliases=_smart_query_tokens(scope),
+                contexts=contexts,
+            )
+        for dimension in _breakdown_dimensions(str(row.get("breakdown", "") or "")):
+            _add_autocomplete_entry(
+                entries,
+                label=dimension,
+                entry_type="dimension",
+                raw=_autocomplete_raw_token(dimension),
+                aliases=_smart_query_tokens(dimension),
+                contexts=contexts,
+            )
+        try:
+            plan = extract_query_plan(query, schema_dict or None)
+        except Exception:
+            plan = {}
+        for class_name in list(plan.get("classes") or []):
+            label = _humanize_axis_value(str(class_name))
+            if not label:
+                continue
+            _add_autocomplete_entry(
+                entries,
+                label=label,
+                entry_type="class",
+                raw=str(class_name),
+                aliases=_smart_query_tokens(label) + _smart_query_tokens(str(class_name)),
+                contexts=contexts,
+            )
+        for predicate in list(plan.get("group_by_predicates") or []):
+            label = _humanize_axis_value(str(predicate))
+            if not label:
+                continue
+            _add_autocomplete_entry(
+                entries,
+                label=label,
+                entry_type="dimension",
+                raw=str(predicate),
+                aliases=_smart_query_tokens(label) + _smart_query_tokens(str(predicate)),
+                contexts=contexts,
+            )
+    out = list(entries.values())
+    out.sort(
+        key=lambda entry: (
+            0 if str(entry.get("type")) in {"concept", "metric"} else 1,
+            -int(entry.get("support") or 0),
+            str(entry.get("label", "")).lower(),
+        )
+    )
+    for entry in out:
+        entry["source"] = "answerable_capability"
+        entry["inventory_patterns"] = answerable_patterns
+    return out
 
 
 def _smart_query_pattern_suggestions(question: str, limit: int = 5) -> List[Dict[str, str]]:
@@ -2526,12 +2648,12 @@ def _render_smart_query_assistant(question: str, schema_path: str) -> None:
         )
 
 
-def _render_kg_autocomplete_input(schema_path: str) -> str:
+def _render_kg_autocomplete_input(schema_path: str, graph_path: str, fuseki_query_url: str) -> str:
     current = str(st.session_state.get("question_input", "") or "")
     result = KG_AUTOCOMPLETE_COMPONENT(
         label="Your question",
         value=current,
-        entries=_kg_autocomplete_entries(schema_path),
+        entries=_kg_autocomplete_entries(schema_path, graph_path, fuseki_query_url),
         key="kg_question_autocomplete",
         default={"text": current},
     )
@@ -3628,7 +3750,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-question = _render_kg_autocomplete_input(schema_path)
+question = _render_kg_autocomplete_input(schema_path, graph_path, fuseki_query_url.strip())
 asked = st.button("Ask", type="primary")
 
 _render_question_guidance()

@@ -154,10 +154,6 @@
       const match = text.match(/([A-Za-z0-9_+-]*)$/);
       return match ? match[1].toLowerCase() : "";
     }
-    function hasConcept(text) {
-      const lower = text.toLowerCase();
-      return entries.some(e => ["concept", "metric"].includes(e.type) && e.label && lower.includes(e.label.toLowerCase()));
-    }
     function isByContext(text) {
       return /\b(by|per|grouped|breakdown)\s+[A-Za-z0-9_+-]*$/i.test(text);
     }
@@ -183,6 +179,26 @@
       }
       return score;
     }
+    function activeContexts(text) {
+      const lower = text.toLowerCase();
+      const contexts = new Set();
+      entries.forEach(e => {
+        if (!["concept", "metric", "scope", "class"].includes(e.type)) return;
+        const probes = [e.label || "", e.raw || "", ...(e.aliases || [])]
+          .map(v => String(v).toLowerCase())
+          .filter(v => v.length >= 3);
+        if (!probes.some(v => lower.includes(v))) return;
+        (e.contexts || []).forEach(ctx => contexts.add(String(ctx).toLowerCase()));
+        if (e.label) contexts.add(String(e.label).toLowerCase());
+      });
+      return contexts;
+    }
+    function contextMatches(entry, contexts) {
+      if (!contexts.size) return true;
+      const entryContexts = (entry.contexts || []).map(v => String(v).toLowerCase());
+      if (!entryContexts.length) return false;
+      return entryContexts.some(ctx => contexts.has(ctx));
+    }
     function filteredEntries() {
       const text = input.value;
       const fragment = currentFragment(text);
@@ -190,13 +206,17 @@
       const textTokens = tokens(text);
       const byCtx = isByContext(text);
       const contCtx = isContinuationContext(text);
+      const contexts = activeContexts(text);
       if (!byCtx && !contCtx && fragment.length < 2) return [];
       return entries
         .map(e => ({ ...e, _score: scoreEntry(e, fragment, textTokens, byCtx, contCtx) }))
         .filter(e => {
           if (e._score <= 0) return false;
-          if (byCtx) return e.type === "dimension";
+          if (byCtx) return e.type === "dimension" && contextMatches(e, contexts);
           if (contCtx) return ["keyword", "comparison", "detail level", "breakdown"].includes(e.type);
+          if (contexts.size && ["dimension", "scope", "metric", "class"].includes(e.type) && !contextMatches(e, contexts)) {
+            return false;
+          }
           const label = (e.label || "").toLowerCase();
           const raw = (e.raw || "").toLowerCase();
           const aliases = (e.aliases || []).map(a => String(a).toLowerCase());
@@ -227,7 +247,7 @@
         </div>
       `).join("") + `
         <div class="footer">
-          <span><span class="hint">Showing ${items.length}</span> suggestions from the KG/schema</span>
+          <span><span class="hint">Showing ${items.length}</span> answerable KG suggestion${items.length === 1 ? "" : "s"}</span>
           <span>Use ↑ ↓, Enter/Tab</span>
         </div>
       `;
