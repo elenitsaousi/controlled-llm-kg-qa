@@ -889,6 +889,20 @@ def _set_guided_question_input(value: str, query: str) -> None:
     st.session_state["guided_query_override"] = query
 
 
+def _append_question_input(current: str, phrase: str) -> None:
+    base = str(current or "").strip()
+    addition = str(phrase or "").strip()
+    if not addition:
+        return
+    if not base:
+        st.session_state["question_input"] = addition
+        return
+    if addition.lower() in base.lower():
+        return
+    separator = " " if base.endswith((" ", "-", "/", ",")) else " "
+    st.session_state["question_input"] = f"{base}{separator}{addition}".strip()
+
+
 def _active_guided_query(question: str) -> str:
     if str(st.session_state.get("guided_query_override_question", "")).strip() == (question or "").strip():
         return str(st.session_state.get("guided_query_override", "") or "").strip()
@@ -2017,6 +2031,205 @@ def _selectbox_index(key: str, options: List[str]) -> int:
     return 0
 
 
+SMART_QUERY_DOMAIN_TERMS = [
+    {
+        "label": "future demand",
+        "aliases": ["future", "forecast", "projected", "demand"],
+        "insert": "future demand",
+    },
+    {
+        "label": "current demand",
+        "aliases": ["current", "baseline", "bl1", "bl2", "demand"],
+        "insert": "current demand",
+    },
+    {
+        "label": "vehicle sales",
+        "aliases": ["vehicle", "sales", "sold", "units"],
+        "insert": "vehicle sales",
+    },
+    {
+        "label": "inventory",
+        "aliases": ["inventory", "stock", "component"],
+        "insert": "inventory",
+    },
+    {
+        "label": "shortage status",
+        "aliases": ["shortage", "shortages", "reported"],
+        "insert": "shortage status",
+    },
+    {
+        "label": "order cancellation",
+        "aliases": ["order", "cancellation", "cancel"],
+        "insert": "order cancellation",
+    },
+    {
+        "label": "autonomous driving",
+        "aliases": ["autonomous", "driving", "sae"],
+        "insert": "autonomous driving",
+    },
+    {
+        "label": "technology category",
+        "aliases": ["technology", "category", "semiconductor"],
+        "insert": "technology category",
+    },
+    {
+        "label": "OEM",
+        "aliases": ["oem"],
+        "insert": "OEM",
+    },
+    {
+        "label": "Tier1",
+        "aliases": ["tier", "tier1", "supplier"],
+        "insert": "Tier1",
+    },
+    {
+        "label": "Semiconductor",
+        "aliases": ["semiconductor", "chip"],
+        "insert": "Semiconductor",
+    },
+]
+
+
+def _smart_query_tokens(text: str) -> List[str]:
+    return [token for token in re.findall(r"[a-zA-Z0-9]+", str(text or "").lower()) if len(token) >= 2]
+
+
+def _smart_query_relevance(text: str, values: List[str]) -> int:
+    tokens = set(_smart_query_tokens(text))
+    if not tokens:
+        return 0
+    score = 0
+    for value in values:
+        value_tokens = set(_smart_query_tokens(value))
+        if tokens & value_tokens:
+            score += len(tokens & value_tokens)
+    return score
+
+
+def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int = 8) -> List[Dict[str, str]]:
+    tokens = _smart_query_tokens(question)
+    last = tokens[-1] if tokens else ""
+    suggestions: List[Dict[str, str]] = []
+    for term in SMART_QUERY_DOMAIN_TERMS:
+        aliases = [str(v).lower() for v in term.get("aliases", [])]
+        label = str(term.get("label", ""))
+        if not tokens:
+            continue
+        exact = any(alias in tokens for alias in aliases)
+        prefix = bool(last) and any(alias.startswith(last) or last.startswith(alias[: min(3, len(alias))]) for alias in aliases)
+        if exact or prefix:
+            suggestions.append({"label": label, "insert": str(term.get("insert", label))})
+
+    schema_dict = _load_schema_dict_cached(schema_path)
+    schema_values = list(schema_dict.get("classes") or []) + list(schema_dict.get("predicates") or []) + list(schema_dict.get("properties") or [])
+    for value in schema_values:
+        human = _humanize_axis_value(str(value))
+        if not human or len(human) > 42:
+            continue
+        human_tokens = _smart_query_tokens(human)
+        if last and any(token.startswith(last) for token in human_tokens):
+            suggestions.append({"label": human, "insert": human})
+
+    deduped = []
+    seen = set()
+    for suggestion in suggestions:
+        key = suggestion["label"].lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(suggestion)
+    return deduped[:limit]
+
+
+def _smart_query_pattern_suggestions(question: str, limit: int = 5) -> List[Dict[str, str]]:
+    tokens = _smart_query_tokens(question)
+    if not tokens:
+        return []
+    patterns = _validated_guided_patterns()
+    scored = []
+    for row in patterns:
+        haystack = " ".join(
+            str(row.get(key, ""))
+            for key in ("topic", "metric", "breakdown", "scope", "question")
+        )
+        score = _smart_query_relevance(" ".join(tokens), [haystack])
+        if score <= 0:
+            continue
+        scored.append((score, row))
+    scored.sort(key=lambda item: (-item[0], item[1].get("topic", ""), item[1].get("question", "")))
+    return [dict(row) for _score, row in scored[:limit]]
+
+
+def _smart_query_dimension_suggestions(patterns: List[Dict[str, str]], limit: int = 6) -> List[str]:
+    values = []
+    for row in patterns:
+        breakdown = str(row.get("breakdown", "")).strip()
+        if not breakdown or breakdown == "overall":
+            continue
+        cleaned = breakdown.removeprefix("by ").strip()
+        for part in re.split(r"\s+and\s+|,\s*", cleaned):
+            part = part.strip()
+            if part:
+                values.append(part)
+    return _unique_preserving_order(values)[:limit]
+
+
+def _render_smart_query_assistant(question: str, schema_path: str) -> None:
+    q = str(question or "").strip()
+    if len(q) < 3:
+        return
+    term_suggestions = _smart_query_domain_suggestions(q, schema_path=schema_path)
+    pattern_suggestions = _smart_query_pattern_suggestions(q)
+    dimension_suggestions = _smart_query_dimension_suggestions(pattern_suggestions)
+    if not term_suggestions and not pattern_suggestions and not dimension_suggestions:
+        return
+
+    with st.expander("Smart query assistant", expanded=True):
+        st.caption(
+            "Graph-backed suggestions to make the question more precise before calling the LLM. "
+            "Use them when they match the intended meaning."
+        )
+        if term_suggestions:
+            st.markdown("**Recognized graph terms**")
+            cols = st.columns(min(4, max(1, len(term_suggestions))))
+            for idx, suggestion in enumerate(term_suggestions):
+                cols[idx % len(cols)].button(
+                    str(suggestion["label"]),
+                    key=f"smart_term_{idx}_{suggestion['label']}",
+                    use_container_width=True,
+                    on_click=_append_question_input,
+                    args=(q, str(suggestion["insert"])),
+                )
+        if dimension_suggestions:
+            st.markdown("**Possible breakdowns for this topic**")
+            cols = st.columns(min(3, max(1, len(dimension_suggestions))))
+            for idx, dimension in enumerate(dimension_suggestions):
+                phrase = f"by {dimension}"
+                cols[idx % len(cols)].button(
+                    phrase,
+                    key=f"smart_dimension_{idx}_{dimension}",
+                    use_container_width=True,
+                    on_click=_append_question_input,
+                    args=(q, phrase),
+                )
+        if pattern_suggestions:
+            st.markdown("**Validated question patterns**")
+            for idx, row in enumerate(pattern_suggestions[:4]):
+                label = str(row.get("question", ""))
+                if not label:
+                    continue
+                st.button(
+                    label,
+                    key=f"smart_pattern_{idx}_{_normalize_question_key(label)}",
+                    use_container_width=True,
+                    on_click=_set_guided_question_input,
+                    args=(label, str(row.get("query", ""))),
+                )
+            st.caption(
+                "Validated patterns use known graph-backed query structures and can avoid an unnecessary clarification round."
+            )
+
+
 def _render_question_guidance() -> None:
     with st.expander("Question guide", expanded=False):
         st.caption(
@@ -3108,6 +3321,7 @@ question = st.text_area(
     height=120,
     key="question_input",
 )
+_render_smart_query_assistant(question, schema_path=schema_path)
 asked = st.button("Ask", type="primary")
 
 _render_question_guidance()
