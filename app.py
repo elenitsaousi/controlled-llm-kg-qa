@@ -2131,6 +2131,17 @@ SMART_QUERY_DIMENSIONS = [
     "baseline",
 ]
 
+SMART_QUERY_CONTINUATIONS = [
+    ("by", "keyword"),
+    ("for", "keyword"),
+    ("in", "keyword"),
+    ("over time", "time pattern"),
+    ("compared to", "comparison"),
+    ("trend", "analysis"),
+    ("in detail", "detail level"),
+    ("for each", "breakdown"),
+]
+
 
 def _smart_query_tokens(text: str) -> List[str]:
     return [token for token in re.findall(r"[a-zA-Z0-9]+", str(text or "").lower()) if len(token) >= 2]
@@ -2148,17 +2159,33 @@ def _smart_query_relevance(text: str, values: List[str]) -> int:
     return score
 
 
+def _smart_query_current_fragment(question: str) -> str:
+    match = re.search(r"([A-Za-z0-9_+-]*)$", str(question or ""))
+    return match.group(1).lower() if match else ""
+
+
+def _smart_query_has_selected_concept(question: str) -> bool:
+    q_lower = str(question or "").lower()
+    labels = [str(term.get("label", "")).lower() for term in SMART_QUERY_DOMAIN_TERMS]
+    labels.extend(["demand", "sales", "inventory", "shortage", "autonomous driving"])
+    return any(re.search(rf"\b{re.escape(label)}\b", q_lower) for label in labels if label)
+
+
 def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int = 10) -> List[Dict[str, str]]:
     tokens = _smart_query_tokens(question)
-    last = tokens[-1] if tokens else ""
+    last = _smart_query_current_fragment(question) or (tokens[-1] if tokens else "")
     suggestions: List[Dict[str, str]] = []
     q_lower = str(question or "").lower()
     by_context = bool(re.search(r"\b(by|per|grouped|breakdown)\s+[a-zA-Z0-9_+-]*$", q_lower))
+    continuation_context = bool(str(question or "").endswith((" ", "\n", "\t"))) and _smart_query_has_selected_concept(question)
     if by_context:
         for dimension in SMART_QUERY_DIMENSIONS:
             dim_tokens = _smart_query_tokens(dimension)
             if not last or any(token.startswith(last) or last.startswith(token[: min(3, len(token))]) for token in dim_tokens):
                 suggestions.append({"label": dimension, "insert": dimension, "type": "dimension"})
+    elif continuation_context:
+        for label, suggestion_type in SMART_QUERY_CONTINUATIONS:
+            suggestions.append({"label": label, "insert": label, "type": suggestion_type})
     for term in SMART_QUERY_DOMAIN_TERMS:
         aliases = [str(v).lower() for v in term.get("aliases", [])]
         label = str(term.get("label", ""))
@@ -2241,41 +2268,25 @@ def _smart_query_dimension_suggestions(patterns: List[Dict[str, str]], limit: in
 
 
 def _render_smart_query_assistant(question: str, schema_path: str) -> None:
-    q = str(question or "").strip()
-    if len(q) < 3:
+    q = str(question or "")
+    if len(q.strip()) < 3:
         return
     term_suggestions = _smart_query_domain_suggestions(q, schema_path=schema_path)
-    pattern_suggestions = _smart_query_pattern_suggestions(q)
-    if not term_suggestions and not pattern_suggestions:
+    if not term_suggestions:
         return
 
-    st.caption("Suggestions from the True Demand KG/schema. Click a term to complete the current word.")
-    if term_suggestions:
-        cols = st.columns(min(5, max(1, len(term_suggestions))))
-        for idx, suggestion in enumerate(term_suggestions):
-            label = str(suggestion.get("label", ""))
-            suggestion_type = str(suggestion.get("type", "term"))
-            cols[idx % len(cols)].button(
-                f"{label} · {suggestion_type}",
-                key=f"smart_term_{idx}_{label}_{suggestion_type}",
-                use_container_width=True,
-                on_click=_complete_question_fragment,
-                args=(q, str(suggestion.get("insert", label))),
-            )
-    if pattern_suggestions:
-        with st.expander("Validated matching question patterns", expanded=False):
-            for idx, row in enumerate(pattern_suggestions[:4]):
-                label = str(row.get("question", ""))
-                if not label:
-                    continue
-                st.button(
-                    label,
-                    key=f"smart_pattern_{idx}_{_normalize_question_key(label)}",
-                    use_container_width=True,
-                    on_click=_set_guided_question_input,
-                    args=(label, str(row.get("query", ""))),
-                )
-            st.caption("These patterns are already linked to graph-backed SPARQL queries.")
+    st.caption("Autocomplete suggestions from the True Demand KG/schema.")
+    cols = st.columns(min(5, max(1, len(term_suggestions))))
+    for idx, suggestion in enumerate(term_suggestions):
+        label = str(suggestion.get("label", ""))
+        suggestion_type = str(suggestion.get("type", "term"))
+        cols[idx % len(cols)].button(
+            f"{label} · {suggestion_type}",
+            key=f"smart_term_{idx}_{label}_{suggestion_type}",
+            use_container_width=True,
+            on_click=_complete_question_fragment,
+            args=(q, str(suggestion.get("insert", label))),
+        )
 
 
 def _render_question_guidance() -> None:
