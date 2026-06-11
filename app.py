@@ -15,6 +15,7 @@ from rdflib import Graph, BNode, URIRef
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 from kg.schema import load_schema
+from kg.capabilities import DEFAULT_REGISTRY as CAPABILITY_REGISTRY
 from llm.answer_synthesis import synthesize_answer
 from llm.candidate_generation import generate_candidate_prompt
 from llm.client import InfineonGPTClient, LLMAuthError, LLMClientError
@@ -1017,6 +1018,11 @@ def _expected_classes_from_question(question: str, question_contract: Dict[str, 
 def _required_query_terms_from_question(question: str) -> List[Tuple[str, Tuple[str, ...]]]:
     q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
     required: List[Tuple[str, Tuple[str, ...]]] = []
+    try:
+        capability_report = CAPABILITY_REGISTRY.resolve(question)
+        required.extend(capability_report.required_terms)
+    except Exception:
+        pass
     if "oem" in q:
         required.append(("oem_scope", ("oem", "oem_survey")))
     if "tier1" in q:
@@ -1087,7 +1093,14 @@ def _required_query_terms_from_question(question: str) -> List[Tuple[str, Tuple[
                 ),
             )
         )
-    return required
+    seen = set()
+    deduped: List[Tuple[str, Tuple[str, ...]]] = []
+    for name, terms in required:
+        if name in seen:
+            continue
+        seen.add(name)
+        deduped.append((name, terms))
+    return deduped
 
 
 def _confidence_safety_flags(
@@ -1148,8 +1161,17 @@ def _confidence_safety_flags(
     normalized_query = re.sub(r"[^a-z0-9]+", "", query_lower)
     loose_query = query_lower.replace("_", "").replace("-", "")
     for name, terms in _required_query_terms_from_question(question):
-        if not any(term in normalized_query or term in loose_query for term in terms):
+        normalized_terms = [re.sub(r"[^a-z0-9]+", "", str(term).lower()) for term in terms]
+        if not any(term and (term in normalized_query or term in loose_query) for term in normalized_terms):
             flags.append(f"required_missing:{name}")
+    try:
+        capability_report = CAPABILITY_REGISTRY.evaluate_query(question, query)
+        for warning in capability_report.typo_warnings:
+            flags.append("near_match:" + warning)
+        for missing in capability_report.missing_required_terms:
+            flags.append(f"required_missing:{missing}")
+    except Exception:
+        pass
 
     return sorted(set(flags))
 
@@ -1548,6 +1570,96 @@ def _build_confidence_route(
     }
 
 
+def _capability_backed_clarification_options(
+    *,
+    question: str,
+    graph_path: str,
+    fuseki_query_url: str,
+    max_options: int = 3,
+) -> List[Dict[str, object]]:
+    try:
+        report = CAPABILITY_REGISTRY.resolve(question)
+    except Exception:
+        return []
+    capability = report.primary_capability
+    if not capability:
+        return []
+    requested_dims = {str(item.name).lower() for item in report.detected_dimensions}
+    options: List[Dict[str, object]] = []
+    seen_queries = set()
+    for row in _validated_guided_patterns():
+        pattern_question = str(row.get("question", "") or "")
+        try:
+            pattern_report = CAPABILITY_REGISTRY.resolve(pattern_question)
+        except Exception:
+            continue
+        if pattern_report.primary_capability != capability:
+            continue
+        pattern_dims = {str(item.name).lower() for item in pattern_report.detected_dimensions}
+        if requested_dims and pattern_dims and requested_dims.isdisjoint(pattern_dims):
+            continue
+        query = str(row.get("query", "") or "").strip()
+        if not query:
+            continue
+        key = " ".join(query.split()).lower()
+        if key in seen_queries:
+            continue
+        rows, error = _preview_query_rows_cached(
+            graph_path,
+            fuseki_query_url,
+            query,
+            max_rows=1,
+        )
+        if error or not rows:
+            continue
+        seen_queries.add(key)
+        option_id = f"capability_{len(options) + 1}"
+        label = str(row.get("question") or row.get("metric") or "Graph-supported interpretation").strip()
+        options.append(
+            {
+                "id": option_id,
+                "rank": len(options) + 1,
+                "score": 0.0,
+                "source": "capability_inventory",
+                "label": _humanize_question_label(label),
+                "description": f"Graph-supported {capability} interpretation.",
+                "what_you_will_see": _capability_result_hint(row),
+                "choose_if": f"Choose this if you meant {str(row.get('metric') or capability)} {str(row.get('breakdown') or '').strip()}.".strip(),
+                "details": [
+                    f"Capability: {capability}",
+                    f"Metric: {row.get('metric') or 'graph-supported metric'}",
+                    f"Breakdown: {row.get('breakdown') or 'overall'}",
+                    f"Scope: {row.get('scope') or 'all graph data'}",
+                ],
+                "scope_hint": str(row.get("scope") or ""),
+                "path_hint": str(row.get("breakdown") or ""),
+                "difference_hint": str(row.get("breakdown") or ""),
+                "query": query,
+                "safety_flags": [],
+            }
+        )
+        if len(options) >= max_options:
+            break
+    return options
+
+
+def _humanize_question_label(text: str) -> str:
+    text = str(text or "").strip().rstrip("?")
+    if not text:
+        return "Graph-supported interpretation"
+    text = re.sub(r"^(can you|please|show me|show|list|provide|return)\s+", "", text, flags=re.I)
+    return text[:1].upper() + text[1:]
+
+
+def _capability_result_hint(row: Dict[str, str]) -> str:
+    metric = str(row.get("metric") or "values").strip()
+    breakdown = str(row.get("breakdown") or "overall").strip()
+    scope = str(row.get("scope") or "all graph data").strip()
+    if breakdown and breakdown.lower() != "overall":
+        return f"{metric} for {scope}, broken down {breakdown}."
+    return f"{metric} for {scope}."
+
+
 def _render_confidence_route_badge(route: Dict[str, object]) -> None:
     if route.get("route") == "auto_answer":
         st.success("High-confidence graph answer.")
@@ -1570,8 +1682,15 @@ def _render_confidence_clarification(
     st.markdown("**Did you mean...**")
     options = list(route.get("options") or [])
     if not options:
-        st.warning("No candidate interpretations are available for clarification.")
-        return
+        options = _capability_backed_clarification_options(
+            question=str(st.session_state.get("last_question") or ""),
+            graph_path=graph_path,
+            fuseki_query_url=_active_fuseki_query_url(),
+            max_options=3,
+        )
+        if not options:
+            st.warning("No candidate interpretations are available for clarification.")
+            return
     answerable_options = []
     skipped_empty = 0
     if execute_selected and _graph_backend_available(graph_path):
@@ -1606,11 +1725,20 @@ def _render_confidence_clarification(
                 option["preview_error"] = error
         options = answerable_options
     if not options:
-        st.warning(
-            "I found candidate interpretations, but none returned graph rows. "
-            "Please revise the question or choose graph terms that are connected in the data."
+        options = _capability_backed_clarification_options(
+            question=active_question,
+            graph_path=graph_path,
+            fuseki_query_url=fuseki_url,
+            max_options=3,
         )
-        return
+        if options:
+            st.caption("Using graph-supported interpretations from the capability inventory.")
+        else:
+            st.warning(
+                "I found candidate interpretations, but none returned graph rows. "
+                "Please revise the question or choose graph terms that are connected in the data."
+            )
+            return
     if skipped_empty:
         st.caption(f"Hidden {skipped_empty} candidate interpretation(s) because they returned no graph rows.")
     for option in options[:3]:
