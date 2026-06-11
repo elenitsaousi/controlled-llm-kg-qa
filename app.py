@@ -1164,6 +1164,14 @@ def _confidence_safety_flags(
         normalized_terms = [re.sub(r"[^a-z0-9]+", "", str(term).lower()) for term in terms]
         if not any(term and (term in normalized_query or term in loose_query) for term in normalized_terms):
             flags.append(f"required_missing:{name}")
+    q_lower = str(question or "").lower()
+    ranking_requested = bool(
+        re.search(r"\b(highest|lowest|top|bottom|largest|smallest|max|maximum|min|minimum|best|worst|most|least)\b", q_lower)
+    )
+    grouped_requested = bool(re.search(r"\b(by|per|grouped|breakdown|across)\b", q_lower))
+    query_types = set(str(v) for v in plan.get("query_types") or [])
+    if grouped_requested and not ranking_requested and ("ranking" in query_types or re.search(r"\bLIMIT\s+1\b", query_lower)):
+        flags.append("ranking_without_ranking_intent")
     try:
         capability_report = CAPABILITY_REGISTRY.evaluate_query(question, query)
         for warning in capability_report.typo_warnings:
@@ -1184,6 +1192,7 @@ def _blocking_confidence_safety_flags(flags: List[str]) -> List[str]:
         "contract_conflict:",
         "class_missing:",
         "required_missing:",
+        "ranking_without_ranking_intent",
     )
     return [
         flag
@@ -1595,6 +1604,14 @@ def _capability_backed_clarification_options(
         )
         if rows and not error:
             dimension = next(iter(requested_dims), "requested dimension")
+            profile_hint = _capability_dimension_profile_hint(capability, dimension)
+            details = [
+                f"Capability: {capability}",
+                f"Breakdown: by {dimension}",
+                "Source: capability registry direct query",
+            ]
+            if profile_hint:
+                details.append(profile_hint)
             return [
                 {
                     "id": "capability_direct_1",
@@ -1605,11 +1622,7 @@ def _capability_backed_clarification_options(
                     "description": f"Direct graph-supported {capability} query.",
                     "what_you_will_see": f"{capability} values grouped by {dimension}.",
                     "choose_if": f"Choose this if you meant {capability} by {dimension}.",
-                    "details": [
-                        f"Capability: {capability}",
-                        f"Breakdown: by {dimension}",
-                        "Source: capability registry direct query",
-                    ],
+                    "details": details,
                     "scope_hint": "all graph data",
                     "path_hint": f"by {dimension}",
                     "difference_hint": f"by {dimension}",
@@ -1682,6 +1695,43 @@ def _capability_backed_clarification_options(
     return options
 
 
+def _capability_dimension_profile_hint(capability_name: str, dimension_name: str) -> str:
+    capability = CAPABILITY_REGISTRY.find_capability(capability_name)
+    if not capability:
+        return ""
+    dimension = capability.dimension_by_name(dimension_name)
+    if not dimension:
+        return ""
+    parts = []
+    if dimension.distinct_values is not None:
+        parts.append(f"{dimension.distinct_values} distinct value(s)")
+    if dimension.estimated_rows is not None:
+        parts.append(f"about {dimension.estimated_rows} row(s)")
+    if not parts:
+        return ""
+    return f"Graph profile for {dimension.name}: " + ", ".join(parts)
+
+
+def _single_direct_capability_option(
+    *,
+    question: str,
+    graph_path: str,
+    fuseki_query_url: str,
+) -> Dict[str, object] | None:
+    options = _capability_backed_clarification_options(
+        question=question,
+        graph_path=graph_path,
+        fuseki_query_url=fuseki_query_url,
+        max_options=2,
+    )
+    if len(options) != 1:
+        return None
+    option = options[0]
+    if not str(option.get("id", "")).startswith("capability_direct"):
+        return None
+    return option
+
+
 def _question_prefers_non_count(question: str) -> bool:
     q = str(question or "").lower()
     if re.search(r"\b(how many|count|number of)\b", q):
@@ -1718,6 +1768,42 @@ def _render_confidence_route_badge(route: Dict[str, object]) -> None:
             "The system found multiple plausible interpretations. "
             "Please choose one before it answers."
         )
+
+
+def _accept_confidence_option(
+    option: Dict[str, object],
+    *,
+    graph_path: str,
+    max_preview_rows: int,
+) -> None:
+    chosen_query = str(option.get("query", "") or "").strip()
+    st.session_state["last_selected_query"] = chosen_query
+    st.session_state["confidence_clarification_choice_id"] = option.get("id")
+    if not chosen_query or not _graph_backend_available(graph_path):
+        return
+    try:
+        rows, error = _preview_query_rows_cached(
+            graph_path,
+            _active_fuseki_query_url(),
+            chosen_query,
+            max_rows=int(max_preview_rows),
+        )
+        if error:
+            raise RuntimeError(error)
+        st.session_state["last_graph_rows"] = rows
+        st.session_state["last_graph_answer"] = synthesize_answer(
+            str(st.session_state.get("last_question", "")),
+            chosen_query,
+            {
+                "rows": rows,
+                "matched_question_id": None,
+                "error": None,
+            },
+            None,
+        )
+    except Exception:
+        st.session_state["last_graph_rows"] = []
+        st.session_state["last_graph_answer"] = ""
 
 
 def _render_confidence_clarification(
@@ -1791,6 +1877,14 @@ def _render_confidence_clarification(
             return
     if skipped_empty:
         st.caption(f"Hidden {skipped_empty} candidate interpretation(s) because they returned no graph rows.")
+    if len(options) == 1 and execute_selected:
+        _accept_confidence_option(
+            options[0],
+            graph_path=graph_path,
+            max_preview_rows=max_preview_rows,
+        )
+        st.info("Using the only graph-supported interpretation.")
+        return
     for option in options[:3]:
         with st.container(border=True):
             st.markdown(f"**{str(option.get('label') or 'Interpretation')}**")
@@ -1812,33 +1906,11 @@ def _render_confidence_clarification(
                 key=f"confidence_clarify_{option.get('id')}",
                 use_container_width=True,
             ):
-                chosen_query = str(option.get("query", "") or "").strip()
-                st.session_state["last_selected_query"] = chosen_query
-                st.session_state["confidence_clarification_choice_id"] = option.get("id")
-                if execute_selected and chosen_query and _graph_backend_available(graph_path):
-                    try:
-                        rows, error = _preview_query_rows_cached(
-                            graph_path,
-                            _active_fuseki_query_url(),
-                            chosen_query,
-                            max_rows=int(max_preview_rows),
-                        )
-                        if error:
-                            raise RuntimeError(error)
-                        st.session_state["last_graph_rows"] = rows
-                        st.session_state["last_graph_answer"] = synthesize_answer(
-                            str(st.session_state.get("last_question", "")),
-                            chosen_query,
-                            {
-                                "rows": rows,
-                                "matched_question_id": None,
-                                "error": None,
-                            },
-                            None,
-                        )
-                    except Exception:
-                        st.session_state["last_graph_rows"] = []
-                        st.session_state["last_graph_answer"] = ""
+                _accept_confidence_option(
+                    option,
+                    graph_path=graph_path,
+                    max_preview_rows=max_preview_rows,
+                )
 
     chosen_id = st.session_state.get("confidence_clarification_choice_id")
     if chosen_id:
@@ -2591,6 +2663,7 @@ def _add_autocomplete_entry(
     raw: str = "",
     aliases: Optional[List[str]] = None,
     contexts: Optional[List[str]] = None,
+    profile: str = "",
     support: int = 1,
 ) -> None:
     label = str(label or "").strip()
@@ -2608,13 +2681,31 @@ def _add_autocomplete_entry(
             "raw": raw or _autocomplete_raw_token(label),
             "aliases": _unique_preserving_order([a for a in next_aliases if len(str(a)) >= 2]),
             "contexts": _unique_preserving_order([c for c in next_contexts if len(str(c)) >= 2]),
+            "profile": profile,
             "support": int(support),
         }
         return
     current = entries[key]
     current["aliases"] = _unique_preserving_order(list(current.get("aliases") or []) + next_aliases)
     current["contexts"] = _unique_preserving_order(list(current.get("contexts") or []) + next_contexts)
+    if profile and not current.get("profile"):
+        current["profile"] = profile
     current["support"] = int(current.get("support") or 0) + int(support)
+
+
+def _autocomplete_profile_hint(contexts: List[str], dimension: str) -> str:
+    context_set = {str(value).lower() for value in contexts}
+    for capability in CAPABILITY_REGISTRY.capabilities:
+        if capability.name.lower() not in context_set:
+            continue
+        dim = capability.dimension_by_name(dimension)
+        if not dim:
+            continue
+        if dim.distinct_values is not None:
+            return f"{dim.distinct_values} values"
+        if dim.estimated_rows is not None:
+            return f"~{dim.estimated_rows} rows"
+    return ""
 
 
 @st.cache_data(show_spinner=False)
@@ -2719,6 +2810,7 @@ def _kg_autocomplete_entries(
                 raw=_autocomplete_raw_token(dimension),
                 aliases=_smart_query_tokens(dimension),
                 contexts=contexts,
+                profile=_autocomplete_profile_hint(contexts, dimension),
             )
 
     print("\n=== CAPABILITY INVENTORY ===")
@@ -4080,6 +4172,35 @@ if asked:
             if confidence_route is not None:
                 result["confidence_route"] = confidence_route
 
+        direct_option = None
+        if execute_selected and not guided_query and _graph_backend_available(graph_path):
+            direct_option = _single_direct_capability_option(
+                question=effective_question or question,
+                graph_path=graph_path,
+                fuseki_query_url=_active_fuseki_query_url(),
+            )
+        if direct_option:
+            direct_query = str(direct_option.get("query", "") or "").strip()
+            if direct_query:
+                result["selected_query"] = direct_query
+                result["errors"] = []
+                if not isinstance(confidence_route, dict):
+                    confidence_route = {"enabled": True}
+                confidence_route.update(
+                    {
+                        "route": "auto_answer",
+                        "selected_query": direct_query,
+                        "reason": (
+                            "single graph-supported capability interpretation "
+                            "resolved from capability, dimension, and intent"
+                        ),
+                        "options": [direct_option],
+                        "safety_flags": [],
+                        "blocking_safety_flags": [],
+                    }
+                )
+                result["confidence_route"] = confidence_route
+
         selected_query = str(result.get("selected_query") or "").strip()
         if isinstance(confidence_route, dict) and confidence_route.get("route") == "auto_answer":
             selected_query = str(confidence_route.get("selected_query") or selected_query).strip()
@@ -4120,7 +4241,7 @@ if asked:
                         "matched_question_id": None,
                         "error": None,
                     },
-                    result.get("errors") or None,
+                    None if graph_rows else result.get("errors") or None,
                 )
                 answer_synthesis_elapsed = time.perf_counter() - answer_synthesis_started
                 if guided_query:
@@ -4185,11 +4306,15 @@ if asked:
                                     "matched_question_id": None,
                                     "error": None,
                                 },
-                                result.get("errors") or None,
+                                None if graph_rows else result.get("errors") or None,
                             )
                             answer_synthesis_elapsed = time.perf_counter() - answer_synthesis_started
                     except Exception as exc:
                         graph_exec_error = str(exc)
+        if selected_query and graph_rows and not graph_exec_error:
+            result["selected_query"] = selected_query
+            result["errors"] = []
+            result["answerability"] = _clarified_answerability(graph_rows)
         total_elapsed = time.perf_counter() - request_started
         latency_breakdown = {
             "pipeline_s": request_elapsed,

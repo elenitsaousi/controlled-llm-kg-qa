@@ -38,6 +38,8 @@ class DimensionSpec:
     name: str
     aliases: Tuple[str, ...]
     required_terms: Tuple[str, ...]
+    distinct_values: Optional[int] = None
+    estimated_rows: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -96,8 +98,21 @@ class ResolutionReport:
         return len(self.covered_required_terms) / max(1, len(self.required_terms))
 
 
-def _dim(name: str, aliases: Sequence[str], terms: Sequence[str]) -> DimensionSpec:
-    return DimensionSpec(name=name, aliases=tuple(aliases), required_terms=tuple(terms))
+def _dim(
+    name: str,
+    aliases: Sequence[str],
+    terms: Sequence[str],
+    *,
+    distinct_values: Optional[int] = None,
+    estimated_rows: Optional[int] = None,
+) -> DimensionSpec:
+    return DimensionSpec(
+        name=name,
+        aliases=tuple(aliases),
+        required_terms=tuple(terms),
+        distinct_values=distinct_values,
+        estimated_rows=estimated_rows,
+    )
 
 
 DEFAULT_CAPABILITIES: Tuple[CapabilitySpec, ...] = (
@@ -106,11 +121,11 @@ DEFAULT_CAPABILITIES: Tuple[CapabilitySpec, ...] = (
         aliases=("future demand analysis", "future demand change", "future demand percentage", "demand forecast"),
         core_terms=("FutureDemandAnalysis",),
         dimensions=(
-            _dim("region", ("regions", "regional"), ("DemandForRegion", "Region", "percentageChange", "totalDemandPercentageChange")),
-            _dim("quarter", ("quarters", "quater", "quarterly", "time period"), ("DemandForQuarter", "Quarter", "periodLabel", "percentageChange", "totalDemandPercentageChange")),
-            _dim("vehicle type", ("vehicle", "vehcle type", "vehicle category"), ("DemandForVehicleType", "VehicleType", "percentageChange")),
-            _dim("technology category", ("technology", "technolgy category", "tech category", "node"), ("DemandForTechnologyCategory", "TechnologyCategory", "percentageChange")),
-            _dim("survey group", ("survey", "survey type", "origin", "survey origin"), ("DemandForSurveyGroup", "SurveyGroup", "hasSurveyOrigin")),
+            _dim("region", ("regions", "regional"), ("DemandForRegion", "Region", "percentageChange", "totalDemandPercentageChange"), distinct_values=5),
+            _dim("quarter", ("quarters", "quater", "quarterly", "time period"), ("DemandForQuarter", "Quarter", "periodLabel", "percentageChange", "totalDemandPercentageChange"), distinct_values=8),
+            _dim("vehicle type", ("vehicle", "vehcle type", "vehicle category"), ("DemandForVehicleType", "VehicleType", "percentageChange"), distinct_values=3),
+            _dim("technology category", ("technology", "technolgy category", "tech category", "node"), ("DemandForTechnologyCategory", "TechnologyCategory", "percentageChange"), distinct_values=5),
+            _dim("survey group", ("survey", "survey type", "origin", "survey origin"), ("DemandForSurveyGroup", "SurveyGroup", "hasSurveyOrigin"), distinct_values=3),
         ),
         aggregations=("AVG", "SUM", "COUNT", "MAX", "MIN"),
         query_templates={
@@ -126,9 +141,9 @@ ORDER BY ?regionName
 """,
             "quarter": """
 SELECT ?quarterLabel (AVG(?pct) AS ?avgPercentageChange) WHERE {
-  ?entry a survey:DemandForQuarter ;
-         survey:quarter ?quarter ;
-         survey:totalDemandPercentageChange ?pct .
+  ?entry a survey:FutureDemandAnalysis ;
+         survey:forTimePeriod ?quarter ;
+         survey:percentageChange ?pct .
   ?quarter survey:periodLabel ?quarterLabel .
 }
 GROUP BY ?quarterLabel
@@ -136,7 +151,7 @@ ORDER BY ?quarterLabel
 """,
             "vehicle type": """
 SELECT ?vehicleType (AVG(?pct) AS ?avgPercentageChange) WHERE {
-  ?entry a survey:DemandForVehicleType ;
+  ?entry a survey:FutureDemandAnalysis ;
          survey:analyzesVehicleType ?vehicle ;
          survey:percentageChange ?pct .
   BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)
@@ -146,10 +161,11 @@ ORDER BY ?vehicleType
 """,
             "technology category": """
 SELECT ?technologyCategory (AVG(?pct) AS ?avgPercentageChange) WHERE {
-  ?entry a survey:DemandForTechnologyCategory ;
+  ?entry a survey:FutureDemandAnalysis ;
          survey:analyzesTechnologyCategory ?technology ;
          survey:percentageChange ?pct .
-  ?technology survey:technologyCategoryName ?technologyCategory .
+  OPTIONAL { ?technology survey:technologyCategoryName ?technologyName . }
+  BIND(COALESCE(?technologyName, REPLACE(STR(?technology), "^.*/", "")) AS ?technologyCategory)
 }
 GROUP BY ?technologyCategory
 ORDER BY ?technologyCategory
@@ -183,7 +199,7 @@ ORDER BY ?surveyGroup
         aliases=("actual vehicle sales", "forecast vehicle sales", "vehicle units sold", "vehicles sold", "sales units"),
         core_terms=("VehicleSales", "VehicleSalesForecast"),
         dimensions=(
-            _dim("month", ("months", "monthly"), ("monthLabel", "Month")),
+            _dim("month", ("months", "monthly"), ("monthLabel", "Month"), distinct_values=12),
             _dim("year", ("years", "yearly"), ("year", "hasYear")),
             _dim("vehicle type", ("vehicle", "vehcle type"), ("VehicleType", "hasVehicleType")),
         ),
@@ -206,7 +222,7 @@ ORDER BY ?surveyGroup
         core_terms=("AutonomousDrivingDevelopment",),
         dimensions=(
             _dim("vehicle type", ("vehicle", "vehcle type"), ("VehicleType", "hasVehicleType")),
-            _dim("SAE level", ("sae", "level 5", "sae level 5"), ("SAELevel", "hasSAELevel")),
+            _dim("SAE level", ("sae", "level 5", "sae level 5"), ("SAELevel", "hasSAELevel"), distinct_values=6),
             _dim("year", ("years", "yearly"), ("hasYear", "year")),
             _dim("survey group", ("survey", "survey type", "origin"), ("hasSurveyOrigin", "OEM_Survey", "Tier1_Survey")),
         ),
@@ -350,6 +366,8 @@ class CapabilityRegistry:
                     "label": _suggestion_label(capability.name, dimension.name),
                     "required_terms": list(capability.core_terms + dimension.required_terms),
                     "aggregations": list(capability.aggregations),
+                    "distinct_values": dimension.distinct_values,
+                    "estimated_rows": dimension.estimated_rows,
                 }
             )
         return suggestions

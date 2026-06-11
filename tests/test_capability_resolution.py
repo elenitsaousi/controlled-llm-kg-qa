@@ -71,3 +71,15 @@ def test_specific_future_demand_region_has_direct_query():
     assert "DemandForRegion" in query
     assert "GROUP BY ?regionName" in query
     assert "COUNT(" not in query.upper()
+
+
+def test_future_demand_by_vehicle_type_defaults_to_grouped_breakdown():
+    report = DEFAULT_REGISTRY.resolve("future demand by vehicle type")
+    query = DEFAULT_REGISTRY.direct_query_for(report)
+
+    assert report.primary_capability == "future demand"
+    assert [dimension.name for dimension in report.detected_dimensions] == ["vehicle type"]
+    assert query is not None
+    assert "GROUP BY ?vehicleType" in query
+    assert "LIMIT 1" not in query.upper()
+    assert "ORDER BY DESC" not in query.upper()

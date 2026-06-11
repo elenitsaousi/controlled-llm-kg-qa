@@ -109,6 +109,44 @@ def _format_generic_answer(rows: List[Dict[str, object]], max_rows: int = 8) -> 
     return prefix + " Results: " + "; ".join(parts) + "."
 
 
+def _is_ranking_question(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(highest|lowest|top|bottom|largest|smallest|max|maximum|min|minimum|best|worst|most|least)\b",
+            str(question or "").lower(),
+        )
+    )
+
+
+def _is_grouped_query(query: str) -> bool:
+    return bool(re.search(r"\bGROUP\s+BY\b", str(query or ""), flags=re.I))
+
+
+def _format_grouped_breakdown_answer(
+    rows: List[Dict[str, object]],
+    *,
+    label: str,
+    max_rows: int = 8,
+) -> str:
+    if not rows:
+        return ""
+    parts = []
+    for row in rows[:max_rows]:
+        clean_items = [
+            f"{_humanize_key(str(key))}: {_clean_value(value)}"
+            for key, value in row.items()
+            if value is not None and str(value) != ""
+        ]
+        if clean_items:
+            parts.append(", ".join(clean_items))
+    if not parts:
+        return f"{label} returned {len(rows)} grouped row(s)."
+    prefix = f"{label} returned {len(rows)} grouped row(s)."
+    if len(rows) > max_rows:
+        return prefix + " First groups: " + "; ".join(parts) + "."
+    return prefix + " Groups: " + "; ".join(parts) + "."
+
+
 def _format_total_demand_by_region(rows: List[Dict[str, object]]) -> str:
     if not _has_any_key(rows, ["regionName"]) or not _has_any_key(
         rows,
@@ -214,11 +252,17 @@ def _format_future_demand_by_tech_quarter(rows: List[Dict[str, object]]) -> str:
     )
 
 
-def _format_autonomous_driving(rows: List[Dict[str, object]]) -> str:
+def _format_autonomous_driving(rows: List[Dict[str, object]], query: str = "", question: str = "") -> str:
     if not _has_any_key(rows, ["vehicleType", "vehicle"]):
         return ""
     if not _has_any_key(rows, ["percentage", "maxPercentage", "avgPercentage", "avgPct"]):
         return ""
+
+    if _is_grouped_query(query) and not _is_ranking_question(question):
+        return _format_grouped_breakdown_answer(
+            rows,
+            label="Autonomous-driving development",
+        )
 
     scored = _numeric_rows(rows, ["maxPercentage", "percentage", "avgPercentage", "avgPct"])
     if not scored:
@@ -360,7 +404,7 @@ def _format_vehicle_sales_by_month(rows: List[Dict[str, object]]) -> str:
     )
 
 
-def _format_infineon_answer(rows: List[Dict[str, object]], query: str) -> str:
+def _format_infineon_answer(rows: List[Dict[str, object]], query: str, question: str = "") -> str:
     query_lower = query.lower()
 
     formatters = []
@@ -371,7 +415,9 @@ def _format_infineon_answer(rows: List[Dict[str, object]], query: str) -> str:
     if "ordercancellation" in query_lower or _has_any_key(rows, ["responseType"]):
         formatters.append(_format_order_cancellation)
     if "autonomousdrivingdevelopment" in query_lower or _has_any_key(rows, ["saeLevel", "sae"]):
-        formatters.append(_format_autonomous_driving)
+        answer = _format_autonomous_driving(rows, query=query, question=question)
+        if answer:
+            return answer
     if "futuredemandanalysis" in query_lower or _has_any_key(rows, ["techLabel", "quarterLabel"]):
         formatters.append(_format_future_demand_by_tech_quarter)
     if "demandforregion" in query_lower or _has_any_key(rows, ["regionName"]):
@@ -622,7 +668,7 @@ def synthesize_answer(
     if natural:
         return "Answer: " + natural
 
-    infineon_answer = _format_infineon_answer(rows, query)
+    infineon_answer = _format_infineon_answer(rows, query, question)
     if infineon_answer:
         return "Answer: " + infineon_answer
 
