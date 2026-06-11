@@ -156,7 +156,7 @@
     }
     function hasConcept(text) {
       const lower = text.toLowerCase();
-      return entries.some(e => ["concept", "class", "metric"].includes(e.type) && e.label && lower.includes(e.label.toLowerCase()));
+      return entries.some(e => ["concept", "metric"].includes(e.type) && e.label && lower.includes(e.label.toLowerCase()));
     }
     function isByContext(text) {
       return /\b(by|per|grouped|breakdown)\s+[A-Za-z0-9_+-]*$/i.test(text);
@@ -171,7 +171,7 @@
       const hay = [label, raw, ...aliases].join(" ");
       let score = 0;
       if (byContext && entry.type === "dimension") score += 100;
-      if (continuationContext && ["keyword", "comparison", "analysis", "time pattern", "detail level", "breakdown"].includes(entry.type)) score += 90;
+      if (continuationContext && ["keyword", "comparison", "analysis", "detail level", "breakdown"].includes(entry.type)) score += 90;
       if (fragment) {
         if (label.startsWith(fragment)) score += 80;
         if (raw.startsWith(fragment)) score += 70;

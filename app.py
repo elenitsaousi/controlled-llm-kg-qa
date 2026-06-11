@@ -2139,9 +2139,7 @@ SMART_QUERY_CONTINUATIONS = [
     ("by", "keyword"),
     ("for", "keyword"),
     ("in", "keyword"),
-    ("over time", "time pattern"),
     ("compared to", "comparison"),
-    ("trend", "analysis"),
     ("in detail", "detail level"),
     ("for each", "breakdown"),
 ]
@@ -3692,6 +3690,21 @@ if asked:
                 graph_exec_error = str(exc)
                 if guided_query:
                     result["answerability"] = _guided_answerability([], graph_exec_error)
+        if (
+            isinstance(confidence_route, dict)
+            and confidence_route.get("route") == "auto_answer"
+            and execute_selected
+            and selected_query
+            and not graph_exec_error
+            and not graph_rows
+        ):
+            confidence_route["route"] = "clarification"
+            confidence_route["reason"] = (
+                "The selected high-confidence query executed successfully but returned 0 rows. "
+                "The system should not auto-answer without graph evidence."
+            )
+            result["confidence_route"] = confidence_route
+            route_needs_clarification = True
         total_elapsed = time.perf_counter() - request_started
         latency_breakdown = {
             "pipeline_s": request_elapsed,
