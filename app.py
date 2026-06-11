@@ -183,6 +183,23 @@ def _execute_query_preview(
     return rows, truncated
 
 
+@st.cache_data(show_spinner=False)
+def _preview_query_rows_cached(
+    graph_path: str,
+    fuseki_query_url: str,
+    query: str,
+    max_rows: int = 3,
+) -> Tuple[List[Dict[str, str]], str]:
+    if not query.strip() or not (fuseki_query_url.strip() or (graph_path and os.path.exists(graph_path))):
+        return [], "graph_backend_or_query_missing"
+    try:
+        graph = _load_graph_cached(graph_path, fuseki_query_url)
+        rows, _truncated = _execute_query_preview(graph, query, max_rows=max_rows)
+        return rows, ""
+    except Exception as exc:
+        return [], str(exc)
+
+
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -1473,6 +1490,35 @@ def _render_confidence_clarification(
     if not options:
         st.warning("No candidate interpretations are available for clarification.")
         return
+    answerable_options = []
+    skipped_empty = 0
+    if execute_selected and _graph_backend_available(graph_path):
+        fuseki_url = _active_fuseki_query_url()
+        for option in options:
+            query = str(option.get("query", "") or "").strip()
+            rows, error = _preview_query_rows_cached(
+                graph_path,
+                fuseki_url,
+                query,
+                max_rows=max(1, min(int(max_preview_rows), 3)),
+            )
+            if rows:
+                enriched = dict(option)
+                enriched["preview_rows"] = rows
+                enriched["row_count_preview"] = len(rows)
+                answerable_options.append(enriched)
+            else:
+                skipped_empty += 1
+                option["preview_error"] = error
+        options = answerable_options
+    if not options:
+        st.warning(
+            "I found candidate interpretations, but none returned graph rows. "
+            "Please revise the question or choose graph terms that are connected in the data."
+        )
+        return
+    if skipped_empty:
+        st.caption(f"Hidden {skipped_empty} candidate interpretation(s) because they returned no graph rows.")
     for option in options[:3]:
         with st.container(border=True):
             st.markdown(f"**{str(option.get('label') or 'Interpretation')}**")
@@ -1499,12 +1545,14 @@ def _render_confidence_clarification(
                 st.session_state["confidence_clarification_choice_id"] = option.get("id")
                 if execute_selected and chosen_query and _graph_backend_available(graph_path):
                     try:
-                        graph = _load_active_graph(graph_path)
-                        rows, _truncated = _execute_query_preview(
-                            graph,
+                        rows, error = _preview_query_rows_cached(
+                            graph_path,
+                            _active_fuseki_query_url(),
                             chosen_query,
                             max_rows=int(max_preview_rows),
                         )
+                        if error:
+                            raise RuntimeError(error)
                         st.session_state["last_graph_rows"] = rows
                         st.session_state["last_graph_answer"] = synthesize_answer(
                             str(st.session_state.get("last_question", "")),
@@ -2135,16 +2183,6 @@ SMART_QUERY_DIMENSIONS = [
     "baseline",
 ]
 
-SMART_QUERY_CONTINUATIONS = [
-    ("by", "keyword"),
-    ("for", "keyword"),
-    ("in", "keyword"),
-    ("compared to", "comparison"),
-    ("in detail", "detail level"),
-    ("for each", "breakdown"),
-]
-
-
 def _smart_query_tokens(text: str) -> List[str]:
     return [token for token in re.findall(r"[a-zA-Z0-9]+", str(text or "").lower()) if len(token) >= 2]
 
@@ -2179,7 +2217,6 @@ def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int 
     suggestions: List[Dict[str, str]] = []
     q_lower = str(question or "").lower()
     by_context = bool(re.search(r"\b(by|per|grouped|breakdown)\s+[a-zA-Z0-9_+-]*$", q_lower))
-    continuation_context = bool(str(question or "").endswith((" ", "\n", "\t"))) and _smart_query_has_selected_concept(question)
     if by_context:
         for dimension in SMART_QUERY_DIMENSIONS:
             dim_tokens = _smart_query_tokens(dimension)
@@ -2190,9 +2227,6 @@ def _smart_query_domain_suggestions(question: str, schema_path: str, limit: int 
                     "type": "dimension",
                     "raw": dimension.upper().replace(" ", "_").replace("-", "_"),
                 })
-    elif continuation_context:
-        for label, suggestion_type in SMART_QUERY_CONTINUATIONS:
-            suggestions.append({"label": label, "insert": label, "type": suggestion_type, "raw": ""})
     for term in SMART_QUERY_DOMAIN_TERMS:
         aliases = [str(v).lower() for v in term.get("aliases", [])]
         label = str(term.get("label", ""))
@@ -2268,17 +2302,6 @@ def _kg_autocomplete_entries(schema_path: str) -> List[Dict[str, object]]:
                 "aliases": _smart_query_tokens(dimension),
             }
         )
-    for label, suggestion_type in SMART_QUERY_CONTINUATIONS:
-        entries.append(
-            {
-                "label": label,
-                "insert": label,
-                "type": suggestion_type,
-                "raw": "",
-                "aliases": _smart_query_tokens(label),
-            }
-        )
-
     schema_dict = _load_schema_dict_cached(schema_path)
     schema_values: List[Tuple[str, str]] = []
     schema_values.extend((str(v), "class") for v in list(schema_dict.get("classes") or []))

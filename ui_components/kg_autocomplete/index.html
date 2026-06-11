@@ -162,7 +162,7 @@
       return /\b(by|per|grouped|breakdown)\s+[A-Za-z0-9_+-]*$/i.test(text);
     }
     function isContinuationContext(text) {
-      return /\s$/.test(text) && hasConcept(text);
+      return false;
     }
     function scoreEntry(entry, fragment, textTokens, byContext, continuationContext) {
       const label = (entry.label || "").toLowerCase();
@@ -171,7 +171,6 @@
       const hay = [label, raw, ...aliases].join(" ");
       let score = 0;
       if (byContext && entry.type === "dimension") score += 100;
-      if (continuationContext && ["keyword", "comparison", "analysis", "detail level", "breakdown"].includes(entry.type)) score += 90;
       if (fragment) {
         if (label.startsWith(fragment)) score += 80;
         if (raw.startsWith(fragment)) score += 70;
@@ -251,7 +250,7 @@
       if (!entry) return;
       const completion = entry.insert || entry.label || "";
       const match = input.value.match(/([A-Za-z0-9_+-]*)$/);
-      if (match && match[1] && completion.toLowerCase().startsWith(match[1].toLowerCase())) {
+      if (match && match[1]) {
         input.value = input.value.slice(0, match.index) + completion + " ";
       } else {
         const sep = input.value.endsWith(" ") || input.value.length === 0 ? "" : " ";
