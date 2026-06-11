@@ -3923,6 +3923,10 @@ if asked:
                 graph = _load_active_graph(graph_path)
                 graph_load_elapsed = time.perf_counter() - graph_load_started
                 graph_query_started = time.perf_counter()
+                print("\n=== FINAL EXECUTION ===")
+                print("GRAPH PATH:", graph_path)
+                print("QUERY:")
+                print(selected_query)
                 graph_rows, graph_rows_truncated = _execute_query_preview(
                     graph,
                     selected_query,

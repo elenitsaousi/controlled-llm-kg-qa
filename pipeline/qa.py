@@ -1020,6 +1020,9 @@ def _query_runtime_profile(query: str, max_rows: int = 25) -> Dict[str, object]:
     if cached is not None:
         return dict(cached)
     try:
+        print("\n=== SELECTION EXECUTION ===")
+        print("QUERY:")
+        print(query)
         results, error = _safe_graph_query(graph, _ensure_prefixes(query))
 
         if error:
