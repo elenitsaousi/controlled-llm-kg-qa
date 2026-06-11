@@ -1585,8 +1585,41 @@ def _capability_backed_clarification_options(
     if not capability:
         return []
     requested_dims = {str(item.name).lower() for item in report.detected_dimensions}
+    direct_query = CAPABILITY_REGISTRY.direct_query_for(report)
+    if direct_query:
+        rows, error = _preview_query_rows_cached(
+            graph_path,
+            fuseki_query_url,
+            direct_query,
+            max_rows=1,
+        )
+        if rows and not error:
+            dimension = next(iter(requested_dims), "requested dimension")
+            return [
+                {
+                    "id": "capability_direct_1",
+                    "rank": 1,
+                    "score": 0.0,
+                    "source": "capability_inventory",
+                    "label": f"{capability.title()} by {dimension}",
+                    "description": f"Direct graph-supported {capability} query.",
+                    "what_you_will_see": f"{capability} values grouped by {dimension}.",
+                    "choose_if": f"Choose this if you meant {capability} by {dimension}.",
+                    "details": [
+                        f"Capability: {capability}",
+                        f"Breakdown: by {dimension}",
+                        "Source: capability registry direct query",
+                    ],
+                    "scope_hint": "all graph data",
+                    "path_hint": f"by {dimension}",
+                    "difference_hint": f"by {dimension}",
+                    "query": direct_query,
+                    "safety_flags": [],
+                }
+            ]
     options: List[Dict[str, object]] = []
     seen_queries = set()
+    prefers_non_count = _question_prefers_non_count(question)
     for row in _validated_guided_patterns():
         pattern_question = str(row.get("question", "") or "")
         try:
@@ -1596,7 +1629,13 @@ def _capability_backed_clarification_options(
         if pattern_report.primary_capability != capability:
             continue
         pattern_dims = {str(item.name).lower() for item in pattern_report.detected_dimensions}
-        if requested_dims and pattern_dims and requested_dims.isdisjoint(pattern_dims):
+        if requested_dims and pattern_dims != requested_dims:
+            continue
+        if requested_dims and not pattern_dims:
+            continue
+        if prefers_non_count and str(row.get("metric", "")).lower() in {"record count", "available names"}:
+            continue
+        if prefers_non_count and re.search(r"\b(how many|count|number of)\b", pattern_question, flags=re.I):
             continue
         query = str(row.get("query", "") or "").strip()
         if not query:
@@ -1641,6 +1680,17 @@ def _capability_backed_clarification_options(
         if len(options) >= max_options:
             break
     return options
+
+
+def _question_prefers_non_count(question: str) -> bool:
+    q = str(question or "").lower()
+    if re.search(r"\b(how many|count|number of)\b", q):
+        return False
+    return bool(
+        re.search(r"\b(change|changes|evolve|vary|trend|average|avg|mean|total|sum|share|percentage|percent)\b", q)
+        or " by " in q
+        or " across " in q
+    )
 
 
 def _humanize_question_label(text: str) -> str:
@@ -4094,6 +4144,52 @@ if asked:
             )
             result["confidence_route"] = confidence_route
             route_needs_clarification = True
+            fallback_options = _capability_backed_clarification_options(
+                question=effective_question or question,
+                graph_path=graph_path,
+                fuseki_query_url=_active_fuseki_query_url(),
+                max_options=2,
+            )
+            if len(fallback_options) == 1 and str(fallback_options[0].get("id", "")).startswith("capability_direct"):
+                fallback_query = str(fallback_options[0].get("query", "") or "").strip()
+                if fallback_query:
+                    try:
+                        graph_load_started = time.perf_counter()
+                        graph = _load_active_graph(graph_path)
+                        graph_load_elapsed = time.perf_counter() - graph_load_started
+                        graph_query_started = time.perf_counter()
+                        graph_rows, graph_rows_truncated = _execute_query_preview(
+                            graph,
+                            fallback_query,
+                            max_rows=int(max_preview_rows),
+                        )
+                        graph_query_elapsed = time.perf_counter() - graph_query_started
+                        if graph_rows:
+                            selected_query = fallback_query
+                            result["selected_query"] = selected_query
+                            confidence_route["route"] = "auto_answer"
+                            confidence_route["selected_query"] = selected_query
+                            confidence_route["reason"] = (
+                                "single graph-supported capability interpretation "
+                                "resolved from capability and dimension"
+                            )
+                            confidence_route["options"] = fallback_options
+                            result["confidence_route"] = confidence_route
+                            route_needs_clarification = False
+                            answer_synthesis_started = time.perf_counter()
+                            graph_answer = synthesize_answer(
+                                question,
+                                selected_query,
+                                {
+                                    "rows": graph_rows,
+                                    "matched_question_id": None,
+                                    "error": None,
+                                },
+                                result.get("errors") or None,
+                            )
+                            answer_synthesis_elapsed = time.perf_counter() - answer_synthesis_started
+                    except Exception as exc:
+                        graph_exec_error = str(exc)
         total_elapsed = time.perf_counter() - request_started
         latency_breakdown = {
             "pipeline_s": request_elapsed,

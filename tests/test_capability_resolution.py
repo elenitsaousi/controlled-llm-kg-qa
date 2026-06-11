@@ -60,3 +60,14 @@ def test_capability_suggestions_are_dimension_specific():
     assert any("quarter" in label for label in labels)
     assert not any("month" in label for label in labels)
 
+
+def test_specific_future_demand_region_has_direct_query():
+    report = DEFAULT_REGISTRY.resolve("how does Future demand change by region")
+    query = DEFAULT_REGISTRY.direct_query_for(report)
+
+    assert report.primary_capability == "future demand"
+    assert [dimension.name for dimension in report.detected_dimensions] == ["region"]
+    assert query is not None
+    assert "DemandForRegion" in query
+    assert "GROUP BY ?regionName" in query
+    assert "COUNT(" not in query.upper()

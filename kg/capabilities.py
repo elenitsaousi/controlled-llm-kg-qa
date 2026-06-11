@@ -48,6 +48,7 @@ class CapabilitySpec:
     dimensions: Tuple[DimensionSpec, ...]
     aggregations: Tuple[str, ...] = ("SUM", "AVG", "COUNT")
     related_predicates: Tuple[str, ...] = ()
+    query_templates: Dict[str, str] = field(default_factory=dict)
 
     def all_aliases(self) -> Tuple[str, ...]:
         return (self.name, *self.aliases)
@@ -112,6 +113,58 @@ DEFAULT_CAPABILITIES: Tuple[CapabilitySpec, ...] = (
             _dim("survey group", ("survey", "survey type", "origin", "survey origin"), ("DemandForSurveyGroup", "SurveyGroup", "hasSurveyOrigin")),
         ),
         aggregations=("AVG", "SUM", "COUNT", "MAX", "MIN"),
+        query_templates={
+            "region": """
+SELECT ?regionName (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:DemandForRegion ;
+         survey:inRegion ?region ;
+         survey:totalDemandPercentageChange ?pct .
+  ?region survey:regionName ?regionName .
+}
+GROUP BY ?regionName
+ORDER BY ?regionName
+""",
+            "quarter": """
+SELECT ?quarterLabel (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:DemandForQuarter ;
+         survey:quarter ?quarter ;
+         survey:totalDemandPercentageChange ?pct .
+  ?quarter survey:periodLabel ?quarterLabel .
+}
+GROUP BY ?quarterLabel
+ORDER BY ?quarterLabel
+""",
+            "vehicle type": """
+SELECT ?vehicleType (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:DemandForVehicleType ;
+         survey:analyzesVehicleType ?vehicle ;
+         survey:percentageChange ?pct .
+  BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)
+}
+GROUP BY ?vehicleType
+ORDER BY ?vehicleType
+""",
+            "technology category": """
+SELECT ?technologyCategory (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:DemandForTechnologyCategory ;
+         survey:analyzesTechnologyCategory ?technology ;
+         survey:percentageChange ?pct .
+  ?technology survey:technologyCategoryName ?technologyCategory .
+}
+GROUP BY ?technologyCategory
+ORDER BY ?technologyCategory
+""",
+            "survey group": """
+SELECT ?surveyGroup (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:DemandForSurveyGroup ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:percentageChange ?pct .
+  BIND(REPLACE(STR(?origin), "^.*/", "") AS ?surveyGroup)
+}
+GROUP BY ?surveyGroup
+ORDER BY ?surveyGroup
+""",
+        },
     ),
     CapabilitySpec(
         name="regional demand",
@@ -301,6 +354,23 @@ class CapabilityRegistry:
             )
         return suggestions
 
+    def direct_query_for(self, report: ResolutionReport) -> Optional[str]:
+        if not report.primary_capability or not report.detected_capabilities:
+            return None
+        primary = report.detected_capabilities[0]
+        if not primary.exact and primary.score < 0.9:
+            return None
+        if len(report.detected_dimensions) != 1:
+            return None
+        capability = self.find_capability(report.primary_capability)
+        if not capability:
+            return None
+        dimension_name = normalize_text(report.detected_dimensions[0].name)
+        for key, query in capability.query_templates.items():
+            if normalize_text(key) == dimension_name:
+                return query.strip()
+        return None
+
 
 def _detect_aggregation(q_norm: str) -> Optional[str]:
     if re.search(r"\b(avg|average|mean)\b", q_norm):
@@ -383,4 +453,3 @@ def _suggestion_label(capability_name: str, dimension_name: str) -> str:
 
 
 DEFAULT_REGISTRY = CapabilityRegistry()
-
