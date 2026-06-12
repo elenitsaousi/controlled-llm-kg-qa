@@ -66,9 +66,6 @@ streamlit run app.py
 
 ## 4. Using It
 
-The app converts the ontology or answer-evidence slice to WebVOWL JSON and shows
-a download button. Load that JSON in the embedded/local WebVOWL panel.
-
 The repository also includes a precomputed WebVOWL export for the current True
 Demand ontology:
 
@@ -76,8 +73,32 @@ Demand ontology:
 data/infineon/true_demand_webvowl.json
 ```
 
-You can upload this file directly in WebVOWL if you do not want to run OWL2VOWL
-on the second machine.
+After `git pull`, you can upload this file directly in WebVOWL. You do not need
+to run OWL2VOWL on the second machine for the main ontology view.
+
+To open WebVOWL locally without Docker after building the deploy folder:
+
+```powershell
+cd C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\WebVOWL
+python -m http.server 8080 -d deploy
+```
+
+Then open:
+
+```text
+http://localhost:8080
+```
+
+In WebVOWL, load:
+
+```text
+C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\data\infineon\true_demand_webvowl.json
+```
+
+In the Streamlit app, `Graph Overview -> WebVOWL Ontology Viewer` embeds the
+local WebVOWL page and exposes the same JSON as a download. WebVOWL itself still
+controls ontology loading; if it opens with an example ontology, load the True
+Demand JSON from the WebVOWL ontology/upload menu.
 
 Use `ontology.ttl` for the main ontology view. Do not send the full
 `graph.ttl` to WebVOWL unless you intentionally want a very large and noisy

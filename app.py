@@ -50,6 +50,7 @@ except Exception:
 DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
 DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
 DEFAULT_ONTOLOGY_PATH = PROJECT_ROOT / "data" / "infineon" / "ontology.ttl"
+DEFAULT_WEBVOWL_JSON_PATH = PROJECT_ROOT / "data" / "infineon" / "true_demand_webvowl.json"
 DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
 DEFAULT_WEBVOWL_URL = "http://localhost:8080"
 APP_LOG_DIR = PROJECT_ROOT / "logs"
@@ -698,6 +699,8 @@ def _render_webvowl_framework_panel(
     ontology_path: str,
     webvowl_url: str,
     owl2vowl_jar_path: str,
+    webvowl_json_path: str = "",
+    use_precomputed_json: bool = True,
     height_px: int = 720,
     expanded: bool = True,
 ) -> None:
@@ -706,6 +709,31 @@ def _render_webvowl_framework_panel(
             "Framework-based ontology visualization using WebVOWL + OWL2VOWL. "
             "This is the preferred ontology viewer path; the built-in graph remains only as a fallback/debug view."
         )
+        precomputed_json = Path(str(webvowl_json_path or "").strip())
+        if use_precomputed_json and not precomputed_json.exists():
+            precomputed_json = DEFAULT_WEBVOWL_JSON_PATH
+
+        if use_precomputed_json and precomputed_json.exists():
+            st.success(f"Using precomputed WebVOWL JSON: {precomputed_json.name}")
+            st.download_button(
+                "Download True Demand WebVOWL JSON",
+                data=precomputed_json.read_text(encoding="utf-8"),
+                file_name=precomputed_json.name,
+                mime="application/json",
+                use_container_width=True,
+            )
+            st.caption(
+                "Open the WebVOWL panel below and load this JSON from its ontology/upload menu. "
+                "For a permanent local setup, copy this JSON into the WebVOWL `deploy/data` folder "
+                "and configure it as the default ontology in WebVOWL."
+            )
+            components.html(
+                build_webvowl_iframe_html(webvowl_url, height_px=height_px),
+                height=max(460, int(height_px)) + 16,
+                scrolling=True,
+            )
+            return
+
         source = Path(str(ontology_path or "").strip())
         if not source.exists():
             st.warning(f"Ontology source not found: {source}")
@@ -802,6 +830,8 @@ def _render_answer_subgraph(
                 ontology_path=str(evidence_path),
                 webvowl_url=webvowl_url or DEFAULT_WEBVOWL_URL,
                 owl2vowl_jar_path=owl2vowl_jar_path,
+                webvowl_json_path="",
+                use_precomputed_json=False,
                 height_px=520,
                 expanded=True,
             )
@@ -3612,6 +3642,7 @@ def _render_graph_overview(
     graph_path: str,
     *,
     ontology_path: str = "",
+    webvowl_json_path: str = "",
     webvowl_url: str = "",
     owl2vowl_jar_path: str = "",
 ) -> None:
@@ -3656,6 +3687,8 @@ def _render_graph_overview(
         ontology_path=ontology_path or str(DEFAULT_ONTOLOGY_PATH),
         webvowl_url=webvowl_url or DEFAULT_WEBVOWL_URL,
         owl2vowl_jar_path=owl2vowl_jar_path,
+        webvowl_json_path=webvowl_json_path or str(DEFAULT_WEBVOWL_JSON_PATH),
+        use_precomputed_json=True,
         height_px=760,
         expanded=True,
     )
@@ -3932,6 +3965,7 @@ with st.sidebar:
     schema_path = str(DEFAULT_SCHEMA_PATH)
     graph_path = str(DEFAULT_GRAPH_PATH)
     ontology_path = os.getenv("TRUE_DEMAND_ONTOLOGY_PATH", str(DEFAULT_ONTOLOGY_PATH)).strip()
+    webvowl_json_path = os.getenv("TRUE_DEMAND_WEBVOWL_JSON_PATH", str(DEFAULT_WEBVOWL_JSON_PATH)).strip()
     fuseki_query_url = os.getenv("FUSEKI_QUERY_URL", DEFAULT_FUSEKI_QUERY_URL).strip()
     webvowl_url = os.getenv("WEBVOWL_URL", DEFAULT_WEBVOWL_URL).strip()
     owl2vowl_jar_path = os.getenv("OWL2VOWL_JAR_PATH", "").strip()
@@ -3988,6 +4022,11 @@ with st.sidebar:
                 "Ontology path for WebVOWL",
                 value=ontology_path or str(DEFAULT_ONTOLOGY_PATH),
                 help="Ontology/schema file used for WebVOWL/OWL2VOWL visualization. Prefer ontology.ttl over the full raw graph.",
+            )
+            webvowl_json_path = st.text_input(
+                "Precomputed WebVOWL JSON path",
+                value=webvowl_json_path or str(DEFAULT_WEBVOWL_JSON_PATH),
+                help="Ready-to-upload WebVOWL JSON. This avoids running OWL2VOWL on every machine.",
             )
             fuseki_query_url = st.text_input(
                 "Fuseki query endpoint",
@@ -4139,6 +4178,8 @@ with st.sidebar:
         os.environ["OWL2VOWL_JAR_PATH"] = owl2vowl_jar_path.strip()
     if ontology_path.strip():
         os.environ["TRUE_DEMAND_ONTOLOGY_PATH"] = ontology_path.strip()
+    if webvowl_json_path.strip():
+        os.environ["TRUE_DEMAND_WEBVOWL_JSON_PATH"] = webvowl_json_path.strip()
     os.environ["INFINEON_ENABLE_SCHEMA_SLICING"] = "1" if family_schema_routing_enabled else "0"
     os.environ["INFINEON_SCHEMA_SLICING_MAX_FAMILIES"] = str(int(family_schema_routing_max))
     os.environ["INFINEON_SCHEMA_SLICING_FULL_FALLBACK"] = "1" if family_schema_routing_fallback else "0"
@@ -4158,6 +4199,7 @@ if page == "Graph Overview":
         schema_path,
         graph_path,
         ontology_path=ontology_path,
+        webvowl_json_path=webvowl_json_path,
         webvowl_url=webvowl_url,
         owl2vowl_jar_path=owl2vowl_jar_path,
     )
