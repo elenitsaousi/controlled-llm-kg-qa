@@ -45,7 +45,8 @@ java -jar C:\path\to\owl2vowl.jar -file C:\path\to\ontology.ttl -echo
 In Developer settings:
 
 ```text
-Ontology path for WebVOWL = data\infineon\ontology.ttl
+Ontology path for WebVOWL = data\infineon\true_demand_ontology_extracted.ttl
+Precomputed WebVOWL JSON = data\infineon\true_demand_webvowl.json
 WebVOWL app URL = http://localhost:8080
 OWL2VOWL jar path = C:\path\to\owl2vowl.jar
 ```
@@ -53,7 +54,8 @@ OWL2VOWL jar path = C:\path\to\owl2vowl.jar
 Or set these in `.env`:
 
 ```env
-TRUE_DEMAND_ONTOLOGY_PATH=C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\data\infineon\ontology.ttl
+TRUE_DEMAND_ONTOLOGY_PATH=C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\data\infineon\true_demand_ontology_extracted.ttl
+TRUE_DEMAND_WEBVOWL_JSON_PATH=C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\data\infineon\true_demand_webvowl.json
 WEBVOWL_URL=http://localhost:8080
 OWL2VOWL_JAR_PATH=C:\path\to\owl2vowl.jar
 ```
@@ -66,8 +68,8 @@ streamlit run app.py
 
 ## 4. Using It
 
-The repository also includes a precomputed WebVOWL export for the current True
-Demand ontology:
+The repository includes a precomputed WebVOWL export for the True Demand schema
+layer extracted from the full RDF graph:
 
 ```text
 data/infineon/true_demand_webvowl.json
@@ -100,6 +102,25 @@ local WebVOWL page and exposes the same JSON as a download. WebVOWL itself still
 controls ontology loading; if it opens with an example ontology, load the True
 Demand JSON from the WebVOWL ontology/upload menu.
 
-Use `ontology.ttl` for the main ontology view. Do not send the full
-`graph.ttl` to WebVOWL unless you intentionally want a very large and noisy
-instance-level graph.
+Use `true_demand_ontology_extracted.ttl` or the precomputed
+`true_demand_webvowl.json` for the main ontology view. This extracted ontology is
+derived from the full `graph.ttl`, but keeps only the schema-level classes and
+relationships so WebVOWL remains readable.
+
+Do not send the raw full `graph.ttl` to WebVOWL unless you intentionally want a
+very large and noisy instance-level graph. The full graph still stays in Fuseki
+for SPARQL execution and answer evidence.
+
+## 5. Rebuild the Extracted Ontology
+
+If the graph changes, rebuild the schema extraction:
+
+```powershell
+python visualization\extract_webvowl_ontology.py --graph data\infineon\graph.ttl --out data\infineon\true_demand_ontology_extracted.ttl --rdfxml-out data\infineon\true_demand_ontology_extracted.owl
+```
+
+Then convert the RDF/XML file with OWL2VOWL and replace:
+
+```text
+data/infineon/true_demand_webvowl.json
+```

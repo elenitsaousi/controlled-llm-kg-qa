@@ -1,0 +1,741 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/totalDemand">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>total Demand</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandForRegion"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forYear">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>for Year</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/YearlySalesData"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Month">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Month</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TimePeriod"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/inventoryTrend">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>inventory Trend</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Tier1"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasOrderCancellation">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Order Cancellation</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Semiconductor_Survey"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellation"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/technologyCategoryName">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>technology Category Name</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/splitPercentage">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>split Percentage</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentType_Tier1"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/55nm_to_180nm">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>55nm to 180nm</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellationChange_Semi"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentChangeB2">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>percent Change B2</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Region">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Region</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Semiconductor_Survey">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Semiconductor Survey</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Survey"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator_Semi">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Inventory Target Indicator Semi</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/28nm_to_less_than_45nm">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>28nm to less than 45nm</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellationChange_Semi"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleSalesObservation">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Vehicle Sales Observation</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Sales"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasAggregatedResult">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Aggregated Result</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AggregatedDemand"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/appliesToVehicleType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>applies To Vehicle Type</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ConversionFactor"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleType"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasConversionFactor">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Conversion Factor</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ConversionFactor"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/componentType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>component Type</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Component"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment_Tier1">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Autonomous Driving Development Tier1</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/assumptionReason">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>assumption Reason</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forVehicleType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>for Vehicle Type</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandResponse"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasInventoryTrend">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Inventory Trend</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Semi"/>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Tier1"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/isForecastData">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>is Forecast Data</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleSalesObservation"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasInventoryResponse">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Inventory Response</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Tier1_Survey"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasYear">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Year</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineB2Percent">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>baseline B2 Percent</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentDemandAnalysis"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forTechnologyCategory">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>for Technology Category</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellation"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellationChange_Semi"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/nameplateLabel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>nameplate Label</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Tier1">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Inventory Development Tier1</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Inventory">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Inventory</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/reportsShortage">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>reports Shortage</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Company"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/currentDemand">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>current Demand</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Demand</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/companyName">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>company Name</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Company"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/methodologyDescription">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>methodology Description</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare_Tier1">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Component Share Tier1</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentType_Tier1">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Component Type Tier1</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/isActiveInCategory">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>is Active In Category</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare_Tier1"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>baseline Type</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentDemandAnalysis"/>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/FutureDemandAnalysis"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/yearlySales">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>yearly Sales</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/YearlySalesData"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/participantCount">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>participant Count</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellation"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasDetail">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Detail</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/SAELevel"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/dataType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>data Type</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandForRegion">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Demand For Region</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/YearlySalesData">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Yearly Sales Data</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Sales"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChangeB2">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>percentage Change B2</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyNode"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Semi">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Inventory Development Semi</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OEM_Survey">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>OEM Survey</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Survey"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forCompany">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>for Company</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellation"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Company"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Infotainment_and_Telematics">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Infotainment and Telematics</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/10nm_to_less_than_28nm">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>10nm to less than 28nm</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellationChange_Semi"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasComponentTypeSplit">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Component Type Split</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/isAggregatedResult">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>is Aggregated Result</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AggregatedDemand"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasTechnologyNodeDemand">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Technology Node Demand</rdfs:label>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyNode"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/unitsSold">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>units Sold</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleSalesObservation"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ICE">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>ICE</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleType"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Technology Category</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasMarketSegment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Market Segment</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/MarketSegment"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TrueDemandExtractedOntology">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+    <rdfs:label>True Demand extracted ontology</rdfs:label>
+    <rdfs:comment>Schema-level ontology extracted from the full True Demand RDF graph for WebVOWL visualization.</rdfs:comment>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasResponseType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Response Type</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellation"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Automotive">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Automotive</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/MarketSegment"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandResponse">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Demand Response</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/assignedTechnologyCategory">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>assigned Technology Category</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Component Share</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasPercentage">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Percentage</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Inventory Target Indicator</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Inventory"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Survey">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Survey</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/assignedVehicleType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>assigned Vehicle Type</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/conversionDescription">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>conversion Description</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ConversionFactor"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasSurveyOrigin">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Survey Origin</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandResponse"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Survey"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/FutureRegionalDemand">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Future Regional Demand</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Chassis_and_safety">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Chassis and safety</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/180nm_or_greater">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>180nm or greater</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellationChange_Semi"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/analyzesVehicleType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>analyzes Vehicle Type</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleType"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Tier1_Survey">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Tier1 Survey</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Survey"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Body_and_convenience">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Body and convenience</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasVehicleType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Vehicle Type</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleType"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChangeBL1">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>percentage Change BL1</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentDemandAnalysis"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/totalDemandPercentageChange">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>total Demand Percentage Change</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/FutureRegionalDemand"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/MarketSegment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Market Segment</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/technologyDescription">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>technology Description</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChangeBL2">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>percentage Change BL2</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentDemandAnalysis"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasYearlySales">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Yearly Sales</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentDemandAnalysis"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/YearlySalesData"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentDemandAnalysis">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Current Demand Analysis</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChangeB1">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>percentage Change B1</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyNode"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/EV">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>EV</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentType_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/7nm_or_less">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>7nm or less</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator_Semi"/>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellationChange_Semi"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/targetIndicatorStatus">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>target Indicator Status</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator_Semi"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/fromCompany">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>from Company</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandResponse"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Company"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasRegionalDemand">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Regional Demand</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentRegionalDemand"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandForRegion"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AggregatedDemand">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Aggregated Demand</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/periodLabel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>period Label</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Month"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/quarter">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>quarter</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandForRegion"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#string"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/BEHV">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>BEHV</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleType"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/FutureDemandAnalysis">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Future Demand Analysis</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Quarter">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Quarter</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TimePeriod"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Sales">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Sales</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/BEV">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>BEV</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleType"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentChangeB1">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>percent Change B1</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/SAELevel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>SAELevel</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/analyzesTechnologyCategory">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>analyzes Technology Category</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Advanced_driver-assistance_systems_%28ADAS%29">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Advanced driver assistance systems (ADAS)</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ConversionFactor">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Conversion Factor</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentRegionalDemand">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Current Regional Demand</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineB2">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>baseline B2</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Component">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Component</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineB1Percent">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>baseline B1 Percent</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentDemandAnalysis"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Autonomous Driving Development</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/technologyNodeLabel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>technology Node Label</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyNode"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment_OEM">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Autonomous Driving Development OEM</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/isActualData">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>is Actual Data</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleSalesObservation"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#boolean"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/conversionValue">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>conversion Value</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ConversionFactor"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyNode">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Technology Node</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forComponent">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>for Component</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Tier1"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Component"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasSAELevel">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has SAELevel</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleType"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/SAELevel"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasResponse">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Response</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandResponse"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TimePeriod">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Time Period</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChange">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>percentage Change</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#decimal"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Company">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Company</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/usesBaseline">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>uses Baseline</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/FutureDemandAnalysis"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/regionName">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>region Name</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Region"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Powertrain">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Powertrain</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellationChange_Semi">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Order Cancellation Change Semi</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellation"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/inRegion">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>in Region</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandForRegion"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Region"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasTechnologyCategory">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Technology Category</rdfs:label>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineB1">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#DatatypeProperty"/>
+    <rdfs:label>baseline B1</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+    <rdfs:range rdf:resource="http://www.w3.org/2001/XMLSchema#integer"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellation">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Order Cancellation</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Other">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Other</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/justificationDescription">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>justification Description</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasFutureDemand">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Future Demand</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/FutureDemandAnalysis"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/FutureDemandAnalysis"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/platformName">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>platform Name</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forTimePeriod">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>for Time Period</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleSalesObservation"/>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Month"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleType">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Vehicle Type</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/nonEV">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>non EV</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentType_Tier1"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label>Inventory Development</rdfs:label>
+    <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Inventory"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/definesCategory">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>defines Category</rdfs:label>
+    <rdfs:range rdf:resource="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineYear">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>baseline Year</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasAssumption">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:label>has Assumption</rdfs:label>
+  </rdf:Description>
+</rdf:RDF>

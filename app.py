@@ -49,7 +49,7 @@ except Exception:
 
 DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
 DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
-DEFAULT_ONTOLOGY_PATH = PROJECT_ROOT / "data" / "infineon" / "ontology.ttl"
+DEFAULT_ONTOLOGY_PATH = PROJECT_ROOT / "data" / "infineon" / "true_demand_ontology_extracted.ttl"
 DEFAULT_WEBVOWL_JSON_PATH = PROJECT_ROOT / "data" / "infineon" / "true_demand_webvowl.json"
 DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
 DEFAULT_WEBVOWL_URL = "http://localhost:8080"
