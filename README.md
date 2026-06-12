@@ -171,6 +171,12 @@ Analyze confidence-aware routing:
 python evaluation\analyze_confidence_routing.py --results results\final1000_wf_test_scope_origin_m010.json --score-key ml_score --sort-by-score --out-json results\final1000_wf_test_scope_origin_confidence_routing_sorted_v2.json --out-md results\final1000_wf_test_scope_origin_confidence_routing_sorted_v2.md
 ```
 
+Analyze entropy-based ambiguity regimes:
+
+```powershell
+python evaluation\analyze_entropy_ambiguity.py --results results\final1000_wf_test_scope_origin_m010.json --dataset results\splits\final1000_within_family\test.json --score-key ml_score --sort-by-score --normalization auto --bucket-mode quantiles --out-json results\final1000_wf_test_scope_origin_entropy_ambiguity.json --out-md results\final1000_wf_test_scope_origin_entropy_ambiguity.md
+```
+
 ## Current Evaluation Framing
 
 Report these metrics separately:
@@ -183,6 +189,7 @@ Report these metrics separately:
 - clarification rate and clarification option quality
 - empty-result rate
 - response-time distribution
+- entropy-regime accuracy: low / medium / high candidate-set ambiguity
 
 The final system should not be described only by forced Top-1 accuracy. The
 confidence-routing mode is part of the reliability design: high-confidence
