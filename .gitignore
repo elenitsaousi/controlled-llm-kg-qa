@@ -8,3 +8,7 @@ analysis_inputs/
 analysis_outputs/
 results/
 logs/
+WebVOWL/
+OWL2VOWL/
+true_demand_webvowl*.json
+!data/infineon/true_demand_webvowl.json

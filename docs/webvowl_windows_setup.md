@@ -69,7 +69,16 @@ streamlit run app.py
 The app converts the ontology or answer-evidence slice to WebVOWL JSON and shows
 a download button. Load that JSON in the embedded/local WebVOWL panel.
 
+The repository also includes a precomputed WebVOWL export for the current True
+Demand ontology:
+
+```text
+data/infineon/true_demand_webvowl.json
+```
+
+You can upload this file directly in WebVOWL if you do not want to run OWL2VOWL
+on the second machine.
+
 Use `ontology.ttl` for the main ontology view. Do not send the full
 `graph.ttl` to WebVOWL unless you intentionally want a very large and noisy
 instance-level graph.
-
