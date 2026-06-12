@@ -177,6 +177,12 @@ Analyze entropy-based ambiguity regimes:
 python evaluation\analyze_entropy_ambiguity.py --results results\final1000_wf_test_scope_origin_m010.json --dataset results\splits\final1000_within_family\test.json --score-key ml_score --sort-by-score --normalization auto --bucket-mode quantiles --out-json results\final1000_wf_test_scope_origin_entropy_ambiguity.json --out-md results\final1000_wf_test_scope_origin_entropy_ambiguity.md
 ```
 
+Compare baseline vs ML selection within entropy regimes:
+
+```powershell
+python evaluation\compare_entropy_regime_selection.py --baseline-results results\final1000_wf_test_eval_no_ml.json --ml-results results\final1000_wf_test_scope_origin_m010.json --dataset results\splits\final1000_within_family\test.json --entropy-source ml --score-key ml_score --sort-by-score --normalization softmax --temperature 0.10 --bucket-mode quantiles --out-json results\final1000_wf_test_entropy_regime_baseline_vs_ml.json --out-md results\final1000_wf_test_entropy_regime_baseline_vs_ml.md
+```
+
 ## Current Evaluation Framing
 
 Report these metrics separately:
