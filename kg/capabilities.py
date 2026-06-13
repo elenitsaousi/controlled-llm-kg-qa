@@ -196,7 +196,7 @@ ORDER BY ?surveyGroup
     ),
     CapabilitySpec(
         name="vehicle sales",
-        aliases=("actual vehicle sales", "forecast vehicle sales", "vehicle units sold", "vehicles sold", "sales units"),
+        aliases=("actual vehicle sales", "forecast vehicle sales", "vehicle units sold", "vehicles sold", "sales units", "sales volume"),
         core_terms=("VehicleSales", "VehicleSalesForecast"),
         dimensions=(
             _dim("month", ("months", "monthly"), ("monthLabel", "Month"), distinct_values=12),
@@ -378,10 +378,15 @@ class CapabilityRegistry:
         primary = report.detected_capabilities[0]
         if not primary.exact and primary.score < 0.9:
             return None
-        if len(report.detected_dimensions) != 1:
+        if not report.detected_dimensions:
             return None
         capability = self.find_capability(report.primary_capability)
         if not capability:
+            return None
+        dynamic_query = _direct_dynamic_query(report)
+        if dynamic_query:
+            return dynamic_query.strip()
+        if len(report.detected_dimensions) != 1:
             return None
         dimension_name = normalize_text(report.detected_dimensions[0].name)
         for key, query in capability.query_templates.items():
@@ -471,3 +476,317 @@ def _suggestion_label(capability_name: str, dimension_name: str) -> str:
 
 
 DEFAULT_REGISTRY = CapabilityRegistry()
+
+
+def _detected_dimension_names(report: ResolutionReport) -> Tuple[str, ...]:
+    return tuple(str(item.name).strip().lower() for item in report.detected_dimensions)
+
+
+def _scope_from_question(question: str) -> Optional[Tuple[str, str]]:
+    q = normalize_text(question)
+    if "oem" in q:
+        return ("OEM", "OEM_Survey")
+    if "tier1" in q:
+        return ("Tier1", "Tier1_Survey")
+    if "semiconductor" in q or "semi conductor" in q:
+        return ("Semiconductor", "Semiconductor_Survey")
+    return None
+
+
+def _survey_group_projection(scope: Optional[Tuple[str, str]]) -> Tuple[str, str, str]:
+    if scope:
+        label, cls = scope
+        return (
+            f'BIND("{label}" AS ?surveyGroup)',
+            f"?origin a survey:{cls} .",
+            "?surveyGroup",
+        )
+    return (
+        """
+VALUES (?surveyClass ?surveyGroup) {
+  (survey:OEM_Survey "OEM")
+  (survey:Tier1_Survey "Tier1")
+  (survey:Semiconductor_Survey "Semiconductor")
+}
+""".strip(),
+        "?origin a ?surveyClass .",
+        "?surveyGroup",
+    )
+
+
+def _direct_dynamic_query(report: ResolutionReport) -> Optional[str]:
+    capability = str(report.primary_capability or "").strip().lower()
+    dims = set(_detected_dimension_names(report))
+    q_norm = normalize_text(report.original_question)
+
+    if capability == "regional demand":
+        return _regional_demand_direct_query(dims, q_norm)
+    if capability == "vehicle sales":
+        return _vehicle_sales_direct_query(dims, q_norm)
+    if capability == "shortage":
+        return _shortage_direct_query(dims, q_norm)
+    if capability == "autonomous driving":
+        return _autonomous_driving_direct_query(dims, q_norm)
+    if capability == "inventory":
+        return _inventory_direct_query(dims, q_norm)
+    if capability == "order cancellation":
+        return _order_cancellation_direct_query(dims, q_norm)
+    return None
+
+
+def _regional_demand_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    scope = _scope_from_question(q_norm)
+    bind_survey, origin_type, survey_var = _survey_group_projection(scope)
+    if "region" in dims:
+        region_requested = any(
+            phrase in q_norm
+            for phrase in (
+                "by region",
+                "per region",
+                "across region",
+                "grouped by region",
+                "for each region",
+                "current demand by region",
+            )
+        )
+        if "vehicle type" in dims and not region_requested:
+            return None
+        select_survey = "" if scope else "?surveyGroup "
+        group_survey = "" if scope else "?surveyGroup "
+        return f"""
+SELECT {select_survey}?regionName (SUM(?demand) AS ?totalDemand) WHERE {{
+  {bind_survey}
+  ?entry a survey:DemandForRegion ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:inRegion ?region ;
+         survey:totalDemand ?demand .
+  {origin_type}
+  ?region survey:regionName ?regionName .
+}}
+GROUP BY {group_survey}?regionName
+ORDER BY {group_survey}?regionName
+"""
+    if dims == {"survey group"}:
+        return f"""
+SELECT {survey_var} (SUM(?demand) AS ?totalDemand) WHERE {{
+  {bind_survey}
+  ?entry a survey:DemandForRegion ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:totalDemand ?demand .
+  {origin_type}
+}}
+GROUP BY {survey_var}
+ORDER BY {survey_var}
+"""
+    return None
+
+
+def _vehicle_sales_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    if "vehicle type" in dims and not any(
+        phrase in q_norm for phrase in ("vehicle type", "by type", "grouped by type")
+    ):
+        dims = set(dims)
+        dims.discard("vehicle type")
+    dims = set(dims) & {"month", "year"}
+    if not (dims & {"month", "year"}):
+        return None
+    data_filter = ""
+    if "actual" in q_norm:
+        data_filter = "survey:isActualData true ;"
+    elif "forecast" in q_norm or "forecasted" in q_norm:
+        data_filter = "survey:isForecastData true ;"
+    if dims == {"month"}:
+        return f"""
+SELECT ?monthLabel (SUM(?units) AS ?unitsSold) WHERE {{
+  ?obs a survey:VehicleSalesObservation ;
+       {data_filter}
+       survey:forTimePeriod ?month ;
+       survey:unitsSold ?units .
+  OPTIONAL {{ ?month survey:periodLabel ?periodLabel . }}
+  BIND(COALESCE(?periodLabel, REPLACE(STR(?month), "^.*/", "")) AS ?monthLabel)
+}}
+GROUP BY ?monthLabel
+ORDER BY ?monthLabel
+"""
+    if dims == {"year"}:
+        return f"""
+SELECT ?year (SUM(?units) AS ?unitsSold) WHERE {{
+  ?obs a survey:VehicleSalesObservation ;
+       {data_filter}
+       survey:forTimePeriod ?month ;
+       survey:unitsSold ?units .
+  OPTIONAL {{ ?month survey:periodLabel ?periodLabel . }}
+  BIND(COALESCE(?periodLabel, REPLACE(STR(?month), "^.*/", "")) AS ?label)
+  BIND(REPLACE(STR(?label), "^.*(20[0-9]{{2}}).*$", "$1") AS ?year)
+}}
+GROUP BY ?year
+ORDER BY ?year
+"""
+    return None
+
+
+def _shortage_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    scope = _scope_from_question(q_norm)
+    bind_survey, origin_type, survey_var = _survey_group_projection(scope)
+    if dims == {"shortage status"}:
+        return f"""
+SELECT ?shortageStatus (COUNT(?company) AS ?companyCount) WHERE {{
+  {bind_survey}
+  ?company a survey:Company ;
+           survey:hasSurveyOrigin ?origin ;
+           survey:reportsShortage ?shortage .
+  {origin_type}
+  BIND(IF(?shortage = true, "yes", "no") AS ?shortageStatus)
+}}
+GROUP BY ?shortageStatus
+ORDER BY ?shortageStatus
+"""
+    if dims in ({"survey group"}, {"survey group", "shortage status"}):
+        return f"""
+SELECT {survey_var} ?shortageStatus (COUNT(?company) AS ?companyCount) WHERE {{
+  {bind_survey}
+  ?company a survey:Company ;
+           survey:hasSurveyOrigin ?origin ;
+           survey:reportsShortage ?shortage .
+  {origin_type}
+  BIND(IF(?shortage = true, "yes", "no") AS ?shortageStatus)
+}}
+GROUP BY {survey_var} ?shortageStatus
+ORDER BY {survey_var} ?shortageStatus
+"""
+    return None
+
+
+def _autonomous_driving_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    supported = {"vehicle type", "sae level", "year"}
+    if not dims or not dims.issubset(supported):
+        return None
+    scope = _scope_from_question(q_norm)
+    if scope and scope[1] == "Semiconductor_Survey":
+        return None
+    if scope:
+        root_class = "AutonomousDrivingDevelopment_OEM" if scope[1] == "OEM_Survey" else "AutonomousDrivingDevelopment_Tier1"
+        where_start = f"""
+?root a survey:{root_class} ;
+      survey:hasSurveyOrigin survey:{scope[1]} ;
+      survey:hasDetail ?entry .
+?entry a survey:AutonomousDrivingDevelopment ;
+"""
+    else:
+        where_start = "?entry a survey:AutonomousDrivingDevelopment ;"
+
+    select_parts = []
+    group_parts = []
+    binds = []
+    triples = [where_start, "survey:hasPercentage ?pct ."]
+    if "vehicle type" in dims:
+        triples.insert(-1, "survey:hasVehicleType ?vehicle ;")
+        select_parts.append("?vehicleType")
+        group_parts.append("?vehicleType")
+        binds.append('BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)')
+    if "sae level" in dims:
+        triples.insert(-1, "survey:hasSAELevel ?sae ;")
+        select_parts.append("?saeLevel")
+        group_parts.append("?saeLevel")
+        binds.append('BIND(REPLACE(STR(?sae), "^.*/", "") AS ?saeLevel)')
+    if "year" in dims:
+        triples.insert(-1, "survey:hasYear ?year ;")
+        select_parts.append("?year")
+        group_parts.append("?year")
+    return f"""
+SELECT {' '.join(select_parts)} (AVG(?pct) AS ?avgPercentage) WHERE {{
+  {' '.join(triples)}
+  {' '.join(binds)}
+}}
+GROUP BY {' '.join(group_parts)}
+ORDER BY {' '.join(group_parts)}
+"""
+
+
+def _inventory_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    if dims == {"component"}:
+        return """
+SELECT ?component (SUM(?participants) AS ?participantTotal) WHERE {
+  ?entry a survey:InventoryDevelopment_Tier1 ;
+         survey:forComponent ?component ;
+         survey:participantCount ?participants .
+}
+GROUP BY ?component
+ORDER BY ?component
+"""
+    if dims == {"component", "trend"}:
+        return """
+SELECT ?component ?trend (SUM(?participants) AS ?participantTotal) WHERE {
+  ?entry a survey:InventoryDevelopment_Tier1 ;
+         survey:forComponent ?component ;
+         survey:inventoryTrend ?trend ;
+         survey:participantCount ?participants .
+}
+GROUP BY ?component ?trend
+ORDER BY ?component ?trend
+"""
+    if dims == {"technology category"}:
+        return """
+SELECT ?technologyCategory (COUNT(?entry) AS ?entryCount) WHERE {
+  ?entry a survey:InventoryDevelopment_Semi ;
+         survey:forTechnologyCategory ?technology .
+  BIND(REPLACE(STR(?technology), "^.*/", "") AS ?technologyCategory)
+}
+GROUP BY ?technologyCategory
+ORDER BY ?technologyCategory
+"""
+    if dims == {"technology category", "trend"}:
+        return """
+SELECT ?technologyCategory ?trend (COUNT(?entry) AS ?entryCount) WHERE {
+  ?entry a survey:InventoryDevelopment_Semi ;
+         survey:forTechnologyCategory ?technology ;
+         survey:hasInventoryTrend ?trend .
+  BIND(REPLACE(STR(?technology), "^.*/", "") AS ?technologyCategory)
+}
+GROUP BY ?technologyCategory ?trend
+ORDER BY ?technologyCategory ?trend
+"""
+    return None
+
+
+def _order_cancellation_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    if "response type" in dims and not any(
+        phrase in q_norm
+        for phrase in ("response type", "response trend", "increase", "decrease", "stable")
+    ):
+        dims = set(dims)
+        dims.discard("response type")
+    if dims == {"technology category"}:
+        return """
+SELECT ?technologyCategory (SUM(?participants) AS ?participantCount) WHERE {
+  ?entry a survey:OrderCancellation ;
+         survey:forTechnologyCategory ?technology ;
+         survey:participantCount ?participants .
+  BIND(REPLACE(STR(?technology), "^.*/", "") AS ?technologyCategory)
+}
+GROUP BY ?technologyCategory
+ORDER BY ?technologyCategory
+"""
+    if dims == {"response type"}:
+        return """
+SELECT ?responseType (SUM(?participants) AS ?participantCount) WHERE {
+  ?entry a survey:OrderCancellation ;
+         survey:hasResponseType ?responseType ;
+         survey:participantCount ?participants .
+}
+GROUP BY ?responseType
+ORDER BY ?responseType
+"""
+    if dims == {"technology category", "response type"}:
+        return """
+SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE {
+  ?entry a survey:OrderCancellation ;
+         survey:forTechnologyCategory ?technology ;
+         survey:hasResponseType ?responseType ;
+         survey:participantCount ?participants .
+  BIND(REPLACE(STR(?technology), "^.*/", "") AS ?technologyCategory)
+}
+GROUP BY ?technologyCategory ?responseType
+ORDER BY ?technologyCategory ?responseType
+"""
+    return None

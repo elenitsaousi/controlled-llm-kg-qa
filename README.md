@@ -183,11 +183,25 @@ Analyze confidence-aware routing:
 python evaluation\analyze_confidence_routing.py --results results\final1000_wf_test_scope_origin_m010.json --score-key ml_score --sort-by-score --out-json results\final1000_wf_test_scope_origin_confidence_routing_sorted_v2.json --out-md results\final1000_wf_test_scope_origin_confidence_routing_sorted_v2.md
 ```
 
+Classify remaining selection failures into action buckets:
+
+```powershell
+python evaluation\analyze_remaining_failure_actions.py --results results\final1000_wf_test_scope_origin_m010.json --out-json results\final1000_wf_test_remaining_failure_actions.json --out-md results\final1000_wf_test_remaining_failure_actions.md
+```
+
 Analyze Streamlit runtime efficiency and estimated LLM cost:
 
 ```powershell
 python evaluation\analyze_system_efficiency.py --log logs\kgqa_sessions.jsonl --cost-per-call 0.20 --out-json results\system_efficiency_report.json --out-md results\system_efficiency_report.md
 ```
+
+The UI first attempts direct graph-supported capability routing for common
+answerable families before calling the LLM: current/regional demand,
+future demand, vehicle-sales time breakdowns, shortage counts, autonomous
+driving averages, inventory distributions, and order-cancellation summaries.
+If no exact graph-supported capability path survives, the system falls back to
+LLM candidates, ML/semantic reranking, execution-aware selection checks, and
+clarification for genuinely competing interpretations.
 
 Build and run the controlled 500-question efficiency set. The default run is a
 cost estimate: graph-supported direct routes are executed, while unresolved

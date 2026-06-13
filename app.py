@@ -1676,6 +1676,22 @@ def _build_confidence_route(
     candidates = _ranked_confidence_candidates(result, sort_by_score=sort_by_score)
     if not candidates:
         return None
+    selected_query = " ".join(str(result.get("selected_query") or "").split()).lower()
+    if selected_query:
+        selected_matches = [
+            candidate
+            for candidate in candidates
+            if " ".join(str(candidate.get("query") or "").split()).lower() == selected_query
+        ]
+        if selected_matches:
+            selected_match = selected_matches[0]
+            candidates = [selected_match] + [
+                candidate
+                for candidate in candidates
+                if " ".join(str(candidate.get("query") or "").split()).lower() != selected_query
+            ]
+        else:
+            candidates = [{"query": result.get("selected_query"), "source": "execution_aware"}] + candidates
     schema_dict = _load_schema_dict_cached(schema_path)
     top1 = candidates[0]
     top2 = candidates[1] if len(candidates) > 1 else {}
@@ -1984,6 +2000,109 @@ def _question_prefers_non_count(question: str) -> bool:
         or " by " in q
         or " across " in q
     )
+
+
+def _question_prefers_grouped_breakdown(question: str) -> bool:
+    q = str(question or "").lower()
+    if re.search(r"\b(highest|top|largest|max|maximum|lowest|min|minimum|best)\b", q):
+        return False
+    return bool(re.search(r"\b(by|per|for each|grouped by|broken down by|across)\b", q))
+
+
+def _query_has_group_by(query: str) -> bool:
+    return bool(re.search(r"\bGROUP\s+BY\b", str(query or ""), flags=re.I))
+
+
+def _query_has_limit_one(query: str) -> bool:
+    return bool(re.search(r"\bLIMIT\s+1\b", str(query or ""), flags=re.I))
+
+
+def _query_has_count_aggregation(query: str) -> bool:
+    return bool(re.search(r"\bCOUNT\s*\(", str(query or ""), flags=re.I))
+
+
+def _execution_aware_selected_query_override(
+    result: Dict[str, Any],
+    *,
+    question: str,
+    graph_path: str,
+    fuseki_query_url: str,
+    sort_by_score: bool,
+    max_candidates: int = 5,
+) -> Dict[str, object] | None:
+    selected_query = str(result.get("selected_query") or "").strip()
+    if not selected_query or not _graph_backend_available(graph_path):
+        return None
+
+    candidates = _ranked_confidence_candidates(result, sort_by_score=sort_by_score)
+    ordered_queries = [selected_query]
+    for candidate in candidates:
+        query = str(candidate.get("query") or "").strip()
+        if query and " ".join(query.split()).lower() not in {
+            " ".join(q.split()).lower() for q in ordered_queries
+        }:
+            ordered_queries.append(query)
+        if len(ordered_queries) >= max_candidates:
+            break
+
+    prefers_grouped = _question_prefers_grouped_breakdown(question)
+    prefers_non_count = _question_prefers_non_count(question)
+
+    inspected: List[Dict[str, object]] = []
+    for idx, query in enumerate(ordered_queries, start=1):
+        rows, error = _preview_query_rows_cached(
+            graph_path,
+            fuseki_query_url,
+            query,
+            max_rows=1,
+        )
+        shape_flags = []
+        if prefers_grouped and not _query_has_group_by(query):
+            shape_flags.append("missing_group_by_for_breakdown_question")
+        if prefers_grouped and _query_has_limit_one(query):
+            shape_flags.append("ranked_one_for_breakdown_question")
+        if prefers_non_count and _query_has_count_aggregation(query):
+            shape_flags.append("count_for_non_count_question")
+        inspected.append(
+            {
+                "rank": idx,
+                "query": query,
+                "has_rows": bool(rows) and not bool(error),
+                "error": error,
+                "shape_flags": shape_flags,
+            }
+        )
+
+    selected_info = inspected[0]
+    selected_bad = bool(selected_info.get("error")) or not selected_info.get("has_rows") or bool(
+        selected_info.get("shape_flags")
+    )
+    if not selected_bad:
+        return None
+
+    for alternative in inspected[1:]:
+        if not alternative.get("has_rows") or alternative.get("error"):
+            continue
+        alt_flags = list(alternative.get("shape_flags") or [])
+        if alt_flags and not selected_info.get("shape_flags"):
+            continue
+        if len(alt_flags) > len(list(selected_info.get("shape_flags") or [])):
+            continue
+        return {
+            "from_query": selected_query,
+            "to_query": alternative["query"],
+            "reason": "execution-aware switch to non-empty/shape-compatible candidate",
+            "selected_profile": selected_info,
+            "alternative_profile": alternative,
+            "inspected_count": len(inspected),
+        }
+    return {
+        "from_query": selected_query,
+        "to_query": None,
+        "reason": "selected query failed execution/shape check but no better alternative was found",
+        "selected_profile": selected_info,
+        "inspected_count": len(inspected),
+    }
 
 
 def _humanize_question_label(text: str) -> str:
@@ -4494,6 +4613,27 @@ if asked:
             isinstance(result.get("metadata"), dict)
             and result["metadata"].get("direct_capability_route")
         )
+
+        if execute_selected and not guided_query and not is_direct_capability_route and _graph_backend_available(graph_path):
+            execution_override = _execution_aware_selected_query_override(
+                result,
+                question=effective_question or question,
+                graph_path=graph_path,
+                fuseki_query_url=_active_fuseki_query_url(),
+                sort_by_score=bool(confidence_sort_by_score),
+                max_candidates=5,
+            )
+            if execution_override is not None:
+                metadata = result.setdefault("metadata", {})
+                if isinstance(metadata, dict):
+                    metadata["execution_aware_selection"] = execution_override
+                replacement_query = str(execution_override.get("to_query") or "").strip()
+                if replacement_query:
+                    result["selected_query"] = replacement_query
+                    result["selection_reason"] = (
+                        str(result.get("selection_reason") or "").strip()
+                        + "; execution-aware selected non-empty/shape-compatible alternative"
+                    ).strip("; ")
 
         confidence_route = result.get("confidence_route") if is_direct_capability_route else None
         if confidence_routing_enabled and not guided_query and not is_direct_capability_route:
