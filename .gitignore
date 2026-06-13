@@ -8,6 +8,7 @@ analysis_inputs/
 analysis_outputs/
 results/
 logs/
+.cache/
 WebVOWL/
 OWL2VOWL/
 true_demand_webvowl*.json

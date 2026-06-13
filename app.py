@@ -1876,6 +1876,78 @@ def _single_direct_capability_option(
     return option
 
 
+def _direct_capability_result(question: str, option: Dict[str, object]) -> Dict[str, object]:
+    query = str(option.get("query", "") or "").strip()
+    reason = (
+        "single graph-supported capability interpretation resolved from "
+        "capability, dimension, and intent"
+    )
+    return {
+        "answer": "Validated graph-supported capability query selected.",
+        "selected_query": query,
+        "candidates": [
+            {
+                "query": query,
+                "source": option.get("source", "capability_inventory"),
+                "score": option.get("score", 0.0),
+            }
+        ],
+        "schema_ranked": [],
+        "learning_ranked": [],
+        "metadata": {
+            "guided_query": True,
+            "direct_capability_route": True,
+            "llm_skipped": True,
+        },
+        "errors": [],
+        "prompt": "",
+        "policy": "direct_capability",
+        "entropy": 0.0,
+        "selection_reason": reason,
+        "used_ml": False,
+        "effective_question": question,
+        "ml_policy": "skipped",
+        "ml_model_path": None,
+        "predicted_regime": "low",
+        "predicted_entropy": 0.0,
+        "query_plan_ml_used": False,
+        "ml_ranker_applied": False,
+        "candidate_duplicates_removed": 0,
+        "selection_explanation": {
+            "selected_policy": "direct_capability",
+            "selection_reason": reason,
+            "selected_query_valid": True,
+            "selected_query_errors": [],
+            "selected_execution_has_rows": None,
+            "candidate_count": 1,
+            "valid_candidate_count": 1,
+        },
+        "answerability": {
+            "status": "direct_capability_pending_execution",
+            "can_answer": None,
+            "reason": "A single graph-supported capability query was selected before using the LLM.",
+            "selected_has_rows": None,
+            "selected_error": None,
+            "alternative_nonempty_count": 0,
+            "valid_candidate_count": 1,
+        },
+        "clarification": None,
+        "request_clarification": None,
+        "confidence_route": {
+            "enabled": True,
+            "route": "auto_answer",
+            "selected_query": query,
+            "reason": reason,
+            "score1": 1.0,
+            "score2": 0.0,
+            "margin": 1.0,
+            "options": [option],
+            "safety_flags": [],
+            "blocking_safety_flags": [],
+        },
+    }
+
+
 def _question_prefers_non_count(question: str) -> bool:
     q = str(question or "").lower()
     if re.search(r"\b(how many|count|number of)\b", q):
@@ -4004,6 +4076,8 @@ with st.sidebar:
     confidence_safety_guard = True
     confidence_sort_by_score = True
     fast_interactive_mode = True
+    cost_aware_direct_answers = True
+    llm_candidate_cache_enabled = True
     show_prompt = False
     show_candidates = False
     show_candidate_diagnostics = False
@@ -4124,6 +4198,22 @@ with st.sidebar:
                     "The UI still executes the selected or clarified query before showing an answer."
                 ),
             )
+            cost_aware_direct_answers = st.checkbox(
+                "Skip LLM for single supported capability",
+                value=True,
+                help=(
+                    "If the graph capability inventory resolves exactly one supported interpretation "
+                    "and it returns rows, execute it directly before calling the LLM."
+                ),
+            )
+            llm_candidate_cache_enabled = st.checkbox(
+                "Cache identical LLM candidate prompts",
+                value=True,
+                help=(
+                    "Reuses candidate-generation results only when the prompt/model/settings hash "
+                    "matches exactly. This reduces repeated demo cost without changing ranking."
+                ),
+            )
 
             st.subheader("Diagnostics")
             show_prompt = st.checkbox("Show candidate prompt", value=False)
@@ -4196,6 +4286,7 @@ with st.sidebar:
     os.environ["INFINEON_ENABLE_SCHEMA_SLICING"] = "1" if family_schema_routing_enabled else "0"
     os.environ["INFINEON_SCHEMA_SLICING_MAX_FAMILIES"] = str(int(family_schema_routing_max))
     os.environ["INFINEON_SCHEMA_SLICING_FULL_FALLBACK"] = "1" if family_schema_routing_fallback else "0"
+    os.environ["INFINEON_ENABLE_LLM_CACHE"] = "1" if llm_candidate_cache_enabled else "0"
 
     with st.expander("System status", expanded=False):
         _render_system_status(
@@ -4261,11 +4352,6 @@ if asked:
         st.warning("Please enter a question.")
     elif not api_url.strip():
         st.error("Missing API URL.")
-    elif not guided_query and not api_key.strip() and not (
-        os.environ.get("USER_LLM")
-        or os.environ.get("INFINEON_API_USER")
-    ):
-        st.error("Missing API key or token-refresh credentials.")
     else:
         try:
             schema = _load_schema_from_path(schema_path)
@@ -4273,7 +4359,29 @@ if asked:
             st.error(f"Schema load failed: {exc}")
             st.stop()
 
-        if show_prompt and not guided_query:
+        direct_capability_option = None
+        if (
+            cost_aware_direct_answers
+            and not guided_query
+            and execute_selected
+            and _graph_backend_available(graph_path)
+        ):
+            direct_capability_option = _single_direct_capability_option(
+                question=question,
+                graph_path=graph_path,
+                fuseki_query_url=_active_fuseki_query_url(),
+            )
+
+        if (
+            not guided_query
+            and not direct_capability_option
+            and not api_key.strip()
+            and not (os.environ.get("USER_LLM") or os.environ.get("INFINEON_API_USER"))
+        ):
+            st.error("Missing API key or token-refresh credentials.")
+            st.stop()
+
+        if show_prompt and not guided_query and not direct_capability_option:
             prompt = generate_candidate_prompt(question, schema, k=5)
             st.subheader("Candidate Generation Prompt")
             st.code(prompt, language="text")
@@ -4311,6 +4419,8 @@ if asked:
                     "clarification": None,
                     "request_clarification": None,
                 }
+            elif direct_capability_option:
+                result = _direct_capability_result(question, direct_capability_option)
             else:
                 os.environ["INFINEON_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
                 client = InfineonGPTClient(
@@ -4353,8 +4463,13 @@ if asked:
         if effective_question and effective_question != question.strip():
             st.info(f"Canonicalized question: {effective_question}")
 
-        confidence_route = None
-        if confidence_routing_enabled and not guided_query:
+        is_direct_capability_route = bool(
+            isinstance(result.get("metadata"), dict)
+            and result["metadata"].get("direct_capability_route")
+        )
+
+        confidence_route = result.get("confidence_route") if is_direct_capability_route else None
+        if confidence_routing_enabled and not guided_query and not is_direct_capability_route:
             confidence_route = _build_confidence_route(
                 result,
                 question=effective_question or question,
@@ -4368,7 +4483,7 @@ if asked:
                 result["confidence_route"] = confidence_route
 
         direct_option = None
-        if execute_selected and not guided_query and _graph_backend_available(graph_path):
+        if execute_selected and not guided_query and not is_direct_capability_route and _graph_backend_available(graph_path):
             direct_option = _single_direct_capability_option(
                 question=effective_question or question,
                 graph_path=graph_path,
@@ -4679,6 +4794,13 @@ if asked:
                 gen_meta = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
                 if gen_meta:
                     routed = ", ".join(str(x) for x in gen_meta.get("schema_slice_names", []) or [])
+                    if gen_meta.get("llm_skipped"):
+                        st.caption("LLM generation: skipped by direct capability route")
+                    elif gen_meta.get("llm_cache_enabled"):
+                        st.caption(
+                            "LLM generation cache: "
+                            f"{'hit' if gen_meta.get('llm_cache_hit') else 'miss'}"
+                        )
                     st.caption(
                         "Schema routing: "
                         f"{'sliced' if gen_meta.get('schema_slicing_applied') else 'full'}"

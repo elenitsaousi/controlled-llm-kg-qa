@@ -1,6 +1,8 @@
 # candidate_generation.py
+import hashlib
 import json
 import os
+import time
 from pathlib import Path
 from typing import Dict, List, Optional
 from kg.schema import KGSchema
@@ -37,6 +39,108 @@ VALIDATED_RETRIEVAL_SOURCES = [
     BASE / "data" / "infineon" / "infineon_dev.json",
 ]
 _VALIDATED_QUERY_PAIR_CACHE: Optional[List[Dict[str, str]]] = None
+LLM_CACHE_VERSION = "candidate_generation_v1"
+
+
+def _llm_cache_enabled() -> bool:
+    return os.getenv("INFINEON_ENABLE_LLM_CACHE", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _llm_cache_dir() -> Path:
+    return Path(os.getenv("INFINEON_LLM_CACHE_DIR", str(BASE / ".cache" / "kgqa_llm")))
+
+
+def _llm_client_signature(client: object) -> Dict[str, object]:
+    return {
+        "class": client.__class__.__name__,
+        "model": getattr(client, "model", None),
+        "temperature": getattr(client, "temperature", None),
+        "max_tokens": getattr(client, "max_tokens", None),
+        "base_url": getattr(client, "base_url", None),
+    }
+
+
+def _llm_cache_key(prompt: str, k: int, client: object, purpose: str) -> str:
+    payload = {
+        "version": LLM_CACHE_VERSION,
+        "purpose": purpose,
+        "k": int(k),
+        "client": _llm_client_signature(client),
+        "prompt": prompt,
+    }
+    raw = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _read_llm_cache(key: str) -> Optional[List[str]]:
+    path = _llm_cache_dir() / f"{key}.json"
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if payload.get("version") != LLM_CACHE_VERSION:
+        return None
+    values = payload.get("generated")
+    if not isinstance(values, list):
+        return None
+    return [str(value) for value in values]
+
+
+def _write_llm_cache(key: str, generated: List[str], metadata: Dict[str, object]) -> None:
+    try:
+        cache_dir = _llm_cache_dir()
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        path = cache_dir / f"{key}.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "version": LLM_CACHE_VERSION,
+                    "created_at": time.time(),
+                    "generated": list(generated),
+                    "metadata": metadata,
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+
+def _generate_with_cache(client: object, prompt: str, k: int, purpose: str) -> tuple[List[str], Dict[str, object]]:
+    key = _llm_cache_key(prompt, k, client, purpose)
+    metadata = {
+        "llm_cache_enabled": _llm_cache_enabled(),
+        "llm_cache_key": key,
+        "llm_cache_hit": False,
+        "llm_cache_purpose": purpose,
+    }
+    if _llm_cache_enabled():
+        cached = _read_llm_cache(key)
+        if cached is not None:
+            metadata["llm_cache_hit"] = True
+            return cached[:k], metadata
+
+    generated = list(client.generate(prompt, k=k))
+    if _llm_cache_enabled():
+        _write_llm_cache(
+            key,
+            generated,
+            {
+                "purpose": purpose,
+                "k": int(k),
+                "client": _llm_client_signature(client),
+            },
+        )
+    return generated, metadata
 
 
 def _normalize_candidate_query(text: str) -> str:
@@ -1358,11 +1462,22 @@ def generate_candidates(
 
 
 
+    llm_cache_metadata: Dict[str, object] = {
+        "llm_cache_enabled": _llm_cache_enabled(),
+        "llm_cache_hit": False,
+    }
+
     try:
         # Call LLM
-        generated = client.generate(prompt, k=k)
+        generated, llm_cache_metadata = _generate_with_cache(
+            client,
+            prompt,
+            k=k,
+            purpose="candidate_generation",
+        )
 
         generated_full_schema: List[str] = []
+        full_schema_cache_metadata: Dict[str, object] = {}
         if sliced_schema is not None and k > 1 and full_schema_fallback_enabled():
             full_prompt = build_candidate_prompt(
                 question=question,
@@ -1373,8 +1488,11 @@ def generate_candidates(
                 entity_profiles=linked_profiles,
                 predicted_query_plan_labels=predicted_query_plan_labels,
             )
-            generated_full_schema = _normalize_generated_output(
-                client.generate(full_prompt, k=max(1, k // 2))
+            generated_full_schema, full_schema_cache_metadata = _generate_with_cache(
+                client,
+                full_prompt,
+                k=max(1, k // 2),
+                purpose="candidate_generation_full_schema",
             )
 
 
@@ -1495,6 +1613,10 @@ def generate_candidates(
                 ),
                 "generation_repair_enabled": repair_enabled,
                 "generation_repair_count": repair_count,
+                "llm_cache_enabled": bool(llm_cache_metadata.get("llm_cache_enabled")),
+                "llm_cache_hit": bool(llm_cache_metadata.get("llm_cache_hit")),
+                "llm_cache_key": llm_cache_metadata.get("llm_cache_key"),
+                "full_schema_llm_cache_hit": bool(full_schema_cache_metadata.get("llm_cache_hit", False)),
                 "schema_slicing_applied": bool(sliced_schema),
                 "schema_slice_names": slice_names,
                 "schema_slice_confidence": str(slice_route.get("confidence", "disabled")),

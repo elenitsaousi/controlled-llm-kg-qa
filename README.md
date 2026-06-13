@@ -24,6 +24,7 @@ ontology visualization.
 User question
   -> Streamlit UI
   -> optional graph-aware guidance / capability resolution
+  -> direct graph-supported capability execution when exactly one interpretation is resolved
   -> LLM candidate SPARQL generation
   -> validation + semantic/contract features
   -> ML ranking and confidence routing
@@ -122,10 +123,21 @@ FUSEKI_QUERY_URL=http://localhost:3030/infineon/sparql
 WEBVOWL_URL=http://localhost:8080
 TRUE_DEMAND_ONTOLOGY_PATH=data/infineon/true_demand_ontology_extracted.ttl
 TRUE_DEMAND_WEBVOWL_JSON_PATH=data/infineon/true_demand_webvowl.json
+
+# Optional cost/latency controls used by the Streamlit demo
+INFINEON_ENABLE_LLM_CACHE=1
+INFINEON_LLM_CACHE_DIR=.cache/kgqa_llm
 ```
 
 If `FUSEKI_QUERY_URL` is empty, the app falls back to local RDFLib execution over
 `data/infineon/graph.ttl`, which is slower.
+
+The Streamlit app can skip the LLM entirely when the capability inventory resolves
+one graph-supported interpretation and that query returns rows. For repeated
+free-text questions, `INFINEON_ENABLE_LLM_CACHE=1` reuses candidate-generation
+outputs only when the prompt/model/settings hash is identical. This reduces demo
+cost and latency without changing the ranking logic for new or ambiguous
+questions.
 
 ## Rebuilding The WebVOWL Ontology
 
