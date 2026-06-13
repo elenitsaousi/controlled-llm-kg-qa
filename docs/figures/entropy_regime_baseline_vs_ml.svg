@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="680" viewBox="0 0 1100 680">
+  <defs>
+    <style>
+      .bg { fill: #f7f9fb; }
+      .panel { fill: #ffffff; stroke: #d7dee8; stroke-width: 1.5; }
+      .title { font: 700 34px Arial, sans-serif; fill: #142033; }
+      .subtitle { font: 400 18px Arial, sans-serif; fill: #5b6678; }
+      .axis { stroke: #1f2937; stroke-width: 2; }
+      .grid { stroke: #e6ebf1; stroke-width: 1; }
+      .tick { font: 14px Arial, sans-serif; fill: #526071; }
+      .label { font: 700 17px Arial, sans-serif; fill: #243244; }
+      .legend { font: 700 16px Arial, sans-serif; fill: #263447; }
+      .value { font: 700 15px Arial, sans-serif; fill: #263447; }
+      .note { font: 400 14px Arial, sans-serif; fill: #64748b; }
+      .baseline { fill: none; stroke: #6b7280; stroke-width: 4; }
+      .ml { fill: none; stroke: #00a99d; stroke-width: 4; }
+      .baseline-dot { fill: #6b7280; stroke: #ffffff; stroke-width: 3; }
+      .ml-dot { fill: #00a99d; stroke: #ffffff; stroke-width: 3; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1100" height="680"/>
+  <rect class="panel" x="58" y="44" width="984" height="584" rx="18"/>
+
+  <text class="title" x="92" y="96">Accuracy by Entropy Regime</text>
+  <text class="subtitle" x="92" y="126">Baseline schema/intent selection vs ML reranking on the True Demand KGQA test set</text>
+
+  <!-- Chart geometry: left=150, top=170, width=820, height=360, y range 0 to 1.0 -->
+  <!-- Horizontal grid/ticks -->
+  <line class="grid" x1="150" y1="530" x2="970" y2="530"/>
+  <line class="grid" x1="150" y1="458" x2="970" y2="458"/>
+  <line class="grid" x1="150" y1="386" x2="970" y2="386"/>
+  <line class="grid" x1="150" y1="314" x2="970" y2="314"/>
+  <line class="grid" x1="150" y1="242" x2="970" y2="242"/>
+  <line class="grid" x1="150" y1="170" x2="970" y2="170"/>
+
+  <text class="tick" x="104" y="535">0%</text>
+  <text class="tick" x="96" y="463">20%</text>
+  <text class="tick" x="96" y="391">40%</text>
+  <text class="tick" x="96" y="319">60%</text>
+  <text class="tick" x="96" y="247">80%</text>
+  <text class="tick" x="88" y="175">100%</text>
+
+  <line class="axis" x1="150" y1="170" x2="150" y2="530"/>
+  <line class="axis" x1="150" y1="530" x2="970" y2="530"/>
+
+  <!-- X labels -->
+  <text class="label" x="256" y="570" text-anchor="middle">Low</text>
+  <text class="label" x="560" y="570" text-anchor="middle">Medium</text>
+  <text class="label" x="864" y="570" text-anchor="middle">High</text>
+  <text class="note" x="560" y="600" text-anchor="middle">Entropy regime from normalized candidate-score entropy (softmax, T=0.10, quantile buckets)</text>
+
+  <!-- Axis labels -->
+  <text class="label" x="560" y="646" text-anchor="middle">Entropy regime</text>
+  <text class="label" transform="translate(42,350) rotate(-90)" text-anchor="middle">Top-1 accuracy</text>
+
+  <!-- Data points: baseline low=.303 y=420.92, med=.303 y=420.92, high=.576 y=322.64 -->
+  <!-- ML low=.697 y=279.08, med=.621 y=306.44, high=.712 y=273.68 -->
+  <polyline class="baseline" points="256,420.92 560,420.92 864,322.64"/>
+  <polyline class="ml" points="256,279.08 560,306.44 864,273.68"/>
+
+  <circle class="baseline-dot" cx="256" cy="420.92" r="8"/>
+  <circle class="baseline-dot" cx="560" cy="420.92" r="8"/>
+  <circle class="baseline-dot" cx="864" cy="322.64" r="8"/>
+  <circle class="ml-dot" cx="256" cy="279.08" r="8"/>
+  <circle class="ml-dot" cx="560" cy="306.44" r="8"/>
+  <circle class="ml-dot" cx="864" cy="273.68" r="8"/>
+
+  <!-- Value labels -->
+  <text class="value" x="256" y="444" text-anchor="middle">30.3%</text>
+  <text class="value" x="560" y="444" text-anchor="middle">30.3%</text>
+  <text class="value" x="864" y="347" text-anchor="middle">57.6%</text>
+  <text class="value" x="256" y="260" text-anchor="middle">69.7%</text>
+  <text class="value" x="560" y="287" text-anchor="middle">62.1%</text>
+  <text class="value" x="864" y="254" text-anchor="middle">71.2%</text>
+
+  <!-- Legend -->
+  <line x1="740" y1="92" x2="790" y2="92" class="baseline"/>
+  <circle class="baseline-dot" cx="765" cy="92" r="6"/>
+  <text class="legend" x="802" y="98">Schema baseline</text>
+  <line x1="740" y1="122" x2="790" y2="122" class="ml"/>
+  <circle class="ml-dot" cx="765" cy="122" r="6"/>
+  <text class="legend" x="802" y="128">ML reranker</text>
+
+  <!-- Summary callout -->
+  <rect x="690" y="485" width="280" height="72" rx="10" fill="#e8f7f4" stroke="#b9e7df"/>
+  <text class="legend" x="710" y="512">Overall improvement</text>
+  <text class="value" x="710" y="538">39.4% → 67.7%  (+28.3 pts)</text>
+</svg>
