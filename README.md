@@ -216,6 +216,16 @@ python evaluation\analyze_system_efficiency.py --log logs\kgqa_efficiency_500.js
 For a smaller real LLM run, add `--call-llm --limit 50`. A full 500-question
 LLM run can cost up to `500 * €0.20 = €100` before any routing savings.
 
+Build a manual system-accuracy audit sheet from the same log. Fill the
+`correctness` column with `correct`, `incorrect`, or `unclear`, then summarize
+the filled sheet. This is the engineering system-level accuracy view and should
+be reported separately from LLM-needed selection accuracy.
+
+```powershell
+python evaluation\build_system_accuracy_audit.py --log logs\kgqa_efficiency_500.jsonl --questions evaluation\question_sets\true_demand_efficiency_500.json --out-csv results\kgqa_system_accuracy_audit_500.csv
+python evaluation\build_system_accuracy_audit.py --labeled-csv results\kgqa_system_accuracy_audit_500.csv --out-json results\kgqa_system_accuracy_audit_500.json --out-md results\kgqa_system_accuracy_audit_500.md --unclear-as-incorrect
+```
+
 Analyze entropy-based ambiguity regimes:
 
 ```powershell
