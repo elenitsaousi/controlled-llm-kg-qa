@@ -383,7 +383,7 @@ def _render_feedback_panel() -> None:
 
     st.subheader("Feedback")
     st.caption("Optional: record whether the answer matched your intended interpretation.")
-    col_ok, col_bad = st.columns(2)
+    col_ok, col_bad, col_intent = st.columns(3)
     request_id = str(st.session_state.get("last_request_id") or "")
     base_payload = {
         "request_id": request_id,
@@ -401,6 +401,9 @@ def _render_feedback_panel() -> None:
     if col_bad.button("Answer was wrong", use_container_width=True, key="feedback_wrong"):
         _append_jsonl(FEEDBACK_LOG_PATH, {**base_payload, "feedback": "wrong"})
         st.warning("Feedback saved for review.")
+    if col_intent.button("Not what I meant", use_container_width=True, key="feedback_intent"):
+        _append_jsonl(FEEDBACK_LOG_PATH, {**base_payload, "feedback": "wrong_intent"})
+        st.warning("Intent feedback saved for review.")
 
 
 def _render_selection_explainability(result: Dict[str, Any]) -> None:
@@ -555,7 +558,24 @@ def _render_compact_explainability(result: Dict[str, Any]) -> None:
         route = str(confidence_route.get("route", "unknown")).replace("_", " ")
         left, right = st.columns([1.2, 3])
         left.metric("Decision", route)
-        right.write("The selected query passed the confidence policy and safety checks.")
+        reason = str(confidence_route.get("reason") or "").strip()
+        score = confidence_route.get("score1")
+        margin = confidence_route.get("margin")
+        if reason:
+            right.write(reason[0].upper() + reason[1:] if reason else reason)
+        else:
+            right.write("The selected query passed the confidence policy and safety checks.")
+        score_bits = []
+        try:
+            score_bits.append(f"score={float(score):.3f}")
+        except (TypeError, ValueError):
+            pass
+        try:
+            score_bits.append(f"margin={float(margin):.3f}")
+        except (TypeError, ValueError):
+            pass
+        if score_bits:
+            st.caption("Selection confidence: " + ", ".join(score_bits))
         flags = confidence_route.get("safety_flags") or []
         if flags:
             st.caption("Technical safety notes are available in Developer mode.")
@@ -1886,12 +1906,22 @@ def _capability_result_hint(row: Dict[str, str]) -> str:
 
 def _render_confidence_route_badge(route: Dict[str, object]) -> None:
     if route.get("route") == "auto_answer":
-        st.success("High-confidence graph answer.")
+        score = route.get("score1")
+        margin = route.get("margin")
+        suffix = ""
+        try:
+            suffix = f" (score={float(score):.3f}, margin={float(margin):.3f})"
+        except (TypeError, ValueError):
+            pass
+        st.success("High-confidence graph answer" + suffix + ".")
     else:
         st.warning(
             "The system found multiple plausible interpretations. "
             "Please choose one before it answers."
         )
+        reason = str(route.get("reason") or "").strip()
+        if reason:
+            st.caption(reason[0].upper() + reason[1:] if reason else reason)
 
 
 def _accept_confidence_option(
@@ -2879,17 +2909,6 @@ def _kg_autocomplete_entries(
             str(row.get("breakdown", "") or "")
         )
 
-        # DEBUG OUTPUT
-        print(
-            {
-                "topic": topic,
-                "metric": metric,
-                "scope": scope,
-                "breakdown": str(row.get("breakdown", "") or ""),
-            }
-        )
-
-        # CAPABILITY INVENTORY
         if topic:
             capability_inventory.setdefault(topic, set())
 
@@ -2936,12 +2955,6 @@ def _kg_autocomplete_entries(
                 contexts=contexts,
                 profile=_autocomplete_profile_hint(contexts, dimension),
             )
-
-    print("\n=== CAPABILITY INVENTORY ===")
-
-    for topic_name, dims in sorted(capability_inventory.items()):
-        print(topic_name)
-        print("  ->", sorted(dims))
 
     out = list(entries.values())
 
