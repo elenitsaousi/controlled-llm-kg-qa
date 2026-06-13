@@ -147,7 +147,11 @@ def _format_grouped_breakdown_answer(
     return prefix + " Groups: " + "; ".join(parts) + "."
 
 
-def _format_total_demand_by_region(rows: List[Dict[str, object]]) -> str:
+def _format_total_demand_by_region(
+    rows: List[Dict[str, object]],
+    *,
+    question: str = "",
+) -> str:
     if not _has_any_key(rows, ["regionName"]) or not _has_any_key(
         rows,
         [
@@ -172,6 +176,12 @@ def _format_total_demand_by_region(rows: List[Dict[str, object]]) -> str:
     )
     if not scored:
         return ""
+
+    if not _is_ranking_question(question):
+        return _format_grouped_breakdown_answer(
+            rows,
+            label="Regional demand",
+        )
 
     top_row, metric_key, top_value = max(scored, key=lambda item: item[2])
     region = _clean_value(_row_get(top_row, "regionName"))
@@ -382,7 +392,11 @@ def _format_current_bl_comparison(rows: List[Dict[str, object]]) -> str:
     )
 
 
-def _format_vehicle_sales_by_month(rows: List[Dict[str, object]]) -> str:
+def _format_vehicle_sales_by_month(
+    rows: List[Dict[str, object]],
+    *,
+    question: str = "",
+) -> str:
     if not _has_any_key(rows, ["monthLabel", "month"]):
         return ""
     if not _has_any_key(rows, ["unitsSold", "totalUnitsSold"]):
@@ -391,6 +405,13 @@ def _format_vehicle_sales_by_month(rows: List[Dict[str, object]]) -> str:
     scored = _numeric_rows(rows, ["totalUnitsSold", "unitsSold"])
     if not scored:
         return ""
+
+    if not _is_ranking_question(question):
+        return _format_grouped_breakdown_answer(
+            rows,
+            label="Vehicle-sales results",
+            max_rows=12,
+        )
 
     top_row, metric_key, top_value = max(scored, key=lambda item: item[2])
     low_row, _, low_value = min(scored, key=lambda item: item[2])
@@ -411,7 +432,9 @@ def _format_infineon_answer(rows: List[Dict[str, object]], query: str, question:
     if "currentdemandanalysis" in query_lower or "baseline" in query_lower:
         formatters.append(_format_current_bl_comparison)
     if "vehiclesalesobservation" in query_lower or _has_any_key(rows, ["monthLabel"]):
-        formatters.append(_format_vehicle_sales_by_month)
+        answer = _format_vehicle_sales_by_month(rows, question=question)
+        if answer:
+            return answer
     if "ordercancellation" in query_lower or _has_any_key(rows, ["responseType"]):
         formatters.append(_format_order_cancellation)
     if "autonomousdrivingdevelopment" in query_lower or _has_any_key(rows, ["saeLevel", "sae"]):
@@ -421,7 +444,9 @@ def _format_infineon_answer(rows: List[Dict[str, object]], query: str, question:
     if "futuredemandanalysis" in query_lower or _has_any_key(rows, ["techLabel", "quarterLabel"]):
         formatters.append(_format_future_demand_by_tech_quarter)
     if "demandforregion" in query_lower or _has_any_key(rows, ["regionName"]):
-        formatters.append(_format_total_demand_by_region)
+        answer = _format_total_demand_by_region(rows, question=question)
+        if answer:
+            return answer
 
     for formatter in formatters:
         answer = formatter(rows)
