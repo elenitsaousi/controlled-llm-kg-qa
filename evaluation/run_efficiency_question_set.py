@@ -26,6 +26,7 @@ if str(ROOT) not in sys.path:
 
 from kg.capabilities import DEFAULT_REGISTRY
 from kg.schema import load_schema
+from llm.answer_synthesis import synthesize_answer
 from llm.client import InfineonGPTClient
 from pipeline.qa import answer_question
 
@@ -73,7 +74,7 @@ def _load_graph(graph_path: str, fuseki_query_url: str) -> Graph:
     return graph
 
 
-def _preview_rows(graph: Graph, query: str, max_rows: int = 3) -> Tuple[List[Dict[str, str]], str]:
+def _preview_rows(graph: Graph, query: str, max_rows: int = 50) -> Tuple[List[Dict[str, str]], str]:
     try:
         results = graph.query(_ensure_prefixes(query))
         rows: List[Dict[str, str]] = []
@@ -87,6 +88,107 @@ def _preview_rows(graph: Graph, query: str, max_rows: int = 3) -> Tuple[List[Dic
         return rows, ""
     except Exception as exc:
         return [], str(exc)
+
+
+def _compact_query(query: object) -> str:
+    return " ".join(str(query or "").split()).lower()
+
+
+def _question_requests_breakdown(question: str) -> bool:
+    q = f" {question.lower()} "
+    return any(
+        phrase in q
+        for phrase in (" by ", " per ", " for each ", " grouped by ", " across ", " breakdown")
+    )
+
+
+def _question_requests_count(question: str) -> bool:
+    q = question.lower()
+    return any(phrase in q for phrase in ("how many", "count", "number of"))
+
+
+def _question_requests_ranking(question: str) -> bool:
+    q = question.lower()
+    return any(phrase in q for phrase in ("highest", "lowest", "top", "largest", "smallest", "maximum", "minimum"))
+
+
+def _shape_penalty(question: str, query: str, rows: List[Dict[str, str]], error: str) -> int:
+    if error:
+        return 1000
+    if not rows:
+        return 900
+    q = _compact_query(query)
+    penalty = 0
+    if _question_requests_breakdown(question) and "group by" not in q and not _question_requests_ranking(question):
+        penalty += 80
+    if _question_requests_count(question) and "count" not in q:
+        penalty += 60
+    if not _question_requests_count(question) and "count(" in q and _question_requests_breakdown(question):
+        penalty += 60
+    if _question_requests_ranking(question) and "order by" not in q and "max(" not in q and "min(" not in q:
+        # Grouped rows can still be converted into a highest/lowest answer by
+        # deterministic answer synthesis, so this is only a weak penalty.
+        penalty += 20
+    return penalty
+
+
+def _candidate_source_for_query(candidates: List[Dict[str, Any]], query: str) -> str:
+    selected_key = _compact_query(query)
+    for candidate in candidates:
+        if selected_key and _compact_query(candidate.get("query")) == selected_key:
+            return str(candidate.get("source") or "")
+    return ""
+
+
+def _execution_aware_selection(
+    *,
+    question: str,
+    result: Dict[str, Any],
+    graph: Graph,
+    max_candidates: int = 8,
+) -> Tuple[str, str, List[Dict[str, str]], str, str]:
+    candidates = [c for c in (result.get("candidates") or []) if str(c.get("query") or "").strip()]
+    selected_query = str(result.get("selected_query") or "").strip()
+    if selected_query and all(_compact_query(c.get("query")) != _compact_query(selected_query) for c in candidates):
+        candidates.insert(0, {"query": selected_query, "source": "selected"})
+
+    seen = set()
+    evaluated: List[Tuple[int, int, str, str, List[Dict[str, str]], str]] = []
+    for idx, candidate in enumerate(candidates[:max_candidates]):
+        query = str(candidate.get("query") or "").strip()
+        key = _compact_query(query)
+        if not query or key in seen:
+            continue
+        seen.add(key)
+        rows, error = _preview_rows(graph, query, max_rows=50)
+        source = str(candidate.get("source") or "")
+        evaluated.append((_shape_penalty(question, query, rows, error), idx, query, source, rows, error))
+
+    if not evaluated:
+        return selected_query, _candidate_source_for_query(candidates, selected_query), [], "", "no_candidates"
+
+    selected_key = _compact_query(selected_query)
+    current = next((row for row in evaluated if _compact_query(row[2]) == selected_key), None)
+    best = min(evaluated, key=lambda row: (row[0], row[1]))
+    if current and current[0] <= 20:
+        chosen = current
+        reason = "kept_selected_nonempty"
+    else:
+        chosen = best
+        reason = "switched_to_nonempty_candidate" if current and best[0] < current[0] else "selected_best_executable_candidate"
+
+    _, _, query, source, rows, error = chosen
+    return query, source, rows, error, reason
+
+
+def _answer_text(question: str, query: str, rows: List[Dict[str, str]], error: str) -> str:
+    if not query:
+        return ""
+    errors = [{"message": error}] if error else None
+    try:
+        return synthesize_answer(question, query, {"rows": rows}, errors=errors)
+    except Exception as exc:
+        return f"Answer synthesis failed: {exc}"
 
 
 def _estimated_llm_calls(metadata: Dict[str, Any]) -> int:
@@ -118,6 +220,7 @@ def _direct_row(
         "selected_query": query,
         "graph_row_count": len(graph_rows),
         "graph_rows_preview": graph_rows,
+        "answer_text": _answer_text(question, query, graph_rows, ""),
         "graph_error": "",
         "latency_s": round(latency_s, 3),
         "latency_breakdown": {"total_s": round(latency_s, 3)},
@@ -152,6 +255,7 @@ def _estimated_llm_needed_row(
         "selected_query": "",
         "graph_row_count": 0,
         "graph_rows_preview": [],
+        "answer_text": "",
         "graph_error": "",
         "latency_s": round(latency_s, 3),
         "latency_breakdown": {"total_s": round(latency_s, 3)},
@@ -175,17 +279,14 @@ def _full_llm_row(
     result: Dict[str, Any],
     graph_rows: List[Dict[str, str]],
     graph_error: str,
+    selected_source: str,
+    execution_selection_reason: str,
     latency_s: float,
 ) -> Dict[str, Any]:
     metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
     selected_query = str(result.get("selected_query") or "")
-    selected_source = ""
-    selected_key = " ".join(selected_query.split()).lower()
-    for candidate in result.get("candidates") or []:
-        query_key = " ".join(str(candidate.get("query") or "").split()).lower()
-        if selected_key and query_key == selected_key:
-            selected_source = str(candidate.get("source") or "")
-            break
+    if not selected_source:
+        selected_source = _candidate_source_for_query(result.get("candidates") or [], selected_query)
     return {
         "request_id": request_id,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -198,7 +299,9 @@ def _full_llm_row(
         "selected_query": selected_query,
         "graph_row_count": len(graph_rows),
         "graph_rows_preview": graph_rows,
+        "answer_text": _answer_text(question, selected_query, graph_rows, graph_error),
         "graph_error": graph_error,
+        "execution_selection_reason": execution_selection_reason,
         "latency_s": round(latency_s, 3),
         "latency_breakdown": {"total_s": round(latency_s, 3)},
         "candidate_count": len(result.get("candidates") or []),
@@ -255,7 +358,7 @@ def run(
             report = DEFAULT_REGISTRY.resolve(question)
             direct_query = DEFAULT_REGISTRY.direct_query_for(report)
             if direct_query:
-                graph_rows, graph_error = _preview_rows(graph, direct_query, max_rows=3)
+                graph_rows, graph_error = _preview_rows(graph, direct_query, max_rows=50)
                 if graph_rows and not graph_error:
                     payload = _direct_row(
                         request_id=request_id,
@@ -295,14 +398,20 @@ def run(
                 enable_clarification=False,
                 enable_answerability_assessment=False,
             )
-            selected_query = str(result.get("selected_query") or "")
-            graph_rows, graph_error = _preview_rows(graph, selected_query, max_rows=3) if selected_query else ([], "")
+            selected_query, selected_source, graph_rows, graph_error, selection_reason = _execution_aware_selection(
+                question=question,
+                result=result,
+                graph=graph,
+            )
+            result["selected_query"] = selected_query
             payload = _full_llm_row(
                 request_id=request_id,
                 question=question,
                 result=result,
                 graph_rows=graph_rows,
                 graph_error=graph_error,
+                selected_source=selected_source,
+                execution_selection_reason=selection_reason,
                 latency_s=time.perf_counter() - started,
             )
             counts["llm_called"] += int(payload["llm"]["estimated_calls"] > 0)
