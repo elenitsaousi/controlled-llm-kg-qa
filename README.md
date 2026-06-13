@@ -189,6 +189,19 @@ Analyze Streamlit runtime efficiency and estimated LLM cost:
 python evaluation\analyze_system_efficiency.py --log logs\kgqa_sessions.jsonl --cost-per-call 0.20 --out-json results\system_efficiency_report.json --out-md results\system_efficiency_report.md
 ```
 
+Build and run the controlled 500-question efficiency set. The default run is a
+cost estimate: graph-supported direct routes are executed, while unresolved
+questions are counted as one LLM call without actually spending those calls.
+
+```powershell
+python evaluation\build_efficiency_question_set.py --out evaluation\question_sets\true_demand_efficiency_500.json --target 500
+python evaluation\run_efficiency_question_set.py --questions evaluation\question_sets\true_demand_efficiency_500.json --out-log logs\kgqa_efficiency_500.jsonl --fuseki-query-url http://localhost:3030/infineon/sparql
+python evaluation\analyze_system_efficiency.py --log logs\kgqa_efficiency_500.jsonl --cost-per-call 0.20 --out-json results\kgqa_efficiency_500_report.json --out-md results\kgqa_efficiency_500_report.md
+```
+
+For a smaller real LLM run, add `--call-llm --limit 50`. A full 500-question
+LLM run can cost up to `500 * €0.20 = €100` before any routing savings.
+
 Analyze entropy-based ambiguity regimes:
 
 ```powershell

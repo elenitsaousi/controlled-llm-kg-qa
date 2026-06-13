@@ -1,0 +1,3002 @@
+[
+  {
+    "id": "EFFKGQA0001",
+    "question": "Show sales volume by month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0002",
+    "question": "For the survey data, show regional demand by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0003",
+    "question": "For the survey data, compare total demand across region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0004",
+    "question": "Use the graph to show current demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0005",
+    "question": "For future demand, show the result by vehicle type.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0006",
+    "question": "Summarize Tier1 current demand per region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0007",
+    "question": "From the graph, show future demand percentage changes by vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0008",
+    "question": "Compare current demand across region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0009",
+    "question": "From the graph, show current demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0010",
+    "question": "Summarize SAE level development by SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0011",
+    "question": "Show current demand by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0012",
+    "question": "How does future demand evolve across quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0013",
+    "question": "Compare component inventory by trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0014",
+    "question": "Using the True Demand KG, give me OEM current demand grouped by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0015",
+    "question": "Summarize autonomous driving development by SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0016",
+    "question": "For the survey data, give me semiconductor current demand grouped by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0017",
+    "question": "Return a breakdown of Tier1 current demand by vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0018",
+    "question": "Compare SAE level development across survey group.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0019",
+    "question": "Compare inventory responses by technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0020",
+    "question": "From the graph, summarize Tier1 current demand per survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0021",
+    "question": "Return forecast vehicle sales grouped by time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0022",
+    "question": "Which year has the highest sales volume?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0023",
+    "question": "Compare shortage status by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0024",
+    "question": "Which technology category appears most often in inventory development?",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0025",
+    "question": "For the survey data, future demand by technology category, please?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0026",
+    "question": "Return autonomous driving percentage grouped by survey group.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0027",
+    "question": "Return a breakdown of regional demand by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0028",
+    "question": "From the graph, return future demand values for each technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0029",
+    "question": "Show forecast vehicle sales by year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0030",
+    "question": "Please compare regional demand across quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0031",
+    "question": "Return autonomous driving development grouped by year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0032",
+    "question": "Show cancellation behavior by response type.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0033",
+    "question": "Return inventory responses grouped by component.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0034",
+    "question": "Compare reported shortages by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0035",
+    "question": "Show OEM current demand by vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0036",
+    "question": "What does future demand look like for each technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0037",
+    "question": "Summarize reported shortages across technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0038",
+    "question": "Please give me OEM current demand grouped by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0039",
+    "question": "Summarize component inventory across component.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0040",
+    "question": "Compare cancellation participant counts by technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0041",
+    "question": "Compare inventory development by trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0042",
+    "question": "How many companies are in each shortage status for shortage status?",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0043",
+    "question": "Return companies reporting shortage grouped by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0044",
+    "question": "Compare autonomous driving development across SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0045",
+    "question": "Summarize future demand across quarter.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0046",
+    "question": "Which component appears most often in component inventory?",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0047",
+    "question": "For the survey data, summarize semiconductor current demand per vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0048",
+    "question": "Summarize Tier1 current demand per vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0049",
+    "question": "What is the average future demand percentage change by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0050",
+    "question": "What does future demand look like for each quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0051",
+    "question": "What is the total regional demand for each quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0052",
+    "question": "Using the True Demand KG, what are the future demand changes for each region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0053",
+    "question": "For the survey data, return a breakdown of Tier1 current demand by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0054",
+    "question": "Please i need future demand grouped by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0055",
+    "question": "Can you give me the future demand overview by vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0056",
+    "question": "Return a breakdown of total demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0057",
+    "question": "Count shortage information for each technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0058",
+    "question": "Summarize self-driving development by year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0059",
+    "question": "Summarize cancellation behavior across technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0060",
+    "question": "Compare order cancellation by technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0061",
+    "question": "Can you what is the total semiconductor current demand for each region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0062",
+    "question": "Use the graph to show Tier1 current demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0063",
+    "question": "Can you what is the average future demand percentage change by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0064",
+    "question": "Summarize vehicle sales units over month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0065",
+    "question": "Give monthly results for vehicle sales units.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0066",
+    "question": "For the survey data, how does future demand change by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0067",
+    "question": "Show vehicles sold by year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0068",
+    "question": "Using the True Demand KG, what is the total current demand for each quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0069",
+    "question": "Can you what is the total regional demand for each region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0070",
+    "question": "Compare autonomous driving percentage across year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0071",
+    "question": "Show average autonomous driving percentage by year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0072",
+    "question": "Count component inventory for each technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0073",
+    "question": "Which response type has the highest cancellation behavior?",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0074",
+    "question": "For the survey data, how does regional demand vary by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0075",
+    "question": "Summarize regional demand per survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0076",
+    "question": "Compare inventory responses by trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0077",
+    "question": "Can you summarize regional demand per region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0078",
+    "question": "Return the future demand analysis by quarter.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0079",
+    "question": "Compare regional demand across vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0080",
+    "question": "Using the True Demand KG, what are the future demand changes for each technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0081",
+    "question": "Count inventory trend for each component.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0082",
+    "question": "What is the average SAE level development for each vehicle type?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0083",
+    "question": "Show order cancellation responses by technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0084",
+    "question": "Count component inventory for each trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0085",
+    "question": "Compare vehicles sold across year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0086",
+    "question": "From the graph, summarize Tier1 current demand per region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0087",
+    "question": "For future demand, show the result by quarter.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0088",
+    "question": "Compare inventory development by technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0089",
+    "question": "Using the True Demand KG, summarize Tier1 current demand per vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0090",
+    "question": "How is future demand distributed by vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0091",
+    "question": "Give me the future demand overview by technology category.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0092",
+    "question": "Compare order cancellation responses by technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0093",
+    "question": "Please analyze future demand change per vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0094",
+    "question": "Give me Tier1 current demand grouped by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0095",
+    "question": "Count inventory development for each technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0096",
+    "question": "Summarize vehicles sold over month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0097",
+    "question": "What is the total number of actual vehicle sales for each vehicle type?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0098",
+    "question": "Compare OEM current demand across vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0099",
+    "question": "How does OEM current demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0100",
+    "question": "For the survey data, return a breakdown of OEM current demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0101",
+    "question": "Which month has the highest sales volume?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0102",
+    "question": "Using the True Demand KG, return a breakdown of OEM current demand by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0103",
+    "question": "Summarize inventory trend across component.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0104",
+    "question": "What is the total number of sales volume for each year?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0105",
+    "question": "Show inventory responses by technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0106",
+    "question": "What is the average autonomous driving percentage for each vehicle type?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0107",
+    "question": "How does regional demand vary by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0108",
+    "question": "Show vehicle sales units by year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0109",
+    "question": "What is the total semiconductor current demand for each survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0110",
+    "question": "Summarize vehicle sales units over time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0111",
+    "question": "Return future demand values for each technology category.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0112",
+    "question": "Show average autonomous driving percentage by SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0113",
+    "question": "Compare sales volume across time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0114",
+    "question": "Please what is the total OEM current demand for each vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0115",
+    "question": "Return reported shortages grouped by shortage status.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0116",
+    "question": "Can you use the graph to show semiconductor current demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0117",
+    "question": "Summarize actual vehicle sales over vehicle type.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0118",
+    "question": "For the survey data, how does future demand evolve across technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0119",
+    "question": "Using the True Demand KG, show the average future demand change for every region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0120",
+    "question": "Which component appears most often in inventory development?",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0121",
+    "question": "Compare shortage information by technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0122",
+    "question": "Can you compare regional demand across vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0123",
+    "question": "Show average autonomous driving development by vehicle type.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0124",
+    "question": "Please compare Tier1 current demand across region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0125",
+    "question": "Can you return a breakdown of Tier1 current demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0126",
+    "question": "Which vehicle type has the highest autonomous driving development?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0127",
+    "question": "Using the True Demand KG, use the graph to show regional demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0128",
+    "question": "Use the graph to show current demand by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0129",
+    "question": "Show total demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0130",
+    "question": "Compare self-driving development across year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0131",
+    "question": "Use the graph to show total demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0132",
+    "question": "Return a breakdown of total demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0133",
+    "question": "Count semiconductor shortage responses for each survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0134",
+    "question": "Compare inventory trend by technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0135",
+    "question": "What is the total regional demand for each region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0136",
+    "question": "Count shortage status for each shortage status.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0137",
+    "question": "Give me semiconductor current demand grouped by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0138",
+    "question": "Please show Tier1 current demand by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0139",
+    "question": "Show average self-driving development by survey group.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0140",
+    "question": "Using the True Demand KG, what is the total OEM current demand for each region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0141",
+    "question": "Count order cancellation for each response type.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0142",
+    "question": "Summarize total demand per survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0143",
+    "question": "How does current demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0144",
+    "question": "Summarize forecast vehicle sales over month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0145",
+    "question": "How many companies are in each technology category for shortage status?",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0146",
+    "question": "From the graph, compare semiconductor current demand across survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0147",
+    "question": "From the graph, show current demand by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0148",
+    "question": "Can you for future demand, show the result by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0149",
+    "question": "Show average autonomous driving development by year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0150",
+    "question": "Give a graph-backed breakdown of future demand by region.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0151",
+    "question": "Use the graph to show total demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0152",
+    "question": "Show regional demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0153",
+    "question": "Which SAE level has the highest self-driving development?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0154",
+    "question": "Which vehicle type has the highest self-driving development?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0155",
+    "question": "Return sales volume grouped by month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0156",
+    "question": "Show order cancellation by technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0157",
+    "question": "What is the total number of vehicles sold for each vehicle type?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0158",
+    "question": "What is the average future demand percentage change by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0159",
+    "question": "Using the True Demand KG, show semiconductor current demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0160",
+    "question": "For the survey data, how does Tier1 current demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0161",
+    "question": "For the survey data, what is the total current demand for each survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0162",
+    "question": "Use the True Demand KG to show future demand by quarter.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0163",
+    "question": "Count cancellation behavior for each technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0164",
+    "question": "Using the True Demand KG, how does current demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0165",
+    "question": "Using the True Demand KG, break down future demand by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0166",
+    "question": "Show total demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0167",
+    "question": "Summarize shortage status across survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0168",
+    "question": "How does future demand change by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0169",
+    "question": "Give me OEM current demand grouped by vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0170",
+    "question": "How many company instances are present?",
+    "topic": "catalog_lookup",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0171",
+    "question": "Can you compare semiconductor current demand across vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0172",
+    "question": "Can you show the future demand trend by vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0173",
+    "question": "Summarize Tier1 current demand per survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0174",
+    "question": "For the survey data, summarize future demand across technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0175",
+    "question": "For the survey data, compare regional demand across region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0176",
+    "question": "Compare reported shortages by technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0177",
+    "question": "Show shortage status by technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0178",
+    "question": "From the graph, return future demand values for each region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0179",
+    "question": "Which SAE level has the highest autonomous driving percentage?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0180",
+    "question": "How is future demand distributed by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0181",
+    "question": "Analyze future demand change per vehicle type.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0182",
+    "question": "Return vehicles sold grouped by year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0183",
+    "question": "Which response type has the highest order cancellation responses?",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0184",
+    "question": "Summarize future demand across region.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0185",
+    "question": "Return semiconductor shortage responses grouped by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0186",
+    "question": "Give me regional demand grouped by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0187",
+    "question": "Compare inventory responses by component.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0188",
+    "question": "Please how does current demand vary by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0189",
+    "question": "Please summarize Tier1 current demand per quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0190",
+    "question": "Show vehicles sold by month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0191",
+    "question": "Return shortage status grouped by shortage status.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0192",
+    "question": "From the graph, show current demand by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0193",
+    "question": "Give me the future demand overview by quarter.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0194",
+    "question": "How many OrderCancellation entries exist overall?",
+    "topic": "catalog_lookup",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0195",
+    "question": "Return forecast vehicle sales grouped by year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0196",
+    "question": "How does demand forecast vary by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0197",
+    "question": "Display future-demand percentage by technology category.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0198",
+    "question": "For the survey data, how does demand forecast vary by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0199",
+    "question": "From the graph, display future-demand percentage by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0200",
+    "question": "Compare Tier1 current demand across survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0201",
+    "question": "What is the total OEM current demand for each survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0202",
+    "question": "Give me Tier1 current demand grouped by vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0203",
+    "question": "Which vehicle type has the highest vehicle sales units?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0204",
+    "question": "What is the average SAE level development for each survey group?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0205",
+    "question": "How does Tier1 current demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0206",
+    "question": "Summarize current demand per survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0207",
+    "question": "What is the average autonomous driving development for each vehicle type?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0208",
+    "question": "Compare shortage status by technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0209",
+    "question": "Can you return a breakdown of regional demand by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0210",
+    "question": "Compare future demand change across region.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0211",
+    "question": "Show future demand percentage changes by vehicle type.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0212",
+    "question": "Can you what is the total Tier1 current demand for each region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0213",
+    "question": "Summarize self-driving development by SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0214",
+    "question": "Show vehicle sales units by time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0215",
+    "question": "Use the graph to show Tier1 current demand by vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0216",
+    "question": "Return order cancellation responses grouped by technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0217",
+    "question": "Show semiconductor current demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0218",
+    "question": "Show current demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0219",
+    "question": "Show the average future demand change for every quarter.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0220",
+    "question": "Can you give me the future demand overview by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0221",
+    "question": "Give monthly results for actual vehicle sales.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0222",
+    "question": "From the graph, show future demand by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0223",
+    "question": "Summarize SAE level development by vehicle type.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0224",
+    "question": "For the survey data, return a breakdown of regional demand by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0225",
+    "question": "Summarize OEM current demand per survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0226",
+    "question": "Compare semiconductor shortage responses by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0227",
+    "question": "Can you compare current demand across survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0228",
+    "question": "Use the True Demand KG to show future demand by technology category.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0229",
+    "question": "Summarize vehicles sold over vehicle type.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0230",
+    "question": "What are the future demand changes for each technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0231",
+    "question": "Can you show the future demand trend by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0232",
+    "question": "Show regional demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0233",
+    "question": "Compare cancellation behavior by response type.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0234",
+    "question": "Future demand by vehicle type, please.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0235",
+    "question": "What are the future demand changes for each region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0236",
+    "question": "Return inventory responses grouped by technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0237",
+    "question": "Show current demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0238",
+    "question": "For the survey data, give me current demand grouped by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0239",
+    "question": "Can you show the future demand trend by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0240",
+    "question": "Return self-driving development grouped by year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0241",
+    "question": "How many companies are in each survey group for shortage status?",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0242",
+    "question": "What is the average autonomous driving development for each year?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0243",
+    "question": "Can you summarize OEM current demand per survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0244",
+    "question": "Which SAE level has the highest autonomous driving development?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0245",
+    "question": "Using the True Demand KG, show the average future demand change for every vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0246",
+    "question": "Summarize SAE level development by year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0247",
+    "question": "From the graph, show future demand percentage changes by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0248",
+    "question": "Return vehicle sales units grouped by month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0249",
+    "question": "What is the total number of vehicle sales units for each time period?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0250",
+    "question": "Please compare OEM current demand across vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0251",
+    "question": "Display future-demand percentage by region.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0252",
+    "question": "Return a breakdown of OEM current demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0253",
+    "question": "Return future demand values for each vehicle type.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0254",
+    "question": "From the graph, return future demand values for each vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0255",
+    "question": "Summarize SAE level development by survey group.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0256",
+    "question": "Return component inventory grouped by trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0257",
+    "question": "Which trend appears most often in component inventory?",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0258",
+    "question": "Please how is future demand distributed by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0259",
+    "question": "Return SAE level development grouped by SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0260",
+    "question": "Compare order cancellation responses by response type.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0261",
+    "question": "Compare OEM current demand across quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0262",
+    "question": "How many companies are in each shortage status for companies reporting shortage?",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0263",
+    "question": "Show average autonomous driving development by survey group.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0264",
+    "question": "Using the True Demand KG, summarize current demand per quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0265",
+    "question": "Count order cancellation responses for each technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0266",
+    "question": "From the graph, use the graph to show Tier1 current demand by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0267",
+    "question": "Summarize sales volume over vehicle type.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0268",
+    "question": "From the graph, what is the total Tier1 current demand for each vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0269",
+    "question": "Please compare semiconductor current demand across region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0270",
+    "question": "Return actual vehicle sales grouped by month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0271",
+    "question": "Please how does Tier1 current demand vary by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0272",
+    "question": "Show shortage information by technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0273",
+    "question": "Give me current demand grouped by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0274",
+    "question": "Return inventory trend grouped by technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0275",
+    "question": "Show component inventory by trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0276",
+    "question": "From the graph, summarize OEM current demand per quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0277",
+    "question": "Compare future demand change across vehicle type.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0278",
+    "question": "Which vehicle type has the highest sales volume?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0279",
+    "question": "Show sales volume by vehicle type.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0280",
+    "question": "For the survey data, summarize future demand across region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0281",
+    "question": "Compare current demand across quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0282",
+    "question": "Can you show the future demand trend by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0283",
+    "question": "Can you compare future demand change across quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0284",
+    "question": "For the survey data, give me current demand grouped by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0285",
+    "question": "Please return the future demand analysis by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0286",
+    "question": "What is the total OEM current demand for each vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0287",
+    "question": "Using the True Demand KG, use the graph to show Tier1 current demand by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0288",
+    "question": "Compare vehicle sales units across year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0289",
+    "question": "Using the True Demand KG, use the True Demand KG to show future demand by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0290",
+    "question": "Show component inventory by technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0291",
+    "question": "Which SAE level has the highest SAE level development?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0292",
+    "question": "From the graph, return a breakdown of current demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0293",
+    "question": "Return actual vehicle sales grouped by time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0294",
+    "question": "Compare vehicles sold across vehicle type.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0295",
+    "question": "I need future demand grouped by vehicle type.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0296",
+    "question": "For the survey data, how does future demand change by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0297",
+    "question": "List available survey groups.",
+    "topic": "catalog_lookup",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0298",
+    "question": "Return shortage information grouped by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0299",
+    "question": "Summarize regional demand per quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0300",
+    "question": "Can you show current demand by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0301",
+    "question": "What are the future demand changes for each quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0302",
+    "question": "Using the True Demand KG, use the True Demand KG to show future demand by vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0303",
+    "question": "From the graph, compare OEM current demand across region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0304",
+    "question": "Show semiconductor shortage responses by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0305",
+    "question": "Return a breakdown of current demand by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0306",
+    "question": "Using the True Demand KG, break down future demand by vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0307",
+    "question": "Can you for future demand, show the result by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0308",
+    "question": "Give me regional demand grouped by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0309",
+    "question": "Return vehicles sold grouped by time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0310",
+    "question": "How does future demand change by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0311",
+    "question": "Return autonomous driving percentage grouped by vehicle type.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0312",
+    "question": "Show forecast vehicle sales by time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0313",
+    "question": "How does regional demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0314",
+    "question": "Which component appears most often in inventory trend?",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0315",
+    "question": "What does future demand look like for each region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0316",
+    "question": "Show vehicles sold by time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0317",
+    "question": "Use the graph to show regional demand by vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0318",
+    "question": "Which survey group has the highest autonomous driving development?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0319",
+    "question": "Compare vehicles sold across month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0320",
+    "question": "Return autonomous driving percentage grouped by SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0321",
+    "question": "Please i need future demand grouped by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0322",
+    "question": "Count inventory responses for each technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0323",
+    "question": "Count inventory responses for each trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0324",
+    "question": "Count inventory trend for each trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0325",
+    "question": "Show companies reporting shortage by technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0326",
+    "question": "Return inventory development grouped by technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0327",
+    "question": "For the survey data, return a breakdown of semiconductor current demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0328",
+    "question": "Show shortage information by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0329",
+    "question": "Return a breakdown of current demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0330",
+    "question": "Can you give me the future demand overview by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0331",
+    "question": "For the survey data, show semiconductor current demand by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0332",
+    "question": "Which year has the highest vehicles sold?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0333",
+    "question": "Summarize shortage status across technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0334",
+    "question": "From the graph, use the graph to show total demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0335",
+    "question": "From the graph, show future demand by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0336",
+    "question": "What is the average autonomous driving percentage for each survey group?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0337",
+    "question": "Summarize future demand across technology category.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0338",
+    "question": "For the survey data, compare OEM current demand across quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0339",
+    "question": "Summarize vehicles sold over time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0340",
+    "question": "How does semiconductor current demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0341",
+    "question": "Break down future demand by region.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0342",
+    "question": "Compare SAE level development across vehicle type.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0343",
+    "question": "Using the True Demand KG, break down future demand by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0344",
+    "question": "Return a breakdown of semiconductor current demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0345",
+    "question": "Please how does OEM current demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0346",
+    "question": "Which year has the highest forecast vehicle sales?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0347",
+    "question": "List quarter labels in the data.",
+    "topic": "catalog_lookup",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0348",
+    "question": "Please i need future demand grouped by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0349",
+    "question": "From the graph, use the graph to show OEM current demand by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0350",
+    "question": "Summarize inventory trend across trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0351",
+    "question": "Using the True Demand KG, can you show the future demand trend by vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0352",
+    "question": "Using the True Demand KG, can you show the future demand trend by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0353",
+    "question": "For the survey data, how does future demand evolve across vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0354",
+    "question": "What is the total number of forecast vehicle sales for each month?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0355",
+    "question": "Count companies reporting shortage for each survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0356",
+    "question": "Summarize inventory development across trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0357",
+    "question": "Return self-driving development grouped by vehicle type.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0358",
+    "question": "Show the average future demand change for every technology category.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0359",
+    "question": "Which trend appears most often in inventory responses?",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0360",
+    "question": "I need future demand grouped by technology category.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0361",
+    "question": "For the survey data, how does current demand vary by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0362",
+    "question": "Using the True Demand KG, compare OEM current demand across survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0363",
+    "question": "Show cancellation participant counts by technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0364",
+    "question": "Give me total demand grouped by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0365",
+    "question": "Give me current demand grouped by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0366",
+    "question": "Return autonomous driving development grouped by survey group.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0367",
+    "question": "Return a breakdown of Tier1 current demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0368",
+    "question": "Summarize OEM current demand per quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0369",
+    "question": "Which technology category has the highest order cancellation responses?",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0370",
+    "question": "Show regional demand by vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0371",
+    "question": "What is the average future demand percentage change by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0372",
+    "question": "Use the graph to show OEM current demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0373",
+    "question": "Give me the future demand overview by region.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0374",
+    "question": "Compare autonomous driving development across year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0375",
+    "question": "What is the total regional demand for each vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0376",
+    "question": "Using the True Demand KG, what are the future demand changes for each vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0377",
+    "question": "Can you give me regional demand grouped by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0378",
+    "question": "Summarize Tier1 current demand per quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0379",
+    "question": "Can you how does semiconductor current demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0380",
+    "question": "Can you compare future demand change across technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0381",
+    "question": "Compare forecast vehicle sales across year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0382",
+    "question": "How does future demand change by vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0383",
+    "question": "Show Tier1 current demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0384",
+    "question": "Which response type has the highest order cancellation?",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0385",
+    "question": "Summarize component inventory across trend.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0386",
+    "question": "Show average autonomous driving development by SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0387",
+    "question": "What is the total regional demand for each survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0388",
+    "question": "Which year has the highest vehicle sales units?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0389",
+    "question": "Which response type has the highest cancellation participant counts?",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0390",
+    "question": "What is the average autonomous driving development for each SAE level?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0391",
+    "question": "Please give me total demand grouped by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0392",
+    "question": "What is the total number of actual vehicle sales for each time period?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0393",
+    "question": "Please how is future demand distributed by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0394",
+    "question": "Which technology category has the highest cancellation behavior?",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0395",
+    "question": "Which technology categories are available in the graph?",
+    "topic": "catalog_lookup",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0396",
+    "question": "For the survey data, summarize future demand across quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0397",
+    "question": "Give monthly results for vehicles sold.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0398",
+    "question": "Show forecast vehicle sales by month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0399",
+    "question": "Compare companies reporting shortage by shortage status.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0400",
+    "question": "Return a breakdown of OEM current demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0401",
+    "question": "Can you give a graph-backed breakdown of future demand by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0402",
+    "question": "Can you show total demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0403",
+    "question": "Summarize OEM current demand per region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0404",
+    "question": "Summarize inventory responses across technology category.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0405",
+    "question": "From the graph, show future demand by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0406",
+    "question": "For the survey data, how does demand forecast vary by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0407",
+    "question": "Summarize vehicle sales units over year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0408",
+    "question": "From the graph, show future demand percentage changes by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0409",
+    "question": "Return a breakdown of OEM current demand by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0410",
+    "question": "Compare regional demand across region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0411",
+    "question": "Return sales volume grouped by year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0412",
+    "question": "Can you what is the total semiconductor current demand for each survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0413",
+    "question": "Give a graph-backed breakdown of future demand by quarter.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0414",
+    "question": "From the graph, give me semiconductor current demand grouped by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0415",
+    "question": "Can you what is the total regional demand for each vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0416",
+    "question": "Use the graph to show Tier1 current demand by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0417",
+    "question": "Which survey group has the highest self-driving development?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0418",
+    "question": "Summarize order cancellation responses across technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0419",
+    "question": "How is future demand distributed by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0420",
+    "question": "Return shortage status grouped by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0421",
+    "question": "How does total demand vary by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0422",
+    "question": "Summarize autonomous driving percentage by SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0423",
+    "question": "Using the True Demand KG, use the graph to show OEM current demand by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0424",
+    "question": "From the graph, how does regional demand vary by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0425",
+    "question": "Count cancellation behavior for each response type.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0426",
+    "question": "Which year has the highest actual vehicle sales?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0427",
+    "question": "Compare cancellation participant counts by response type.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0428",
+    "question": "Show the average future demand change for every vehicle type.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0429",
+    "question": "For future demand, show the result by region.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0430",
+    "question": "For the survey data, give me current demand grouped by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0431",
+    "question": "Using the True Demand KG, show the average future demand change for every technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0432",
+    "question": "Which vehicle type has the highest forecast vehicle sales?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0433",
+    "question": "Please show regional demand by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0434",
+    "question": "Compare sales volume across vehicle type.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0435",
+    "question": "What is the total number of forecast vehicle sales for each time period?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0436",
+    "question": "Return cancellation participant counts grouped by response type.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0437",
+    "question": "Please analyze future demand change per region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0438",
+    "question": "Show sales volume by time period.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0439",
+    "question": "Please give me future demand change grouped by quarter?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0440",
+    "question": "Return a breakdown of semiconductor current demand by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0441",
+    "question": "Return vehicles sold grouped by vehicle type.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0442",
+    "question": "Summarize autonomous driving development by year.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0443",
+    "question": "Return the future demand analysis by region.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0444",
+    "question": "Give me Tier1 current demand grouped by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0445",
+    "question": "Compare sales volume across month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0446",
+    "question": "Please return the future demand analysis by vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0447",
+    "question": "Return a breakdown of current demand by vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0448",
+    "question": "Return cancellation participant counts grouped by technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0449",
+    "question": "Using the True Demand KG, return a breakdown of semiconductor current demand by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0450",
+    "question": "Summarize cancellation participant counts across technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0451",
+    "question": "Summarize vehicle sales units over vehicle type.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0452",
+    "question": "Show future demand percentage changes by technology category.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0453",
+    "question": "For the survey data, give me Tier1 current demand grouped by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0454",
+    "question": "Using the True Demand KG, give me Tier1 current demand grouped by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0455",
+    "question": "Summarize semiconductor shortage responses across shortage status.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0456",
+    "question": "How does OEM current demand vary by quarter?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0457",
+    "question": "Compare self-driving development across SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0458",
+    "question": "What is the total number of vehicles sold for each time period?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0459",
+    "question": "Using the True Demand KG, give me OEM current demand grouped by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0460",
+    "question": "How does OEM current demand vary by region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0461",
+    "question": "Use the graph to show OEM current demand by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0462",
+    "question": "Count order cancellation for each technology category.",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0463",
+    "question": "What is the average SAE level development for each year?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0464",
+    "question": "What is the total semiconductor current demand for each region?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0465",
+    "question": "Summarize inventory development across component.",
+    "topic": "inventory",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0466",
+    "question": "From the graph, what does future demand look like for each vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0467",
+    "question": "Summarize semiconductor current demand per vehicle type.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0468",
+    "question": "Which survey group has the highest autonomous driving percentage?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0469",
+    "question": "Which month has the highest actual vehicle sales?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0470",
+    "question": "Summarize actual vehicle sales over year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0471",
+    "question": "Count shortage information for each shortage status.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0472",
+    "question": "Summarize self-driving development by survey group.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0473",
+    "question": "What is the total number of vehicles sold for each month?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0474",
+    "question": "Show regional demand by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0475",
+    "question": "Compare autonomous driving percentage across SAE level.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0476",
+    "question": "Count shortage information for each survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0477",
+    "question": "Give me regional demand grouped by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0478",
+    "question": "Use the graph to show semiconductor current demand by quarter.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0479",
+    "question": "For the survey data, give me Tier1 current demand grouped by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0480",
+    "question": "Can you return a breakdown of OEM current demand by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0481",
+    "question": "Give me OEM current demand grouped by survey group.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0482",
+    "question": "Summarize semiconductor shortage responses across technology category.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0483",
+    "question": "Summarize companies reporting shortage across survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0484",
+    "question": "Compare sales volume across year.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0485",
+    "question": "Summarize sales volume over month.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0486",
+    "question": "From the graph, give me semiconductor current demand grouped by survey group?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0487",
+    "question": "Future demand by quarter, please.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0488",
+    "question": "Please give me future demand change grouped by technology category?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0489",
+    "question": "Use the True Demand KG to show future demand by vehicle type.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0490",
+    "question": "Please show semiconductor current demand by vehicle type?",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0491",
+    "question": "Which vehicle type has the highest vehicles sold?",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0492",
+    "question": "Show average self-driving development by vehicle type.",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0493",
+    "question": "Return actual vehicle sales grouped by vehicle type.",
+    "topic": "vehicle_sales",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0494",
+    "question": "Show reported shortages by survey group.",
+    "topic": "shortage",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0495",
+    "question": "Return the future demand analysis by technology category.",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0496",
+    "question": "Which technology category has the highest cancellation participant counts?",
+    "topic": "order_cancellation",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0497",
+    "question": "What are the future demand changes for each vehicle type?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0498",
+    "question": "From the graph, display future-demand percentage by region?",
+    "topic": "future_demand",
+    "expected_route": "direct_capability"
+  },
+  {
+    "id": "EFFKGQA0499",
+    "question": "Use the graph to show semiconductor current demand by region.",
+    "topic": "regional_demand",
+    "expected_route": "llm_or_ranking"
+  },
+  {
+    "id": "EFFKGQA0500",
+    "question": "Which year has the highest autonomous driving development?",
+    "topic": "autonomous_driving",
+    "expected_route": "llm_or_ranking"
+  }
+]
