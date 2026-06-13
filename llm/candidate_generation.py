@@ -1616,6 +1616,7 @@ def generate_candidates(
                 "llm_cache_enabled": bool(llm_cache_metadata.get("llm_cache_enabled")),
                 "llm_cache_hit": bool(llm_cache_metadata.get("llm_cache_hit")),
                 "llm_cache_key": llm_cache_metadata.get("llm_cache_key"),
+                "full_schema_generation_attempted": bool(full_schema_cache_metadata),
                 "full_schema_llm_cache_hit": bool(full_schema_cache_metadata.get("llm_cache_hit", False)),
                 "schema_slicing_applied": bool(sliced_schema),
                 "schema_slice_names": slice_names,

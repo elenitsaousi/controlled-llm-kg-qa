@@ -183,6 +183,12 @@ Analyze confidence-aware routing:
 python evaluation\analyze_confidence_routing.py --results results\final1000_wf_test_scope_origin_m010.json --score-key ml_score --sort-by-score --out-json results\final1000_wf_test_scope_origin_confidence_routing_sorted_v2.json --out-md results\final1000_wf_test_scope_origin_confidence_routing_sorted_v2.md
 ```
 
+Analyze Streamlit runtime efficiency and estimated LLM cost:
+
+```powershell
+python evaluation\analyze_system_efficiency.py --log logs\kgqa_sessions.jsonl --cost-per-call 0.20 --out-json results\system_efficiency_report.json --out-md results\system_efficiency_report.md
+```
+
 Analyze entropy-based ambiguity regimes:
 
 ```powershell

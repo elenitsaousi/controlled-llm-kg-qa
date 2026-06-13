@@ -248,6 +248,7 @@ def _session_log_payload(
     confidence_route = result.get("confidence_route") if isinstance(result, dict) else None
     route = _route_label(result)
     metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    llm_calls = _estimated_llm_calls_from_metadata(metadata)
     return {
         "request_id": request_id,
         "timestamp_utc": _utc_now_iso(),
@@ -267,12 +268,38 @@ def _session_log_payload(
             if isinstance(value, (int, float))
         },
         "candidate_count": len(result.get("candidates") or []),
+        "llm": {
+            "skipped": bool(metadata.get("llm_skipped")),
+            "cache_enabled": bool(metadata.get("llm_cache_enabled")),
+            "cache_hit": bool(metadata.get("llm_cache_hit")),
+            "full_schema_generation_attempted": bool(metadata.get("full_schema_generation_attempted")),
+            "full_schema_cache_hit": bool(metadata.get("full_schema_llm_cache_hit")),
+            "estimated_calls": llm_calls,
+        },
         "schema_route": {
             "applied": bool(metadata.get("schema_slicing_applied")),
             "confidence": metadata.get("schema_slice_confidence"),
             "families": metadata.get("schema_slice_names") or [],
         },
     }
+
+
+def _estimated_llm_calls_from_metadata(metadata: Dict[str, Any]) -> int:
+    if metadata.get("llm_skipped") or metadata.get("guided_query"):
+        return 0
+
+    calls = 0
+    if metadata.get("llm_cache_enabled") and metadata.get("llm_cache_hit"):
+        calls += 0
+    else:
+        calls += 1
+
+    if metadata.get("full_schema_generation_attempted"):
+        if metadata.get("llm_cache_enabled") and metadata.get("full_schema_llm_cache_hit"):
+            calls += 0
+        else:
+            calls += 1
+    return calls
 
 
 def _selected_candidate_source(result: Dict[str, Any], selected_query: str) -> str:
