@@ -4274,11 +4274,16 @@ with st.sidebar:
 
             st.subheader("Ranking")
             use_ml_ranking = st.checkbox("Use ML ranking", value=True)
+            ml_policy_options = ["auto", "all", "mid", "off"]
             ml_policy = st.selectbox(
                 "ML policy",
-                options=["auto", "all", "mid", "off"],
-                index=0,
-                help="auto: predict ambiguity and route automatically, all: always ML, mid: ML only for medium ambiguity, off: schema-only.",
+                options=ml_policy_options,
+                index=ml_policy_options.index(ml_policy) if ml_policy in ml_policy_options else 1,
+                help=(
+                    "all matches the final evaluated setup: direct graph-supported templates first, "
+                    "then ML reranking for LLM-needed questions. auto/mid are experimental "
+                    "ambiguity-routing modes."
+                ),
             )
             ml_model_path = st.text_input("ML model path", value=_default_ml_model_path())
             ambiguity_config_path = st.text_input(
