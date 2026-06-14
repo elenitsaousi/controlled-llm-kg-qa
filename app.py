@@ -2326,21 +2326,36 @@ def _guided_pattern_query(pattern: Dict[str, str]) -> str:
 
 
 @st.cache_data(show_spinner=False)
-def _guided_query_row_count(graph_path: str, query: str) -> Tuple[int, str]:
+def _guided_query_row_count(graph_path: str, fuseki_query_url: str, query: str) -> Tuple[int, str]:
     if not query.strip() or not graph_path or not _graph_backend_available(graph_path):
         return 0, "graph_backend_or_query_missing"
     try:
-        graph = _load_active_graph(graph_path)
-        rows, _truncated = _execute_query_preview(graph, query, max_rows=1)
+        rows, error = _preview_query_rows_cached(
+            graph_path,
+            fuseki_query_url,
+            query,
+            max_rows=1,
+        )
+        if error:
+            return 0, error
         return len(rows), ""
     except Exception as exc:
         return 0, str(exc)
 
 
-def _answerable_guided_rows(rows: List[Dict[str, str]]) -> List[Dict[str, str]]:
+def _answerable_guided_rows(
+    rows: List[Dict[str, str]],
+    *,
+    graph_path: str,
+    fuseki_query_url: str,
+) -> List[Dict[str, str]]:
     answerable: List[Dict[str, str]] = []
     for row in rows:
-        row_count, query_error = _guided_query_row_count(str(DEFAULT_GRAPH_PATH), str(row.get("query", "")))
+        row_count, query_error = _guided_query_row_count(
+            graph_path,
+            fuseki_query_url,
+            str(row.get("query", "")),
+        )
         if row_count <= 0:
             continue
         enriched = dict(row)
@@ -3308,14 +3323,22 @@ def _render_kg_autocomplete_input(schema_path: str, graph_path: str, fuseki_quer
     return text
 
 
-def _render_question_guidance() -> None:
+def _render_question_guidance(graph_path: str, fuseki_query_url: str) -> None:
     with st.expander("Question guide", expanded=False):
         st.caption(
             "Use the question box above for free text, or pick an example/builder option here."
         )
         tabs = st.tabs(["Examples", "Guided builder", "Available topics"])
         with tabs[0]:
-            query_lookup = _load_guided_query_lookup()
+            answerable_patterns = _answerable_guided_rows(
+                _validated_guided_patterns(),
+                graph_path=graph_path,
+                fuseki_query_url=fuseki_query_url,
+            )
+            query_lookup = {
+                _normalize_question_key(str(row.get("question", ""))): str(row.get("query", ""))
+                for row in answerable_patterns
+            }
             example_options = [
                 example
                 for example in EXAMPLE_QUESTIONS
@@ -3339,12 +3362,19 @@ def _render_question_guidance() -> None:
                         query_lookup.get(_normalize_question_key(selected_example), ""),
                     ),
                 )
-                st.caption("Examples use validated graph queries directly. Press Ask after selecting one.")
+                st.caption(
+                    "Examples use validated graph queries that returned rows on the active graph backend. "
+                    "Press Ask after selecting one."
+                )
         with tabs[1]:
-            validated_patterns = _validated_guided_patterns()
+            validated_patterns = _answerable_guided_rows(
+                _validated_guided_patterns(),
+                graph_path=graph_path,
+                fuseki_query_url=fuseki_query_url,
+            )
             topic_options = _unique_preserving_order([row["topic"] for row in validated_patterns])
             if not topic_options:
-                st.warning("No validated guided patterns are available.")
+                st.warning("No answerable guided patterns are available for the active graph backend.")
                 return
             topic = st.selectbox(
                 "Topic",
@@ -3399,7 +3429,7 @@ def _render_question_guidance() -> None:
                 )
                 built_question = str(selected_pattern["question"])
                 st.text_input("Generated question", value=built_question, disabled=True)
-                st.caption("This question comes from the validated graph-query library.")
+                st.caption("This question comes from the validated graph-query library and returned rows.")
                 st.button(
                     "Use generated question",
                     key="use_guided_question",
@@ -3410,7 +3440,11 @@ def _render_question_guidance() -> None:
                 st.caption("Press Ask after using the generated question.")
         with tabs[2]:
             topic_rows = []
-            validated_patterns = _validated_guided_patterns()
+            validated_patterns = _answerable_guided_rows(
+                _validated_guided_patterns(),
+                graph_path=graph_path,
+                fuseki_query_url=fuseki_query_url,
+            )
             for topic in _unique_preserving_order([row["topic"] for row in validated_patterns]):
                 rows = [row for row in validated_patterns if row["topic"] == topic]
                 topic_rows.append(
@@ -4478,7 +4512,7 @@ st.markdown(
 question = _render_kg_autocomplete_input(schema_path, graph_path, fuseki_query_url.strip())
 asked = st.button("Ask", type="primary")
 
-_render_question_guidance()
+_render_question_guidance(graph_path, fuseki_query_url.strip())
 
 if "last_qa_result" not in st.session_state:
     st.session_state["last_qa_result"] = None
