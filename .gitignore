@@ -13,3 +13,4 @@ WebVOWL/
 OWL2VOWL/
 true_demand_webvowl*.json
 !data/infineon/true_demand_webvowl.json
+archive_local/
