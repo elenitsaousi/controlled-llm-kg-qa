@@ -211,6 +211,47 @@ Get-ChildItem . -Recurse -Directory -Force |
 Recommended order:
 
 1. Confirm the canonical final files exist on the Windows laptop.
+2. Run the historical archive script in dry-run mode.
+3. Review the manifest.
+4. Run the same script with `--apply` only if the candidate list is correct.
+5. Re-run canonical validation.
+6. Re-run the app smoke test.
+
+Dry-run:
+
+```powershell
+python evaluation\archive_historical_artifacts.py
+```
+
+Apply:
+
+```powershell
+python evaluation\archive_historical_artifacts.py --apply
+```
+
+Validate after archiving:
+
+```powershell
+python evaluation\validate_canonical_artifacts.py --out-json results\canonical_artifact_validation_after_archive.json --out-md results\canonical_artifact_validation_after_archive.md
+```
+
+The archive script writes a manifest to:
+
+```text
+results/historical_artifact_archive_manifest.json
+```
+
+and moves files to:
+
+```text
+archive_local/historical_artifacts_YYYYMMDD_HHMMSS/
+```
+
+`archive_local/` is ignored by git.
+
+Manual fallback sequence:
+
+1. Confirm the canonical final files exist on the Windows laptop.
 2. Copy or archive historical experiments outside git.
 3. Delete only local caches and duplicate root-level WebVOWL exports.
 4. If you want a clean branch, remove tracked historical models/results in a
