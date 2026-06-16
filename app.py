@@ -1820,7 +1820,10 @@ def _capability_backed_clarification_options(
     options: List[Dict[str, object]] = []
     seen_queries = set()
     prefers_non_count = _question_prefers_non_count(question)
-    for row in _validated_guided_patterns():
+    for row in list(_validated_guided_patterns()) + _capability_answerable_patterns(
+        graph_path,
+        fuseki_query_url,
+    ):
         pattern_question = str(row.get("question", "") or "")
         try:
             pattern_report = CAPABILITY_REGISTRY.resolve(pattern_question)
@@ -2327,7 +2330,7 @@ def _guided_pattern_query(pattern: Dict[str, str]) -> str:
 
 @st.cache_data(show_spinner=False)
 def _guided_query_row_count(graph_path: str, fuseki_query_url: str, query: str) -> Tuple[int, str]:
-    if not query.strip() or not graph_path or not _graph_backend_available(graph_path):
+    if not query.strip() or not _graph_backend_available(graph_path):
         return 0, "graph_backend_or_query_missing"
     try:
         rows, error = _preview_query_rows_cached(
@@ -2363,6 +2366,54 @@ def _answerable_guided_rows(
         enriched["query_error"] = query_error
         answerable.append(enriched)
     return answerable
+
+
+@st.cache_data(show_spinner=False)
+def _capability_answerable_patterns(graph_path: str, fuseki_query_url: str) -> List[Dict[str, str]]:
+    """Build guided rows directly from executable capability templates.
+
+    This is a runtime safety net for the UI. The main guided library may be
+    missing or may not match the active backend, but capability templates are
+    still allowed if they execute and return graph rows.
+    """
+    rows: List[Dict[str, str]] = []
+    seen = set()
+    if not _graph_backend_available(graph_path):
+        return rows
+    for capability in CAPABILITY_REGISTRY.capabilities:
+        for dimension in capability.dimensions:
+            question = f"Show {capability.name} by {dimension.name}."
+            report = CAPABILITY_REGISTRY.resolve(question)
+            query = CAPABILITY_REGISTRY.direct_query_for(report)
+            if not query:
+                continue
+            preview_rows, error = _preview_query_rows_cached(
+                graph_path,
+                fuseki_query_url,
+                query,
+                max_rows=1,
+            )
+            if error or not preview_rows:
+                continue
+            key = (capability.name.lower(), dimension.name.lower(), query.strip())
+            if key in seen:
+                continue
+            seen.add(key)
+            rows.append(
+                {
+                    "topic": capability.name.title(),
+                    "metric": "values" if capability.name != "shortage" else "count",
+                    "breakdown": f"by {dimension.name}",
+                    "scope": "all graph data",
+                    "question": question,
+                    "query": query.strip(),
+                    "row_count": str(len(preview_rows)),
+                    "query_error": "",
+                    "source": "capability_inventory",
+                }
+            )
+    rows.sort(key=lambda row: (row["topic"], row["breakdown"], row["question"]))
+    return rows
 
 
 def _guided_topic_for_question(question: str) -> str:
@@ -3113,7 +3164,12 @@ def _kg_autocomplete_entries(
 
     answerable_patterns = 0
 
-    for row in _validated_guided_patterns():
+    autocomplete_patterns = list(_validated_guided_patterns()) + _capability_answerable_patterns(
+        graph_path,
+        fuseki_query_url,
+    )
+
+    for row in autocomplete_patterns:
 
         query = str(row.get("query", "") or "").strip()
 
@@ -3157,6 +3213,15 @@ def _kg_autocomplete_entries(
                 aliases=_smart_query_tokens(topic),
                 contexts=contexts,
             )
+            if "demand" in topic.lower():
+                _add_autocomplete_entry(
+                    entries,
+                    label="Demand",
+                    entry_type="concept",
+                    raw="DEMAND",
+                    aliases=["demand", "demands"],
+                    contexts=contexts,
+                )
 
         if metric and metric.lower() not in {"available names", "record count"}:
             _add_autocomplete_entry(
@@ -3335,6 +3400,11 @@ def _render_question_guidance(graph_path: str, fuseki_query_url: str) -> None:
                 graph_path=graph_path,
                 fuseki_query_url=fuseki_query_url,
             )
+            if not answerable_patterns:
+                answerable_patterns = _capability_answerable_patterns(
+                    graph_path,
+                    fuseki_query_url,
+                )
             query_lookup = {
                 _normalize_question_key(str(row.get("question", ""))): str(row.get("query", ""))
                 for row in answerable_patterns
@@ -3344,6 +3414,12 @@ def _render_question_guidance(graph_path: str, fuseki_query_url: str) -> None:
                 for example in EXAMPLE_QUESTIONS
                 if query_lookup.get(_normalize_question_key(example), "")
             ]
+            if not example_options:
+                example_options = [
+                    str(row.get("question", ""))
+                    for row in answerable_patterns[:20]
+                    if str(row.get("question", "")).strip()
+                ]
             if not example_options:
                 st.warning("No validated examples are available.")
             else:
@@ -3372,6 +3448,11 @@ def _render_question_guidance(graph_path: str, fuseki_query_url: str) -> None:
                 graph_path=graph_path,
                 fuseki_query_url=fuseki_query_url,
             )
+            if not validated_patterns:
+                validated_patterns = _capability_answerable_patterns(
+                    graph_path,
+                    fuseki_query_url,
+                )
             topic_options = _unique_preserving_order([row["topic"] for row in validated_patterns])
             if not topic_options:
                 st.warning("No answerable guided patterns are available for the active graph backend.")
@@ -3445,6 +3526,11 @@ def _render_question_guidance(graph_path: str, fuseki_query_url: str) -> None:
                 graph_path=graph_path,
                 fuseki_query_url=fuseki_query_url,
             )
+            if not validated_patterns:
+                validated_patterns = _capability_answerable_patterns(
+                    graph_path,
+                    fuseki_query_url,
+                )
             for topic in _unique_preserving_order([row["topic"] for row in validated_patterns]):
                 rows = [row for row in validated_patterns if row["topic"] == topic]
                 topic_rows.append(
