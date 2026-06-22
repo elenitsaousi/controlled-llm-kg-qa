@@ -8,7 +8,9 @@ ontology visualization.
 
 ## What Is In This Repository
 
-- `app.py` - Streamlit application for natural-language KGQA, clarification, feedback, and graph views.
+- `app.py` - retained Streamlit application for natural-language KGQA, clarification, feedback, and graph views.
+- `True Demand-lovable/` - React frontend for the same KGQA runtime.
+- `api/` - FastAPI adapter connecting the React frontend to the existing Python pipeline.
 - `data/infineon/graph.ttl` - full True Demand RDF knowledge graph used for SPARQL execution.
 - `data/infineon/schema.json` - schema metadata used by generation, validation, and ranking.
 - `data/infineon/true_demand_ontology_extracted.ttl` - readable ontology/schema layer extracted from the full graph.
@@ -54,7 +56,7 @@ machine-specific, or generated during experiments.
 
 ## Required Services
 
-For the full UI, keep three terminals open.
+For the React UI, keep Fuseki, the FastAPI adapter, and the frontend in separate terminals.
 
 ### 1. Fuseki
 
@@ -75,7 +77,31 @@ http://localhost:3030/infineon/sparql
 If `java` is not recognized, run Fuseki with the full Java path or add the JDK
 `bin` directory to the current PowerShell session.
 
-### 2. WebVOWL
+### 2. FastAPI adapter
+
+From the repository root:
+
+```powershell
+python -m pip install -r requirements-api.txt
+$env:FUSEKI_QUERY_URL="http://localhost:3030/infineon/sparql"
+python -m uvicorn api.main:app --reload --port 8000
+```
+
+The API health endpoint is `http://localhost:8000/api/health`.
+
+### 3. React frontend
+
+```powershell
+cd "C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\True Demand-lovable"
+npm install
+npm run dev
+```
+
+Open the URL printed by Vite, currently `http://localhost:8080`. The frontend uses
+`http://localhost:8000` by default and can be configured with
+`VITE_API_BASE_URL` or from its Settings page.
+
+### 4. WebVOWL (optional standalone viewer)
 
 If WebVOWL was already built and has a `deploy` folder:
 
@@ -96,7 +122,7 @@ Load this file in WebVOWL:
 C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\data\infineon\true_demand_webvowl.json
 ```
 
-### 3. Streamlit
+### 5. Streamlit (retained alternative UI)
 
 ```powershell
 cd C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa
@@ -108,6 +134,9 @@ The app usually opens at:
 ```text
 http://localhost:8501
 ```
+
+The React integration does not replace or delete `app.py`; both interfaces call
+the same KGQA pipeline and use the same Fuseki dataset.
 
 ## Key Environment Variables
 

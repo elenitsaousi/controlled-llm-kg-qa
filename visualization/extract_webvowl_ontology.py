@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable
 from urllib.parse import unquote
 
-from rdflib import Graph, Literal, OWL, RDF, RDFS, URIRef
+from rdflib import Graph, Literal, OWL, RDF, RDFS, URIRef, XSD
 
 SURVEY_NS = "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/"
 XSD_NS = "http://www.w3.org/2001/XMLSchema#"
@@ -115,8 +115,8 @@ def extract_ontology(graph_path: Path, out_path: Path, rdfxml_out_path: Path | N
         if domain is not None:
             inferred_domains[predicate][domain] += 1
         if isinstance(obj, Literal):
-            if obj.datatype:
-                literal_ranges[predicate][URIRef(str(obj.datatype))] += 1
+            datatype = obj.datatype or (RDF.langString if obj.language else XSD.string)
+            literal_ranges[predicate][URIRef(str(datatype))] += 1
         elif isinstance(obj, URIRef):
             range_ = _best_type(node_types.get(obj, set()), classes)
             if range_ is not None:
@@ -147,8 +147,12 @@ def extract_ontology(graph_path: Path, out_path: Path, rdfxml_out_path: Path | N
             out.add((subject, RDFS.subClassOf, parent))
 
     for predicate in sorted(predicates, key=_short):
-        has_literal_range = bool(literal_ranges.get(predicate))
-        has_uri_range = bool(explicit_ranges.get(predicate) or inferred_ranges.get(predicate))
+        explicit_literal_ranges = {value for value in explicit_ranges.get(predicate, set()) if _is_datatype(value)}
+        explicit_resource_ranges = {
+            value for value in explicit_ranges.get(predicate, set()) if not _is_datatype(value)
+        }
+        has_literal_range = bool(literal_ranges.get(predicate) or explicit_literal_ranges)
+        has_uri_range = bool(inferred_ranges.get(predicate) or explicit_resource_ranges)
         out.add((predicate, RDF.type, OWL.DatatypeProperty if has_literal_range and not has_uri_range else OWL.ObjectProperty))
         out.add((predicate, RDFS.label, Literal(_human_label(predicate))))
 

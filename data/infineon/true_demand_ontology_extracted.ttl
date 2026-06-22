@@ -89,10 +89,6 @@ survey:Powertrain a owl:Class ;
     rdfs:label "Powertrain" ;
     rdfs:subClassOf survey:ComponentShare_Tier1 .
 
-survey:Quarter a owl:Class ;
-    rdfs:label "Quarter" ;
-    rdfs:subClassOf survey:TimePeriod .
-
 survey:TrueDemandExtractedOntology a owl:Ontology ;
     rdfs:label "True Demand extracted ontology" ;
     rdfs:comment "Schema-level ontology extracted from the full True Demand RDF graph for WebVOWL visualization." .
@@ -112,14 +108,17 @@ survey:appliesToVehicleType a owl:ObjectProperty ;
     rdfs:domain survey:ConversionFactor ;
     rdfs:range survey:VehicleType .
 
-survey:assignedTechnologyCategory a owl:ObjectProperty ;
-    rdfs:label "assigned Technology Category" .
+survey:assignedTechnologyCategory a owl:DatatypeProperty ;
+    rdfs:label "assigned Technology Category" ;
+    rdfs:range xsd:string .
 
-survey:assignedVehicleType a owl:ObjectProperty ;
-    rdfs:label "assigned Vehicle Type" .
+survey:assignedVehicleType a owl:DatatypeProperty ;
+    rdfs:label "assigned Vehicle Type" ;
+    rdfs:range xsd:string .
 
-survey:assumptionReason a owl:ObjectProperty ;
-    rdfs:label "assumption Reason" .
+survey:assumptionReason a owl:DatatypeProperty ;
+    rdfs:label "assumption Reason" ;
+    rdfs:range xsd:string .
 
 survey:baselineB1 a owl:DatatypeProperty ;
     rdfs:label "baseline B1" ;
@@ -141,29 +140,32 @@ survey:baselineB2Percent a owl:DatatypeProperty ;
     rdfs:domain survey:CurrentDemandAnalysis ;
     rdfs:range xsd:decimal .
 
-survey:baselineType a owl:ObjectProperty ;
+survey:baselineType a owl:DatatypeProperty ;
     rdfs:label "baseline Type" ;
     rdfs:domain survey:CurrentDemandAnalysis,
         survey:FutureDemandAnalysis ;
     rdfs:range xsd:string .
 
-survey:baselineYear a owl:ObjectProperty ;
-    rdfs:label "baseline Year" .
+survey:baselineYear a owl:DatatypeProperty ;
+    rdfs:label "baseline Year" ;
+    rdfs:range xsd:string .
 
-survey:companyName a owl:ObjectProperty ;
+survey:companyName a owl:DatatypeProperty ;
     rdfs:label "company Name" ;
-    rdfs:domain survey:Company .
+    rdfs:domain survey:Company ;
+    rdfs:range xsd:string .
 
-survey:componentType a owl:ObjectProperty ;
+survey:componentType a owl:DatatypeProperty ;
     rdfs:label "component Type" ;
-    rdfs:domain survey:Component .
+    rdfs:domain survey:Component ;
+    rdfs:range xsd:string .
 
-survey:conversionDescription a owl:ObjectProperty ;
+survey:conversionDescription a owl:DatatypeProperty ;
     rdfs:label "conversion Description" ;
     rdfs:domain survey:ConversionFactor ;
     rdfs:range xsd:string .
 
-survey:conversionValue a owl:ObjectProperty ;
+survey:conversionValue a owl:DatatypeProperty ;
     rdfs:label "conversion Value" ;
     rdfs:domain survey:ConversionFactor ;
     rdfs:range xsd:decimal .
@@ -173,8 +175,9 @@ survey:currentDemand a owl:DatatypeProperty ;
     rdfs:domain survey:TechnologyCategory ;
     rdfs:range xsd:integer .
 
-survey:dataType a owl:ObjectProperty ;
-    rdfs:label "data Type" .
+survey:dataType a owl:DatatypeProperty ;
+    rdfs:label "data Type" ;
+    rdfs:range xsd:string .
 
 survey:definesCategory a owl:ObjectProperty ;
     rdfs:label "defines Category" ;
@@ -207,7 +210,7 @@ survey:forVehicleType a owl:ObjectProperty ;
 survey:forYear a owl:DatatypeProperty ;
     rdfs:label "for Year" ;
     rdfs:domain survey:YearlySalesData ;
-    rdfs:range xsd:integer .
+    rdfs:range xsd:string .
 
 survey:fromCompany a owl:ObjectProperty ;
     rdfs:label "from Company" ;
@@ -263,7 +266,7 @@ survey:hasOrderCancellation a owl:ObjectProperty ;
     rdfs:domain survey:Semiconductor_Survey ;
     rdfs:range survey:OrderCancellation .
 
-survey:hasPercentage a owl:ObjectProperty ;
+survey:hasPercentage a owl:DatatypeProperty ;
     rdfs:label "has Percentage" ;
     rdfs:domain survey:AutonomousDrivingDevelopment ;
     rdfs:range xsd:decimal .
@@ -306,7 +309,7 @@ survey:hasVehicleType a owl:ObjectProperty ;
     rdfs:domain survey:AutonomousDrivingDevelopment ;
     rdfs:range survey:VehicleType .
 
-survey:hasYear a owl:ObjectProperty ;
+survey:hasYear a owl:DatatypeProperty ;
     rdfs:label "has Year" ;
     rdfs:domain survey:AutonomousDrivingDevelopment ;
     rdfs:range xsd:integer .
@@ -321,12 +324,12 @@ survey:inRegion a owl:ObjectProperty ;
     rdfs:domain survey:DemandForRegion ;
     rdfs:range survey:Region .
 
-survey:inventoryTrend a owl:ObjectProperty ;
+survey:inventoryTrend a owl:DatatypeProperty ;
     rdfs:label "inventory Trend" ;
     rdfs:domain survey:InventoryDevelopment_Tier1 ;
     rdfs:range xsd:string .
 
-survey:isActiveInCategory a owl:ObjectProperty ;
+survey:isActiveInCategory a owl:DatatypeProperty ;
     rdfs:label "is Active In Category" ;
     rdfs:domain survey:ComponentShare_Tier1 ;
     rdfs:range xsd:boolean .
@@ -336,7 +339,7 @@ survey:isActualData a owl:DatatypeProperty ;
     rdfs:domain survey:VehicleSalesObservation ;
     rdfs:range xsd:boolean .
 
-survey:isAggregatedResult a owl:ObjectProperty ;
+survey:isAggregatedResult a owl:DatatypeProperty ;
     rdfs:label "is Aggregated Result" ;
     rdfs:domain survey:AggregatedDemand ;
     rdfs:range xsd:boolean .
@@ -346,20 +349,23 @@ survey:isForecastData a owl:DatatypeProperty ;
     rdfs:domain survey:VehicleSalesObservation ;
     rdfs:range xsd:boolean .
 
-survey:justificationDescription a owl:ObjectProperty ;
-    rdfs:label "justification Description" .
+survey:justificationDescription a owl:DatatypeProperty ;
+    rdfs:label "justification Description" ;
+    rdfs:range xsd:string .
 
-survey:methodologyDescription a owl:ObjectProperty ;
-    rdfs:label "methodology Description" .
+survey:methodologyDescription a owl:DatatypeProperty ;
+    rdfs:label "methodology Description" ;
+    rdfs:range xsd:string .
 
-survey:nameplateLabel a owl:ObjectProperty ;
-    rdfs:label "nameplate Label" .
+survey:nameplateLabel a owl:DatatypeProperty ;
+    rdfs:label "nameplate Label" ;
+    rdfs:range xsd:string .
 
 survey:nonEV a owl:Class ;
     rdfs:label "non EV" ;
     rdfs:subClassOf survey:ComponentType_Tier1 .
 
-survey:participantCount a owl:ObjectProperty ;
+survey:participantCount a owl:DatatypeProperty ;
     rdfs:label "participant Count" ;
     rdfs:domain survey:OrderCancellation ;
     rdfs:range xsd:integer .
@@ -374,7 +380,7 @@ survey:percentChangeB2 a owl:DatatypeProperty ;
     rdfs:domain survey:TechnologyCategory ;
     rdfs:range xsd:decimal .
 
-survey:percentageChange a owl:ObjectProperty ;
+survey:percentageChange a owl:DatatypeProperty ;
     rdfs:label "percentage Change" ;
     rdfs:domain survey:Demand ;
     rdfs:range xsd:decimal .
@@ -389,34 +395,36 @@ survey:percentageChangeB2 a owl:DatatypeProperty ;
     rdfs:domain survey:TechnologyNode ;
     rdfs:range xsd:decimal .
 
-survey:percentageChangeBL1 a owl:ObjectProperty ;
+survey:percentageChangeBL1 a owl:DatatypeProperty ;
     rdfs:label "percentage Change BL1" ;
     rdfs:domain survey:CurrentDemandAnalysis ;
     rdfs:range xsd:decimal .
 
-survey:percentageChangeBL2 a owl:ObjectProperty ;
+survey:percentageChangeBL2 a owl:DatatypeProperty ;
     rdfs:label "percentage Change BL2" ;
     rdfs:domain survey:CurrentDemandAnalysis ;
     rdfs:range xsd:decimal .
 
-survey:periodLabel a owl:ObjectProperty ;
+survey:periodLabel a owl:DatatypeProperty ;
     rdfs:label "period Label" ;
     rdfs:domain survey:Month ;
     rdfs:range xsd:string .
 
-survey:platformName a owl:ObjectProperty ;
-    rdfs:label "platform Name" .
+survey:platformName a owl:DatatypeProperty ;
+    rdfs:label "platform Name" ;
+    rdfs:range xsd:string .
 
 survey:quarter a owl:ObjectProperty ;
     rdfs:label "quarter" ;
     rdfs:domain survey:DemandForRegion ;
+    rdfs:range survey:Quarter .
+
+survey:regionName a owl:DatatypeProperty ;
+    rdfs:label "region Name" ;
+    rdfs:domain survey:Region ;
     rdfs:range xsd:string .
 
-survey:regionName a owl:ObjectProperty ;
-    rdfs:label "region Name" ;
-    rdfs:domain survey:Region .
-
-survey:reportsShortage a owl:ObjectProperty ;
+survey:reportsShortage a owl:DatatypeProperty ;
     rdfs:label "reports Shortage" ;
     rdfs:domain survey:Company ;
     rdfs:range xsd:boolean .
@@ -426,45 +434,46 @@ survey:splitPercentage a owl:DatatypeProperty ;
     rdfs:domain survey:ComponentType_Tier1 ;
     rdfs:range xsd:decimal .
 
-survey:targetIndicatorStatus a owl:ObjectProperty ;
+survey:targetIndicatorStatus a owl:DatatypeProperty ;
     rdfs:label "target Indicator Status" ;
     rdfs:domain survey:InventoryTargetIndicator_Semi ;
     rdfs:range xsd:string .
 
-survey:technologyCategoryName a owl:ObjectProperty ;
+survey:technologyCategoryName a owl:DatatypeProperty ;
     rdfs:label "technology Category Name" ;
     rdfs:domain survey:TechnologyCategory ;
     rdfs:range xsd:string .
 
-survey:technologyDescription a owl:ObjectProperty ;
+survey:technologyDescription a owl:DatatypeProperty ;
     rdfs:label "technology Description" ;
     rdfs:domain survey:TechnologyCategory ;
     rdfs:range xsd:string .
 
-survey:technologyNodeLabel a owl:ObjectProperty ;
+survey:technologyNodeLabel a owl:DatatypeProperty ;
     rdfs:label "technology Node Label" ;
-    rdfs:domain survey:TechnologyNode .
+    rdfs:domain survey:TechnologyNode ;
+    rdfs:range xsd:string .
 
-survey:totalDemand a owl:ObjectProperty ;
+survey:totalDemand a owl:DatatypeProperty ;
     rdfs:label "total Demand" ;
     rdfs:domain survey:DemandForRegion ;
     rdfs:range xsd:decimal .
 
-survey:totalDemandPercentageChange a owl:ObjectProperty ;
+survey:totalDemandPercentageChange a owl:DatatypeProperty ;
     rdfs:label "total Demand Percentage Change" ;
     rdfs:domain survey:FutureRegionalDemand ;
     rdfs:range xsd:decimal .
 
-survey:unitsSold a owl:ObjectProperty ;
+survey:unitsSold a owl:DatatypeProperty ;
     rdfs:label "units Sold" ;
     rdfs:domain survey:VehicleSalesObservation ;
     rdfs:range xsd:integer .
 
 survey:usesBaseline a owl:ObjectProperty ;
     rdfs:label "uses Baseline" ;
-    rdfs:domain survey:FutureDemandAnalysis .
+    rdfs:domain survey:CurrentDemandAnalysis .
 
-survey:yearlySales a owl:ObjectProperty ;
+survey:yearlySales a owl:DatatypeProperty ;
     rdfs:label "yearly Sales" ;
     rdfs:domain survey:YearlySalesData ;
     rdfs:range xsd:integer .
@@ -480,6 +489,10 @@ survey:FutureRegionalDemand a owl:Class ;
 survey:InventoryTargetIndicator a owl:Class ;
     rdfs:label "Inventory Target Indicator" ;
     rdfs:subClassOf survey:Inventory .
+
+survey:Quarter a owl:Class ;
+    rdfs:label "Quarter" ;
+    rdfs:subClassOf survey:TimePeriod .
 
 survey:Semiconductor_Survey a owl:Class ;
     rdfs:label "Semiconductor Survey" ;
@@ -529,6 +542,10 @@ survey:ComponentType_Tier1 a owl:Class ;
     rdfs:label "Component Type Tier1" ;
     rdfs:subClassOf survey:ComponentShare .
 
+survey:FutureDemandAnalysis a owl:Class ;
+    rdfs:label "Future Demand Analysis" ;
+    rdfs:subClassOf survey:Demand .
+
 survey:YearlySalesData a owl:Class ;
     rdfs:label "Yearly Sales Data" ;
     rdfs:subClassOf survey:Sales .
@@ -547,10 +564,6 @@ survey:DemandResponse a owl:Class ;
     rdfs:label "Demand Response" ;
     rdfs:subClassOf survey:Demand .
 
-survey:FutureDemandAnalysis a owl:Class ;
-    rdfs:label "Future Demand Analysis" ;
-    rdfs:subClassOf survey:Demand .
-
 survey:Survey a owl:Class ;
     rdfs:label "Survey" .
 
@@ -563,10 +576,6 @@ survey:VehicleSalesObservation a owl:Class ;
 
 survey:AutonomousDrivingDevelopment a owl:Class ;
     rdfs:label "Autonomous Driving Development" .
-
-survey:CurrentDemandAnalysis a owl:Class ;
-    rdfs:label "Current Demand Analysis" ;
-    rdfs:subClassOf survey:Demand .
 
 survey:InventoryDevelopment_Semi a owl:Class ;
     rdfs:label "Inventory Development Semi" ;
@@ -590,6 +599,10 @@ survey:OrderCancellationChange_Semi a owl:Class ;
 survey:ComponentShare_Tier1 a owl:Class ;
     rdfs:label "Component Share Tier1" ;
     rdfs:subClassOf survey:ComponentShare .
+
+survey:CurrentDemandAnalysis a owl:Class ;
+    rdfs:label "Current Demand Analysis" ;
+    rdfs:subClassOf survey:Demand .
 
 survey:VehicleType a owl:Class ;
     rdfs:label "Vehicle Type" .
