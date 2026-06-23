@@ -1099,12 +1099,14 @@ def _set_question_input(value: str) -> None:
     st.session_state["question_input"] = value
     st.session_state["guided_query_override_question"] = ""
     st.session_state["guided_query_override"] = ""
+    st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
 
 
 def _set_guided_question_input(value: str, query: str) -> None:
     st.session_state["question_input"] = value
     st.session_state["guided_query_override_question"] = value
     st.session_state["guided_query_override"] = query
+    st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
 
 
 def _append_question_input(current: str, phrase: str) -> None:
@@ -1114,11 +1116,13 @@ def _append_question_input(current: str, phrase: str) -> None:
         return
     if not base:
         st.session_state["question_input"] = addition
+        st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
         return
     if addition.lower() in base.lower():
         return
     separator = " " if base.endswith((" ", "-", "/", ",")) else " "
     st.session_state["question_input"] = f"{base}{separator}{addition}".strip()
+    st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
 
 
 def _complete_question_fragment(current: str, phrase: str) -> None:
@@ -1132,9 +1136,11 @@ def _complete_question_fragment(current: str, phrase: str) -> None:
         fragment = match.group(1)
         if fragment and completion.lower().startswith(fragment.lower()):
             st.session_state["question_input"] = f"{prefix}{completion} "
+            st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
             return
     separator = "" if text.endswith((" ", "\n", "\t", "-", "/", ",")) or not text else " "
     st.session_state["question_input"] = f"{text}{separator}{completion} "
+    st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
 
 
 def _active_guided_query(question: str) -> str:
@@ -3399,11 +3405,12 @@ def _render_smart_query_assistant(question: str, schema_path: str) -> None:
 
 def _render_kg_autocomplete_input(schema_path: str, graph_path: str, fuseki_query_url: str) -> str:
     current = str(st.session_state.get("question_input", "") or "")
+    revision = int(st.session_state.get("question_input_revision", 0) or 0)
     result = KG_AUTOCOMPLETE_COMPONENT(
         label="Your question",
         value=current,
         entries=_kg_autocomplete_entries(schema_path, graph_path, fuseki_query_url),
-        key="kg_question_autocomplete",
+        key=f"kg_question_autocomplete_{revision}",
         default={"text": current},
     )
     if isinstance(result, dict):

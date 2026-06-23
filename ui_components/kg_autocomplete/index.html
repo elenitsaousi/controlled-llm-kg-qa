@@ -199,6 +199,16 @@
       if (!entryContexts.length) return false;
       return entryContexts.some(ctx => contexts.has(ctx));
     }
+    function termAlreadyUsed(entry, text) {
+      const lower = String(text || "").toLowerCase();
+      const probes = [entry.label || "", entry.insert || "", entry.raw || "", ...(entry.aliases || [])]
+        .map(v => String(v).toLowerCase().replaceAll("_", " ").trim())
+        .filter(v => v.length >= 2);
+      return probes.some(v => {
+        const escaped = v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return new RegExp(`(^|\\b)${escaped}(\\b|$)`, "i").test(lower);
+      });
+    }
     function filteredEntries() {
       const text = input.value;
       const fragment = currentFragment(text);
@@ -212,11 +222,22 @@
         .map(e => ({ ...e, _score: scoreEntry(e, fragment, textTokens, byCtx, contCtx) }))
         .filter(e => {
           if (e._score <= 0) return false;
-          if (byCtx) return e.type === "dimension" && contextMatches(e, contexts);
+          if (byCtx) {
+            return (
+              e.type === "dimension" &&
+              contexts.size > 0 &&
+              contextMatches(e, contexts) &&
+              !termAlreadyUsed(e, text)
+            );
+          }
           if (contCtx) return ["keyword", "comparison", "detail level", "breakdown"].includes(e.type);
+          if (!contexts.size && ["dimension", "scope"].includes(e.type)) {
+            return false;
+          }
           if (contexts.size && ["dimension", "scope", "metric", "class"].includes(e.type) && !contextMatches(e, contexts)) {
             return false;
           }
+          if (termAlreadyUsed(e, text)) return false;
           const label = (e.label || "").toLowerCase();
           const raw = (e.raw || "").toLowerCase();
           const aliases = (e.aliases || []).map(a => String(a).toLowerCase());
