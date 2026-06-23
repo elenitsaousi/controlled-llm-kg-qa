@@ -4,6 +4,8 @@ import json
 import re
 import uuid
 import hashlib
+import urllib.error
+import urllib.request
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from html import escape
@@ -155,6 +157,29 @@ def _load_schema_from_path(schema_path: str):
 
 def _active_fuseki_query_url() -> str:
     return os.getenv("FUSEKI_QUERY_URL", "").strip()
+
+
+@st.cache_data(show_spinner=False, ttl=15)
+def _fuseki_endpoint_available(fuseki_query_url: str) -> bool:
+    url = (fuseki_query_url or "").strip()
+    if not url:
+        return False
+    try:
+        request = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(request, timeout=0.6):
+            return True
+    except urllib.error.HTTPError:
+        # Fuseki may reject GET without a query but still be reachable.
+        return True
+    except Exception:
+        return False
+
+
+def _usable_fuseki_query_url(fuseki_query_url: str) -> str:
+    url = (fuseki_query_url or "").strip()
+    if not url:
+        return ""
+    return url if _fuseki_endpoint_available(url) else ""
 
 
 def _graph_backend_available(graph_path: str) -> bool:
@@ -1766,6 +1791,7 @@ def _build_confidence_route(
     }
 
 
+@st.cache_data(show_spinner=False, ttl=120)
 def _capability_backed_clarification_options(
     *,
     question: str,
@@ -4577,8 +4603,9 @@ with st.sidebar:
                 help="Path to owl2vowl.jar. Required to convert TTL/OWL files into WebVOWL JSON.",
             )
 
-    if fuseki_query_url.strip():
-        os.environ["FUSEKI_QUERY_URL"] = fuseki_query_url.strip()
+    usable_fuseki_query_url = _usable_fuseki_query_url(fuseki_query_url)
+    if usable_fuseki_query_url:
+        os.environ["FUSEKI_QUERY_URL"] = usable_fuseki_query_url
     else:
         os.environ.pop("FUSEKI_QUERY_URL", None)
     if webvowl_url.strip():
@@ -4598,7 +4625,7 @@ with st.sidebar:
         _render_system_status(
             schema_path=schema_path,
             graph_path=graph_path,
-            fuseki_query_url=fuseki_query_url.strip(),
+            fuseki_query_url=_active_fuseki_query_url(),
             model_path=ml_model_path,
             api_url=api_url,
             api_key=api_key,
@@ -4631,10 +4658,10 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-question = _render_kg_autocomplete_input(schema_path, graph_path, fuseki_query_url.strip())
+question = _render_kg_autocomplete_input(schema_path, graph_path, _active_fuseki_query_url())
 asked = st.button("Ask", type="primary")
 
-_render_question_guidance(graph_path, fuseki_query_url.strip())
+_render_question_guidance(graph_path, _active_fuseki_query_url())
 
 if "last_qa_result" not in st.session_state:
     st.session_state["last_qa_result"] = None
