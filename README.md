@@ -89,7 +89,36 @@ python -m uvicorn api.main:app --reload --port 8000
 
 The API health endpoint is `http://localhost:8000/api/health`.
 
-### 3. React frontend
+### 3. Python-only Streamlit UI
+
+Use this path on managed Windows machines where Node.js/npm is not available.
+It uses the same KGQA runtime and keeps the direct routing, ML selection,
+clarification, evidence graph, examples, guided builder, and dashboard in one
+Python app.
+
+```powershell
+cd C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa
+python -m pip install -r requirements-ui.txt
+.\run_streamlit_ui.ps1
+```
+
+If PowerShell blocks local scripts, use the batch launcher instead:
+
+```powershell
+.\run_streamlit_ui.bat
+```
+
+Equivalent command:
+
+```powershell
+python -m streamlit run app.py --server.port 8501
+```
+
+Open `http://localhost:8501`.
+
+### 4. React frontend (optional)
+
+The React/Lovable UI is optional and requires Node.js/npm.
 
 ```powershell
 cd "C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\True Demand-lovable"
@@ -101,7 +130,7 @@ Open the URL printed by Vite, currently `http://localhost:8080`. The frontend us
 `http://localhost:8000` by default and can be configured with
 `VITE_API_BASE_URL` or from its Settings page.
 
-### 4. WebVOWL (optional standalone viewer)
+### 5. WebVOWL (optional standalone viewer)
 
 If WebVOWL was already built and has a `deploy` folder:
 
@@ -122,7 +151,7 @@ Load this file in WebVOWL:
 C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\data\infineon\true_demand_webvowl.json
 ```
 
-### 5. Streamlit (retained alternative UI)
+### 6. Streamlit direct command
 
 ```powershell
 cd C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa

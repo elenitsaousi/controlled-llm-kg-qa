@@ -3750,7 +3750,7 @@ def _inject_app_styles() -> None:
         """
         <style>
         :root {
-            --kg-bg: #f6f9fb;
+            --kg-bg: #f7fafb;
             --kg-panel: #ffffff;
             --kg-panel-soft: #eef5f7;
             --kg-border: #d9e4e8;
@@ -3764,7 +3764,8 @@ def _inject_app_styles() -> None:
             --kg-accent-soft: #e4f7f5;
             --kg-success: #e8f7f0;
             --kg-warning: #fff6df;
-            --kg-shadow: 0 12px 32px rgba(24, 54, 64, 0.08);
+            --kg-shadow: 0 16px 42px rgba(24, 54, 64, 0.08);
+            --kg-shadow-soft: 0 8px 24px rgba(24, 54, 64, 0.055);
         }
 
         .stApp {
@@ -3800,7 +3801,7 @@ def _inject_app_styles() -> None:
             color: var(--kg-text);
         }
         .block-container {
-            max-width: 1160px;
+            max-width: 1180px;
             padding-top: 2.5rem;
             padding-bottom: 3rem;
         }
@@ -3832,6 +3833,7 @@ def _inject_app_styles() -> None:
             color: #ffffff !important;
             font-weight: 600;
             border-radius: 8px !important;
+            box-shadow: 0 8px 22px rgba(0, 169, 157, 0.2);
         }
         button[kind="secondary"] {
             border-color: var(--kg-border) !important;
@@ -3862,7 +3864,20 @@ def _inject_app_styles() -> None:
             background: var(--kg-panel);
             border: 1px solid var(--kg-border);
             border-radius: 8px;
-            box-shadow: 0 6px 18px rgba(24, 54, 64, 0.04);
+            box-shadow: var(--kg-shadow-soft);
+            overflow: hidden;
+        }
+        [data-testid="stExpander"] details summary {
+            background: #ffffff;
+            border-radius: 8px;
+            min-height: 46px;
+        }
+        [data-testid="stTabs"] button {
+            font-weight: 600;
+            color: var(--kg-muted);
+        }
+        [data-testid="stTabs"] button[aria-selected="true"] {
+            color: var(--kg-accent-dark);
         }
         [data-testid="stDataFrame"],
         pre {
@@ -3874,19 +3889,23 @@ def _inject_app_styles() -> None:
             border-radius: 8px;
         }
         .kg-hero {
-            background: linear-gradient(135deg, #ffffff 0%, #eef8f7 100%);
+            background:
+                linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(235,248,246,0.96) 100%),
+                radial-gradient(circle at 78% 18%, rgba(0,169,157,0.14), transparent 34%);
             border: 1px solid var(--kg-border);
             border-left: 6px solid var(--kg-accent);
             border-radius: 8px;
             box-shadow: var(--kg-shadow);
-            margin-bottom: 1.25rem;
-            padding: 1.35rem 1.5rem;
+            margin-bottom: 1.35rem;
+            padding: 1.45rem 1.65rem;
         }
         .kg-hero h1 {
             margin: 0.1rem 0 0.35rem;
+            font-size: clamp(2.1rem, 4vw, 3.1rem);
+            line-height: 1.05;
         }
         .kg-kicker {
-            color: var(--kg-blue);
+            color: var(--kg-accent-dark);
             font-size: 0.78rem;
             font-weight: 700;
             letter-spacing: 0.08em;
@@ -3895,6 +3914,22 @@ def _inject_app_styles() -> None:
         .kg-page-copy {
             color: var(--kg-muted);
             max-width: 48rem;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        .kg-python-badge {
+            align-items: center;
+            background: var(--kg-accent-soft);
+            border: 1px solid #c8e9e5;
+            border-radius: 999px;
+            color: var(--kg-accent-dark);
+            display: inline-flex;
+            font-size: 0.76rem;
+            font-weight: 700;
+            gap: 0.35rem;
+            margin-top: 0.9rem;
+            padding: 0.32rem 0.7rem;
+            text-transform: uppercase;
         }
         .kg-sidebar-note {
             background: var(--kg-accent-soft);
@@ -4590,6 +4625,7 @@ st.markdown(
       <div class="kg-kicker">Knowledge graph assistant</div>
       <h1>True Demand KG QA</h1>
       <div class="kg-page-copy">Ask a natural-language question and receive a graph-grounded answer. When the request is genuinely ambiguous, the system asks for the intended interpretation first.</div>
+      <div class="kg-python-badge">Python-only Streamlit UI · no Node.js required</div>
     </section>
     """,
     unsafe_allow_html=True,
