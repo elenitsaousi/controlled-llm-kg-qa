@@ -4,6 +4,7 @@ import json
 import re
 import uuid
 import hashlib
+import math
 import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
@@ -595,6 +596,34 @@ def _confidence_summary(result: Dict[str, Any]) -> Tuple[str, str]:
     )
 
 
+def _bounded_score(value: object) -> float:
+    try:
+        raw = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    if 0.0 <= raw <= 1.0:
+        return raw
+    # Some ranker scores are unbounded logits. Map them to 0..1 for display.
+    try:
+        return 1.0 / (1.0 + math.exp(-raw))
+    except OverflowError:
+        return 1.0 if raw > 0 else 0.0
+
+
+def _confidence_index_from_route(confidence_route: Dict[str, Any]) -> float:
+    score = _bounded_score(confidence_route.get("score1"))
+    try:
+        margin = float(confidence_route.get("margin") or 0.0)
+    except (TypeError, ValueError):
+        margin = 0.0
+    margin_signal = max(0.0, min(1.0, margin))
+    blocking_flags = confidence_route.get("blocking_safety_flags") or []
+    safety_penalty = 1.0 if blocking_flags else 0.0
+    if confidence_route.get("route") != "auto_answer":
+        safety_penalty = max(safety_penalty, 0.35)
+    return max(0.0, min(1.0, 0.75 * score + 0.25 * margin_signal - safety_penalty))
+
+
 def _render_compact_explainability(result: Dict[str, Any]) -> None:
     request_route = result.get("request_route")
     if isinstance(request_route, dict) and request_route.get("route") != "kg_query":
@@ -610,6 +639,7 @@ def _render_compact_explainability(result: Dict[str, Any]) -> None:
         route = str(confidence_route.get("route", "unknown")).replace("_", " ")
         left, right = st.columns([1.2, 3])
         left.metric("Decision", route)
+        left.metric("Confidence index", f"{_confidence_index_from_route(confidence_route):.2f}")
         reason = str(confidence_route.get("reason") or "").strip()
         score = confidence_route.get("score1")
         margin = confidence_route.get("margin")

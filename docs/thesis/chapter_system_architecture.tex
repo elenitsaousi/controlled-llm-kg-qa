@@ -270,7 +270,109 @@ This architecture supports two complementary claims. First, ML improves the sele
 
 Confidence and ambiguity routing decides whether the system should answer automatically. This stage is necessary because even the best-ranked candidate may not always be safe to execute as the final answer. The system therefore estimates the reliability of the selected candidate using score-based confidence, score margin, entropy over candidate scores, safety flags, and execution behavior.
 
-In this thesis, entropy should be interpreted carefully. The entropy computed over candidate scores is not a direct measurement of how ambiguous the user's question is in a human-linguistic sense. It is a measurement of candidate-set uncertainty under the current scoring model. If several candidates receive similar probabilities, the model is uncertain about which interpretation should be selected. This often corresponds to user ambiguity, but it can also arise from near-duplicate candidates or from weak feature discrimination.
+Let a question $x$ produce a ranked candidate set
+$Q(x)=\{q_1,\ldots,q_n\}$, where each candidate $q_i$ receives a selector
+score $s_i$. After sorting candidates by score, $q_1$ denotes the top-ranked
+candidate and $q_2$ the second-ranked candidate. The operational confidence
+signals used by the system are:
+
+\begin{align}
+\text{score}_1(x) &= s_1, \\
+\text{score}_2(x) &= s_2, \\
+\Delta(x) &= s_1 - s_2,
+\end{align}
+
+where $\Delta(x)$ is the selection margin. A large margin means that the
+selector separates the best candidate from the nearest alternative. A small
+margin means that two interpretations remain close and forced selection is less
+reliable.
+
+The production confidence policy is implemented as a rule-based decision gate:
+
+\begin{equation}
+\text{AutoAnswer}(x) =
+\begin{cases}
+1, & \text{if } s_1 \geq \tau_s,\ \Delta(x) \geq \tau_m,\ B(x)=0,\ R(q_1)=1, \\
+0, & \text{otherwise.}
+\end{cases}
+\end{equation}
+
+Here $\tau_s$ is the minimum top-candidate score, $\tau_m$ is the minimum
+margin, $B(x)$ is a binary blocking-safety indicator, and $R(q_1)$ indicates
+whether the selected query executes and returns graph evidence. In the
+interactive system, the default high-confidence setting uses $\tau_s=0.90$ and
+$\tau_m=0.00$, together with safety and execution checks. Thus, the system does
+not auto-answer solely because the top score is high; the selected query must
+also avoid blocking safety flags and return graph rows.
+
+For explanation purposes, the same signals can be written as a composite
+confidence score:
+
+\begin{equation}
+C(x) = \alpha \hat{s}_1 + \beta \hat{\Delta}(x) - \gamma B(x),
+\end{equation}
+
+where $\hat{s}_1$ and $\hat{\Delta}(x)$ are normalized score and margin signals.
+The UI reports this value as a \emph{confidence index} on a 0--1 scale using
+$\alpha=0.75$, $\beta=0.25$, and $\gamma=1.0$. If the selector score is already
+bounded between 0 and 1, it is used directly; otherwise it is mapped through a
+sigmoid transformation. The margin is clipped to the interval $[0,1]$:
+
+\begin{align}
+\hat{s}_1 &=
+\begin{cases}
+s_1, & 0 \leq s_1 \leq 1, \\
+\sigma(s_1), & \text{otherwise,}
+\end{cases} \\
+\hat{\Delta}(x) &= \min(1,\max(0,\Delta(x))).
+\end{align}
+
+These weights are design weights rather than learned calibration parameters.
+The index is used for interpretability, while the actual auto-answer decision
+uses the explicit threshold policy above. This distinction is important: the
+learned component scores candidates, while the confidence router decides
+whether the score is safe enough for automatic answering.
+
+Ambiguity is estimated separately from confidence. Candidate scores are first
+converted into a probability distribution using a softmax transformation:
+
+\begin{equation}
+p_i = \frac{\exp(s_i/T)}{\sum_{j=1}^{n}\exp(s_j/T)},
+\end{equation}
+
+where $T$ is a temperature parameter controlling how sharply candidate-score
+differences are expressed. Candidate-set entropy is then computed as:
+
+\begin{equation}
+H(x) = -\sum_{i=1}^{n} p_i \log p_i.
+\end{equation}
+
+Because candidate sets may contain different numbers of candidates, the entropy
+is normalized by the maximum possible entropy for $n$ candidates:
+
+\begin{equation}
+H_{\text{norm}}(x) = \frac{H(x)}{\log n}.
+\end{equation}
+
+The normalized entropy is used to define ambiguity regimes:
+
+\begin{equation}
+\text{Regime}(x) =
+\begin{cases}
+\text{low}, & H_{\text{norm}}(x) \leq \tau_1, \\
+\text{medium}, & \tau_1 < H_{\text{norm}}(x) \leq \tau_2, \\
+\text{high}, & H_{\text{norm}}(x) > \tau_2.
+\end{cases}
+\end{equation}
+
+These regimes are operational decision regimes rather than ground-truth labels
+of linguistic ambiguity. Low entropy means that the selector strongly prefers
+one candidate; high entropy means that the candidate scores are more diffuse.
+As shown in the evaluation, high entropy can sometimes correspond to harmless
+near-duplicate candidates, while low entropy can still fail when the model is
+confidently wrong. Therefore, entropy is treated as a proxy for selector
+uncertainty and is combined with safety flags, execution evidence, and
+clarification logic.
 
 The final routing policy follows three regimes:
 
