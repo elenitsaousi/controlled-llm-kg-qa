@@ -18,6 +18,7 @@ import streamlit.components.v1 as components
 from rdflib import Graph, BNode, URIRef
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
+from kg.advisory import resolve_advisory_plan, synthesize_advisory_answer
 from kg.schema import load_schema
 from kg.capabilities import DEFAULT_REGISTRY as CAPABILITY_REGISTRY
 from llm.answer_synthesis import synthesize_answer
@@ -4719,10 +4720,9 @@ clarification_rendered = False
 
 if asked:
     guided_query = _active_guided_query(question)
+    advisory_plan = resolve_advisory_plan(question)
     if not question.strip():
         st.warning("Please enter a question.")
-    elif not api_url.strip():
-        st.error("Missing API URL.")
     else:
         try:
             schema = _load_schema_from_path(schema_path)
@@ -4745,6 +4745,7 @@ if asked:
 
         if (
             not guided_query
+            and advisory_plan is None
             and not direct_capability_option
             and not api_key.strip()
             and not (os.environ.get("USER_LLM") or os.environ.get("INFINEON_API_USER"))
@@ -4752,7 +4753,7 @@ if asked:
             st.error("Missing API key or token-refresh credentials.")
             st.stop()
 
-        if show_prompt and not guided_query and not direct_capability_option:
+        if show_prompt and not guided_query and advisory_plan is None and not direct_capability_option:
             prompt = generate_candidate_prompt(question, schema, k=5)
             st.subheader("Candidate Generation Prompt")
             st.code(prompt, language="text")
@@ -4790,9 +4791,61 @@ if asked:
                     "clarification": None,
                     "request_clarification": None,
                 }
+            elif advisory_plan is not None:
+                result = {
+                    "answer": "Graph-grounded advisory template selected.",
+                    "selected_query": advisory_plan.query,
+                    "candidates": [{"query": advisory_plan.query, "source": "advisory"}],
+                    "schema_ranked": [],
+                    "learning_ranked": [],
+                    "metadata": {
+                        "advisory_route": True,
+                        "advisory_plan_id": advisory_plan.plan_id,
+                        "advisory_title": advisory_plan.title,
+                        "llm_skipped": True,
+                    },
+                    "errors": [],
+                    "prompt": "",
+                    "policy": "advisory",
+                    "entropy": 0.0,
+                    "selection_reason": "Deterministic graph-grounded advisory template selected.",
+                    "used_ml": False,
+                    "effective_question": question,
+                    "selection_explanation": {
+                        "selected_policy": "advisory",
+                        "selection_reason": "Deterministic advisory template selected.",
+                        "selected_query_valid": True,
+                        "selected_query_errors": [],
+                        "selected_execution_has_rows": None,
+                    },
+                    "answerability": {
+                        "status": "advisory_pending_execution",
+                        "can_answer": None,
+                        "reason": (
+                            "A deterministic advisory query was selected and will be executed "
+                            "against the graph. The output is analytical guidance, not an "
+                            "autonomous business decision."
+                        ),
+                    },
+                    "confidence_route": {
+                        "enabled": True,
+                        "route": "auto_answer",
+                        "score1": 1.0,
+                        "score2": 0.0,
+                        "margin": 1.0,
+                        "selected_query": advisory_plan.query,
+                        "reason": "deterministic graph-grounded advisory route",
+                        "safety_flags": ["graph_grounded_advisory_not_business_decision"],
+                    },
+                    "clarification": None,
+                    "request_clarification": None,
+                }
             elif direct_capability_option:
                 result = _direct_capability_result(question, direct_capability_option)
             else:
+                if not api_url.strip():
+                    st.error("Missing API URL.")
+                    st.stop()
                 os.environ["INFINEON_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
                 client = InfineonGPTClient(
                     model=model_name.strip() or None,
@@ -4838,8 +4891,12 @@ if asked:
             isinstance(result.get("metadata"), dict)
             and result["metadata"].get("direct_capability_route")
         )
+        is_advisory_route = bool(
+            isinstance(result.get("metadata"), dict)
+            and result["metadata"].get("advisory_route")
+        )
 
-        if execute_selected and not guided_query and not is_direct_capability_route and _graph_backend_available(graph_path):
+        if execute_selected and not guided_query and not is_direct_capability_route and not is_advisory_route and _graph_backend_available(graph_path):
             execution_override = _execution_aware_selected_query_override(
                 result,
                 question=effective_question or question,
@@ -4860,8 +4917,8 @@ if asked:
                         + "; execution-aware selected non-empty/shape-compatible alternative"
                     ).strip("; ")
 
-        confidence_route = result.get("confidence_route") if is_direct_capability_route else None
-        if confidence_routing_enabled and not guided_query and not is_direct_capability_route:
+        confidence_route = result.get("confidence_route") if (is_direct_capability_route or is_advisory_route) else None
+        if confidence_routing_enabled and not guided_query and not is_direct_capability_route and not is_advisory_route:
             confidence_route = _build_confidence_route(
                 result,
                 question=effective_question or question,
@@ -4875,7 +4932,7 @@ if asked:
                 result["confidence_route"] = confidence_route
 
         direct_option = None
-        if execute_selected and not guided_query and not is_direct_capability_route and _graph_backend_available(graph_path):
+        if execute_selected and not guided_query and not is_direct_capability_route and not is_advisory_route and _graph_backend_available(graph_path):
             direct_option = _single_direct_capability_option(
                 question=effective_question or question,
                 graph_path=graph_path,
@@ -4935,18 +4992,24 @@ if asked:
                 )
                 graph_query_elapsed = time.perf_counter() - graph_query_started
                 answer_synthesis_started = time.perf_counter()
-                graph_answer = synthesize_answer(
-                    question,
-                    selected_query,
-                    {
-                        "rows": graph_rows,
-                        "matched_question_id": None,
-                        "error": None,
-                    },
-                    None if graph_rows else result.get("errors") or None,
-                )
+                result_metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+                if result_metadata.get("advisory_route") and advisory_plan is not None:
+                    graph_answer = synthesize_advisory_answer(question, advisory_plan, graph_rows)
+                else:
+                    graph_answer = synthesize_answer(
+                        question,
+                        selected_query,
+                        {
+                            "rows": graph_rows,
+                            "matched_question_id": None,
+                            "error": None,
+                        },
+                        None if graph_rows else result.get("errors") or None,
+                    )
                 answer_synthesis_elapsed = time.perf_counter() - answer_synthesis_started
-                if guided_query:
+                if result_metadata.get("advisory_route"):
+                    result["answerability"] = _clarified_answerability(graph_rows)
+                elif guided_query:
                     result["answerability"] = _guided_answerability(graph_rows)
             except Exception as exc:
                 graph_exec_error = str(exc)

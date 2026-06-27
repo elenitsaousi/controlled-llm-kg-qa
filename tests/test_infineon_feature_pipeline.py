@@ -114,6 +114,48 @@ def test_route_request_routes_unknown_definition_questions_to_general_definition
     assert route["term"] == "a manufacturer"
 
 
+def test_route_request_uses_digital_reference_definition(monkeypatch, tmp_path):
+    dr_path = tmp_path / "DigitalReference.ttl"
+    dr_path.write_text(
+        """
+@prefix dr: <http://www.w3id.org/ecsel-dr#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+dr:Demand a owl:Class ;
+    rdfs:label "Demand"@en ;
+    rdfs:comment "Demand is a supply chain or production request for a product or service."@en .
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("TRUE_DEMAND_DR_ONTOLOGY_PATH", str(dr_path))
+
+    route = route_request("What is Demand?")
+
+    assert route["route"] == "definition"
+    assert route["source"] == "digital_reference_ontology"
+    assert "supply chain or production request" in route["answer"]
+
+
+def test_route_request_does_not_use_dr_for_analytic_questions(monkeypatch, tmp_path):
+    dr_path = tmp_path / "DigitalReference.ttl"
+    dr_path.write_text(
+        """
+@prefix dr: <http://www.w3id.org/ecsel-dr#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+dr:Demand a owl:Class ;
+    rdfs:label "Demand"@en ;
+    rdfs:comment "Demand is a supply chain or production request."@en .
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("TRUE_DEMAND_DR_ONTOLOGY_PATH", str(dr_path))
+
+    route = route_request("Has demand increased between these months?")
+
+    assert route["route"] == "kg_query"
+
+
 def test_answer_question_uses_general_definition_llm_path():
     class FakeClient:
         def generate_text(self, prompt):

@@ -181,6 +181,7 @@ FUSEKI_QUERY_URL=http://localhost:3030/infineon/sparql
 WEBVOWL_URL=http://localhost:8080
 TRUE_DEMAND_ONTOLOGY_PATH=data/infineon/true_demand_ontology_extracted.ttl
 TRUE_DEMAND_WEBVOWL_JSON_PATH=data/infineon/true_demand_webvowl.json
+TRUE_DEMAND_DR_ONTOLOGY_PATH=C:\Users\tsaousieleni\Downloads\dr\DigitalReference.ttl
 
 # Optional cost/latency controls used by the Streamlit demo
 INFINEON_ENABLE_LLM_CACHE=1
@@ -196,6 +197,18 @@ free-text questions, `INFINEON_ENABLE_LLM_CACHE=1` reuses candidate-generation
 outputs only when the prompt/model/settings hash is identical. This reduces demo
 cost and latency without changing the ranking logic for new or ambiguous
 questions.
+
+`TRUE_DEMAND_DR_ONTOLOGY_PATH` is optional. If it points to the Digital Reference
+ontology, definition-style questions such as "What is Demand?" or "What is
+Product?" are answered directly from DR labels, comments, definitions, domains,
+and ranges before the LLM is called. Analytical questions such as demand trends,
+monthly changes, or grouped totals still use the True Demand KGQA pipeline.
+
+The API and Streamlit app also include a deterministic graph-grounded advisory
+layer for a small set of insight questions, for example "which region should be
+monitored more closely?" or "which vehicle type shows the strongest future
+demand signal?". These are mapped to fixed SPARQL templates and summarized as
+analytical signals, not autonomous business recommendations.
 
 ## Rebuilding The WebVOWL Ontology
 

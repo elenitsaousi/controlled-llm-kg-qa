@@ -15,11 +15,13 @@ from rdflib import BNode, Graph, Literal, URIRef
 from rdflib.namespace import OWL, RDF, RDFS, XSD
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
+from kg.advisory import resolve_advisory_plan, synthesize_advisory_answer
 from kg.capabilities import DEFAULT_REGISTRY
 from kg.schema import load_default_schema
 from llm.answer_synthesis import synthesize_answer
 from llm.client import InfineonGPTClient
 from pipeline.qa import answer_question
+from pipeline.request_routing import route_request
 from visualization.interactive_graph import (
     collect_answer_evidence_triples,
     collect_query_subgraph_triples,
@@ -207,6 +209,36 @@ class KGQAService:
         if not question:
             raise ValueError("Question must not be empty.")
         case_id = uuid.uuid4().hex[:12]
+        advisory_plan = resolve_advisory_plan(question)
+        if advisory_plan is not None:
+            rows, truncated, error = self.execute(advisory_plan.query)
+            if rows and not error:
+                answer = synthesize_advisory_answer(question, advisory_plan, rows)
+                with self._lock:
+                    self._cases[case_id] = {
+                        "question": question,
+                        "query": advisory_plan.query,
+                        "rows": rows,
+                        "decision": "advisory",
+                    }
+                return {
+                    "caseId": case_id,
+                    "decision": "advisory",
+                    "answer": answer,
+                    "table": self._table(rows),
+                    "confidence": 1.0,
+                    "entropy": 0.0,
+                    "responseTimeMs": round((time.perf_counter() - started) * 1000),
+                    "sparql": advisory_plan.query,
+                    "unsupported": False,
+                    "diagnostics": {
+                        "family": "advisory",
+                        "template": advisory_plan.plan_id,
+                        "safetyFlags": ["graph_grounded_advisory_not_business_decision"],
+                        "truncated": bool(truncated),
+                    },
+                }
+
         direct_query = self._direct_query(question)
         if direct_query:
             rows, truncated, error = self.execute(direct_query)
@@ -224,6 +256,29 @@ class KGQAService:
                 truncated=truncated,
             )
 
+        early_route = route_request(question, schema=self.schema, alias_index=None)
+        if early_route.get("route") != "kg_query" and early_route.get("answer"):
+            with self._lock:
+                self._cases[case_id] = {"question": question, "rows": [], "query": ""}
+            return {
+                "caseId": case_id,
+                "decision": "definition" if early_route.get("route") == "definition" else str(early_route.get("route")),
+                "answer": str(early_route.get("answer") or ""),
+                "confidence": 1.0 if early_route.get("confidence") == "High" else 0.7,
+                "entropy": 0.0,
+                "responseTimeMs": round((time.perf_counter() - started) * 1000),
+                "sparql": "",
+                "diagnostics": {
+                    "family": "ontology",
+                    "safetyFlags": [],
+                    "route": str(early_route.get("route") or ""),
+                    "source": str(early_route.get("source") or "request_router"),
+                    "matchedTerm": str(early_route.get("matched_term") or ""),
+                    "termKind": str(early_route.get("term_kind") or ""),
+                    "termUri": str(early_route.get("term_uri") or ""),
+                },
+            }
+
         result = answer_question(
             question,
             self.schema,
@@ -237,6 +292,28 @@ class KGQAService:
             enable_clarification=True,
             enable_answerability_assessment=True,
         )
+        request_route = result.get("request_route")
+        if isinstance(request_route, dict) and request_route.get("route") != "kg_query":
+            with self._lock:
+                self._cases[case_id] = {"question": question, "rows": [], "query": ""}
+            return {
+                "caseId": case_id,
+                "decision": "definition",
+                "answer": str(result.get("answer") or ""),
+                "confidence": 1.0 if request_route.get("confidence") == "High" else 0.7,
+                "entropy": 0.0,
+                "responseTimeMs": round((time.perf_counter() - started) * 1000),
+                "sparql": "",
+                "diagnostics": {
+                    "family": "ontology",
+                    "safetyFlags": [],
+                    "route": str(request_route.get("route") or ""),
+                    "source": str(request_route.get("source") or "request_router"),
+                    "matchedTerm": str(request_route.get("matched_term") or ""),
+                    "termKind": str(request_route.get("term_kind") or ""),
+                    "termUri": str(request_route.get("term_uri") or ""),
+                },
+            }
         request_clarification = result.get("request_clarification")
         clarification = result.get("clarification")
         clarification_payload = (

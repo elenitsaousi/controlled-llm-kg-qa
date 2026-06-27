@@ -4,6 +4,8 @@ import re
 from typing import Any, Dict, List, Optional
 from urllib.parse import unquote
 
+from kg.dr_ontology import route_dr_ontology_definition
+
 
 CURATED_TERMS = {
     "bev": {
@@ -41,6 +43,14 @@ CURATED_TERMS = {
     "sae": {
         "label": "SAE",
         "definition": "SAE refers to the driving-automation level scale used for autonomous-driving data.",
+    },
+    "truedemand": {
+        "label": "True Demand",
+        "definition": (
+            "True Demand is the survey-grounded estimate of real semiconductor demand. "
+            "It is used to reduce planning based on assumptions or inflated forecasts and "
+            "to support more reliable supply-chain and manufacturing decisions."
+        ),
     },
 }
 
@@ -232,10 +242,10 @@ def _definition_route(
         match = pattern.match(question or "")
         if not match:
             continue
-        if _looks_like_kg_query(question, match.group(1)):
-            return None
         term = _recognized_term(match.group(1), glossary)
         if term is None:
+            if _looks_like_kg_query(question, match.group(1)):
+                return None
             return None
         return {
             "route": "definition",
@@ -323,6 +333,10 @@ def route_request(
     alias_index: Optional[Any] = None,
 ) -> Dict[str, object]:
     glossary = build_domain_glossary(schema, alias_index) if schema is not None else dict(CURATED_TERMS)
+
+    dr_definition = route_dr_ontology_definition(question)
+    if dr_definition is not None:
+        return dr_definition
 
     definition = _definition_route(question, glossary)
     if definition is not None:

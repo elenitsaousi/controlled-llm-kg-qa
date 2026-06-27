@@ -54,3 +54,47 @@ def test_graph_payload_preserves_owl_node_types():
     assert types[str(survey.totalDemand)] == "DatatypeProperty"
     assert types[str(XSD.decimal)] == "Datatype"
     assert "Literal" in types.values()
+
+
+def test_api_returns_digital_reference_definition_without_sparql(monkeypatch, tmp_path):
+    dr_path = tmp_path / "DigitalReference.ttl"
+    dr_path.write_text(
+        """
+@prefix dr: <http://www.w3id.org/ecsel-dr#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+dr:Product a owl:Class ;
+    rdfs:label "Product"@en ;
+    rdfs:comment "A product is any tangible output or service intended for delivery to a customer."@en .
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("TRUE_DEMAND_DR_ONTOLOGY_PATH", str(dr_path))
+    service = KGQAService()
+
+    response = service.ask("What is Product?")
+
+    assert response["decision"] == "definition"
+    assert "tangible output or service" in response["answer"]
+    assert response["sparql"] == ""
+    assert response["diagnostics"]["source"] == "digital_reference_ontology"
+
+
+def test_api_returns_deterministic_advisory_answer(monkeypatch):
+    service = KGQAService()
+
+    def fake_execute(query, max_rows=200):
+        assert "DemandForRegion" in query
+        return [
+            {"regionName": "Europe", "avgPercentageChange": "9.5"},
+            {"regionName": "Japan", "avgPercentageChange": "4.0"},
+        ], False, ""
+
+    monkeypatch.setattr(service, "execute", fake_execute)
+
+    response = service.ask("Based on future demand data, which region should be monitored more closely?")
+
+    assert response["decision"] == "advisory"
+    assert "Europe" in response["answer"]
+    assert "not an autonomous business decision" in response["answer"]
+    assert response["diagnostics"]["template"] == "future_demand_region_focus"
