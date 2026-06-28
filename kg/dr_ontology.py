@@ -216,6 +216,37 @@ def _best_term(target: str, terms: Dict[str, DROntologyTerm]) -> Optional[DROnto
     return term if score >= 0.55 else None
 
 
+PROJECT_GLOSSARY: Dict[str, Tuple[str, str]] = {
+    "true demand": (
+        "project concept",
+        "True Demand describes demand information intended to approximate real market need rather than inflated or safety-stock-driven forecasts. In this system it is represented through survey-based current-demand, future-demand, shortage, inventory, vehicle-sales, and related semiconductor supply-chain signals.",
+    ),
+    "future demand": (
+        "True Demand KG concept",
+        "Future Demand describes survey-reported expected demand signals in the True Demand knowledge graph. It can be analyzed by supported dimensions such as region, quarter, survey origin, vehicle type, component share, or technology category when the corresponding graph path exists.",
+    ),
+    "current demand": (
+        "True Demand KG concept",
+        "Current Demand describes survey-reported present demand signals in the True Demand knowledge graph. It is used for graph-supported breakdowns such as current demand by region, survey origin, vehicle type, or related demand dimensions.",
+    ),
+    "technology node": (
+        "True Demand KG concept",
+        "Technology Node represents a semiconductor technology category or node used to group demand, inventory, shortage, and related survey responses in the True Demand knowledge graph.",
+    ),
+}
+
+
+def _project_glossary_match(target: str) -> Optional[Tuple[str, str, str]]:
+    key = _normalize_alias(target)
+    if key in PROJECT_GLOSSARY:
+        kind, definition = PROJECT_GLOSSARY[key]
+        return target.strip(), kind, definition
+    for label, (kind, definition) in PROJECT_GLOSSARY.items():
+        if len(key) >= 4 and (key in _normalize_alias(label) or _normalize_alias(label) in key):
+            return label.title(), kind, definition
+    return None
+
+
 def _join(values: Iterable[str], limit: int = 5) -> str:
     unique = list(dict.fromkeys(str(value) for value in values if str(value).strip()))
     return ", ".join(unique[:limit])
@@ -231,10 +262,26 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
 
     terms = _load_dr_terms(str(path))
     term = _best_term(target, terms)
-    if term is None or not term.definition:
-        return None
-
-    answer_parts = [term.definition]
+    if term is None:
+        glossary_match = _project_glossary_match(target)
+        if glossary_match is None:
+            return None
+        label, kind, definition = glossary_match
+        return {
+            "route": "definition",
+            "answer": definition,
+            "matched_term": label,
+            "confidence": "High",
+            "reason": "The question asks for a deterministic True Demand / Digital Reference glossary definition.",
+            "source": "true_demand_project_glossary",
+            "term_kind": kind,
+            "term_uri": "",
+            "ontology_path": str(path),
+        }
+    answer_parts = [
+        term.definition
+        or f"The Digital Reference ontology contains {term.label} as a {term.kind}."
+    ]
     if term.parents:
         answer_parts.append(f"In the Digital Reference ontology, it is a subclass of {_join(term.parents)}.")
     if term.domains or term.ranges:

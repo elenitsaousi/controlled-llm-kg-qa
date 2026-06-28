@@ -19,6 +19,7 @@ from rdflib import Graph, BNode, URIRef
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 from kg.advisory import resolve_advisory_plan, synthesize_advisory_answer
+from kg.dr_ontology import DEFAULT_DR_ONTOLOGY_PATH, route_dr_ontology_definition
 from kg.schema import load_schema
 from kg.capabilities import DEFAULT_REGISTRY as CAPABILITY_REGISTRY
 from llm.answer_synthesis import synthesize_answer
@@ -4415,6 +4416,7 @@ with st.sidebar:
     schema_path = str(DEFAULT_SCHEMA_PATH)
     graph_path = str(DEFAULT_GRAPH_PATH)
     ontology_path = os.getenv("TRUE_DEMAND_ONTOLOGY_PATH", str(DEFAULT_ONTOLOGY_PATH)).strip()
+    dr_ontology_path = os.getenv("TRUE_DEMAND_DR_ONTOLOGY_PATH", str(DEFAULT_DR_ONTOLOGY_PATH)).strip()
     webvowl_json_path = os.getenv("TRUE_DEMAND_WEBVOWL_JSON_PATH", str(DEFAULT_WEBVOWL_JSON_PATH)).strip()
     fuseki_query_url = os.getenv("FUSEKI_QUERY_URL", DEFAULT_FUSEKI_QUERY_URL).strip()
     webvowl_url = os.getenv("WEBVOWL_URL", DEFAULT_WEBVOWL_URL).strip()
@@ -4474,6 +4476,11 @@ with st.sidebar:
                 "Ontology path for WebVOWL",
                 value=ontology_path or str(DEFAULT_ONTOLOGY_PATH),
                 help="Ontology/schema file used for WebVOWL/OWL2VOWL visualization. Prefer ontology.ttl over the full raw graph.",
+            )
+            dr_ontology_path = st.text_input(
+                "DR ontology path",
+                value=dr_ontology_path or str(DEFAULT_DR_ONTOLOGY_PATH),
+                help="Digital Reference ontology used for deterministic definition questions such as 'What is True Demand?'.",
             )
             webvowl_json_path = st.text_input(
                 "Precomputed WebVOWL JSON path",
@@ -4652,6 +4659,8 @@ with st.sidebar:
         os.environ["OWL2VOWL_JAR_PATH"] = owl2vowl_jar_path.strip()
     if ontology_path.strip():
         os.environ["TRUE_DEMAND_ONTOLOGY_PATH"] = ontology_path.strip()
+    if dr_ontology_path.strip():
+        os.environ["TRUE_DEMAND_DR_ONTOLOGY_PATH"] = dr_ontology_path.strip()
     if webvowl_json_path.strip():
         os.environ["TRUE_DEMAND_WEBVOWL_JSON_PATH"] = webvowl_json_path.strip()
     os.environ["INFINEON_ENABLE_SCHEMA_SLICING"] = "1" if family_schema_routing_enabled else "0"
@@ -4720,6 +4729,7 @@ clarification_rendered = False
 
 if asked:
     guided_query = _active_guided_query(question)
+    dr_definition = route_dr_ontology_definition(question)
     advisory_plan = resolve_advisory_plan(question)
     if not question.strip():
         st.warning("Please enter a question.")
@@ -4734,6 +4744,7 @@ if asked:
         if (
             cost_aware_direct_answers
             and not guided_query
+            and dr_definition is None
             and execute_selected
             and _graph_backend_available(graph_path)
         ):
@@ -4745,6 +4756,7 @@ if asked:
 
         if (
             not guided_query
+            and dr_definition is None
             and advisory_plan is None
             and not direct_capability_option
             and not api_key.strip()
@@ -4753,7 +4765,7 @@ if asked:
             st.error("Missing API key or token-refresh credentials.")
             st.stop()
 
-        if show_prompt and not guided_query and advisory_plan is None and not direct_capability_option:
+        if show_prompt and not guided_query and dr_definition is None and advisory_plan is None and not direct_capability_option:
             prompt = generate_candidate_prompt(question, schema, k=5)
             st.subheader("Candidate Generation Prompt")
             st.code(prompt, language="text")
@@ -4761,7 +4773,55 @@ if asked:
         request_id = uuid.uuid4().hex
         request_started = time.perf_counter()
         try:
-            if guided_query:
+            if dr_definition is not None:
+                result = {
+                    "answer": str(dr_definition.get("answer") or ""),
+                    "selected_query": "",
+                    "candidates": [],
+                    "schema_ranked": [],
+                    "learning_ranked": [],
+                    "metadata": {
+                        "dr_ontology_route": True,
+                        "llm_skipped": True,
+                        "matched_term": dr_definition.get("matched_term"),
+                        "term_kind": dr_definition.get("term_kind"),
+                        "term_uri": dr_definition.get("term_uri"),
+                        "ontology_path": dr_definition.get("ontology_path"),
+                    },
+                    "errors": [],
+                    "prompt": "",
+                    "policy": "dr_ontology_definition",
+                    "entropy": 0.0,
+                    "selection_reason": str(dr_definition.get("reason") or "Deterministic DR ontology definition selected."),
+                    "used_ml": False,
+                    "effective_question": question,
+                    "selection_explanation": {
+                        "selected_policy": "dr_ontology_definition",
+                        "selection_reason": str(dr_definition.get("reason") or "Deterministic DR ontology definition selected."),
+                        "selected_query_valid": True,
+                        "selected_query_errors": [],
+                        "selected_execution_has_rows": None,
+                    },
+                    "answerability": {
+                        "status": "ontology_definition_answered",
+                        "can_answer": True,
+                        "reason": "The answer was retrieved deterministically from the Digital Reference ontology.",
+                    },
+                    "confidence_route": {
+                        "enabled": True,
+                        "route": "auto_answer",
+                        "score1": 1.0,
+                        "score2": 0.0,
+                        "margin": 1.0,
+                        "selected_query": "",
+                        "reason": "deterministic Digital Reference ontology definition route",
+                        "safety_flags": [],
+                        "blocking_safety_flags": [],
+                    },
+                    "clarification": None,
+                    "request_clarification": None,
+                }
+            elif guided_query:
                 result = {
                     "answer": "Validated guided query selected.",
                     "selected_query": guided_query,
@@ -4891,12 +4951,16 @@ if asked:
             isinstance(result.get("metadata"), dict)
             and result["metadata"].get("direct_capability_route")
         )
+        is_dr_ontology_route = bool(
+            isinstance(result.get("metadata"), dict)
+            and result["metadata"].get("dr_ontology_route")
+        )
         is_advisory_route = bool(
             isinstance(result.get("metadata"), dict)
             and result["metadata"].get("advisory_route")
         )
 
-        if execute_selected and not guided_query and not is_direct_capability_route and not is_advisory_route and _graph_backend_available(graph_path):
+        if execute_selected and not guided_query and not is_dr_ontology_route and not is_direct_capability_route and not is_advisory_route and _graph_backend_available(graph_path):
             execution_override = _execution_aware_selected_query_override(
                 result,
                 question=effective_question or question,
@@ -4917,8 +4981,8 @@ if asked:
                         + "; execution-aware selected non-empty/shape-compatible alternative"
                     ).strip("; ")
 
-        confidence_route = result.get("confidence_route") if (is_direct_capability_route or is_advisory_route) else None
-        if confidence_routing_enabled and not guided_query and not is_direct_capability_route and not is_advisory_route:
+        confidence_route = result.get("confidence_route") if (is_dr_ontology_route or is_direct_capability_route or is_advisory_route) else None
+        if confidence_routing_enabled and not guided_query and not is_dr_ontology_route and not is_direct_capability_route and not is_advisory_route:
             confidence_route = _build_confidence_route(
                 result,
                 question=effective_question or question,
@@ -4932,7 +4996,7 @@ if asked:
                 result["confidence_route"] = confidence_route
 
         direct_option = None
-        if execute_selected and not guided_query and not is_direct_capability_route and not is_advisory_route and _graph_backend_available(graph_path):
+        if execute_selected and not guided_query and not is_dr_ontology_route and not is_direct_capability_route and not is_advisory_route and _graph_backend_available(graph_path):
             direct_option = _single_direct_capability_option(
                 question=effective_question or question,
                 graph_path=graph_path,
