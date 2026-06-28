@@ -121,7 +121,11 @@ def _dr_path() -> Optional[Path]:
 @lru_cache(maxsize=4)
 def _load_dr_terms(path_text: str) -> Dict[str, DROntologyTerm]:
     graph = Graph()
-    graph.parse(path_text, format="turtle")
+    path = Path(path_text).expanduser()
+    if path.exists():
+        graph.parse(path.resolve().as_uri(), format="turtle")
+    else:
+        graph.parse(path_text, format="turtle")
 
     by_uri: Dict[str, DROntologyTerm] = {}
     for subject in set(graph.subjects()):
