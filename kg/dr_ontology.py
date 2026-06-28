@@ -257,8 +257,21 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
         return None
     path = _dr_path()
     if path is None:
-        return None
-
+        glossary_match = _project_glossary_match(target)
+        if glossary_match is None:
+            return None
+        label, kind, definition = glossary_match
+        return {
+            "route": "definition",
+            "answer": definition,
+            "matched_term": label,
+            "confidence": "High",
+            "reason": "The question asks for a deterministic True Demand glossary definition.",
+            "source": "true_demand_project_glossary",
+            "term_kind": kind,
+            "term_uri": "",
+            "ontology_path": "",
+        }
     terms = _load_dr_terms(str(path))
     term = _best_term(target, terms)
     if term is None:
