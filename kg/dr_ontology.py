@@ -177,7 +177,10 @@ def _load_dr_terms(path_text: str) -> Dict[str, DROntologyTerm]:
     for term in by_uri.values():
         for alias in term.aliases:
             key = _normalize_alias(alias)
-            if key and key not in by_alias:
+            if not key:
+                continue
+            existing = by_alias.get(key)
+            if existing is None or (not existing.definition and term.definition):
                 by_alias[key] = term
     return by_alias
 
@@ -189,9 +192,6 @@ def _definition_target(question: str) -> Optional[str]:
         if not match:
             continue
         target = match.group(1).strip(" .?!")
-        target_l = target.lower()
-        if any(hint in target_l for hint in ANALYTIC_HINTS):
-            return None
         return target
     return None
 
