@@ -235,16 +235,15 @@ PROJECT_GLOSSARY: Dict[str, Tuple[str, str]] = {
     ),
 }
 
+PROJECT_GLOSSARY_BY_ALIAS: Dict[str, Tuple[str, str, str]] = {
+    _normalize_alias(label): (label.title(), kind, definition)
+    for label, (kind, definition) in PROJECT_GLOSSARY.items()
+}
+
 
 def _project_glossary_match(target: str) -> Optional[Tuple[str, str, str]]:
     key = _normalize_alias(target)
-    if key in PROJECT_GLOSSARY:
-        kind, definition = PROJECT_GLOSSARY[key]
-        return target.strip(), kind, definition
-    for label, (kind, definition) in PROJECT_GLOSSARY.items():
-        if len(key) >= 4 and (key in _normalize_alias(label) or _normalize_alias(label) in key):
-            return label.title(), kind, definition
-    return None
+    return PROJECT_GLOSSARY_BY_ALIAS.get(key)
 
 
 def _join(values: Iterable[str], limit: int = 5) -> str:

@@ -2191,6 +2191,10 @@ def _capability_result_hint(row: Dict[str, str]) -> str:
 
 def _render_confidence_route_badge(route: Dict[str, object]) -> None:
     if route.get("route") == "auto_answer":
+        reason = str(route.get("reason") or "").strip().lower()
+        if "ontology" in reason or "digital reference" in reason:
+            st.success("Deterministic ontology answer. LLM skipped.")
+            return
         score = route.get("score1")
         margin = route.get("margin")
         suffix = ""
