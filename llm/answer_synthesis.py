@@ -109,6 +109,62 @@ def _format_generic_answer(rows: List[Dict[str, object]], max_rows: int = 8) -> 
     return prefix + " Results: " + "; ".join(parts) + "."
 
 
+def _format_generic_ranking_answer(
+    rows: List[Dict[str, object]],
+    *,
+    question: str,
+) -> str:
+    if not rows or not _is_ranking_question(question):
+        return ""
+
+    metric_name_pattern = re.compile(
+        r"(avg|average|mean|sum|total|count|percentage|percent|pct|units|sold|"
+        r"demand|change|participant|company|entry|value)",
+        re.I,
+    )
+    dimension_name_pattern = re.compile(r"(year|month|quarter|label|name|type|category|region)", re.I)
+    numeric_candidates: List[Tuple[Dict[str, object], str, float]] = []
+    for row in rows:
+        row_candidates: List[Tuple[Dict[str, object], str, float, int]] = []
+        for key, value in row.items():
+            key_text = str(key)
+            number = _to_float(value)
+            if number is not None:
+                priority = 2 if metric_name_pattern.search(key_text) else 0
+                if dimension_name_pattern.search(key_text):
+                    priority -= 1
+                row_candidates.append((row, key_text, number, priority))
+        if row_candidates:
+            row_candidates.sort(key=lambda item: item[3], reverse=True)
+            row_, key_, number_, _ = row_candidates[0]
+            numeric_candidates.append((row_, key_, number_))
+    if not numeric_candidates:
+        return ""
+
+    q = str(question or "").lower()
+    choose_min = bool(re.search(r"\b(lowest|bottom|smallest|min|minimum|least|worst)\b", q))
+    chosen_row, metric_key, chosen_value = (
+        min(numeric_candidates, key=lambda item: item[2])
+        if choose_min
+        else max(numeric_candidates, key=lambda item: item[2])
+    )
+
+    label_parts = []
+    for key, value in chosen_row.items():
+        if str(key) == metric_key:
+            continue
+        if value is None or str(value) == "":
+            continue
+        label_parts.append(f"{_humanize_key(str(key))}: {_clean_value(value)}")
+    label = ", ".join(label_parts) or "the selected group"
+    direction = "lowest" if choose_min else "highest"
+    return (
+        f"The query returned {len(rows)} grouped row(s). "
+        f"The {direction} returned {_humanize_key(metric_key)} is for {label} "
+        f"with {_format_number(chosen_value)}."
+    )
+
+
 def _is_ranking_question(question: str) -> bool:
     return bool(
         re.search(
@@ -696,6 +752,10 @@ def synthesize_answer(
     infineon_answer = _format_infineon_answer(rows, query, question)
     if infineon_answer:
         return "Answer: " + infineon_answer
+
+    ranking_answer = _format_generic_ranking_answer(rows, question=question)
+    if ranking_answer:
+        return "Answer: " + ranking_answer
 
     # -----------------------------
     # Fallback for Infineon graph rows

@@ -13,6 +13,9 @@ from rdflib.namespace import OWL, RDF, RDFS, SKOS
 
 
 DEFAULT_DR_ONTOLOGY_PATH = Path.home() / "Downloads" / "dr" / "DigitalReference.ttl"
+FALLBACK_DR_ONTOLOGY_PATHS = (
+    Path.home() / "Downloads" / "DigitalReference.ttl",
+)
 DC_DESCRIPTION = URIRef("http://purl.org/dc/elements/1.1/description")
 
 DEFINITION_PATTERNS = (
@@ -115,7 +118,13 @@ def _dr_path() -> Optional[Path]:
         or os.getenv("DR_ONTOLOGY_PATH", "").strip()
     )
     path = Path(configured).expanduser() if configured else DEFAULT_DR_ONTOLOGY_PATH
-    return path if path.exists() else None
+    if path.exists():
+        return path
+    if not configured:
+        for fallback in FALLBACK_DR_ONTOLOGY_PATHS:
+            if fallback.exists():
+                return fallback
+    return None
 
 
 @lru_cache(maxsize=4)

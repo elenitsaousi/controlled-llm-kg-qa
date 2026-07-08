@@ -10,7 +10,9 @@ def normalize_text(text: str) -> str:
     text = re.sub(r"[^a-z0-9]+", " ", text)
     tokens = []
     for token in text.split():
-        if len(token) > 3 and token.endswith("s"):
+        if len(token) > 4 and token.endswith("ies"):
+            token = token[:-3] + "y"
+        elif len(token) > 3 and token.endswith("s"):
             token = token[:-1]
         tokens.append(token)
     return " ".join(tokens)
@@ -199,7 +201,7 @@ ORDER BY ?surveyGroup
         aliases=("actual vehicle sales", "forecast vehicle sales", "vehicle units sold", "vehicles sold", "sales units", "sales volume"),
         core_terms=("VehicleSales", "VehicleSalesForecast"),
         dimensions=(
-            _dim("month", ("months", "monthly"), ("monthLabel", "Month"), distinct_values=12),
+            _dim("month", ("months", "monthly", "time period", "time periods"), ("monthLabel", "Month"), distinct_values=12),
             _dim("year", ("years", "yearly"), ("year", "hasYear")),
             _dim("vehicle type", ("vehicle", "vehcle type"), ("VehicleType", "hasVehicleType")),
         ),
@@ -251,7 +253,18 @@ ORDER BY ?surveyGroup
     ),
     CapabilitySpec(
         name="catalog lookup",
-        aliases=("available names", "list names", "catalog", "lookup"),
+        aliases=(
+            "available names",
+            "list names",
+            "names of all",
+            "what are the names",
+            "region names",
+            "technology category names",
+            "quarter labels",
+            "company names",
+            "catalog",
+            "lookup",
+        ),
         core_terms=("Company", "Region", "TechnologyCategory", "Quarter"),
         dimensions=(
             _dim("companies", ("company", "firms"), ("Company", "companyName")),
@@ -541,6 +554,8 @@ def _direct_dynamic_query(report: ResolutionReport) -> Optional[str]:
         return _inventory_direct_query(dims, q_norm)
     if capability == "order cancellation":
         return _order_cancellation_direct_query(dims, q_norm)
+    if capability == "catalog lookup":
+        return _catalog_lookup_direct_query(dims, q_norm)
     return None
 
 
@@ -800,5 +815,42 @@ SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCoun
 }
 GROUP BY ?technologyCategory ?responseType
 ORDER BY ?technologyCategory ?responseType
+"""
+    return None
+
+
+def _catalog_lookup_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    if dims == {"regions"}:
+        return """
+SELECT DISTINCT ?regionName WHERE {
+  ?region a survey:Region ;
+          survey:regionName ?regionName .
+}
+ORDER BY ?regionName
+"""
+    if dims == {"technology categories"}:
+        return """
+SELECT DISTINCT ?technologyCategory WHERE {
+  ?technology a survey:TechnologyCategory .
+  OPTIONAL { ?technology survey:technologyCategoryName ?technologyName . }
+  BIND(COALESCE(?technologyName, REPLACE(STR(?technology), "^.*/", "")) AS ?technologyCategory)
+}
+ORDER BY ?technologyCategory
+"""
+    if dims == {"quarter labels"}:
+        return """
+SELECT DISTINCT ?quarterLabel WHERE {
+  ?quarter a survey:Quarter ;
+           survey:periodLabel ?quarterLabel .
+}
+ORDER BY ?quarterLabel
+"""
+    if dims == {"companies"}:
+        return """
+SELECT DISTINCT ?companyName WHERE {
+  ?company a survey:Company ;
+           survey:companyName ?companyName .
+}
+ORDER BY ?companyName
 """
     return None

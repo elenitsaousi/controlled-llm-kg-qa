@@ -131,6 +131,16 @@ def _shape_penalty(question: str, query: str, rows: List[Dict[str, str]], error:
         # Grouped rows can still be converted into a highest/lowest answer by
         # deterministic answer synthesis, so this is only a weak penalty.
         penalty += 20
+    try:
+        semantic_report = DEFAULT_REGISTRY.evaluate_query(question, query)
+    except Exception:
+        semantic_report = None
+    if semantic_report is not None:
+        for missing in semantic_report.missing_required_terms:
+            if str(missing).startswith("capability:"):
+                penalty += 240
+            elif str(missing).startswith("dimension:"):
+                penalty += 120
     return penalty
 
 
