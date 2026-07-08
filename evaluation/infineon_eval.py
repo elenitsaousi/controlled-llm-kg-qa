@@ -564,8 +564,10 @@ def _finalize_eval_payload(
 
     payload = {"summary": summary, "details": details}
     if out_path:
-        with open(out_path, "w", encoding="utf-8") as f:
+        tmp_path = f"{out_path}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, out_path)
     return payload
 
 
