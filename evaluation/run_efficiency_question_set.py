@@ -25,6 +25,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from kg.capabilities import DEFAULT_REGISTRY
+from kg.advisory import resolve_advisory_plan, synthesize_advisory_answer
+from kg.dr_ontology import route_dr_ontology_definition
 from kg.schema import load_schema
 from llm.answer_synthesis import synthesize_answer
 from llm.client import InfineonGPTClient
@@ -237,6 +239,85 @@ def _direct_row(
     }
 
 
+def _deterministic_text_row(
+    *,
+    request_id: str,
+    question: str,
+    answer_text: str,
+    selected_source: str,
+    latency_s: float,
+    metadata: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    return {
+        "request_id": request_id,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "question": question,
+        "route": "auto_answer",
+        "score1": 1.0,
+        "score2": 0.0,
+        "margin": 1.0,
+        "selected_source": selected_source,
+        "selected_query": "",
+        "graph_row_count": 0,
+        "graph_rows_preview": [],
+        "answer_text": answer_text,
+        "graph_error": "",
+        "latency_s": round(latency_s, 3),
+        "latency_breakdown": {"total_s": round(latency_s, 3)},
+        "candidate_count": 0,
+        "llm": {
+            "skipped": True,
+            "cache_enabled": False,
+            "cache_hit": False,
+            "full_schema_generation_attempted": False,
+            "full_schema_cache_hit": False,
+            "estimated_calls": 0,
+        },
+        "schema_route": {"applied": False, "confidence": "deterministic_pre_route", "families": []},
+        "metadata": metadata or {},
+    }
+
+
+def _advisory_row(
+    *,
+    request_id: str,
+    question: str,
+    query: str,
+    graph_rows: List[Dict[str, str]],
+    answer_text: str,
+    latency_s: float,
+    plan_id: str,
+) -> Dict[str, Any]:
+    return {
+        "request_id": request_id,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "question": question,
+        "route": "auto_answer",
+        "score1": 1.0,
+        "score2": 0.0,
+        "margin": 1.0,
+        "selected_source": "advisory",
+        "selected_query": query,
+        "graph_row_count": len(graph_rows),
+        "graph_rows_preview": graph_rows,
+        "answer_text": answer_text,
+        "graph_error": "",
+        "latency_s": round(latency_s, 3),
+        "latency_breakdown": {"total_s": round(latency_s, 3)},
+        "candidate_count": 1,
+        "llm": {
+            "skipped": True,
+            "cache_enabled": False,
+            "cache_hit": False,
+            "full_schema_generation_attempted": False,
+            "full_schema_cache_hit": False,
+            "estimated_calls": 0,
+        },
+        "schema_route": {"applied": False, "confidence": "deterministic_advisory", "families": []},
+        "metadata": {"advisory_route": True, "advisory_plan_id": plan_id},
+    }
+
+
 def _estimated_llm_needed_row(
     *,
     request_id: str,
@@ -354,6 +435,48 @@ def run(
                 continue
             request_id = str(row.get("id") or f"EFF{idx:04d}")
             started = time.perf_counter()
+
+            dr_definition = route_dr_ontology_definition(question)
+            if dr_definition is not None:
+                payload = _deterministic_text_row(
+                    request_id=request_id,
+                    question=question,
+                    answer_text=str(dr_definition.get("answer") or ""),
+                    selected_source=str(dr_definition.get("source") or "digital_reference_ontology"),
+                    latency_s=time.perf_counter() - started,
+                    metadata={
+                        "dr_ontology_route": True,
+                        "matched_term": dr_definition.get("matched_term"),
+                        "term_kind": dr_definition.get("term_kind"),
+                        "term_uri": dr_definition.get("term_uri"),
+                        "ontology_path": dr_definition.get("ontology_path"),
+                    },
+                )
+                counts["direct"] += 1
+                counts["total"] += 1
+                f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+                print(f"[{idx}/{len(questions)}] ontology {request_id}: {question}")
+                continue
+
+            advisory_plan = resolve_advisory_plan(question)
+            if advisory_plan is not None:
+                graph_rows, graph_error = _preview_rows(graph, advisory_plan.query, max_rows=50)
+                if graph_rows and not graph_error:
+                    payload = _advisory_row(
+                        request_id=request_id,
+                        question=question,
+                        query=advisory_plan.query,
+                        graph_rows=graph_rows,
+                        answer_text=synthesize_advisory_answer(question, advisory_plan, graph_rows),
+                        latency_s=time.perf_counter() - started,
+                        plan_id=advisory_plan.plan_id,
+                    )
+                    counts["direct"] += 1
+                    counts["total"] += 1
+                    f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+                    print(f"[{idx}/{len(questions)}] advisory {request_id}: {question}")
+                    continue
+                counts["direct_empty"] += 1
 
             report = DEFAULT_REGISTRY.resolve(question)
             direct_query = DEFAULT_REGISTRY.direct_query_for(report)
