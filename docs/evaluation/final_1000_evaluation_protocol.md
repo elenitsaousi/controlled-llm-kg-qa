@@ -24,6 +24,7 @@ Important:
 - Use the same generated candidates for all selection policies. Otherwise the comparison is noisy and costs more.
 - Keep the current ML model frozen for the first final evaluation:
   `ranking/models/final1000_wf_ranker_current.json`
+- Do not use `--keep-going-on-auth-error` for final runs. If the token expires, the run should stop immediately and resume later, rather than recording many artificial generation failures.
 
 Report:
 

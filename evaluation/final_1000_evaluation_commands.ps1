@@ -54,8 +54,7 @@ python evaluation\run_infineon_holdout_eval.py `
   --temperature 0.2 `
   --query-timeout 10 `
   --resume `
-  --progress `
-  --keep-going-on-auth-error
+  --progress
 
 python evaluation\analyze_infineon_results.py `
   --results results\final1000_current_llm_raw_candidates.json `
