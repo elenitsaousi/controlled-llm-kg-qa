@@ -68,6 +68,41 @@ def _load_questions(path: str) -> List[Dict[str, str]]:
     return rows
 
 
+def _load_existing_log(path: Path) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows: List[Dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                # A crash can leave a partial final JSONL line. Ignore it and
+                # rerun that request on resume.
+                continue
+            if isinstance(payload, dict):
+                rows.append(payload)
+    return rows
+
+
+def _counts_from_existing(rows: List[Dict[str, Any]]) -> Dict[str, int]:
+    counts = {"total": 0, "direct": 0, "llm_estimated": 0, "llm_called": 0, "direct_empty": 0}
+    for row in rows:
+        counts["total"] += 1
+        route = str(row.get("route") or "")
+        llm = row.get("llm") if isinstance(row.get("llm"), dict) else {}
+        if route == "llm_required_estimate":
+            counts["llm_estimated"] += 1
+        elif llm.get("skipped"):
+            counts["direct"] += 1
+        elif int(llm.get("estimated_calls") or 0) > 0:
+            counts["llm_called"] += 1
+    return counts
+
+
 def _load_graph(graph_path: str, fuseki_query_url: str) -> Graph:
     if fuseki_query_url.strip():
         return Graph(store=SPARQLStore(fuseki_query_url.strip()))
@@ -422,6 +457,7 @@ def run(
     call_llm: bool,
     limit: int | None,
     enable_llm_cache: bool,
+    resume: bool,
 ) -> Dict[str, int]:
     questions = _load_questions(questions_path)
     if limit is not None:
@@ -437,13 +473,22 @@ def run(
     out_path = Path(out_log)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    counts = {"total": 0, "direct": 0, "llm_estimated": 0, "llm_called": 0, "direct_empty": 0}
-    with out_path.open("w", encoding="utf-8") as f:
+    existing_rows = _load_existing_log(out_path) if resume else []
+    completed_ids = {str(row.get("request_id") or "") for row in existing_rows}
+    counts = _counts_from_existing(existing_rows)
+    mode = "a" if resume and out_path.exists() else "w"
+    if resume and existing_rows:
+        print(f"Resuming from {out_log}: {len(completed_ids)} completed request IDs.")
+
+    with out_path.open(mode, encoding="utf-8") as f:
         for idx, row in enumerate(questions, start=1):
             question = str(row.get("question") or "").strip()
             if not question:
                 continue
             request_id = str(row.get("id") or f"EFF{idx:04d}")
+            if request_id in completed_ids:
+                print(f"[{idx}/{len(questions)}] skip completed {request_id}: {question}")
+                continue
             started = time.perf_counter()
 
             dr_definition = route_dr_ontology_definition(question)
@@ -565,6 +610,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int)
     parser.add_argument("--call-llm", action="store_true", help="Actually call the LLM for non-direct questions. This costs money.")
     parser.add_argument("--enable-llm-cache", action="store_true")
+    parser.add_argument("--resume", action="store_true", help="Append to an existing JSONL log and skip completed request IDs.")
     args = parser.parse_args()
 
     counts = run(
@@ -576,6 +622,7 @@ def main() -> None:
         call_llm=args.call_llm,
         limit=args.limit,
         enable_llm_cache=args.enable_llm_cache,
+        resume=args.resume,
     )
     print("===== KGQA EFFICIENCY QUESTION SET =====")
     print(f"Questions processed: {counts['total']}")

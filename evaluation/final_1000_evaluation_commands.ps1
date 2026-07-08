@@ -129,7 +129,8 @@ python evaluation\run_efficiency_question_set.py `
   --schema data\infineon\schema.json `
   --fuseki-query-url http://localhost:3030/infineon/sparql `
   --call-llm `
-  --enable-llm-cache
+  --enable-llm-cache `
+  --resume
 
 python evaluation\analyze_system_efficiency.py `
   --log logs\kgqa_system_accuracy_1000_current.jsonl `
