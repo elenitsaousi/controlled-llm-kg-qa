@@ -293,6 +293,16 @@ class CapabilityRegistry:
                 if not exact and score >= min_typo_score:
                     report.typo_warnings.append(f"possible typo: '{matched_text}' -> '{capability.name}'")
         capability_matches.sort(key=lambda item: (item.exact, item.score, len(item.name)), reverse=True)
+        if re.search(r"\b(future demand|future demand analysis|future demand change|demand forecast)\b", q_norm):
+            capability_matches.sort(
+                key=lambda item: (
+                    item.name == "future demand",
+                    item.exact,
+                    item.score,
+                    len(item.name),
+                ),
+                reverse=True,
+            )
         report.detected_capabilities = capability_matches[:3]
 
         active_capabilities = [
@@ -535,6 +545,8 @@ def _direct_dynamic_query(report: ResolutionReport) -> Optional[str]:
 
 
 def _regional_demand_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    if "quarter" in dims:
+        return None
     scope = _scope_from_question(q_norm)
     bind_survey, origin_type, survey_var = _survey_group_projection(scope)
     if "region" in dims:
