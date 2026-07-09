@@ -9,6 +9,14 @@
 
 $ErrorActionPreference = "Stop"
 
+# Keep long unattended runs from blocking for many minutes on one LLM request.
+# If a request exceeds this, the question is marked as a generation failure and
+# the evaluation moves on. Auth failures still stop the final run.
+$env:INFINEON_REQUEST_TIMEOUT_SEC = "90"
+$env:INFINEON_AUTH_TIMEOUT_SEC = "30"
+$env:INFINEON_MAX_RETRIES = "1"
+$env:INFINEON_RETRY_BACKOFF_SEC = "1"
+
 # ---------------------------------------------------------------------------
 # 0. Optional: rebuild the controlled 1000-question plan from the current seed bank
 # ---------------------------------------------------------------------------

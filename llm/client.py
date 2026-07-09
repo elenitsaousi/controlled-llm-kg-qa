@@ -42,6 +42,8 @@ class InfineonGPTClient:
         self.max_tokens = max_tokens
         self.max_retries = int(os.environ.get("INFINEON_MAX_RETRIES", "4"))
         self.retry_backoff_sec = float(os.environ.get("INFINEON_RETRY_BACKOFF_SEC", "1.0"))
+        self.request_timeout_sec = float(os.environ.get("INFINEON_REQUEST_TIMEOUT_SEC", "120"))
+        self.auth_timeout_sec = float(os.environ.get("INFINEON_AUTH_TIMEOUT_SEC", "60"))
         self.auto_refresh_token = _env_bool("INFINEON_AUTO_REFRESH_TOKEN", True)
         self.api_user = os.environ.get("INFINEON_API_USER") or os.environ.get("USER_LLM")
         self.api_password = os.environ.get("INFINEON_API_PASSWORD") or os.environ.get("PASSWORD_LLM")
@@ -88,7 +90,7 @@ class InfineonGPTClient:
                     url,
                     headers=headers,
                     json=payload,
-                    timeout=120,
+                    timeout=self.request_timeout_sec,
                     verify=self.verify,
                     allow_redirects=False,
                 )
@@ -109,7 +111,7 @@ class InfineonGPTClient:
                             url,
                             headers=headers,
                             json=payload,
-                            timeout=120,
+                            timeout=self.request_timeout_sec,
                             verify=self.verify,
                             allow_redirects=False,
                         )
@@ -155,7 +157,7 @@ class InfineonGPTClient:
                 url,
                 headers={"Content-Type": "application/json"},
                 auth=(self.api_user, self.api_password),
-                timeout=60,
+                timeout=self.auth_timeout_sec,
                 verify=self.verify,
                 allow_redirects=False,
             )

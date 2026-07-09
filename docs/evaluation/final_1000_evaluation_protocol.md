@@ -25,6 +25,7 @@ Important:
 - Keep the current ML model frozen for the first final evaluation:
   `ranking/models/final1000_wf_ranker_current.json`
 - Do not use `--keep-going-on-auth-error` for final runs. If the token expires, the run should stop immediately and resume later, rather than recording many artificial generation failures.
+- Use bounded LLM request timeouts for unattended runs. The provided PowerShell script sets each LLM request to 90 seconds with one retry, so a stalled question cannot block the whole benchmark for hours.
 
 Report:
 
