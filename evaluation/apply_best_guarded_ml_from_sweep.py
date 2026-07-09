@@ -52,6 +52,10 @@ def main() -> None:
         shortage_status_rescue_max_rank=int(grid.get("shortage_status_rescue_max_rank", 3)),
         shortage_status_rescue_min_score=float(grid.get("shortage_status_rescue_min_score", 0.45)),
         shortage_status_rescue_min_margin=float(grid.get("shortage_status_rescue_min_margin", -0.05)),
+        enable_current_baseline_rescue=bool(grid.get("enable_current_baseline_rescue", False)),
+        current_baseline_rescue_max_rank=int(grid.get("current_baseline_rescue_max_rank", 4)),
+        current_baseline_rescue_min_score=float(grid.get("current_baseline_rescue_min_score", 0.35)),
+        current_baseline_rescue_min_margin=float(grid.get("current_baseline_rescue_min_margin", -0.10)),
     )
 
     updated["applied_calibration_sweep"] = {

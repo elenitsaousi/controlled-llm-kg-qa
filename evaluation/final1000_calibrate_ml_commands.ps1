@@ -66,7 +66,20 @@ python evaluation\sweep_guarded_ml_rerank.py `
   --margins "0.00,0.05,0.10,0.15,0.20,0.25" `
   --scores "0.35,0.40,0.45,0.50,0.55,0.60" `
   --max-ranks "1,2,3,4,5,6,8" `
-  --structured-guard
+  --structured-guard `
+  --enable-rank2-trusted-rescue `
+  --trusted-rescue-max-rank 4 `
+  --trusted-rescue-min-score 0.20 `
+  --trusted-rescue-min-margin -0.25 `
+  --trusted-rescue-topics "inventory,order_cancellation,vehicle_sales" `
+  --enable-shortage-status-rescue `
+  --shortage-status-rescue-max-rank 5 `
+  --shortage-status-rescue-min-score 0.20 `
+  --shortage-status-rescue-min-margin -0.25 `
+  --enable-current-baseline-rescue `
+  --current-baseline-rescue-max-rank 6 `
+  --current-baseline-rescue-min-score 0.20 `
+  --current-baseline-rescue-min-margin -0.25
 
 # 6. Holdout baselines: raw, old frozen ML, and new calibrated ML.
 python evaluation\analyze_infineon_results.py `

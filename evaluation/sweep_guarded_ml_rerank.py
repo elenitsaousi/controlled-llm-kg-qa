@@ -45,6 +45,10 @@ def sweep(
     shortage_status_rescue_max_rank: int = 3,
     shortage_status_rescue_min_score: float = 0.45,
     shortage_status_rescue_min_margin: float = -0.05,
+    enable_current_baseline_rescue: bool = False,
+    current_baseline_rescue_max_rank: int = 4,
+    current_baseline_rescue_min_score: float = 0.35,
+    current_baseline_rescue_min_margin: float = -0.10,
 ) -> Dict[str, object]:
     rows: List[Dict[str, object]] = []
     for margin, score, max_rank in itertools.product(margins, scores, ranks):
@@ -66,6 +70,10 @@ def sweep(
             shortage_status_rescue_max_rank=shortage_status_rescue_max_rank,
             shortage_status_rescue_min_score=shortage_status_rescue_min_score,
             shortage_status_rescue_min_margin=shortage_status_rescue_min_margin,
+            enable_current_baseline_rescue=enable_current_baseline_rescue,
+            current_baseline_rescue_max_rank=current_baseline_rescue_max_rank,
+            current_baseline_rescue_min_score=current_baseline_rescue_min_score,
+            current_baseline_rescue_min_margin=current_baseline_rescue_min_margin,
         )
         summary = updated["summary"]
         rewrite = updated["ml_rerank_rewrite"]
@@ -110,6 +118,10 @@ def sweep(
             "shortage_status_rescue_max_rank": int(shortage_status_rescue_max_rank),
             "shortage_status_rescue_min_score": float(shortage_status_rescue_min_score),
             "shortage_status_rescue_min_margin": float(shortage_status_rescue_min_margin),
+            "enable_current_baseline_rescue": bool(enable_current_baseline_rescue),
+            "current_baseline_rescue_max_rank": int(current_baseline_rescue_max_rank),
+            "current_baseline_rescue_min_score": float(current_baseline_rescue_min_score),
+            "current_baseline_rescue_min_margin": float(current_baseline_rescue_min_margin),
         },
         "best": rows[0] if rows else {},
         "rows": rows,
@@ -156,6 +168,14 @@ def main() -> None:
     parser.add_argument("--shortage-status-rescue-max-rank", type=int, default=3)
     parser.add_argument("--shortage-status-rescue-min-score", type=float, default=0.45)
     parser.add_argument("--shortage-status-rescue-min-margin", type=float, default=-0.05)
+    parser.add_argument(
+        "--enable-current-baseline-rescue",
+        action="store_true",
+        help="Tune with the narrow BL1/BL2 current-demand baseline rescue enabled.",
+    )
+    parser.add_argument("--current-baseline-rescue-max-rank", type=int, default=4)
+    parser.add_argument("--current-baseline-rescue-min-score", type=float, default=0.35)
+    parser.add_argument("--current-baseline-rescue-min-margin", type=float, default=-0.10)
     args = parser.parse_args()
     trusted_rescue_topics = [
         topic.strip()
@@ -180,6 +200,10 @@ def main() -> None:
         shortage_status_rescue_max_rank=args.shortage_status_rescue_max_rank,
         shortage_status_rescue_min_score=args.shortage_status_rescue_min_score,
         shortage_status_rescue_min_margin=args.shortage_status_rescue_min_margin,
+        enable_current_baseline_rescue=args.enable_current_baseline_rescue,
+        current_baseline_rescue_max_rank=args.current_baseline_rescue_max_rank,
+        current_baseline_rescue_min_score=args.current_baseline_rescue_min_score,
+        current_baseline_rescue_min_margin=args.current_baseline_rescue_min_margin,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -194,6 +218,7 @@ def main() -> None:
     print(f"Structured guard: {'yes' if args.structured_guard else 'no'}")
     print(f"Trusted rescue: {'yes' if args.enable_rank2_trusted_rescue else 'no'}")
     print(f"Shortage status rescue: {'yes' if args.enable_shortage_status_rescue else 'no'}")
+    print(f"Current baseline rescue: {'yes' if args.enable_current_baseline_rescue else 'no'}")
     if best:
         print(
             "Best: "

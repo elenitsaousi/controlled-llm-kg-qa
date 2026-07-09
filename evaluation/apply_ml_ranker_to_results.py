@@ -306,6 +306,132 @@ def _shortage_status_rescue_row(
     return best_row
 
 
+def _question_requests_current_baseline(question: str) -> bool:
+    q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
+    if "current demand" not in q:
+        return False
+    return any(
+        term in q
+        for term in (
+            "baseline",
+            "bl1",
+            "bl2",
+            "percentage change",
+            "percent change",
+            "pct change",
+        )
+    )
+
+
+def _query_current_baseline_score(question: str, query: str) -> float:
+    q = " ".join(str(question or "").lower().replace("tier 1", "tier1").split())
+    sparql = str(query or "").lower()
+    compact = "".join(sparql.split())
+    if "currentdemandanalysis" not in compact:
+        return 0.0
+    if "baselinetype" not in compact or "percentagechange" not in compact:
+        return 0.0
+
+    score = 1.0
+    if "tier1currentdemand" in compact:
+        score += 1.0
+    if "hasaggregatedresult" in compact:
+        score += 1.0
+    if "survey:tier1_survey" in compact and ("tier1" in q or "tier 1" in q):
+        score += 0.5
+    if "survey:automotive" in compact and "automotive" in q:
+        score += 0.5
+
+    wants_difference = any(term in q for term in ("differ", "difference", "delta", "between"))
+    wants_sum = any(term in q for term in ("combined", "add up", "sum", "total"))
+    wants_average = "average" in q or "avg" in q
+    wants_list = any(term in q for term in ("list", "show", "what are", "percentage changes"))
+    has_if_bl = "if(?baseline" in compact or "if(?baseline=" in compact
+    has_subtraction = "-" in sparql and ("bl1" in compact and "bl2" in compact)
+    has_sum = "sum(" in compact
+    has_avg = "avg(" in compact
+    has_group_baseline = "groupby?baseline" in compact
+
+    if wants_difference:
+        score += 1.0 if has_subtraction else -0.8
+    if wants_sum:
+        score += 0.7 if has_sum else -0.5
+    if wants_average:
+        score += 0.7 if has_avg else -0.5
+    if wants_list and not (wants_sum or wants_average or wants_difference):
+        score += 0.8 if not has_sum and not has_avg else -0.8
+    if ("bl1" in q or "bl2" in q) and ("bl1" in compact and "bl2" in compact):
+        score += 0.5
+    if (wants_sum or wants_average) and has_group_baseline:
+        score += 0.4
+
+    return score
+
+
+def _current_baseline_rescue_row(
+    *,
+    question: str,
+    candidates: Sequence[Dict[str, object]],
+    ranked_rows: Sequence[Dict[str, object]],
+    score_by_key: Dict[str, float],
+    current_key: str,
+    current_score: float,
+    max_rank: int,
+    min_score: float,
+    min_margin: float,
+    structured_guard: bool,
+) -> Optional[Dict[str, object]]:
+    if not _question_requests_current_baseline(question):
+        return None
+
+    current_query = str(candidates[0].get("query", ""))
+    current_shape = _query_current_baseline_score(question, current_query)
+    ranked_by_key = {
+        _query_key(str(row.get("query", ""))): row
+        for row in ranked_rows
+    }
+    best_row = None
+    best_key = (float("-inf"), float("-inf"), float("-inf"), 999)
+    for original_index, cand in enumerate(candidates[1:], start=1):
+        original_rank = original_index + 1
+        if original_rank > int(max_rank):
+            continue
+        cand_query = str(cand.get("query", ""))
+        cand_shape = _query_current_baseline_score(question, cand_query)
+        if cand_shape <= max(0.0, current_shape):
+            continue
+        cand_key = _query_key(cand_query)
+        if not cand_key or cand_key == current_key:
+            continue
+        cand_score = float(score_by_key.get(cand_key, 0.0))
+        if cand_score < float(min_score):
+            continue
+        if cand_score - current_score < float(min_margin):
+            continue
+        if structured_guard and not _structured_guard_allows(
+            question,
+            current_query,
+            cand_query,
+        ):
+            continue
+        row = ranked_by_key.get(cand_key)
+        if row is None:
+            continue
+        key = (cand_shape - current_shape, cand_score - current_score, cand_score, -original_rank)
+        if key > best_key:
+            best_key = key
+            best_row = dict(row)
+            best_row["current_baseline_rescue_reason"] = {
+                "original_rank": original_rank,
+                "candidate_score": cand_score,
+                "current_score": current_score,
+                "score_delta": cand_score - current_score,
+                "candidate_shape_score": cand_shape,
+                "current_shape_score": current_shape,
+            }
+    return best_row
+
+
 def _rank_detail(
     detail: Dict[str, object],
     ranker,
@@ -324,6 +450,10 @@ def _rank_detail(
     shortage_status_rescue_max_rank: int = 3,
     shortage_status_rescue_min_score: float = 0.45,
     shortage_status_rescue_min_margin: float = -0.05,
+    enable_current_baseline_rescue: bool = False,
+    current_baseline_rescue_max_rank: int = 4,
+    current_baseline_rescue_min_score: float = 0.35,
+    current_baseline_rescue_min_margin: float = -0.10,
 ) -> Dict[str, object]:
     updated = deepcopy(detail)
     candidates = list(updated.get("candidates") or [])
@@ -420,6 +550,27 @@ def _rank_detail(
                         if _query_key(str(row.get("query", ""))) != chosen_key
                     ]
                     switch_allowed = True
+            if not switch_allowed and enable_current_baseline_rescue:
+                rescue_row = _current_baseline_rescue_row(
+                    question=question,
+                    candidates=candidates,
+                    ranked_rows=ranked_rows,
+                    score_by_key=score_by_key,
+                    current_key=current_key,
+                    current_score=current_score,
+                    max_rank=current_baseline_rescue_max_rank,
+                    min_score=current_baseline_rescue_min_score,
+                    min_margin=current_baseline_rescue_min_margin,
+                    structured_guard=structured_guard,
+                )
+                if rescue_row is not None:
+                    chosen_key = _query_key(str(rescue_row.get("query", "")))
+                    ranked_rows = [rescue_row] + [
+                        row
+                        for row in ranked_rows
+                        if _query_key(str(row.get("query", ""))) != chosen_key
+                    ]
+                    switch_allowed = True
             if switch_allowed:
                 pass
             else:
@@ -456,6 +607,8 @@ def _rank_detail(
             cand["trusted_source_rescue_reason"] = row.get("trusted_source_rescue_reason")
         if row.get("shortage_status_rescue_reason"):
             cand["shortage_status_rescue_reason"] = row.get("shortage_status_rescue_reason")
+        if row.get("current_baseline_rescue_reason"):
+            cand["current_baseline_rescue_reason"] = row.get("current_baseline_rescue_reason")
         reordered.append(cand)
 
     # Keep any duplicate/unmatched candidates instead of dropping them.
@@ -486,6 +639,10 @@ def apply_ml_ranker(
     shortage_status_rescue_max_rank: int = 3,
     shortage_status_rescue_min_score: float = 0.45,
     shortage_status_rescue_min_margin: float = -0.05,
+    enable_current_baseline_rescue: bool = False,
+    current_baseline_rescue_max_rank: int = 4,
+    current_baseline_rescue_min_score: float = 0.35,
+    current_baseline_rescue_min_margin: float = -0.10,
 ) -> Dict[str, object]:
     payload = _load_json(results_path)
     schema_dict = _load_json(schema_path)
@@ -519,6 +676,10 @@ def apply_ml_ranker(
             shortage_status_rescue_max_rank=shortage_status_rescue_max_rank,
             shortage_status_rescue_min_score=shortage_status_rescue_min_score,
             shortage_status_rescue_min_margin=shortage_status_rescue_min_margin,
+            enable_current_baseline_rescue=enable_current_baseline_rescue,
+            current_baseline_rescue_max_rank=current_baseline_rescue_max_rank,
+            current_baseline_rescue_min_score=current_baseline_rescue_min_score,
+            current_baseline_rescue_min_margin=current_baseline_rescue_min_margin,
         )
         for detail in original_details
     ]
@@ -547,6 +708,9 @@ def apply_ml_ranker(
                 "shortage_status_rescue_reason": after_candidates[0].get(
                     "shortage_status_rescue_reason"
                 ),
+                "current_baseline_rescue_reason": after_candidates[0].get(
+                    "current_baseline_rescue_reason"
+                ),
             }
         )
 
@@ -572,6 +736,10 @@ def apply_ml_ranker(
         "shortage_status_rescue_max_rank": int(shortage_status_rescue_max_rank),
         "shortage_status_rescue_min_score": float(shortage_status_rescue_min_score),
         "shortage_status_rescue_min_margin": float(shortage_status_rescue_min_margin),
+        "enable_current_baseline_rescue": bool(enable_current_baseline_rescue),
+        "current_baseline_rescue_max_rank": int(current_baseline_rescue_max_rank),
+        "current_baseline_rescue_min_score": float(current_baseline_rescue_min_score),
+        "current_baseline_rescue_min_margin": float(current_baseline_rescue_min_margin),
         "note": (
             "If the model was trained on these same results, this is a diagnostic "
             "ranking upper-bound, not an unbiased held-out metric."
@@ -625,6 +793,14 @@ def main() -> None:
     parser.add_argument("--shortage-status-rescue-max-rank", type=int, default=3)
     parser.add_argument("--shortage-status-rescue-min-score", type=float, default=0.45)
     parser.add_argument("--shortage-status-rescue-min-margin", type=float, default=-0.05)
+    parser.add_argument(
+        "--enable-current-baseline-rescue",
+        action="store_true",
+        help="Allow a narrow rescue for BL1/BL2 current-demand baseline questions.",
+    )
+    parser.add_argument("--current-baseline-rescue-max-rank", type=int, default=4)
+    parser.add_argument("--current-baseline-rescue-min-score", type=float, default=0.35)
+    parser.add_argument("--current-baseline-rescue-min-margin", type=float, default=-0.10)
     args = parser.parse_args()
     trusted_rescue_topics = [
         topic.strip()
@@ -650,6 +826,10 @@ def main() -> None:
         shortage_status_rescue_max_rank=args.shortage_status_rescue_max_rank,
         shortage_status_rescue_min_score=args.shortage_status_rescue_min_score,
         shortage_status_rescue_min_margin=args.shortage_status_rescue_min_margin,
+        enable_current_baseline_rescue=args.enable_current_baseline_rescue,
+        current_baseline_rescue_max_rank=args.current_baseline_rescue_max_rank,
+        current_baseline_rescue_min_score=args.current_baseline_rescue_min_score,
+        current_baseline_rescue_min_margin=args.current_baseline_rescue_min_margin,
     )
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -682,6 +862,13 @@ def main() -> None:
             f"max_rank={rewrite['shortage_status_rescue_max_rank']}, "
             f"min_score={rewrite['shortage_status_rescue_min_score']}, "
             f"min_margin={rewrite['shortage_status_rescue_min_margin']}"
+        )
+    if rewrite.get("enable_current_baseline_rescue"):
+        print(
+            "Current baseline rescue: "
+            f"max_rank={rewrite['current_baseline_rescue_max_rank']}, "
+            f"min_score={rewrite['current_baseline_rescue_min_score']}, "
+            f"min_margin={rewrite['current_baseline_rescue_min_margin']}"
         )
     print(f"Changed selections: {rewrite['changed_count']}")
     print(f"Top1 correct: {summary['top1_correct']} ({summary['top1_correct_rate']:.3f})")
