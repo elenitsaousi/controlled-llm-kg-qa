@@ -16,6 +16,7 @@ $env:INFINEON_REQUEST_TIMEOUT_SEC = "90"
 $env:INFINEON_AUTH_TIMEOUT_SEC = "30"
 $env:INFINEON_MAX_RETRIES = "1"
 $env:INFINEON_RETRY_BACKOFF_SEC = "1"
+$env:FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
 
 # ---------------------------------------------------------------------------
 # 0. Optional: rebuild the controlled 1000-question plan from the current seed bank

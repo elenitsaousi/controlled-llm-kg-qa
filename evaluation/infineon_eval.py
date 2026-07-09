@@ -7,6 +7,7 @@ from collections import Counter
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple
 from rdflib import Graph
+from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -107,6 +108,15 @@ def _run_query(graph: Graph, query: str, timeout_s: Optional[float]) -> Counter:
     with _time_limit(timeout_s):
         results = graph.query(query)
         return _result_signature(list(results))
+
+
+def _execution_graph(graph_path: str) -> Graph:
+    fuseki_url = os.environ.get("FUSEKI_QUERY_URL", "").strip()
+    if fuseki_url:
+        return Graph(store=SPARQLStore(fuseki_url))
+    graph = Graph()
+    graph.parse(graph_path, format="turtle")
+    return graph
 
 
 def _query_cache_key(query: str, timeout_s: Optional[float]) -> Tuple[Optional[float], str]:
@@ -705,15 +715,16 @@ def evaluate(
         if nlab not in normalized_regimes:
             normalized_regimes.append(nlab)
 
-    g = Graph()
-    g.parse(graph_path, format="turtle")
+    local_graph = Graph()
+    local_graph.parse(graph_path, format="turtle")
+    g = _execution_graph(graph_path)
     questions = _load_questions(dataset_path)
     if limit is not None:
         questions = questions[: max(0, int(limit))]
 
     entity_alias_index = None
     if enable_entity_linking:
-        entity_alias_index = build_entity_alias_index(g)
+        entity_alias_index = build_entity_alias_index(local_graph)
 
     if schema is None:
         if schema_path:
