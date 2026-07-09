@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import os
 import sys
 
@@ -8,6 +9,34 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from evaluation.infineon_eval import EvaluationAbortedError, evaluate, _parse_amb_regimes
+
+
+def _detail_count(path: str) -> int:
+    if not path or not os.path.exists(path):
+        return 0
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+    except Exception:
+        return 0
+    details = payload.get("details") if isinstance(payload, dict) else None
+    return len(details) if isinstance(details, list) else 0
+
+
+def _choose_resume_path(out_path: str, resume_from: str) -> str:
+    explicit = resume_from or ""
+    if not explicit:
+        return out_path
+    explicit_count = _detail_count(explicit)
+    out_count = _detail_count(out_path)
+    if out_count > explicit_count:
+        print(
+            "Resume safety: --out contains more completed rows than --resume-from "
+            f"({out_count} > {explicit_count}); resuming from --out instead.",
+            flush=True,
+        )
+        return out_path
+    return explicit
 
 
 def main() -> None:
@@ -108,7 +137,7 @@ def main() -> None:
             enable_entity_linking=True,
             fail_on_auth_error=not args.keep_going_on_auth_error,
             limit=args.limit,
-            resume_path=(args.resume_from or args.out) if args.resume else None,
+            resume_path=_choose_resume_path(args.out, args.resume_from) if args.resume else None,
             skip_ids=args.skip_ids,
         )
     except EvaluationAbortedError as exc:
