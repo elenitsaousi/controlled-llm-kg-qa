@@ -22,6 +22,7 @@ from kg.advisory import resolve_advisory_plan, synthesize_advisory_answer
 from kg.dr_ontology import (
     DEFAULT_DR_ONTOLOGY_PATH,
     dr_ontology_counts,
+    dr_ontology_terms,
     search_dr_ontology_terms,
     route_dr_ontology_definition,
 )
@@ -3482,6 +3483,198 @@ def _render_kg_autocomplete_input(schema_path: str, graph_path: str, fuseki_quer
     return text
 
 
+def _dr_question_for_term(term: Dict[str, object]) -> str:
+    label = str(term.get("label") or "Unknown term")
+    kind = str(term.get("kind") or "resource")
+    return f"What does {label} mean?" if "property" in kind else f"What is {label}?"
+
+
+def _render_dr_term_card(term: Dict[str, object], key_prefix: str, expanded: bool = False) -> None:
+    label = str(term.get("label") or "Unknown term")
+    kind = str(term.get("kind") or "resource")
+    definition = str(term.get("definition") or "").strip()
+    parents = [str(value) for value in term.get("parents") or []]
+    domains = [str(value) for value in term.get("domains") or []]
+    ranges = [str(value) for value in term.get("ranges") or []]
+    question = _dr_question_for_term(term)
+
+    with st.expander(f"{label} [{kind}]", expanded=expanded):
+        if definition:
+            st.write(definition)
+        else:
+            st.caption("No explicit definition text is available; the ontology still declares this term.")
+        meta_rows = []
+        if parents:
+            meta_rows.append({"Field": "Parents / superclasses", "Value": ", ".join(parents[:8])})
+        if domains:
+            meta_rows.append({"Field": "Domain", "Value": ", ".join(domains[:8])})
+        if ranges:
+            meta_rows.append({"Field": "Range", "Value": ", ".join(ranges[:8])})
+        if meta_rows:
+            st.dataframe(meta_rows, width="stretch", hide_index=True)
+        st.button(
+            f"Ask: {question}",
+            key=f"{key_prefix}_{_normalize_question_key(label)}",
+            type="secondary",
+            on_click=_set_guided_question_input,
+            args=(question, ""),
+        )
+
+
+def _dr_class_roots_and_descendants(terms: List[Dict[str, object]]) -> Dict[str, List[Tuple[int, Dict[str, object]]]]:
+    class_terms = [term for term in terms if str(term.get("kind") or "") == "class"]
+    by_label = {str(term.get("label") or ""): term for term in class_terms if str(term.get("label") or "")}
+    children: Dict[str, List[Dict[str, object]]] = defaultdict(list)
+    roots: List[Dict[str, object]] = []
+    for term in class_terms:
+        parents = [parent for parent in term.get("parents") or [] if str(parent) in by_label]
+        if not parents:
+            roots.append(term)
+        for parent in parents:
+            children[str(parent)].append(term)
+
+    grouped: Dict[str, List[Tuple[int, Dict[str, object]]]] = {}
+    for root in sorted(roots, key=lambda item: str(item.get("label") or "").lower()):
+        root_label = str(root.get("label") or "")
+        rows: List[Tuple[int, Dict[str, object]]] = []
+        seen = set()
+
+        def visit(node: Dict[str, object], depth: int) -> None:
+            label = str(node.get("label") or "")
+            if label in seen:
+                return
+            seen.add(label)
+            rows.append((depth, node))
+            for child in sorted(children.get(label, []), key=lambda item: str(item.get("label") or "").lower()):
+                visit(child, depth + 1)
+
+        visit(root, 0)
+        grouped[root_label] = rows
+    return grouped
+
+
+def _dr_property_groups(terms: List[Dict[str, object]], kind: str) -> Dict[str, List[Dict[str, object]]]:
+    rows = [term for term in terms if str(term.get("kind") or "") == kind]
+    grouped: Dict[str, List[Dict[str, object]]] = defaultdict(list)
+    for term in rows:
+        domains = [str(value) for value in term.get("domains") or [] if str(value).strip()]
+        ranges = [str(value) for value in term.get("ranges") or [] if str(value).strip()]
+        if domains:
+            group = f"Domain: {domains[0]}"
+        elif ranges:
+            group = f"Range: {ranges[0]}"
+        else:
+            group = "No declared domain/range"
+        grouped[group].append(term)
+    return {
+        group: sorted(items, key=lambda item: str(item.get("label") or "").lower())
+        for group, items in sorted(grouped.items(), key=lambda item: item[0].lower())
+    }
+
+
+def _render_dr_search_tab(total_terms: int) -> None:
+    search = st.text_input(
+        "Search Digital Reference concepts",
+        value="",
+        placeholder="capacity, resource, product group, processed by...",
+        key="dr_ontology_search",
+    )
+    kind_options = ["class", "object property", "datatype property", "annotation property"]
+    selected_kinds = st.multiselect(
+        "Term types",
+        kind_options,
+        default=["class", "object property", "datatype property"],
+        key="dr_ontology_kind_filter",
+    )
+    limit = st.slider("Results to show", 10, 100, 25, 5, key="dr_ontology_limit")
+    rows = search_dr_ontology_terms(search=search, kinds=selected_kinds, limit=int(limit))
+    st.caption(
+        f"Showing {len(rows)} search result(s) from {total_terms:,} DR ontology terms. "
+        "Use Browse hierarchy to page through all terms."
+    )
+
+    if not rows:
+        st.info("No matching Digital Reference terms found.")
+        return
+
+    for idx, term in enumerate(rows):
+        _render_dr_term_card(
+            term,
+            key_prefix=f"dr_search_ask_{idx}",
+            expanded=(idx < 3 and bool(search.strip())),
+        )
+
+
+def _render_dr_browse_tab() -> None:
+    terms = dr_ontology_terms()
+    if not terms:
+        st.warning("No Digital Reference terms are available for browsing.")
+        return
+
+    browse_kind = st.selectbox(
+        "Browse type",
+        ["class", "object property", "datatype property", "annotation property"],
+        key="dr_browse_kind",
+    )
+    page_size = st.selectbox(
+        "Terms per page",
+        [25, 50, 100, 200],
+        index=1,
+        key="dr_browse_page_size",
+    )
+
+    if browse_kind == "class":
+        grouped = _dr_class_roots_and_descendants(terms)
+        group_options = [
+            f"{label} ({len(rows)})"
+            for label, rows in grouped.items()
+        ]
+        group_lookup = {f"{label} ({len(rows)})": label for label, rows in grouped.items()}
+        st.caption("Classes are grouped by the top-level DR lobe / root class, similar to Protege.")
+        selected_group = st.selectbox("Class hierarchy root", group_options, key="dr_class_root")
+        selected_label = group_lookup[selected_group]
+        hierarchy_rows = grouped[selected_label]
+        total = len(hierarchy_rows)
+        max_page = max(1, math.ceil(total / int(page_size)))
+        page = st.number_input("Page", min_value=1, max_value=max_page, value=1, step=1, key="dr_class_page")
+        start = (int(page) - 1) * int(page_size)
+        visible_rows = hierarchy_rows[start:start + int(page_size)]
+        st.caption(f"Showing {start + 1}-{min(start + len(visible_rows), total)} of {total} terms in {selected_label}.")
+        for idx, (depth, term) in enumerate(visible_rows):
+            indent = "&nbsp;" * min(depth * 5, 40)
+            st.markdown(
+                f"{indent}<span style='color:#d4a400;font-weight:700;'>●</span> "
+                f"<strong>{escape(str(term.get('label') or 'Unknown term'))}</strong>",
+                unsafe_allow_html=True,
+            )
+            _render_dr_term_card(
+                term,
+                key_prefix=f"dr_browse_class_{start + idx}",
+                expanded=False,
+            )
+        return
+
+    grouped_properties = _dr_property_groups(terms, browse_kind)
+    group_options = [f"{label} ({len(rows)})" for label, rows in grouped_properties.items()]
+    group_lookup = {f"{label} ({len(rows)})": label for label, rows in grouped_properties.items()}
+    st.caption("Properties are grouped by declared domain first, then by range when no domain is available.")
+    selected_group = st.selectbox("Property group", group_options, key=f"dr_{browse_kind}_group")
+    selected_label = group_lookup[selected_group]
+    property_rows = grouped_properties[selected_label]
+    total = len(property_rows)
+    max_page = max(1, math.ceil(total / int(page_size)))
+    page = st.number_input("Page", min_value=1, max_value=max_page, value=1, step=1, key=f"dr_{browse_kind}_page")
+    start = (int(page) - 1) * int(page_size)
+    visible_rows = property_rows[start:start + int(page_size)]
+    st.caption(f"Showing {start + 1}-{min(start + len(visible_rows), total)} of {total} terms in {selected_label}.")
+    for idx, term in enumerate(visible_rows):
+        _render_dr_term_card(
+            term,
+            key_prefix=f"dr_browse_property_{browse_kind}_{start + idx}",
+            expanded=False,
+        )
+
+
 def _render_dr_ontology_browser() -> None:
     counts = dr_ontology_counts()
     if not counts.get("total"):
@@ -3502,57 +3695,11 @@ def _render_dr_ontology_browser() -> None:
         f"The index contains {counts.get('searchable_entries', counts.get('total', 0)):,} searchable labels/aliases. "
         "Selecting a term creates a deterministic definition question; it does not call the LLM."
     )
-    search = st.text_input(
-        "Search Digital Reference concepts",
-        value="",
-        placeholder="capacity, resource, product group, processed by...",
-        key="dr_ontology_search",
-    )
-    kind_options = ["class", "object property", "datatype property", "annotation property"]
-    selected_kinds = st.multiselect(
-        "Term types",
-        kind_options,
-        default=["class", "object property", "datatype property"],
-        key="dr_ontology_kind_filter",
-    )
-    limit = st.slider("Results to show", 10, 100, 25, 5, key="dr_ontology_limit")
-    rows = search_dr_ontology_terms(search=search, kinds=selected_kinds, limit=int(limit))
-    st.caption(f"Showing {len(rows)} result(s) from {counts.get('total', 0):,} DR ontology terms.")
-
-    if not rows:
-        st.info("No matching Digital Reference terms found.")
-        return
-
-    for idx, term in enumerate(rows):
-        label = str(term.get("label") or "Unknown term")
-        kind = str(term.get("kind") or "resource")
-        definition = str(term.get("definition") or "").strip()
-        parents = [str(value) for value in term.get("parents") or []]
-        domains = [str(value) for value in term.get("domains") or []]
-        ranges = [str(value) for value in term.get("ranges") or []]
-        question = f"What does {label} mean?" if "property" in kind else f"What is {label}?"
-
-        with st.expander(f"{label} [{kind}]", expanded=(idx < 3 and bool(search.strip()))):
-            if definition:
-                st.write(definition)
-            else:
-                st.caption("No explicit definition text is available; the ontology still declares this term.")
-            meta_rows = []
-            if parents:
-                meta_rows.append({"Field": "Parents / superclasses", "Value": ", ".join(parents[:8])})
-            if domains:
-                meta_rows.append({"Field": "Domain", "Value": ", ".join(domains[:8])})
-            if ranges:
-                meta_rows.append({"Field": "Range", "Value": ", ".join(ranges[:8])})
-            if meta_rows:
-                st.dataframe(meta_rows, width="stretch", hide_index=True)
-            st.button(
-                f"Ask: {question}",
-                key=f"dr_ask_{idx}_{_normalize_question_key(label)}",
-                type="secondary",
-                on_click=_set_guided_question_input,
-                args=(question, ""),
-            )
+    search_tab, browse_tab = st.tabs(["Search", "Browse hierarchy"])
+    with search_tab:
+        _render_dr_search_tab(int(counts.get("total") or 0))
+    with browse_tab:
+        _render_dr_browse_tab()
 
 
 def _render_question_guidance(graph_path: str, fuseki_query_url: str) -> None:
