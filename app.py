@@ -3587,6 +3587,11 @@ def _render_dr_search_tab(total_terms: int) -> None:
         key="dr_ontology_kind_filter",
     )
     limit = st.slider("Results to show", 10, 100, 25, 5, key="dr_ontology_limit")
+    if not search.strip():
+        st.info(
+            "Type a term to search the ontology, or use Browse hierarchy to inspect all DR terms by lobe/domain."
+        )
+        return
     rows = search_dr_ontology_terms(search=search, kinds=selected_kinds, limit=int(limit))
     st.caption(
         f"Showing {len(rows)} search result(s) from {total_terms:,} DR ontology terms. "
@@ -3691,15 +3696,15 @@ def _render_dr_ontology_browser() -> None:
     count_cols[3].metric("Datatype properties", f"{counts.get('datatype property', 0):,}")
 
     st.caption(
-        "Search the Digital Reference vocabulary. "
+        "Browse or search the Digital Reference vocabulary. "
         f"The index contains {counts.get('searchable_entries', counts.get('total', 0)):,} searchable labels/aliases. "
         "Selecting a term creates a deterministic definition question; it does not call the LLM."
     )
-    search_tab, browse_tab = st.tabs(["Search", "Browse hierarchy"])
-    with search_tab:
-        _render_dr_search_tab(int(counts.get("total") or 0))
+    browse_tab, search_tab = st.tabs(["Browse hierarchy", "Search"])
     with browse_tab:
         _render_dr_browse_tab()
+    with search_tab:
+        _render_dr_search_tab(int(counts.get("total") or 0))
 
 
 def _render_question_guidance(graph_path: str, fuseki_query_url: str) -> None:
