@@ -851,7 +851,7 @@ def _build_svg_graph_html(
         control_y = (y1 + y2) / 2 - ((x2 - x1) * 0.06)
         edge_markup.append(
             f"<path class='edgePath' d='M {x1:.1f} {y1:.1f} Q {control_x:.1f} {control_y:.1f} {x2:.1f} {y2:.1f}' "
-            "fill='none' stroke='#6a8a8f' stroke-opacity='0.38' stroke-width='1.05' marker-end='url(#arrow)' />"
+            "fill='none' stroke='#9bbfc1' stroke-opacity='0.62' stroke-width='1.35' marker-end='url(#arrow)' />"
         )
         mx = (x1 + x2) / 2
         my = (y1 + y2) / 2
@@ -903,7 +903,7 @@ def _build_svg_graph_html(
         f"<svg id='graphSvg' viewBox='0 0 {width} {height}' width='100%' height='{visible_height}' "
         "xmlns='http://www.w3.org/2000/svg' role='img'>"
         "<defs><marker id='arrow' markerWidth='8' markerHeight='8' refX='7' refY='3' "
-        "orient='auto'><path d='M0,0 L0,6 L8,3 z' fill='#5f7477'/></marker></defs>"
+        "orient='auto'><path d='M0,0 L0,6 L8,3 z' fill='#9bbfc1'/></marker></defs>"
         "<g id='graphViewport'>"
         + "".join(edge_markup)
         + "".join(edge_labels)
@@ -920,7 +920,7 @@ def _build_svg_graph_html(
         "function list(items,fmt){return items&&items.length?'<ul>'+items.slice(0,12).map(fmt).join('')+'</ul>':'<p class=\"muted\">No information available.</p>';}"
         "function defaultPanel(){panel.innerHTML='<div class=\"head\"><h3>True Demand KG<br>Graph View</h3><p class=\"muted\">Click a node to inspect available details.</p></div><div class=\"section\"><h4>Statistics</h4><p>Nodes: "+str(len(node_terms))+"<br>Relationships: "+str(len(edges))+"</p></div>';}"
         "function renderNode(id){selectedNodeId=id;const info=NODE_INFO[id];if(!info){defaultPanel();return;}const label=(info.labels&&info.labels.length?info.labels[0]:info.label);const desc=(info.comments&&info.comments.length)?info.comments.map(c=>'<p>'+esc(c)+'</p>').join(''):'<p class=\"muted\">No description available.</p>';panel.innerHTML='<div class=\"head\"><h3>'+esc(label)+'</h3><p class=\"muted\">'+esc(info.kind||'node')+'</p></div><div class=\"section\"><h4>Identifier</h4><code>'+esc(info.uri||id)+'</code></div><div class=\"section\"><h4>Description</h4>'+desc+'</div><div class=\"section\"><h4>Outgoing relationships</h4>'+list(info.outgoing,r=>'<li><strong>'+esc(r.predicate)+'</strong> → '+esc(r.target)+'</li>')+'</div><div class=\"section\"><h4>Incoming relationships</h4>'+list(info.incoming,r=>'<li>'+esc(r.source)+' → <strong>'+esc(r.predicate)+'</strong></li>')+'</div>';document.querySelectorAll('.graphNode').forEach(g=>g.classList.toggle('selected',g.dataset.nodeId===id));updateLabelVisibility();}"
-        "function updateLabelVisibility(){document.querySelectorAll('.edgeLabel').forEach(e=>e.style.display=scale>2.4?'block':'none');document.querySelectorAll('.nodeLabel').forEach(e=>{const selected=e.parentElement&&e.parentElement.dataset.nodeId===selectedNodeId;e.style.display=(selected||scale>1.45)?'block':'none';e.setAttribute('font-size',scale>2.2?'15':'12');});document.querySelectorAll('.edgePath').forEach(e=>{e.setAttribute('stroke-opacity',scale>1.6?'0.58':'0.32');});document.querySelectorAll('.nodeCircle').forEach(c=>{c.setAttribute('r',scale>2.0?'18':'21');});}"
+        "function updateLabelVisibility(){document.querySelectorAll('.edgeLabel').forEach(e=>e.style.display=scale>2.4?'block':'none');document.querySelectorAll('.nodeLabel').forEach(e=>{const selected=e.parentElement&&e.parentElement.dataset.nodeId===selectedNodeId;e.style.display=(selected||scale>1.45)?'block':'none';e.setAttribute('font-size',scale>2.2?'15':'12');});document.querySelectorAll('.edgePath').forEach(e=>{e.setAttribute('stroke-opacity',scale>1.6?'0.82':'0.62');e.setAttribute('stroke-width',scale>1.6?'1.55':'1.35');});document.querySelectorAll('.nodeCircle').forEach(c=>{c.setAttribute('r',scale>2.0?'18':'21');});}"
         "function applyGraph(){viewport.setAttribute('transform',`translate(${tx} ${ty}) scale(${scale})`);updateLabelVisibility();}"
         "function zoomGraph(f){scale=Math.max(0.25,Math.min(5,scale*f));applyGraph();}"
         "function fitGraph(){const box=viewport.getBBox();const sx=svg.clientWidth/box.width;const sy=svg.clientHeight/box.height;scale=Math.max(0.28,Math.min(0.78,Math.min(sx,sy)*0.82));tx=((svg.viewBox.baseVal.width/scale)-box.width)/2-box.x;ty=((svg.viewBox.baseVal.height/scale)-box.height)/2-box.y;applyGraph();}"
