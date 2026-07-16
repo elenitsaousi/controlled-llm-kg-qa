@@ -19,7 +19,12 @@ from rdflib import Graph, BNode, URIRef
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 from kg.advisory import resolve_advisory_plan, synthesize_advisory_answer
-from kg.dr_ontology import DEFAULT_DR_ONTOLOGY_PATH, route_dr_ontology_definition
+from kg.dr_ontology import (
+    DEFAULT_DR_ONTOLOGY_PATH,
+    dr_ontology_counts,
+    search_dr_ontology_terms,
+    route_dr_ontology_definition,
+)
 from kg.schema import load_schema
 from kg.capabilities import DEFAULT_REGISTRY as CAPABILITY_REGISTRY
 from llm.answer_synthesis import synthesize_answer
@@ -3477,12 +3482,86 @@ def _render_kg_autocomplete_input(schema_path: str, graph_path: str, fuseki_quer
     return text
 
 
+def _render_dr_ontology_browser() -> None:
+    counts = dr_ontology_counts()
+    if not counts.get("total"):
+        st.warning(
+            "Digital Reference ontology terms are not available. "
+            "Set TRUE_DEMAND_DR_ONTOLOGY_PATH or DR_ONTOLOGY_PATH to the DigitalReference.ttl file."
+        )
+        return
+
+    count_cols = st.columns(4)
+    count_cols[0].metric("Unique DR terms", f"{counts.get('total', 0):,}")
+    count_cols[1].metric("Classes", f"{counts.get('class', 0):,}")
+    count_cols[2].metric("Object properties", f"{counts.get('object property', 0):,}")
+    count_cols[3].metric("Datatype properties", f"{counts.get('datatype property', 0):,}")
+
+    st.caption(
+        "Search the Digital Reference vocabulary. "
+        f"The index contains {counts.get('searchable_entries', counts.get('total', 0)):,} searchable labels/aliases. "
+        "Selecting a term creates a deterministic definition question; it does not call the LLM."
+    )
+    search = st.text_input(
+        "Search Digital Reference concepts",
+        value="",
+        placeholder="capacity, resource, product group, processed by...",
+        key="dr_ontology_search",
+    )
+    kind_options = ["class", "object property", "datatype property", "annotation property"]
+    selected_kinds = st.multiselect(
+        "Term types",
+        kind_options,
+        default=["class", "object property", "datatype property"],
+        key="dr_ontology_kind_filter",
+    )
+    limit = st.slider("Results to show", 10, 100, 25, 5, key="dr_ontology_limit")
+    rows = search_dr_ontology_terms(search=search, kinds=selected_kinds, limit=int(limit))
+    st.caption(f"Showing {len(rows)} result(s) from {counts.get('total', 0):,} DR ontology terms.")
+
+    if not rows:
+        st.info("No matching Digital Reference terms found.")
+        return
+
+    for idx, term in enumerate(rows):
+        label = str(term.get("label") or "Unknown term")
+        kind = str(term.get("kind") or "resource")
+        definition = str(term.get("definition") or "").strip()
+        parents = [str(value) for value in term.get("parents") or []]
+        domains = [str(value) for value in term.get("domains") or []]
+        ranges = [str(value) for value in term.get("ranges") or []]
+        question_prefix = "What does" if "property" in kind else "What is"
+        question = f"{question_prefix} {label}?"
+
+        with st.expander(f"{label} [{kind}]", expanded=(idx < 3 and bool(search.strip()))):
+            if definition:
+                st.write(definition)
+            else:
+                st.caption("No explicit definition text is available; the ontology still declares this term.")
+            meta_rows = []
+            if parents:
+                meta_rows.append({"Field": "Parents / superclasses", "Value": ", ".join(parents[:8])})
+            if domains:
+                meta_rows.append({"Field": "Domain", "Value": ", ".join(domains[:8])})
+            if ranges:
+                meta_rows.append({"Field": "Range", "Value": ", ".join(ranges[:8])})
+            if meta_rows:
+                st.dataframe(meta_rows, width="stretch", hide_index=True)
+            st.button(
+                f"Ask: {question}",
+                key=f"dr_ask_{idx}_{_normalize_question_key(label)}",
+                type="secondary",
+                on_click=_set_guided_question_input,
+                args=(question, ""),
+            )
+
+
 def _render_question_guidance(graph_path: str, fuseki_query_url: str) -> None:
     with st.expander("Question guide", expanded=False):
         st.caption(
             "Use the question box above for free text, or pick an example/builder option here."
         )
-        tabs = st.tabs(["Examples", "Guided builder", "Available topics"])
+        tabs = st.tabs(["Examples", "Guided builder", "Available topics", "Digital Reference"])
         with tabs[0]:
             answerable_patterns = _answerable_guided_rows(
                 _validated_guided_patterns(),
@@ -3636,6 +3715,8 @@ def _render_question_guidance(graph_path: str, fuseki_query_url: str) -> None:
                 "The builder is generated from validated question/query pairs. "
                 "Free text remains available for other questions."
             )
+        with tabs[3]:
+            _render_dr_ontology_browser()
 
 
 def _overview_topic_groups(schema_dict: Dict[str, Any]) -> List[Tuple[str, List[str]]]:

@@ -255,6 +255,94 @@ def _project_glossary_match(target: str) -> Optional[Tuple[str, str, str]]:
     return PROJECT_GLOSSARY_BY_ALIAS.get(key)
 
 
+def _term_to_dict(term: DROntologyTerm) -> Dict[str, object]:
+    return {
+        "label": term.label,
+        "uri": term.uri,
+        "kind": term.kind,
+        "definition": term.definition,
+        "aliases": list(dict.fromkeys(term.aliases)),
+        "parents": list(term.parents),
+        "domains": list(term.domains),
+        "ranges": list(term.ranges),
+    }
+
+
+def dr_ontology_terms(path_text: str = "") -> List[Dict[str, object]]:
+    """Return all discoverable DR ontology terms as UI-friendly dictionaries."""
+    path = Path(path_text).expanduser() if str(path_text or "").strip() else _dr_path()
+    if path is None or not path.exists():
+        return []
+    terms_by_alias = _load_dr_terms(str(path))
+    unique: Dict[str, DROntologyTerm] = {}
+    for term in terms_by_alias.values():
+        unique[term.uri] = term
+    return [
+        _term_to_dict(term)
+        for term in sorted(
+            unique.values(),
+            key=lambda item: (item.kind, item.label.lower(), item.uri),
+        )
+    ]
+
+
+def dr_ontology_counts(path_text: str = "") -> Dict[str, int]:
+    path = Path(path_text).expanduser() if str(path_text or "").strip() else _dr_path()
+    searchable_entries = 0
+    if path is not None and path.exists():
+        searchable_entries = len(_load_dr_terms(str(path)))
+    counts: Dict[str, int] = {}
+    for term in dr_ontology_terms(path_text):
+        kind = str(term.get("kind") or "unknown")
+        counts[kind] = counts.get(kind, 0) + 1
+    counts["total"] = sum(value for key, value in counts.items() if key != "total")
+    counts["searchable_entries"] = searchable_entries
+    return counts
+
+
+def search_dr_ontology_terms(
+    search: str = "",
+    kinds: Optional[Iterable[str]] = None,
+    limit: int = 50,
+    path_text: str = "",
+) -> List[Dict[str, object]]:
+    """Search DR terms by label, URI local name, aliases, and definition text."""
+    selected_kinds = {str(kind).lower() for kind in (kinds or []) if str(kind).strip()}
+    query = str(search or "").strip()
+    query_key = _normalize_alias(query)
+    query_tokens = set(re.findall(r"[a-z0-9]+", query.lower()))
+    rows: List[Tuple[float, str, Dict[str, object]]] = []
+
+    for term in dr_ontology_terms(path_text):
+        kind = str(term.get("kind") or "").lower()
+        if selected_kinds and kind not in selected_kinds:
+            continue
+        label = str(term.get("label") or "")
+        aliases = [str(alias) for alias in term.get("aliases") or []]
+        definition = str(term.get("definition") or "")
+        haystack = " ".join([label, *aliases, definition, str(term.get("uri") or "")])
+        haystack_key = _normalize_alias(haystack)
+        haystack_tokens = set(re.findall(r"[a-z0-9]+", haystack.lower()))
+
+        if not query_key:
+            score = 0.1
+        elif query_key == _normalize_alias(label):
+            score = 5.0
+        elif _normalize_alias(label).startswith(query_key):
+            score = 4.0
+        elif query_key in haystack_key:
+            score = 3.0
+        else:
+            overlap = len(query_tokens & haystack_tokens)
+            if overlap <= 0:
+                continue
+            score = 1.0 + overlap / max(len(query_tokens), 1)
+        rows.append((score, label.lower(), term))
+
+    rows.sort(key=lambda item: (-item[0], item[1]))
+    return [term for _score, _label, term in rows[: max(1, int(limit))]]
+
+
 def _join(values: Iterable[str], limit: int = 5) -> str:
     unique = list(dict.fromkeys(str(value) for value in values if str(value).strip()))
     return ", ".join(unique[:limit])
