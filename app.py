@@ -4504,8 +4504,8 @@ def _render_interactive_graph_explorer(
                 triples,
                 height_px=int(graph_height),
                 heading="True Demand Ontology Schema",
-                max_nodes=160,
-                max_edges=220,
+                max_nodes=90,
+                max_edges=120,
             )
             components.html(
                 html,

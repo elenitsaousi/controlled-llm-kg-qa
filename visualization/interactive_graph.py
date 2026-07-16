@@ -776,9 +776,10 @@ def _build_svg_graph_html(
     max_nodes: int = 48,
     max_edges: int = 80,
 ) -> str:
-    width = 1200
-    height = max(360, int(height_px))
-    margin = 72
+    visible_height = max(360, int(height_px))
+    width = 1900
+    height = max(900, int(visible_height * 1.45))
+    margin = 160
     triples = list(triples[:max_edges])
 
     node_terms: List[object] = []
@@ -798,7 +799,7 @@ def _build_svg_graph_html(
 
     center_x = width / 2
     center_y = height / 2
-    radius = max(90.0, min(width, height) * 0.34)
+    radius = max(220.0, min(width, height) * 0.42)
     positions = {}
     for idx, term in enumerate(node_terms):
         angle = (2 * math.pi * idx) / max(1, len(node_terms))
@@ -846,11 +847,11 @@ def _build_svg_graph_html(
             node_details.setdefault(oid, {}).setdefault("incoming", []).append({"predicate": pred_short, "source": _short_term(s)})
         x1, y1 = positions[s]
         x2, y2 = positions[o]
-        control_x = (x1 + x2) / 2 + ((y2 - y1) * 0.10)
-        control_y = (y1 + y2) / 2 - ((x2 - x1) * 0.10)
+        control_x = (x1 + x2) / 2 + ((y2 - y1) * 0.06)
+        control_y = (y1 + y2) / 2 - ((x2 - x1) * 0.06)
         edge_markup.append(
-            f"<path d='M {x1:.1f} {y1:.1f} Q {control_x:.1f} {control_y:.1f} {x2:.1f} {y2:.1f}' "
-            "fill='none' stroke='#6a8a8f' stroke-opacity='0.72' stroke-width='1.25' marker-end='url(#arrow)' />"
+            f"<path class='edgePath' d='M {x1:.1f} {y1:.1f} Q {control_x:.1f} {control_y:.1f} {x2:.1f} {y2:.1f}' "
+            "fill='none' stroke='#6a8a8f' stroke-opacity='0.38' stroke-width='1.05' marker-end='url(#arrow)' />"
         )
         mx = (x1 + x2) / 2
         my = (y1 + y2) / 2
@@ -868,9 +869,9 @@ def _build_svg_graph_html(
         node_id = escape(_node_id(term))
         node_markup.append(
             f"<g class='graphNode' data-node-id='{node_id}' style='cursor:pointer'>"
-            f"<circle cx='{x:.1f}' cy='{y:.1f}' r='23' fill='{fill}' stroke='{stroke}' "
-            "stroke-width='2.4' opacity='0.95' />"
-            f"<text class='nodeLabel' x='{x:.1f}' y='{y + 34 + ((idx % 3) * 9):.1f}' fill='#edf4f3' font-size='12' "
+            f"<circle class='nodeCircle' cx='{x:.1f}' cy='{y:.1f}' r='21' fill='{fill}' stroke='{stroke}' "
+            "stroke-width='2.2' opacity='0.95' />"
+            f"<text class='nodeLabel' x='{x:.1f}' y='{y + 33:.1f}' fill='#edf4f3' font-size='12' "
             f"text-anchor='middle' paint-order='stroke' stroke='#0b151a' stroke-width='4'>{label}</text>"
             "</g>"
         )
@@ -885,7 +886,8 @@ def _build_svg_graph_html(
         "border-radius:6px;padding:7px 10px;cursor:pointer;}"
         ".toolbar button:hover{border-color:#19d6c6;}"
         ".svgShell{display:flex;border:1px solid #26373a;border-radius:14px;overflow:hidden;background:#0f1f28;}"
-        "#graphWrap{flex:1;min-width:520px;overflow:hidden;background:radial-gradient(circle at 50% 35%, #123342 0%, #0f1f28 58%, #0b151a 100%);cursor:grab;}"
+        "#graphWrap{flex:1;min-width:520px;height:" + str(visible_height) + "px;overflow:hidden;background:radial-gradient(circle at 50% 35%, #123342 0%, #0f1f28 58%, #0b151a 100%);cursor:grab;}"
+        ".edgeLabel,.nodeLabel{display:none;pointer-events:none;}.graphNode.selected .nodeCircle{stroke:#ffffff;stroke-width:3.5;filter:drop-shadow(0 0 8px #19d6c6);}"
         "#svgNodePanel{width:310px;background:#172331;border-left:1px solid #243344;color:#dbe7ee;overflow:auto;font-size:13px;line-height:1.45;}"
         "#svgNodePanel .head{background:#101927;padding:16px;}#svgNodePanel h3{margin:0;color:#fff;font-size:20px;line-height:1.1;}#svgNodePanel h4{margin:0 0 8px;color:#dbe7ee;}"
         "#svgNodePanel .section{border-top:1px solid #2a3c50;padding:13px 16px;}#svgNodePanel .muted{color:#8ea3b1;}#svgNodePanel code{display:block;white-space:normal;overflow-wrap:anywhere;background:#101927;color:#bfe4ff;border-radius:4px;padding:6px;}#svgNodePanel li{margin:3px 0;}"
@@ -898,7 +900,7 @@ def _build_svg_graph_html(
         "<button onclick='resetGraph()'>Reset</button>"
         "</div>"
         "<div class='svgShell'><div id='graphWrap'>"
-        f"<svg id='graphSvg' viewBox='0 0 {width} {height}' width='100%' height='{height}' "
+        f"<svg id='graphSvg' viewBox='0 0 {width} {height}' width='100%' height='{visible_height}' "
         "xmlns='http://www.w3.org/2000/svg' role='img'>"
         "<defs><marker id='arrow' markerWidth='8' markerHeight='8' refX='7' refY='3' "
         "orient='auto'><path d='M0,0 L0,6 L8,3 z' fill='#5f7477'/></marker></defs>"
@@ -913,21 +915,22 @@ def _build_svg_graph_html(
         "const viewport=document.getElementById('graphViewport');"
         "const wrap=document.getElementById('graphWrap');"
         "const panel=document.getElementById('svgNodePanel');"
-        "let scale=1, tx=0, ty=0, dragging=false, sx=0, sy=0;"
+        "let scale=1, tx=0, ty=0, dragging=false, sx=0, sy=0, selectedNodeId=null;"
         "function esc(v){return String(v??'').replace(/[&<>\"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#039;'}[c]));}"
         "function list(items,fmt){return items&&items.length?'<ul>'+items.slice(0,12).map(fmt).join('')+'</ul>':'<p class=\"muted\">No information available.</p>';}"
         "function defaultPanel(){panel.innerHTML='<div class=\"head\"><h3>True Demand KG<br>Graph View</h3><p class=\"muted\">Click a node to inspect available details.</p></div><div class=\"section\"><h4>Statistics</h4><p>Nodes: "+str(len(node_terms))+"<br>Relationships: "+str(len(edges))+"</p></div>';}"
-        "function renderNode(id){const info=NODE_INFO[id];if(!info){defaultPanel();return;}const label=(info.labels&&info.labels.length?info.labels[0]:info.label);const desc=(info.comments&&info.comments.length)?info.comments.map(c=>'<p>'+esc(c)+'</p>').join(''):'<p class=\"muted\">No description available.</p>';panel.innerHTML='<div class=\"head\"><h3>'+esc(label)+'</h3><p class=\"muted\">'+esc(info.kind||'node')+'</p></div><div class=\"section\"><h4>Identifier</h4><code>'+esc(info.uri||id)+'</code></div><div class=\"section\"><h4>Description</h4>'+desc+'</div><div class=\"section\"><h4>Outgoing relationships</h4>'+list(info.outgoing,r=>'<li><strong>'+esc(r.predicate)+'</strong> → '+esc(r.target)+'</li>')+'</div><div class=\"section\"><h4>Incoming relationships</h4>'+list(info.incoming,r=>'<li>'+esc(r.source)+' → <strong>'+esc(r.predicate)+'</strong></li>')+'</div>';}"
-        "function updateLabelVisibility(){document.querySelectorAll('.edgeLabel').forEach(e=>e.style.display=scale>1.15?'block':'none');document.querySelectorAll('.nodeLabel').forEach(e=>{e.style.display=scale<0.55?'none':'block';e.setAttribute('font-size',scale>1.45?'14':'12');});}"
+        "function renderNode(id){selectedNodeId=id;const info=NODE_INFO[id];if(!info){defaultPanel();return;}const label=(info.labels&&info.labels.length?info.labels[0]:info.label);const desc=(info.comments&&info.comments.length)?info.comments.map(c=>'<p>'+esc(c)+'</p>').join(''):'<p class=\"muted\">No description available.</p>';panel.innerHTML='<div class=\"head\"><h3>'+esc(label)+'</h3><p class=\"muted\">'+esc(info.kind||'node')+'</p></div><div class=\"section\"><h4>Identifier</h4><code>'+esc(info.uri||id)+'</code></div><div class=\"section\"><h4>Description</h4>'+desc+'</div><div class=\"section\"><h4>Outgoing relationships</h4>'+list(info.outgoing,r=>'<li><strong>'+esc(r.predicate)+'</strong> → '+esc(r.target)+'</li>')+'</div><div class=\"section\"><h4>Incoming relationships</h4>'+list(info.incoming,r=>'<li>'+esc(r.source)+' → <strong>'+esc(r.predicate)+'</strong></li>')+'</div>';document.querySelectorAll('.graphNode').forEach(g=>g.classList.toggle('selected',g.dataset.nodeId===id));updateLabelVisibility();}"
+        "function updateLabelVisibility(){document.querySelectorAll('.edgeLabel').forEach(e=>e.style.display=scale>2.4?'block':'none');document.querySelectorAll('.nodeLabel').forEach(e=>{const selected=e.parentElement&&e.parentElement.dataset.nodeId===selectedNodeId;e.style.display=(selected||scale>1.45)?'block':'none';e.setAttribute('font-size',scale>2.2?'15':'12');});document.querySelectorAll('.edgePath').forEach(e=>{e.setAttribute('stroke-opacity',scale>1.6?'0.58':'0.32');});document.querySelectorAll('.nodeCircle').forEach(c=>{c.setAttribute('r',scale>2.0?'18':'21');});}"
         "function applyGraph(){viewport.setAttribute('transform',`translate(${tx} ${ty}) scale(${scale})`);updateLabelVisibility();}"
         "function zoomGraph(f){scale=Math.max(0.25,Math.min(5,scale*f));applyGraph();}"
-        "function resetGraph(){scale=1;tx=0;ty=0;applyGraph();}"
+        "function fitGraph(){const box=viewport.getBBox();const sx=svg.clientWidth/box.width;const sy=svg.clientHeight/box.height;scale=Math.max(0.28,Math.min(0.78,Math.min(sx,sy)*0.82));tx=((svg.viewBox.baseVal.width/scale)-box.width)/2-box.x;ty=((svg.viewBox.baseVal.height/scale)-box.height)/2-box.y;applyGraph();}"
+        "function resetGraph(){fitGraph();}"
         "wrap.addEventListener('wheel',(e)=>{e.preventDefault();zoomGraph(e.deltaY<0?1.1:0.9);},{passive:false});"
         "wrap.addEventListener('mousedown',(e)=>{if(e.target.closest('.graphNode'))return;dragging=true;sx=e.clientX;sy=e.clientY;wrap.style.cursor='grabbing';});"
         "window.addEventListener('mouseup',()=>{dragging=false;wrap.style.cursor='grab';});"
         "window.addEventListener('mousemove',(e)=>{if(!dragging)return;tx+=(e.clientX-sx)/scale;ty+=(e.clientY-sy)/scale;sx=e.clientX;sy=e.clientY;applyGraph();});"
         "document.querySelectorAll('.graphNode').forEach(g=>g.addEventListener('click',(e)=>{e.stopPropagation();renderNode(g.dataset.nodeId);}));"
-        "defaultPanel();updateLabelVisibility();"
+        "defaultPanel();window.setTimeout(()=>fitGraph(),50);"
         "</script>"
     )
 
