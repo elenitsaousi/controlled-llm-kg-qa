@@ -12,8 +12,10 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import OWL, RDF, RDFS, SKOS
 
 
-DEFAULT_DR_ONTOLOGY_PATH = Path.home() / "Downloads" / "dr" / "DigitalReference.ttl"
+PROJECT_DR_ONTOLOGY_PATH = Path(__file__).resolve().parents[1] / "data" / "digital_reference" / "DigitalReference.ttl"
+DEFAULT_DR_ONTOLOGY_PATH = PROJECT_DR_ONTOLOGY_PATH
 FALLBACK_DR_ONTOLOGY_PATHS = (
+    Path.home() / "Downloads" / "dr" / "DigitalReference.ttl",
     Path.home() / "Downloads" / "DigitalReference.ttl",
 )
 DC_DESCRIPTION = URIRef("http://purl.org/dc/elements/1.1/description")
