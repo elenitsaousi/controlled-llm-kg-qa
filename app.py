@@ -4458,30 +4458,6 @@ def _render_graph_overview(
         st.markdown("#### All declared relationships")
         st.dataframe(list(raw_schema.get("relationships") or []), width="stretch")
 
-    triples = _overview_relationship_triples(raw_schema)
-    if triples:
-        st.subheader("High-level graph structure")
-        st.caption("Core class-to-class relationships declared by the ontology.")
-        graph_nodes = {node for s, _p, o in triples for node in (s, o)}
-        graph_col, legend_col = st.columns([4.2, 1.2], gap="large")
-        with graph_col:
-            html = build_graph_html(
-                triples,
-                height_px=620,
-                heading="Schema Relationship Graph",
-                max_nodes=140,
-                max_edges=180,
-            )
-            components.html(html, height=660, scrolling=True)
-        with legend_col:
-            _render_graph_side_panel(
-                node_count=len(graph_nodes),
-                edge_count=len(triples),
-                relationship_label="Declared relationship",
-                has_entity_nodes=any(isinstance(node, URIRef) for node in graph_nodes),
-                has_literal_nodes=any(not isinstance(node, URIRef) for node in graph_nodes),
-            )
-
     st.divider()
     _render_interactive_graph_explorer(
         schema_path=schema_path,

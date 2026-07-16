@@ -816,9 +816,34 @@ def _build_svg_graph_html(
 
     edge_markup = []
     edge_labels = []
+    node_details: Dict[str, Dict[str, object]] = {}
+    for term in node_terms:
+        node_details[_node_id(term)] = {
+            "label": _short_term(term),
+            "uri": str(term),
+            "kind": _node_kind(term),
+            "types": [],
+            "labels": [],
+            "comments": [],
+            "outgoing": [],
+            "incoming": [],
+        }
+
     for s, p, o in edges:
         if s not in positions or o not in positions:
             continue
+        sid = _node_id(s)
+        oid = _node_id(o)
+        pred_short = _short_term(p)
+        if str(p) == str(RDFS.label):
+            node_details.setdefault(sid, {}).setdefault("labels", []).append(str(o))
+        elif str(p) == str(RDFS.comment):
+            node_details.setdefault(sid, {}).setdefault("comments", []).append(str(o))
+        elif str(p) == str(RDF.type):
+            node_details.setdefault(sid, {}).setdefault("types", []).append(_short_term(o))
+        else:
+            node_details.setdefault(sid, {}).setdefault("outgoing", []).append({"predicate": pred_short, "target": _short_term(o)})
+            node_details.setdefault(oid, {}).setdefault("incoming", []).append({"predicate": pred_short, "source": _short_term(s)})
         x1, y1 = positions[s]
         x2, y2 = positions[o]
         control_x = (x1 + x2) / 2 + ((y2 - y1) * 0.10)
@@ -830,23 +855,27 @@ def _build_svg_graph_html(
         mx = (x1 + x2) / 2
         my = (y1 + y2) / 2
         edge_labels.append(
-            f"<text x='{mx:.1f}' y='{my - 4:.1f}' fill='#91a4a4' font-size='10' "
+            f"<text class='edgeLabel' x='{mx:.1f}' y='{my - 4:.1f}' fill='#91a4a4' font-size='10' "
             f"text-anchor='middle'>{escape(_short_term(p))}</text>"
         )
 
     node_markup = []
-    for term, (x, y) in positions.items():
+    for idx, (term, (x, y)) in enumerate(positions.items()):
         is_entity = _is_entity(term)
         fill = "#b9f2f2" if is_entity else "#54656d"
         stroke = "#7de4df" if is_entity else "#70838b"
-        label = escape(_short_term(term))
+        label = escape(_node_visual_label(term))
+        node_id = escape(_node_id(term))
         node_markup.append(
-            f"<circle cx='{x:.1f}' cy='{y:.1f}' r='21' fill='{fill}' stroke='{stroke}' "
-            "stroke-width='2' opacity='0.95' />"
-            f"<text x='{x:.1f}' y='{y + 31:.1f}' fill='#edf4f3' font-size='11' "
-            f"text-anchor='middle'>{label}</text>"
+            f"<g class='graphNode' data-node-id='{node_id}' style='cursor:pointer'>"
+            f"<circle cx='{x:.1f}' cy='{y:.1f}' r='23' fill='{fill}' stroke='{stroke}' "
+            "stroke-width='2.4' opacity='0.95' />"
+            f"<text class='nodeLabel' x='{x:.1f}' y='{y + 34 + ((idx % 3) * 9):.1f}' fill='#edf4f3' font-size='12' "
+            f"text-anchor='middle' paint-order='stroke' stroke='#0b151a' stroke-width='4'>{label}</text>"
+            "</g>"
         )
 
+    safe_node_details = json.dumps(node_details, ensure_ascii=False).replace("</", "<\\/")
     return (
         "<style>"
         "html,body{margin:0;background:#101719;color:#edf4f3;font-family:Arial,sans-serif;}"
@@ -855,6 +884,12 @@ def _build_svg_graph_html(
         ".toolbar button{background:#172124;color:#edf4f3;border:1px solid #26373a;"
         "border-radius:6px;padding:7px 10px;cursor:pointer;}"
         ".toolbar button:hover{border-color:#19d6c6;}"
+        ".svgShell{display:flex;border:1px solid #26373a;border-radius:14px;overflow:hidden;background:#0f1f28;}"
+        "#graphWrap{flex:1;min-width:520px;overflow:hidden;background:radial-gradient(circle at 50% 35%, #123342 0%, #0f1f28 58%, #0b151a 100%);cursor:grab;}"
+        "#svgNodePanel{width:310px;background:#172331;border-left:1px solid #243344;color:#dbe7ee;overflow:auto;font-size:13px;line-height:1.45;}"
+        "#svgNodePanel .head{background:#101927;padding:16px;}#svgNodePanel h3{margin:0;color:#fff;font-size:20px;line-height:1.1;}#svgNodePanel h4{margin:0 0 8px;color:#dbe7ee;}"
+        "#svgNodePanel .section{border-top:1px solid #2a3c50;padding:13px 16px;}#svgNodePanel .muted{color:#8ea3b1;}#svgNodePanel code{display:block;white-space:normal;overflow-wrap:anywhere;background:#101927;color:#bfe4ff;border-radius:4px;padding:6px;}#svgNodePanel li{margin:3px 0;}"
+        "@media(max-width:820px){.svgShell{flex-direction:column;}#graphWrap{min-width:0;}#svgNodePanel{width:100%;max-height:240px;}}"
         "</style>"
         f"<h4>{escape(heading)}</h4>"
         "<div class='toolbar'>"
@@ -862,8 +897,7 @@ def _build_svg_graph_html(
         "<button onclick='zoomGraph(0.83)'>Zoom out</button>"
         "<button onclick='resetGraph()'>Reset</button>"
         "</div>"
-        "<div id='graphWrap' style='overflow:hidden; border:1px solid #26373a; border-radius:14px;"
-        "background:radial-gradient(circle at 50% 35%, #123342 0%, #0f1f28 58%, #0b151a 100%); cursor:grab'>"
+        "<div class='svgShell'><div id='graphWrap'>"
         f"<svg id='graphSvg' viewBox='0 0 {width} {height}' width='100%' height='{height}' "
         "xmlns='http://www.w3.org/2000/svg' role='img'>"
         "<defs><marker id='arrow' markerWidth='8' markerHeight='8' refX='7' refY='3' "
@@ -872,19 +906,28 @@ def _build_svg_graph_html(
         + "".join(edge_markup)
         + "".join(edge_labels)
         + "".join(node_markup)
-        + "</g></svg></div>"
+        + "</g></svg></div><aside id='svgNodePanel'></aside></div>"
         "<script>"
+        f"const NODE_INFO={safe_node_details};"
         "const svg=document.getElementById('graphSvg');"
         "const viewport=document.getElementById('graphViewport');"
         "const wrap=document.getElementById('graphWrap');"
+        "const panel=document.getElementById('svgNodePanel');"
         "let scale=1, tx=0, ty=0, dragging=false, sx=0, sy=0;"
-        "function applyGraph(){viewport.setAttribute('transform',`translate(${tx} ${ty}) scale(${scale})`);}"
+        "function esc(v){return String(v??'').replace(/[&<>\"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#039;'}[c]));}"
+        "function list(items,fmt){return items&&items.length?'<ul>'+items.slice(0,12).map(fmt).join('')+'</ul>':'<p class=\"muted\">No information available.</p>';}"
+        "function defaultPanel(){panel.innerHTML='<div class=\"head\"><h3>True Demand KG<br>Graph View</h3><p class=\"muted\">Click a node to inspect available details.</p></div><div class=\"section\"><h4>Statistics</h4><p>Nodes: "+str(len(node_terms))+"<br>Relationships: "+str(len(edges))+"</p></div>';}"
+        "function renderNode(id){const info=NODE_INFO[id];if(!info){defaultPanel();return;}const label=(info.labels&&info.labels.length?info.labels[0]:info.label);const desc=(info.comments&&info.comments.length)?info.comments.map(c=>'<p>'+esc(c)+'</p>').join(''):'<p class=\"muted\">No description available.</p>';panel.innerHTML='<div class=\"head\"><h3>'+esc(label)+'</h3><p class=\"muted\">'+esc(info.kind||'node')+'</p></div><div class=\"section\"><h4>Identifier</h4><code>'+esc(info.uri||id)+'</code></div><div class=\"section\"><h4>Description</h4>'+desc+'</div><div class=\"section\"><h4>Outgoing relationships</h4>'+list(info.outgoing,r=>'<li><strong>'+esc(r.predicate)+'</strong> → '+esc(r.target)+'</li>')+'</div><div class=\"section\"><h4>Incoming relationships</h4>'+list(info.incoming,r=>'<li>'+esc(r.source)+' → <strong>'+esc(r.predicate)+'</strong></li>')+'</div>';}"
+        "function updateLabelVisibility(){document.querySelectorAll('.edgeLabel').forEach(e=>e.style.display=scale>1.15?'block':'none');document.querySelectorAll('.nodeLabel').forEach(e=>{e.style.display=scale<0.55?'none':'block';e.setAttribute('font-size',scale>1.45?'14':'12');});}"
+        "function applyGraph(){viewport.setAttribute('transform',`translate(${tx} ${ty}) scale(${scale})`);updateLabelVisibility();}"
         "function zoomGraph(f){scale=Math.max(0.25,Math.min(5,scale*f));applyGraph();}"
         "function resetGraph(){scale=1;tx=0;ty=0;applyGraph();}"
         "wrap.addEventListener('wheel',(e)=>{e.preventDefault();zoomGraph(e.deltaY<0?1.1:0.9);},{passive:false});"
-        "wrap.addEventListener('mousedown',(e)=>{dragging=true;sx=e.clientX;sy=e.clientY;wrap.style.cursor='grabbing';});"
+        "wrap.addEventListener('mousedown',(e)=>{if(e.target.closest('.graphNode'))return;dragging=true;sx=e.clientX;sy=e.clientY;wrap.style.cursor='grabbing';});"
         "window.addEventListener('mouseup',()=>{dragging=false;wrap.style.cursor='grab';});"
         "window.addEventListener('mousemove',(e)=>{if(!dragging)return;tx+=(e.clientX-sx)/scale;ty+=(e.clientY-sy)/scale;sx=e.clientX;sy=e.clientY;applyGraph();});"
+        "document.querySelectorAll('.graphNode').forEach(g=>g.addEventListener('click',(e)=>{e.stopPropagation();renderNode(g.dataset.nodeId);}));"
+        "defaultPanel();updateLabelVisibility();"
         "</script>"
     )
 
