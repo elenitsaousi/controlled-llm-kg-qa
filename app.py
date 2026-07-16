@@ -58,10 +58,29 @@ DEFAULT_ONTOLOGY_PATH = PROJECT_ROOT / "data" / "infineon" / "true_demand_ontolo
 DEFAULT_WEBVOWL_JSON_PATH = PROJECT_ROOT / "data" / "infineon" / "true_demand_webvowl.json"
 DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
 DEFAULT_WEBVOWL_URL = "http://localhost:8080"
+FINAL_SYSTEM_EVALUATION = {
+    "benchmark_questions": 1000,
+    "kg_questions": 800,
+    "ontology_definition_questions": 150,
+    "advisory_questions": 50,
+    "overall_accuracy": 0.859,
+    "kg_accuracy": 0.826,
+    "ontology_accuracy": 1.0,
+    "advisory_accuracy": 0.96,
+    "deterministic_questions": 448,
+    "deterministic_accuracy": 0.938,
+    "llm_fallback_questions": 552,
+    "llm_fallback_accuracy": 0.795,
+    "llm_calls": 549,
+    "llm_call_reduction": 0.451,
+    "fallback_selection_accuracy": 0.683,
+    "fallback_candidate_coverage": 0.913,
+}
 APP_LOG_DIR = PROJECT_ROOT / "logs"
 SESSION_LOG_PATH = APP_LOG_DIR / "kgqa_sessions.jsonl"
 FEEDBACK_LOG_PATH = APP_LOG_DIR / "kgqa_feedback.jsonl"
 DEFAULT_ML_MODEL_PATHS = [
+    PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_current.json",
     PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_scope_origin.json",
     PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_shortage_grouped.json",
     PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_shape_features.json",
@@ -3714,6 +3733,9 @@ def _graph_overview_report(
         "Which month has the highest actual vehicle sales?",
         "Break down total regional demand by survey origin.",
         "Show inventory trends by component.",
+        "What is a Technology Node?",
+        "Define Future Demand.",
+        "Which region should be monitored more closely based on current demand?",
     ]
     example_lines = "\n".join(f"- {item}" for item in examples)
     triples_text = f"{graph_stats['triples']:,}" if "triples" in graph_stats else "Unavailable"
@@ -3723,6 +3745,16 @@ def _graph_overview_report(
     subject_entities_text = (
         f"{graph_stats['subject_entities']:,}" if "subject_entities" in graph_stats else "Unavailable"
     )
+    final_eval = FINAL_SYSTEM_EVALUATION
+    overall_accuracy = f"{100 * final_eval['overall_accuracy']:.1f}%"
+    kg_accuracy = f"{100 * final_eval['kg_accuracy']:.1f}%"
+    ontology_accuracy = f"{100 * final_eval['ontology_accuracy']:.1f}%"
+    advisory_accuracy = f"{100 * final_eval['advisory_accuracy']:.1f}%"
+    deterministic_accuracy = f"{100 * final_eval['deterministic_accuracy']:.1f}%"
+    fallback_accuracy = f"{100 * final_eval['llm_fallback_accuracy']:.1f}%"
+    fallback_selection_accuracy = f"{100 * final_eval['fallback_selection_accuracy']:.1f}%"
+    fallback_candidate_coverage = f"{100 * final_eval['fallback_candidate_coverage']:.1f}%"
+    llm_reduction = f"{100 * final_eval['llm_call_reduction']:.1f}%"
     class_lines = "\n".join(f"- {item}" for item in sorted(schema_dict.get("classes") or []))
     predicate_lines = "\n".join(f"- {item}" for item in sorted(predicates))
     property_lines = "\n".join(f"- {item}" for item in sorted(properties))
@@ -3734,10 +3766,15 @@ def _graph_overview_report(
     summary = f"""# True Demand KG Overview
 
 ## One-page summary
-This knowledge graph describes survey and analytical data around semiconductor and automotive demand. It connects regional demand, current- and future-demand analyses, vehicle sales, autonomous-driving development, order-cancellation responses, shortages, inventory trends, technology categories, vehicle types, companies, components, survey origins, and time periods. The graph is designed to support structured questions over business measures such as demand, percentage change, participant counts, sales units, shortage values, inventory trends, and autonomous-driving percentages.
+This application provides natural-language access to the True Demand knowledge graph and selected ontology definitions. The main graph describes survey and analytical data around semiconductor and automotive demand. It connects regional demand, current- and future-demand analyses, vehicle sales, autonomous-driving development, order-cancellation responses, shortages, inventory trends, technology categories, vehicle types, companies, components, survey origins, and time periods. The Digital Reference ontology is used as a deterministic definition layer for concept and property questions.
 
 ## What the graph contains
 {topic_lines}
+
+## What users can ask
+- **KG analytics questions:** totals, averages, counts, rankings, and grouped breakdowns over True Demand data.
+- **Ontology definition questions:** concept and property explanations such as "What is a Technology Node?" or "What does is processed by mean?"
+- **Graph-grounded advisory questions:** conservative planning signals based on available graph results, such as which region or technology category should be reviewed first.
 
 ## Main dimensions users can ask about
 - **Time:** month, quarter, year, time period
@@ -3764,11 +3801,22 @@ This knowledge graph describes survey and analytical data around semiconductor a
 - Properties: {len(properties)}
 - Declared relationships: {len(relationships)}
 
+## Final evaluation snapshot
+- Benchmark: {final_eval['benchmark_questions']} mixed questions ({final_eval['kg_questions']} KG analytics, {final_eval['ontology_definition_questions']} ontology definitions, {final_eval['advisory_questions']} advisory).
+- Audited answer-level accuracy: **{overall_accuracy}**.
+- KG analytics accuracy: **{kg_accuracy}**.
+- DR ontology definition accuracy: **{ontology_accuracy}**.
+- Advisory question accuracy: **{advisory_accuracy}**.
+- Deterministic / graph-supported route: {final_eval['deterministic_questions']} questions, **{deterministic_accuracy}** accuracy.
+- LLM fallback route: {final_eval['llm_fallback_questions']} questions, **{fallback_accuracy}** answer-level accuracy.
+- LLM fallback selection: **{fallback_selection_accuracy}** Top-1 with **{fallback_candidate_coverage}** candidate coverage.
+- LLM calls: {final_eval['llm_calls']} instead of {final_eval['benchmark_questions']}, a **{llm_reduction}** reduction compared with an all-LLM baseline.
+
 ## Example questions
 {example_lines}
 
 ## How to use it
-Use precise wording when you know the intended calculation, such as **average**, **total**, **count**, **highest**, **by month**, or **by technology category**. If a question leaves the intended interpretation open, the QA system may ask for clarification before answering.
+Use precise wording when you know the intended calculation, such as **average**, **total**, **count**, **highest**, **by month**, or **by technology category**. Use definition-style wording for ontology questions, for example **define**, **what is**, or **what does ... mean**. If a question leaves the intended interpretation open, the QA system may ask for clarification before answering.
 """
     if not include_inventory:
         return summary
@@ -4134,6 +4182,21 @@ def _render_graph_overview(
         use_container_width=True,
     )
     st.caption("Open the downloaded HTML report and use its `Print / Save as PDF` button for a PDF copy.")
+
+    st.subheader("Final evaluation snapshot")
+    metric_cols = st.columns(4)
+    metric_cols[0].metric("Audited accuracy", f"{100 * FINAL_SYSTEM_EVALUATION['overall_accuracy']:.1f}%")
+    metric_cols[1].metric("Deterministic route", f"{FINAL_SYSTEM_EVALUATION['deterministic_questions']} q", f"{100 * FINAL_SYSTEM_EVALUATION['deterministic_accuracy']:.1f}%")
+    metric_cols[2].metric("LLM fallback", f"{FINAL_SYSTEM_EVALUATION['llm_fallback_questions']} q", f"{100 * FINAL_SYSTEM_EVALUATION['llm_fallback_accuracy']:.1f}%")
+    metric_cols[3].metric("LLM-call reduction", f"{100 * FINAL_SYSTEM_EVALUATION['llm_call_reduction']:.1f}%")
+    st.caption(
+        "Final mixed benchmark: "
+        f"{FINAL_SYSTEM_EVALUATION['kg_questions']} KG analytics, "
+        f"{FINAL_SYSTEM_EVALUATION['ontology_definition_questions']} ontology definitions, "
+        f"{FINAL_SYSTEM_EVALUATION['advisory_questions']} advisory questions. "
+        f"Fallback selection: {100 * FINAL_SYSTEM_EVALUATION['fallback_selection_accuracy']:.1f}% Top-1, "
+        f"{100 * FINAL_SYSTEM_EVALUATION['fallback_candidate_coverage']:.1f}% candidate coverage."
+    )
 
     st.markdown(report)
 

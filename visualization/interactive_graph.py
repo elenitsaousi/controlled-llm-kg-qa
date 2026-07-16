@@ -517,23 +517,47 @@ def _inject_graph_theme(
       }
       function kgSetGraphLabelScale(scale) {
         if (typeof edges === 'undefined' || typeof nodes === 'undefined') return;
-        let edgeSize = 10;
+        let edgeSize = 9;
         let edgeColor = '#2f5f91';
         let edgeStroke = 2;
-        let edgeOpacity = 0.74;
-        let nodeSize = 15;
-        if (scale < 0.72) {
+        let edgeOpacity = 0.58;
+        let edgeBackground = 'rgba(230,241,255,0.9)';
+        let nodeSize = 12;
+        let nodeStroke = 4;
+        let nodeColor = '#17262b';
+        if (scale < 0.58) {
+          edgeSize = 0;
+          edgeColor = 'rgba(47,95,145,0)';
+          edgeStroke = 0;
+          edgeOpacity = 0.22;
+          edgeBackground = 'rgba(230,241,255,0)';
+          nodeSize = 0;
+          nodeStroke = 0;
+          nodeColor = 'rgba(23,38,43,0)';
+        } else if (scale < 0.82) {
           edgeSize = 0;
           edgeColor = 'rgba(47,95,145,0)';
           edgeStroke = 0;
           edgeOpacity = 0.34;
-          nodeSize = 13;
-        } else if (scale > 1.35) {
-          edgeSize = 13;
+          edgeBackground = 'rgba(230,241,255,0)';
+          nodeSize = 10;
+          nodeStroke = 3;
+        } else if (scale > 1.75) {
+          edgeSize = 15;
+          edgeColor = '#063f6a';
+          edgeStroke = 4;
+          edgeOpacity = 0.92;
+          edgeBackground = 'rgba(255,255,255,0.98)';
+          nodeSize = 19;
+          nodeStroke = 6;
+        } else if (scale > 1.25) {
+          edgeSize = 12;
           edgeColor = '#0a4f82';
-          edgeStroke = 2;
+          edgeStroke = 3;
           edgeOpacity = 0.82;
-          nodeSize = 17;
+          edgeBackground = 'rgba(255,255,255,0.96)';
+          nodeSize = 16;
+          nodeStroke = 5;
         }
         const edgeUpdates = edges.getIds().map((id) => ({
           id,
@@ -542,14 +566,21 @@ def _inject_graph_theme(
             size: edgeSize,
             align: 'middle',
             color: edgeColor,
-            background: 'rgba(230,241,255,0.92)',
+            background: edgeBackground,
             strokeWidth: edgeStroke,
-            strokeColor: '#e6f1ff'
+            strokeColor: '#ffffff'
           }
         }));
         const nodeUpdates = nodes.getIds().map((id) => ({
           id,
-          font: { size: nodeSize, color: '#17262b', face: 'Arial', strokeWidth: 4, strokeColor: '#ffffff' }
+          font: {
+            size: nodeSize,
+            color: nodeColor,
+            face: 'Arial',
+            vadjust: scale > 1.25 ? -2 : 0,
+            strokeWidth: nodeStroke,
+            strokeColor: '#ffffff'
+          }
         }));
         edges.update(edgeUpdates);
         nodes.update(nodeUpdates);
