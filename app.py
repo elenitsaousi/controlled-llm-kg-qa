@@ -3530,8 +3530,7 @@ def _render_dr_ontology_browser() -> None:
         parents = [str(value) for value in term.get("parents") or []]
         domains = [str(value) for value in term.get("domains") or []]
         ranges = [str(value) for value in term.get("ranges") or []]
-        question_prefix = "What does" if "property" in kind else "What is"
-        question = f"{question_prefix} {label}?"
+        question = f"What does {label} mean?" if "property" in kind else f"What is {label}?"
 
         with st.expander(f"{label} [{kind}]", expanded=(idx < 3 and bool(search.strip()))):
             if definition:
@@ -4230,6 +4229,10 @@ def _render_graph_overview(
     webvowl_json_path: str = "",
     webvowl_url: str = "",
     owl2vowl_jar_path: str = "",
+    graph_height: int = 760,
+    full_graph_limit: int = 3000,
+    subgraph_hops: int = 1,
+    subgraph_edge_limit: int = 1200,
 ) -> None:
     try:
         raw_schema = json.loads(Path(schema_path).read_text(encoding="utf-8"))
@@ -4326,6 +4329,123 @@ def _render_graph_overview(
                 has_entity_nodes=any(isinstance(node, URIRef) for node in graph_nodes),
                 has_literal_nodes=any(not isinstance(node, URIRef) for node in graph_nodes),
             )
+
+    st.divider()
+    _render_interactive_graph_explorer(
+        schema_path=schema_path,
+        graph_path=graph_path,
+        graph_height=graph_height,
+        full_graph_limit=full_graph_limit,
+        subgraph_hops=subgraph_hops,
+        subgraph_edge_limit=subgraph_edge_limit,
+    )
+
+
+def _render_interactive_graph_explorer(
+    schema_path: str,
+    graph_path: str,
+    graph_height: int,
+    full_graph_limit: int,
+    subgraph_hops: int,
+    subgraph_edge_limit: int,
+) -> None:
+    st.subheader("Interactive Graph Explorer")
+    if not _graph_backend_available(graph_path):
+        st.warning("Graph backend unavailable. Set a valid graph path or Fuseki query endpoint.")
+        return
+
+    tab_schema, tab_question, tab_raw = st.tabs(["Ontology Schema", "Question Subgraph", "Raw Data Triples"])
+
+    with tab_schema:
+        st.caption(
+            "Ontology-level view built from declared class-to-class relationships. "
+            "This is the cleaner schema graph, not a random sample of data instances."
+        )
+        try:
+            raw_schema = _load_schema_dict_cached(schema_path)
+            triples = _overview_relationship_triples(raw_schema)
+        except Exception as exc:
+            triples = []
+            st.warning(f"Could not load schema relationships: {exc}")
+        if not triples:
+            st.warning("No declared ontology relationships available for visualization.")
+        else:
+            graph_nodes = {node for s, _p, o in triples for node in (s, o)}
+            st.caption(f"Showing {len(graph_nodes)} ontology nodes and {len(triples)} declared relationships.")
+            html = build_graph_html(
+                triples,
+                height_px=int(graph_height),
+                heading="True Demand Ontology Schema",
+                max_nodes=160,
+                max_edges=220,
+            )
+            components.html(
+                html,
+                height=int(graph_height) + 40,
+                scrolling=True,
+            )
+
+    with tab_question:
+        st.caption("Visualize the graph area related to the last selected query.")
+        last_query = str(st.session_state.get("last_selected_query", "") or "").strip()
+        if not last_query:
+            st.info("Ask a question first to create a selected query.")
+        else:
+            st.code(last_query, language="sparql")
+            if st.button("Visualize Question Subgraph", key="load_question_subgraph_btn"):
+                with st.spinner("Building question-focused subgraph..."):
+                    graph = _load_active_graph(graph_path)
+                    rows = st.session_state.get("last_graph_rows") or []
+                    triples, meta = collect_query_subgraph_triples(
+                        graph=graph,
+                        query=last_query,
+                        result_rows=rows,
+                        hops=int(subgraph_hops),
+                        limit=int(subgraph_edge_limit),
+                    )
+                if not triples:
+                    st.warning("Could not extract a non-empty subgraph for this query.")
+                else:
+                    html = build_graph_html(
+                        triples,
+                        height_px=int(graph_height),
+                        heading="True Demand KG (Question Subgraph)",
+                    )
+                    st.caption(
+                        f"Seeds: {meta.get('seed_count', 0)} | "
+                        f"Edges shown: {meta.get('edge_count', 0)}"
+                    )
+                    components.html(
+                        html,
+                        height=int(graph_height) + 40,
+                        scrolling=True,
+                    )
+
+    with tab_raw:
+        st.caption(
+            "Debug view over raw RDF data triples. This can look noisy because it includes "
+            "instances, observations, sample values, and literals. It is not the ontology map."
+        )
+        if full_graph_limit == 0:
+            st.warning("Raw full graph without limit may be very heavy in browser.")
+        if st.button("Load Raw Data Triples", key="load_raw_graph_btn"):
+            with st.spinner("Loading raw data triples and building visualization..."):
+                graph = _load_active_graph(graph_path)
+                triples, total = collect_full_graph_triples(graph, limit=int(full_graph_limit))
+                if not triples:
+                    st.warning("No triples available for visualization.")
+                else:
+                    html = build_graph_html(
+                        triples,
+                        height_px=int(graph_height),
+                        heading="True Demand Raw Data Triples",
+                    )
+                    st.caption(f"Showing {len(triples)} raw triples out of total {total}.")
+                    components.html(
+                        html,
+                        height=int(graph_height) + 40,
+                        scrolling=True,
+                    )
 
 
 def _default_confidence_routing_report_path() -> str:
@@ -4835,6 +4955,10 @@ if page == "Graph Overview":
         webvowl_json_path=webvowl_json_path,
         webvowl_url=webvowl_url,
         owl2vowl_jar_path=owl2vowl_jar_path,
+        graph_height=int(graph_height),
+        full_graph_limit=int(full_graph_limit),
+        subgraph_hops=int(subgraph_hops),
+        subgraph_edge_limit=int(subgraph_edge_limit),
     )
     st.stop()
 
@@ -5610,109 +5734,3 @@ if (
             f"answer formatting {float(latency_breakdown.get('answer_format_s') or 0.0):.1f}s"
         )
     _render_feedback_panel()
-
-if developer_mode:
-    st.divider()
-    st.subheader("Interactive Graph Explorer")
-
-if developer_mode and not _graph_backend_available(graph_path):
-    st.warning("Graph backend unavailable. Set a valid graph path or Fuseki query endpoint.")
-elif developer_mode:
-    tab_schema, tab_question, tab_raw = st.tabs(["Ontology Schema", "Question Subgraph", "Raw Data Triples"])
-
-    with tab_schema:
-        st.caption(
-            "Ontology-level view built from declared class-to-class relationships. "
-            "This is the cleaner schema graph, not a random sample of data instances."
-        )
-        try:
-            raw_schema = _load_schema_dict_cached(schema_path)
-            triples = _overview_relationship_triples(raw_schema)
-        except Exception as exc:
-            triples = []
-            st.warning(f"Could not load schema relationships: {exc}")
-        if not triples:
-            st.warning("No declared ontology relationships available for visualization.")
-        else:
-            graph_nodes = {node for s, _p, o in triples for node in (s, o)}
-            st.caption(f"Showing {len(graph_nodes)} ontology nodes and {len(triples)} declared relationships.")
-            html = build_graph_html(
-                triples,
-                height_px=int(graph_height),
-                heading="True Demand Ontology Schema",
-                max_nodes=160,
-                max_edges=220,
-            )
-            components.html(
-                html,
-                height=int(graph_height) + 40,
-                scrolling=True,
-            )
-
-    with tab_question:
-        st.caption(
-            "Visualize the graph area related to the last selected query."
-        )
-        last_query = str(st.session_state.get("last_selected_query", "") or "").strip()
-        if not last_query:
-            st.info("Ask a question first to create a selected query.")
-        else:
-            st.code(last_query, language="sparql")
-            if st.button("Visualize Question Subgraph", key="load_question_subgraph_btn"):
-                with st.spinner("Building question-focused subgraph..."):
-                    graph = _load_active_graph(graph_path)
-                    rows = st.session_state.get("last_graph_rows") or []
-                    triples, meta = collect_query_subgraph_triples(
-                        graph=graph,
-                        query=last_query,
-                        result_rows=rows,
-                        hops=int(subgraph_hops),
-                        limit=int(subgraph_edge_limit),
-                    )
-                if not triples:
-                    st.warning(
-                        "Could not extract a non-empty subgraph for this query."
-                    )
-                else:
-                    html = build_graph_html(
-                        triples,
-                        height_px=int(graph_height),
-                        heading="True Demand KG (Question Subgraph)",
-                    )
-                    st.caption(
-                        f"Seeds: {meta.get('seed_count', 0)} | "
-                        f"Edges shown: {meta.get('edge_count', 0)}"
-                    )
-                    components.html(
-                        html,
-                        height=int(graph_height) + 40,
-                        scrolling=True,
-                    )
-
-    with tab_raw:
-        st.caption(
-            "Debug view over raw RDF data triples. This can look noisy because it includes "
-            "instances, observations, sample values, and literals. It is not the ontology map."
-        )
-        if full_graph_limit == 0:
-            st.warning("Raw full graph without limit may be very heavy in browser.")
-        if st.button("Load Raw Data Triples", key="load_raw_graph_btn"):
-            with st.spinner("Loading raw data triples and building visualization..."):
-                graph = _load_active_graph(graph_path)
-                triples, total = collect_full_graph_triples(graph, limit=int(full_graph_limit))
-                if not triples:
-                    st.warning("No triples available for visualization.")
-                else:
-                    html = build_graph_html(
-                        triples,
-                        height_px=int(graph_height),
-                        heading="True Demand Raw Data Triples",
-                    )
-                    st.caption(
-                        f"Showing {len(triples)} raw triples out of total {total}."
-                    )
-                    components.html(
-                        html,
-                        height=int(graph_height) + 40,
-                        scrolling=True,
-                    )
