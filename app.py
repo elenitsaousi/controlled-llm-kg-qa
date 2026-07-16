@@ -93,6 +93,7 @@ DEFAULT_AMBIGUITY_CONFIG_PATHS = [
     PROJECT_ROOT / "ranking" / "models" / "infineon_ambiguity_config.json",
 ]
 DEFAULT_CONFIDENCE_ROUTING_REPORT_PATHS = [
+    PROJECT_ROOT / "results" / "final1000_current_confidence_routing.json",
     PROJECT_ROOT / "results" / "final1000_wf_test_scope_origin_confidence_routing_safety.json",
     PROJECT_ROOT / "results" / "final1000_wf_test_scope_origin_confidence_routing_sorted_v2.json",
     PROJECT_ROOT / "results" / "final1000_wf_test_scope_origin_confidence_routing_v2.json",
@@ -4505,7 +4506,7 @@ with st.sidebar:
         in {"1", "true", "yes", "on"}
     )
     confidence_routing_enabled = True
-    confidence_min_score = 0.90
+    confidence_min_score = 0.95
     confidence_min_margin = 0.00
     confidence_safety_guard = True
     confidence_sort_by_score = True
@@ -4618,7 +4619,7 @@ with st.sidebar:
                 "Auto-answer minimum score",
                 min_value=0.0,
                 max_value=1.0,
-                value=0.90,
+                value=0.95,
                 step=0.01,
             )
             confidence_min_margin = st.slider(
