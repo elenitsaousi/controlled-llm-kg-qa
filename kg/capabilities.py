@@ -297,6 +297,8 @@ class CapabilityRegistry:
         )
         capability_matches: List[ResolvedConcept] = []
         for capability in self.capabilities:
+            if capability.name == "catalog lookup" and not _has_catalog_lookup_intent(q_norm):
+                continue
             match = _best_phrase_match(q_norm, capability.all_aliases())
             if not match:
                 continue
@@ -409,9 +411,10 @@ class CapabilityRegistry:
         dynamic_query = _direct_dynamic_query(report)
         if dynamic_query:
             return dynamic_query.strip()
-        if len(report.detected_dimensions) != 1:
+        relevant_dimensions = _dimensions_for_capability(report, capability)
+        if len(relevant_dimensions) != 1:
             return None
-        dimension_name = normalize_text(report.detected_dimensions[0].name)
+        dimension_name = normalize_text(relevant_dimensions[0].name)
         for key, query in capability.query_templates.items():
             if normalize_text(key) == dimension_name:
                 return query.strip()
@@ -430,6 +433,16 @@ def _detect_aggregation(q_norm: str) -> Optional[str]:
     if re.search(r"\b(lowest|min|smallest)\b", q_norm):
         return "MIN"
     return None
+
+
+def _has_catalog_lookup_intent(q_norm: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(list|show|available|names?|labels?|catalog|lookup|what are|which are)\b",
+            q_norm,
+        )
+        and re.search(r"\b(name|names|label|labels|available|catalog|lookup|regions?|companies|quarters?)\b", q_norm)
+    )
 
 
 def _best_phrase_match(q_norm: str, aliases: Sequence[str]) -> Optional[Tuple[str, float, bool]]:
@@ -501,45 +514,55 @@ def _suggestion_label(capability_name: str, dimension_name: str) -> str:
 DEFAULT_REGISTRY = CapabilityRegistry()
 
 
-def _detected_dimension_names(report: ResolutionReport) -> Tuple[str, ...]:
-    return tuple(str(item.name).strip().lower() for item in report.detected_dimensions)
+def _dimensions_for_capability(report: ResolutionReport, capability: CapabilitySpec) -> Tuple[ResolvedConcept, ...]:
+    return tuple(
+        item
+        for item in report.detected_dimensions
+        if capability.dimension_by_name(str(item.name))
+    )
 
 
-def _scope_from_question(question: str) -> Optional[Tuple[str, str]]:
+def _detected_dimension_names(report: ResolutionReport, capability: Optional[CapabilitySpec] = None) -> Tuple[str, ...]:
+    dimensions = _dimensions_for_capability(report, capability) if capability else tuple(report.detected_dimensions)
+    return tuple(str(item.name).strip().lower() for item in dimensions)
+
+
+def _scope_from_question(question: str) -> Optional[Tuple[str, str, str]]:
     q = normalize_text(question)
     if "oem" in q:
-        return ("OEM", "OEM_Survey")
+        return ("OEM", "OEM_Survey", "OEM_Survey_Instance")
     if "tier1" in q:
-        return ("Tier1", "Tier1_Survey")
+        return ("Tier1", "Tier1_Survey", "Tier1_Survey_Instance")
     if "semiconductor" in q or "semi conductor" in q:
-        return ("Semiconductor", "Semiconductor_Survey")
+        return ("Semiconductor", "Semiconductor_Survey", "Semiconductor_Survey_Instance")
     return None
 
 
-def _survey_group_projection(scope: Optional[Tuple[str, str]]) -> Tuple[str, str, str]:
+def _survey_group_projection(scope: Optional[Tuple[str, str, str]]) -> Tuple[str, str, str]:
     if scope:
-        label, cls = scope
+        label, _, instance = scope
         return (
             f'BIND("{label}" AS ?surveyGroup)',
-            f"?origin a survey:{cls} .",
+            f"FILTER(?origin = survey:{instance})",
             "?surveyGroup",
         )
     return (
         """
-VALUES (?surveyClass ?surveyGroup) {
-  (survey:OEM_Survey "OEM")
-  (survey:Tier1_Survey "Tier1")
-  (survey:Semiconductor_Survey "Semiconductor")
+VALUES (?origin ?surveyGroup) {
+  (survey:OEM_Survey_Instance "OEM")
+  (survey:Tier1_Survey_Instance "Tier1")
+  (survey:Semiconductor_Survey_Instance "Semiconductor")
 }
 """.strip(),
-        "?origin a ?surveyClass .",
+        "",
         "?surveyGroup",
     )
 
 
 def _direct_dynamic_query(report: ResolutionReport) -> Optional[str]:
     capability = str(report.primary_capability or "").strip().lower()
-    dims = set(_detected_dimension_names(report))
+    capability_spec = DEFAULT_REGISTRY.find_capability(capability)
+    dims = set(_detected_dimension_names(report, capability_spec)) if capability_spec else set(_detected_dimension_names(report))
     q_norm = normalize_text(report.original_question)
 
     if capability == "regional demand":
@@ -559,23 +582,63 @@ def _direct_dynamic_query(report: ResolutionReport) -> Optional[str]:
     return None
 
 
+def _has_any(q_norm: str, phrases: Sequence[str]) -> bool:
+    return any(phrase in q_norm for phrase in phrases)
+
+
 def _regional_demand_direct_query(dims: set, q_norm: str) -> Optional[str]:
-    if "quarter" in dims:
-        return None
     scope = _scope_from_question(q_norm)
     bind_survey, origin_type, survey_var = _survey_group_projection(scope)
+    quarter_requested = _has_any(
+        q_norm,
+        (
+            "by quarter",
+            "per quarter",
+            "across quarter",
+            "grouped by quarter",
+            "for each quarter",
+        ),
+    )
+    region_requested = _has_any(
+        q_norm,
+        (
+            "by region",
+            "per region",
+            "across region",
+            "grouped by region",
+            "for each region",
+            "current demand by region",
+        ),
+    )
+    if "quarter" in dims and quarter_requested and not region_requested:
+        return f"""
+SELECT {'' if scope else '?surveyGroup '}?quarterLabel (SUM(?demand) AS ?totalDemand) WHERE {{
+  {bind_survey}
+  ?entry a survey:DemandForRegion ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:quarter ?quarter ;
+         survey:totalDemandPercentageChange ?demand .
+  {origin_type}
+  OPTIONAL {{ ?quarter survey:periodLabel ?periodLabel . }}
+  BIND(COALESCE(?periodLabel, REPLACE(STR(?quarter), "^.*/", "")) AS ?quarterLabel)
+}}
+GROUP BY {'' if scope else '?surveyGroup '}?quarterLabel
+ORDER BY {'' if scope else '?surveyGroup '}?quarterLabel
+"""
+    if dims == {"vehicle type"}:
+        if scope or _has_any(q_norm, ("total", "sum", "units", "volume", "regional demand")):
+            return None
+        return """
+SELECT ?vehicleType (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:CurrentDemandAnalysis ;
+         survey:analyzesVehicleType ?vehicle ;
+         survey:percentageChange ?pct .
+  BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)
+}
+GROUP BY ?vehicleType
+ORDER BY ?vehicleType
+"""
     if "region" in dims:
-        region_requested = any(
-            phrase in q_norm
-            for phrase in (
-                "by region",
-                "per region",
-                "across region",
-                "grouped by region",
-                "for each region",
-                "current demand by region",
-            )
-        )
         if "vehicle type" in dims and not region_requested:
             return None
         select_survey = "" if scope else "?surveyGroup "

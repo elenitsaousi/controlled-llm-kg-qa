@@ -73,6 +73,16 @@ def test_specific_future_demand_region_has_direct_query():
     assert "COUNT(" not in query.upper()
 
 
+def test_direct_routing_ignores_irrelevant_fuzzy_dimensions_from_other_capabilities():
+    report = DEFAULT_REGISTRY.resolve("From the graph, show future demand by region.")
+    query = DEFAULT_REGISTRY.direct_query_for(report)
+
+    assert report.primary_capability == "future demand"
+    assert query is not None
+    assert "DemandForRegion" in query
+    assert "GROUP BY ?regionName" in query
+
+
 def test_future_demand_by_vehicle_type_defaults_to_grouped_breakdown():
     report = DEFAULT_REGISTRY.resolve("future demand by vehicle type")
     query = DEFAULT_REGISTRY.direct_query_for(report)
@@ -83,3 +93,48 @@ def test_future_demand_by_vehicle_type_defaults_to_grouped_breakdown():
     assert "GROUP BY ?vehicleType" in query
     assert "LIMIT 1" not in query.upper()
     assert "ORDER BY DESC" not in query.upper()
+
+
+def test_scoped_current_demand_region_uses_survey_origin_instance_filter():
+    report = DEFAULT_REGISTRY.resolve("Show total current demand from OEM customers by region.")
+    query = DEFAULT_REGISTRY.direct_query_for(report)
+
+    assert query is not None
+    assert "FILTER(?origin = survey:OEM_Survey_Instance)" in query
+    assert "SUM(?demand)" in query
+    assert "GROUP BY ?regionName" in query
+
+
+def test_regional_demand_by_quarter_prefers_quarter_over_regional_word():
+    report = DEFAULT_REGISTRY.resolve("Give me regional demand grouped by quarter.")
+    query = DEFAULT_REGISTRY.direct_query_for(report)
+
+    assert query is not None
+    assert "survey:quarter ?quarter" in query
+    assert "?quarterLabel" in query
+    assert "GROUP BY ?surveyGroup ?quarterLabel" in query
+    assert "?regionName" not in query
+
+
+def test_unscoped_current_demand_by_vehicle_type_uses_percentage_breakdown():
+    report = DEFAULT_REGISTRY.resolve("Show current demand by vehicle type.")
+    query = DEFAULT_REGISTRY.direct_query_for(report)
+
+    assert query is not None
+    assert "CurrentDemandAnalysis" in query
+    assert "analyzesVehicleType" in query
+    assert "AVG(?pct)" in query
+    assert "GROUP BY ?vehicleType" in query
+
+
+def test_unsupported_paths_do_not_become_deterministic_templates():
+    unsupported = [
+        "Show total current demand by vehicle type.",
+        "Show OEM current demand by vehicle type.",
+        "Show vehicle sales by vehicle type.",
+        "Count shortage information for each technology category.",
+    ]
+
+    for question in unsupported:
+        report = DEFAULT_REGISTRY.resolve(question)
+        assert DEFAULT_REGISTRY.direct_query_for(report) is None
