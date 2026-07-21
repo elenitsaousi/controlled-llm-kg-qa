@@ -29,6 +29,8 @@ python evaluation\analyze_execution_signature_entropy.py `
 python evaluation\analyze_answer_level_delta.py `
   --selection-results results\final1000_current_guarded_ml_selection.json `
   --audit-csv $AuditCsv `
+  --only-kg `
+  --only-llm `
   --out-json results\current_selection_answer_delta.json `
   --out-md results\current_selection_answer_delta.md
 

@@ -52,11 +52,38 @@ def _match_selection(audit_row: Dict[str, str], by_id: Dict[str, Dict[str, objec
     return by_question.get(_norm(audit_row.get("question") or ""), {})
 
 
-def analyze(selection_results: str, audit_csv: str, max_examples: int) -> Dict[str, object]:
+def _estimated_llm_calls(row: Dict[str, str]) -> int:
+    try:
+        return int(float(row.get("estimated_llm_calls") or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _is_llm_row(row: Dict[str, str]) -> bool:
+    return (
+        (row.get("system_mode") or "").strip().lower() == "llm_ranking"
+        or _estimated_llm_calls(row) > 0
+        or (row.get("selected_source") or "").strip().lower() in {"infineon", "validated_retrieval"}
+    )
+
+
+def _is_kg_row(row: Dict[str, str]) -> bool:
+    expected = (row.get("expected_route") or "").strip().lower()
+    if expected in {"definition", "advisory"}:
+        return False
+    return True
+
+
+def analyze(selection_results: str, audit_csv: str, max_examples: int, only_llm: bool, only_kg: bool) -> Dict[str, object]:
     selection = _selection_rows(_load_json(selection_results))
     by_id = {_row_id(row): row for row in selection if _row_id(row)}
     by_question = {_norm(str(row.get("question") or row.get("effective_question") or "")): row for row in selection}
     audit_rows = _load_audit(audit_csv)
+    filtered_audit_rows = list(audit_rows)
+    if only_kg:
+        filtered_audit_rows = [row for row in filtered_audit_rows if _is_kg_row(row)]
+    if only_llm:
+        filtered_audit_rows = [row for row in filtered_audit_rows if _is_llm_row(row)]
 
     matched = 0
     strict_wrong_answer_correct = []
@@ -64,7 +91,7 @@ def analyze(selection_results: str, audit_csv: str, max_examples: int) -> Dict[s
     both_correct = 0
     both_wrong = 0
 
-    for audit in audit_rows:
+    for audit in filtered_audit_rows:
         sel = _match_selection(audit, by_id, by_question)
         if not sel:
             continue
@@ -101,8 +128,10 @@ def analyze(selection_results: str, audit_csv: str, max_examples: int) -> Dict[s
     return {
         "selection_results": selection_results,
         "audit_csv": audit_csv,
+        "filters": {"only_llm": only_llm, "only_kg": only_kg},
         "summary": {
             "audit_rows": len(audit_rows),
+            "filtered_audit_rows": len(filtered_audit_rows),
             "matched_rows": matched,
             "both_correct": both_correct,
             "both_wrong": both_wrong,
@@ -142,12 +171,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Analyze strict query-selection correctness vs answer-level audit correctness.")
     parser.add_argument("--selection-results", required=True)
     parser.add_argument("--audit-csv", required=True)
+    parser.add_argument("--only-llm", action="store_true", help="Only compare rows that actually used the LLM fallback route.")
+    parser.add_argument("--only-kg", action="store_true", help="Ignore ontology-definition and advisory audit rows.")
     parser.add_argument("--max-examples", type=int, default=10)
     parser.add_argument("--out-json", required=True)
     parser.add_argument("--out-md", required=True)
     args = parser.parse_args()
 
-    report = analyze(args.selection_results, args.audit_csv, args.max_examples)
+    report = analyze(args.selection_results, args.audit_csv, args.max_examples, args.only_llm, args.only_kg)
     Path(args.out_json).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out_json, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
