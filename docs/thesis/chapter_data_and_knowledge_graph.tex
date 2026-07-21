@@ -225,22 +225,40 @@ In addition to the RDF graph itself, the thesis uses curated natural-language qu
 
 The repository contains an initial curated split of True Demand KGQA examples with training, development, and test files. These examples pair natural-language questions with expected query behavior and are used to develop prompts, schema features, ranking features, and evaluation scripts. The system also uses a larger set of generated and audited questions for system-level analysis, including efficiency and manual correctness evaluation. In the evaluation chapter, these datasets are used separately depending on the metric being reported.
 
-\begin{table}[ht]
+\begin{table}[htbp]
 \centering
 \caption{Main data artefacts used for development and evaluation.}
 \label{tab:evaluation-data-assets}
-\begin{tabular}{p{4.0cm}p{2.2cm}p{7.4cm}}
-\hline
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{
+>{\raggedright\arraybackslash}p{2.9cm}
+>{\raggedright\arraybackslash}p{2.0cm}
+>{\raggedright\arraybackslash}X
+}
+\toprule
 \textbf{Artefact} & \textbf{Size} & \textbf{Role} \\
-\hline
-\texttt{graph.ttl} & 1.16M triples & Full RDF execution backend for SPARQL queries \\
-\texttt{schema.json} & 58 classes & Schema abstraction for prompting, validation, ranking, and routing \\
-\texttt{infineon\_train.json} & 300 questions & Initial training and development of query-selection components \\
-\texttt{infineon\_dev.json} & 100 questions & Development and diagnostic evaluation \\
-\texttt{infineon\_test\_final.json} & 50 questions & Initial held-out evaluation set \\
-\texttt{true\_demand\_efficiency\_500.json} & 500 questions & System-level efficiency and manual accuracy audit \\
-\hline
-\end{tabular}
+\midrule
+RDF graph & 1.16M triples & Full RDF execution backend for SPARQL queries
+(\path{graph.ttl}) \\
+Schema abstraction & 58 classes & Schema abstraction for prompting, validation, ranking, and routing
+(\path{schema.json}) \\
+DR ontology & DR ontology & Ontology definitions and model-level terminology lookup
+(\path{DigitalReference.ttl}) \\
+Ranker training data & 601 groups & Historical grouped candidate data for ML ranking
+(\path{final1000_wf_train_ranker_data.json}) \\
+KG selection benchmark & 1000 KG questions & LLM-only generation and selection benchmark
+(\path{true_demand_final_1000_gold.json}) \\
+Calibration split & 200 questions & Calibration split for guarded ML reranking
+(\path{true_demand_final1000_calibration_200.json}) \\
+Holdout split & 800 questions & Held-out selection evaluation after calibration
+(\path{true_demand_final1000_holdout_800.json}) \\
+Full-system benchmark & 1000 mixed questions & Final end-to-end system benchmark
+(\path{true_demand_full_system_1000.json}) \\
+DR ontology benchmark & 300 questions & Deterministic DR ontology definition benchmark
+(\path{dr_ontology_benchmark_current.json}) \\
+\bottomrule
+\end{tabularx}
 \end{table}
 
 For the final evaluation, two types of results should be reported separately. The first is \textbf{selection accuracy}, which evaluates how well the system selects the correct query among generated candidates. This is the scientific evaluation of ambiguity-aware query selection and is measured on candidate sets where LLM-generated alternatives exist. The second is \textbf{system accuracy}, which evaluates the end-to-end system, including deterministic direct templates, LLM-generated candidates, reranking, confidence routing, and clarification. This distinction prevents direct graph-supported questions from artificially hiding the difficulty of the ambiguous selection problem, while still allowing the final system to be evaluated as an engineering artefact.

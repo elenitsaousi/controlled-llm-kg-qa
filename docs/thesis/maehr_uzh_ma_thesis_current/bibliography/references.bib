@@ -1,0 +1,321 @@
+% ============================================================
+% References for Related Work (Chapter 2 expansion)
+% Ambiguity-Aware Query Selection for Reliable NL QA over
+% Semiconductor Supply Chain Knowledge Graphs
+% ============================================================
+
+% ---------- 2.2 LLM-based KGQA / Text-to-SPARQL ----------
+
+@inproceedings{liu2024spinach,
+  author    = {Liu, Shicheng and Semnani, Sina and Triedman, Harold and Xu, Jialiang and Zhao, Isaac Dan and Lam, Monica},
+  title     = {{SPINACH}: {SPARQL}-Based Information Navigation for Challenging Real-World Questions},
+  booktitle = {Findings of the Association for Computational Linguistics: EMNLP 2024},
+  pages     = {15977--16001},
+  year      = {2024},
+  address   = {Miami, Florida, USA},
+  publisher = {Association for Computational Linguistics}
+}
+
+@article{meyer2024assessing,
+  author  = {Meyer, Lars-Peter and Frey, Johannes and Brei, Felix and Arndt, Natanael},
+  title   = {Assessing {SPARQL} Capabilities of Large Language Models},
+  journal = {arXiv preprint arXiv:2409.05925},
+  year    = {2024}
+}
+
+@article{emonet2024llm,
+  author  = {Emonet, Vincent and Bolleman, Jerven and Duvaud, Severine and de Farias, Tarcisio Mendes and Sima, Ana Claudia},
+  title   = {{LLM}-Based {SPARQL} Query Generation from Natural Language over Federated Knowledge Graphs},
+  journal = {arXiv preprint arXiv:2410.06062},
+  year    = {2024}
+}
+
+@inproceedings{avila2024experiments,
+  author    = {Avila, Caio Viktor S. and Vidal, V\^ania M. P. and Franco, Wellington and Casanova, Marco A.},
+  title     = {Experiments with Text-to-{SPARQL} Based on {ChatGPT}},
+  booktitle = {2024 IEEE 18th International Conference on Semantic Computing (ICSC)},
+  pages     = {277--284},
+  year      = {2024},
+  doi       = {10.1109/ICSC59802.2024.00050}
+}
+
+@inproceedings{dabramo2025investigating,
+  author    = {D'Abramo, Jacopo and Zugarini, Andrea and Torroni, Paolo},
+  title     = {Investigating Large Language Models for Text-to-{SPARQL} Generation},
+  booktitle = {Proceedings of the 4th International Workshop on Knowledge-Augmented Methods for Natural Language Processing},
+  pages     = {66--80},
+  year      = {2025},
+  address   = {Albuquerque, New Mexico, USA},
+  publisher = {Association for Computational Linguistics},
+  doi       = {10.18653/v1/2025.knowledgenlp-1.5}
+}
+
+@inproceedings{kovriguina2023sparqlgen,
+  author    = {Kovriguina, Liubov and others},
+  title     = {{SPARQLGEN}: One-Shot Prompt-Based Approach for {SPARQL} Query Generation},
+  booktitle = {SEMANTiCS (Posters \& Demos)},
+  year      = {2023}
+}
+
+@inproceedings{zahera2024generating,
+  author    = {Zahera, Hamada M. and Ali, Manzoor and Sherif, Mohamed Ahmed and Moussallem, Diego and Ngomo, Axel-Cyrille Ngonga},
+  title     = {Generating {SPARQL} from Natural Language Using Chain-of-Thoughts Prompting},
+  booktitle = {SEMANTiCS},
+  year      = {2024}
+}
+
+@inproceedings{lan2021survey,
+  author    = {Lan, Yunshi and He, Gaole and Jiang, Jinhao and Jiang, Jing and Zhao, Wayne Xin and Wen, Ji-Rong},
+  title     = {A Survey on Complex Knowledge Base Question Answering: Methods, Challenges and Solutions},
+  booktitle = {Proceedings of the Thirtieth International Joint Conference on Artificial Intelligence (IJCAI 2021)},
+  pages     = {4483--4491},
+  year      = {2021},
+  doi       = {10.24963/IJCAI.2021/611}
+}
+
+@article{diefenbach2018core,
+  author  = {Diefenbach, Dennis and Lopez, Vanessa and Singh, Kamal and Maret, Pierre},
+  title   = {Core Techniques of Question Answering Systems over Knowledge Bases: A Survey},
+  journal = {Knowledge and Information Systems},
+  volume  = {55},
+  number  = {3},
+  pages   = {529--569},
+  year    = {2018}
+}
+
+@inproceedings{agrawal2024knowledge,
+  author    = {Agrawal, Garima and Kumarage, Tharindu and Alghamdi, Zeyad and Liu, Huan},
+  title     = {Can Knowledge Graphs Reduce Hallucinations in {LLMs}?: A Survey},
+  booktitle = {Proceedings of the 2024 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies (NAACL)},
+  pages     = {3947--3960},
+  year      = {2024},
+  address   = {Mexico City, Mexico},
+  doi       = {10.18653/v1/2024.naacl-long.219}
+}
+
+@article{yani2021challenges,
+  author  = {Yani, Mohammad and Krisnadhi, Adila Alfa},
+  title   = {Challenges, Techniques, and Trends of Simple Knowledge Graph Question Answering: A Survey},
+  journal = {Information},
+  volume  = {12},
+  number  = {7},
+  pages   = {271},
+  year    = {2021}
+}
+
+% ---------- 2.2.1 Benchmarks ----------
+
+@inproceedings{trivedi2017lcquad,
+  author    = {Trivedi, Priyansh and Maheshwari, Gaurav and Dubey, Mohnish and Lehmann, Jens},
+  title     = {{LC-QuAD}: A Corpus for Complex Question Answering over Knowledge Graphs},
+  booktitle = {The Semantic Web -- ISWC 2017},
+  pages     = {210--218},
+  year      = {2017},
+  publisher = {Springer}
+}
+
+@inproceedings{dubey2019lcquad2,
+  author    = {Dubey, Mohnish and Banerjee, Debayan and Abdelkawi, Abdelrahman and Lehmann, Jens},
+  title     = {{LC-QuAD} 2.0: A Large Dataset for Complex Question Answering over {Wikidata} and {DBpedia}},
+  booktitle = {The Semantic Web -- ISWC 2019},
+  pages     = {69--78},
+  year      = {2019},
+  publisher = {Springer}
+}
+
+@inproceedings{perevalov2022qald9plus,
+  author    = {Perevalov, Aleksandr and Diefenbach, Dennis and Usbeck, Ricardo and Both, Andreas},
+  title     = {{Qald-9-plus}: A Multilingual Dataset for Question Answering over {DBpedia} and {Wikidata} Translated by Native Speakers},
+  booktitle = {2022 IEEE 16th International Conference on Semantic Computing (ICSC)},
+  pages     = {229--234},
+  year      = {2022},
+  organization = {IEEE}
+}
+
+@inproceedings{banerjee2023dblpquad,
+  author    = {Banerjee, Debayan and Awale, Sushil and Usbeck, Ricardo and Biemann, Chris},
+  title     = {{DBLP-QuAD}: A Question Answering Dataset over the {DBLP} Scholarly Knowledge Graph},
+  booktitle = {BIR@ECIR},
+  pages     = {37--51},
+  year      = {2023}
+}
+
+@inproceedings{usbeck2018qald9,
+  author    = {Usbeck, Ricardo and Ngomo, Axel-Cyrille Ngonga and Haarmann, Bastian and Krithara, Anastasia and R{\"o}der, Michael and Napolitano, Giulio},
+  title     = {9th Question Answering over Linked Data Challenge ({QALD}-9)},
+  booktitle = {Proceedings of the 9th Question Answering over Linked Data Challenge (QALD-9) co-located with 17th International Semantic Web Conference (ISWC 2018)},
+  series    = {CEUR Workshop Proceedings},
+  volume    = {2241},
+  year      = {2018},
+  organization = {CEUR-WS.org}
+}
+
+% ---------- 2.3 Query Selection and Reranking ----------
+
+@article{pourreza2024chasesql,
+  author  = {Pourreza, Mohammadreza and Talaei, Shayan and Sun, Ruoxi and Wan, Xingchen and Li, Hailong and Mirhoseini, Azalia and Saberi, Amin and Arik, Sercan O.},
+  title   = {{CHASE-SQL}: Multi-Path Reasoning and Preference Optimized Candidate Selection in Text-to-{SQL}},
+  journal = {arXiv preprint arXiv:2410.01943},
+  year    = {2024}
+}
+
+@article{li2025xiyansql,
+  author  = {Li, Yingqi and others},
+  title   = {{XiYan-SQL}: A Novel Multi-Generator Framework for Text-to-{SQL}},
+  journal = {arXiv preprint arXiv:2507.04701},
+  year    = {2025}
+}
+
+@article{li2024usingllm,
+  author  = {Li, Zhenwen and others},
+  title   = {Using {LLM} to Select the Right {SQL} Query from Candidates},
+  journal = {arXiv preprint arXiv:2401.02115},
+  year    = {2024}
+}
+
+@inproceedings{wang2023selfconsistency,
+  author    = {Wang, Xuezhi and Wei, Jason and Schuurmans, Dale and Le, Quoc and Chi, Ed and Narang, Sharan and Chowdhery, Aakanksha and Zhou, Denny},
+  title     = {Self-Consistency Improves Chain of Thought Reasoning in Language Models},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023}
+}
+
+@inproceedings{chen2016xgboost,
+  author    = {Chen, Tianqi and Guestrin, Carlos},
+  title     = {{XGBoost}: A Scalable Tree Boosting System},
+  booktitle = {Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining},
+  pages     = {785--794},
+  year      = {2016}
+}
+
+% ---------- 2.4 Ambiguity in Natural Language Querying ----------
+
+@article{wang2023knowwhat,
+  author  = {Wang, Bing and Gao, Yan and Li, Zhoujun and Lou, Jian-Guang},
+  title   = {Know What {I} Don't Know: Handling Ambiguous and Unanswerable Questions for Text-to-{SQL}},
+  journal = {arXiv preprint arXiv:2212.08902},
+  year    = {2023}
+}
+
+@article{ding2025ambisql,
+  author  = {Ding, Bolin and others},
+  title   = {{AmbiSQL}: Interactive Ambiguity Detection and Resolution for Text-to-{SQL}},
+  journal = {arXiv preprint arXiv:2508.15276},
+  year    = {2025}
+}
+
+@inproceedings{kuhn2023semantic,
+  author    = {Kuhn, Lorenz and Gal, Yarin and Farquhar, Sebastian},
+  title     = {Semantic Uncertainty: Linguistic Invariances for Uncertainty Estimation in Natural Language Generation},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023}
+}
+
+@article{farquhar2024detecting,
+  author  = {Farquhar, Sebastian and Kossen, Jannik and Kuhn, Lorenz and Gal, Yarin},
+  title   = {Detecting Hallucinations in Large Language Models Using Semantic Entropy},
+  journal = {Nature},
+  volume  = {630},
+  number  = {8017},
+  pages   = {625--630},
+  year    = {2024}
+}
+
+% ---------- 2.5 Enterprise AI Reliability / RAG / Hallucination ----------
+
+@inproceedings{lewis2020retrieval,
+  author    = {Lewis, Patrick and Perez, Ethan and Piktus, Aleksandra and Petroni, Fabio and Karpukhin, Vladimir and Goyal, Naman and K\"uttler, Heinrich and Lewis, Mike and Yih, Wen-tau and Rockt\"aschel, Tim and Riedel, Sebastian and Kiela, Douwe},
+  title     = {Retrieval-Augmented Generation for Knowledge-Intensive {NLP} Tasks},
+  booktitle = {Advances in Neural Information Processing Systems 33 (NeurIPS 2020)},
+  year      = {2020}
+}
+
+@article{ji2023survey,
+  author  = {Ji, Ziwei and Lee, Nayeon and Frieske, Rita and Yu, Tiezheng and Su, Dan and Xu, Yan and Ishii, Etsuko and Bang, Ye Jin and Madotto, Andrea and Fung, Pascale},
+  title   = {Survey of Hallucination in Natural Language Generation},
+  journal = {ACM Computing Surveys},
+  volume  = {55},
+  number  = {12},
+  pages   = {1--38},
+  year    = {2023}
+}
+
+@article{gao2023retrieval,
+  author  = {Gao, Yunfan and Xiong, Yun and Gao, Xinyu and Jia, Kangxiang and Pan, Jinliu and Bi, Yuxi and Dai, Yi and Sun, Jiawei and Wang, Haofen},
+  title   = {Retrieval-Augmented Generation for Large Language Models: A Survey},
+  journal = {arXiv preprint arXiv:2312.10997},
+  year    = {2023}
+}
+
+% ---------- 2.6 Semiconductor Supply Chain and Demand Modeling ----------
+
+@article{lee1997bullwhip,
+  author  = {Lee, Hau L. and Padmanabhan, V. and Whang, Seungjin},
+  title   = {The Bullwhip Effect in Supply Chains},
+  journal = {Sloan Management Review},
+  volume  = {38},
+  number  = {3},
+  pages   = {93--102},
+  year    = {1997}
+}
+
+@article{chen2000quantifying,
+  author  = {Chen, Frank and Drezner, Zvi and Ryan, Jennifer K. and Simchi-Levi, David},
+  title   = {Quantifying the Bullwhip Effect in a Simple Supply Chain: The Impact of Forecasting, Lead Times, and Information},
+  journal = {Management Science},
+  volume  = {46},
+  number  = {3},
+  pages   = {436--443},
+  year    = {2000}
+}
+
+@incollection{ramzy2021knowgraphpm,
+  author    = {Ramzy, Nour and Auer, S\"oren and Chamanara, Javad and Ehm, Hans},
+  title     = {{KnowGraph-PM}: A Knowledge Graph Based Pricing Model for Semiconductor Supply Chains},
+  booktitle = {Computer and Information Science 2021---Summer},
+  series    = {Studies in Computational Intelligence},
+  volume    = {985},
+  pages     = {61--75},
+  editor    = {Lee, Roger},
+  publisher = {Springer},
+  address   = {Cham},
+  year      = {2021},
+  doi       = {10.1007/978-3-030-79474-3_5}
+}
+
+% ---------- Already present in Chapter 2 (kept for completeness / consistency) ----------
+
+@techreport{cyganiak2014rdf,
+  author      = {Cyganiak, Richard and Wood, David and Lanthaler, Markus},
+  title       = {{RDF} 1.1 Concepts and Abstract Syntax},
+  institution = {W3C},
+  type        = {W3C Recommendation},
+  year        = {2014}
+}
+
+@techreport{harris2013sparql,
+  author      = {Harris, Steve and Seaborne, Andy},
+  title       = {{SPARQL} 1.1 Query Language},
+  institution = {W3C},
+  type        = {W3C Recommendation},
+  year        = {2013}
+}
+
+@article{hogan2021knowledge,
+  author  = {Hogan, Aidan and Blomqvist, Eva and Cochez, Michael and d'Amato, Claudia and de Melo, Gerard and Gutierrez, Claudio and Kirrane, Sabrina and others},
+  title   = {Knowledge Graphs},
+  journal = {ACM Computing Surveys},
+  volume  = {54},
+  number  = {4},
+  year    = {2021}
+}
+
+@article{shannon1948mathematical,
+  author  = {Shannon, Claude E.},
+  title   = {A Mathematical Theory of Communication},
+  journal = {Bell System Technical Journal},
+  volume  = {27},
+  number  = {3},
+  pages   = {379--423},
+  year    = {1948}
+}

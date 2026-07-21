@@ -170,6 +170,17 @@ def resolve_advisory_plan(question: str) -> Optional[AdvisoryPlan]:
             objective="identify the region with the strongest future-demand signal",
         )
 
+    if "future" in q and "demand" in q and _has_any(q, ("planning attention", "focus", "inspect", "monitor", "risk", "important")):
+        return AdvisoryPlan(
+            plan_id="future_demand_region_focus",
+            title="Future-demand focus by region",
+            query=FUTURE_DEMAND_BY_REGION,
+            group_key="regionName",
+            value_key="avgPercentageChange",
+            value_label="average future-demand percentage change",
+            objective="identify the region with the strongest future-demand signal",
+        )
+
     return None
 
 
