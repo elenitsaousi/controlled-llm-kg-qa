@@ -541,7 +541,15 @@ def _scope_from_question(question: str) -> Optional[Tuple[str, str, str]]:
         scopes.append(("OEM", "OEM_Survey", "OEM_Survey_Instance"))
     if "tier1" in q:
         scopes.append(("Tier1", "Tier1_Survey", "Tier1_Survey_Instance"))
-    if "semiconductor" in q or "semi conductor" in q:
+    semiconductor_as_survey_scope = bool(
+        ("semiconductor survey" in q)
+        or ("semiconductor data" in q)
+        or ("semiconductor dataset" in q)
+        or ("semiconductor finding" in q)
+        or ("semiconductor response" in q)
+        or ("semiconductor survey response" in q)
+    )
+    if semiconductor_as_survey_scope:
         scopes.append(("Semiconductor", "Semiconductor_Survey", "Semiconductor_Survey_Instance"))
     if len(scopes) != 1:
         return None
@@ -554,9 +562,13 @@ def _asks_for_rank(q_norm: str) -> bool:
 
 def _asks_for_company_list(q_norm: str) -> bool:
     return bool(
-        re.search(r"\b(which|list|name|show|identify)\b", q_norm)
-        and re.search(r"\b(companies|company)\b", q_norm)
+        re.search(r"\b(which|list|name|show|identify)\s+(?:the\s+)?(?:oem\s+|tier1\s+|semiconductor\s+)?(?:companies|company)\b", q_norm)
+        or re.search(r"\b(?:companies|company)\s+(?:that|who|which|with)\b", q_norm)
     )
+
+
+def _asks_for_count(q_norm: str) -> bool:
+    return bool(re.search(r"\b(count|how many|number of|total number|total count)\b", q_norm))
 
 
 def _mentions_current_demand_baseline(q_norm: str) -> bool:
@@ -816,14 +828,46 @@ ORDER BY ?year
 def _shortage_direct_query(dims: set, q_norm: str) -> Optional[str]:
     scope = _scope_from_question(q_norm)
     bind_survey, origin_type, survey_var = _survey_group_projection(scope)
+    asks_negative = bool(re.search(r"\b(not|no|without|did not|have not|has not)\b", q_norm))
+    asks_positive = bool(
+        asks_negative is False
+        and re.search(r"\b(reported|reporting|facing|experiencing|identified|indicated|acknowledged|stated|disclosed|marked as having|with shortages?)\b", q_norm)
+    )
+    shortage_filter = "false" if asks_negative else "true" if asks_positive else ""
+    if "survey group" in dims and shortage_filter and _asks_for_count(q_norm):
+        return f"""
+SELECT {survey_var} (COUNT(?company) AS ?companyCount) WHERE {{
+  {bind_survey}
+  ?company a survey:Company ;
+           survey:hasSurveyOrigin ?origin ;
+           survey:reportsShortage ?shortage .
+  {origin_type}
+  FILTER(?shortage = {shortage_filter})
+}}
+GROUP BY {survey_var}
+ORDER BY {survey_var}
+"""
+    if shortage_filter and scope and _asks_for_count(q_norm) and not re.search(r"\b(which|list|identify|name)\b", q_norm):
+        return f"""
+SELECT (COUNT(?company) AS ?companyCount) WHERE {{
+  {bind_survey}
+  ?company a survey:Company ;
+           survey:hasSurveyOrigin ?origin ;
+           survey:reportsShortage ?shortage .
+  {origin_type}
+  FILTER(?shortage = {shortage_filter})
+}}
+"""
     if _asks_for_company_list(q_norm):
+        filter_line = f"FILTER(?shortage = {shortage_filter})" if shortage_filter else ""
         return f"""
 SELECT DISTINCT ?companyName WHERE {{
   {bind_survey}
   ?company a survey:Company ;
            survey:hasSurveyOrigin ?origin ;
-           survey:reportsShortage true .
+           survey:reportsShortage ?shortage .
   {origin_type}
+  {filter_line}
   OPTIONAL {{ ?company survey:companyName ?name . }}
   BIND(COALESCE(?name, REPLACE(STR(?company), "^.*/", "")) AS ?companyName)
 }}
