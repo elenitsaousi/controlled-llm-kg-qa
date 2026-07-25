@@ -408,16 +408,23 @@ class CapabilityRegistry:
         capability = self.find_capability(report.primary_capability)
         if not capability:
             return None
+        relevant_dimensions = _dimensions_for_capability(report, capability)
+        relevant_dimension_names = {normalize_text(item.name) for item in relevant_dimensions}
+        q_norm = normalize_text(report.original_question)
+        if _direct_contract_blocks(capability.name, relevant_dimension_names, q_norm):
+            return None
         dynamic_query = _direct_dynamic_query(report)
         if dynamic_query:
             return dynamic_query.strip()
-        relevant_dimensions = _dimensions_for_capability(report, capability)
         if len(relevant_dimensions) != 1:
             return None
         dimension_name = normalize_text(relevant_dimensions[0].name)
         for key, query in capability.query_templates.items():
             if normalize_text(key) == dimension_name:
-                return query.strip()
+                direct_query = query.strip()
+                if _asks_for_rank(q_norm):
+                    return _rank_query(direct_query, "?avgPercentageChange").strip()
+                return direct_query
         return None
 
 
@@ -529,13 +536,67 @@ def _detected_dimension_names(report: ResolutionReport, capability: Optional[Cap
 
 def _scope_from_question(question: str) -> Optional[Tuple[str, str, str]]:
     q = normalize_text(question)
+    scopes = []
     if "oem" in q:
-        return ("OEM", "OEM_Survey", "OEM_Survey_Instance")
+        scopes.append(("OEM", "OEM_Survey", "OEM_Survey_Instance"))
     if "tier1" in q:
-        return ("Tier1", "Tier1_Survey", "Tier1_Survey_Instance")
+        scopes.append(("Tier1", "Tier1_Survey", "Tier1_Survey_Instance"))
     if "semiconductor" in q or "semi conductor" in q:
-        return ("Semiconductor", "Semiconductor_Survey", "Semiconductor_Survey_Instance")
-    return None
+        scopes.append(("Semiconductor", "Semiconductor_Survey", "Semiconductor_Survey_Instance"))
+    if len(scopes) != 1:
+        return None
+    return scopes[0]
+
+
+def _asks_for_rank(q_norm: str) -> bool:
+    return bool(re.search(r"\b(highest|top|largest|maximum|max|greatest|leads?|leading)\b", q_norm))
+
+
+def _asks_for_company_list(q_norm: str) -> bool:
+    return bool(
+        re.search(r"\b(which|list|name|show|identify)\b", q_norm)
+        and re.search(r"\b(companies|company)\b", q_norm)
+    )
+
+
+def _mentions_current_demand_baseline(q_norm: str) -> bool:
+    return bool(
+        re.search(r"\b(bl1|bl2|baseline|option1|option2|option3|b1|b2)\b", q_norm)
+        or "body and convenience" in q_norm
+        or "automotive current demand" in q_norm
+    )
+
+
+def _mentions_actual_and_forecast(q_norm: str) -> bool:
+    return bool(
+        re.search(r"\b(actual|actuals|result|results)\b", q_norm)
+        and re.search(r"\b(forecast|forecasted|forecasts)\b", q_norm)
+    )
+
+
+def _asks_for_advisory_answer(q_norm: str) -> bool:
+    return bool(
+        re.search(r"\b(should|recommend|advice|advise|monitor|inspect|focus|attention|risk|exposure|uncertain)\b", q_norm)
+    )
+
+
+def _rank_query(query: str, value_var: str) -> str:
+    body = str(query or "").strip()
+    body = re.sub(r"\nORDER BY[^\n]*(?:\n|$)", "\n", body, flags=re.I)
+    return f"{body}\nORDER BY DESC({value_var})\nLIMIT 1"
+
+
+def _direct_contract_blocks(capability: str, dims: set, q_norm: str) -> bool:
+    if _asks_for_advisory_answer(q_norm):
+        return True
+    if _mentions_current_demand_baseline(q_norm):
+        return True
+    if "survey group" in dims and _asks_for_rank(q_norm):
+        # Ranking by survey provenance is not represented by a stable direct template.
+        return True
+    if _asks_for_company_list(q_norm) and capability != "shortage":
+        return True
+    return False
 
 
 def _survey_group_projection(scope: Optional[Tuple[str, str, str]]) -> Tuple[str, str, str]:
@@ -564,6 +625,8 @@ def _direct_dynamic_query(report: ResolutionReport) -> Optional[str]:
     capability_spec = DEFAULT_REGISTRY.find_capability(capability)
     dims = set(_detected_dimension_names(report, capability_spec)) if capability_spec else set(_detected_dimension_names(report))
     q_norm = normalize_text(report.original_question)
+    if _direct_contract_blocks(capability, dims, q_norm):
+        return None
 
     if capability == "regional demand":
         return _regional_demand_direct_query(dims, q_norm)
@@ -643,7 +706,7 @@ ORDER BY ?vehicleType
             return None
         select_survey = "" if scope else "?surveyGroup "
         group_survey = "" if scope else "?surveyGroup "
-        return f"""
+        query = f"""
 SELECT {select_survey}?regionName (SUM(?demand) AS ?totalDemand) WHERE {{
   {bind_survey}
   ?entry a survey:DemandForRegion ;
@@ -656,8 +719,9 @@ SELECT {select_survey}?regionName (SUM(?demand) AS ?totalDemand) WHERE {{
 GROUP BY {group_survey}?regionName
 ORDER BY {group_survey}?regionName
 """
+        return _rank_query(query, "?totalDemand") if _asks_for_rank(q_norm) else query
     if dims == {"survey group"}:
-        return f"""
+        query = f"""
 SELECT {survey_var} (SUM(?demand) AS ?totalDemand) WHERE {{
   {bind_survey}
   ?entry a survey:DemandForRegion ;
@@ -668,25 +732,43 @@ SELECT {survey_var} (SUM(?demand) AS ?totalDemand) WHERE {{
 GROUP BY {survey_var}
 ORDER BY {survey_var}
 """
+        return _rank_query(query, "?totalDemand") if _asks_for_rank(q_norm) else query
     return None
 
 
 def _vehicle_sales_direct_query(dims: set, q_norm: str) -> Optional[str]:
-    if "vehicle type" in dims and not any(
-        phrase in q_norm for phrase in ("vehicle type", "by type", "grouped by type")
-    ):
+    explicit_vehicle_type = any(phrase in q_norm for phrase in ("vehicle type", "by type", "grouped by type", "for every vehicle type"))
+    if "vehicle type" in dims:
+        if explicit_vehicle_type:
+            return None
         dims = set(dims)
         dims.discard("vehicle type")
     dims = set(dims) & {"month", "year"}
     if not (dims & {"month", "year"}):
         return None
     data_filter = ""
-    if "actual" in q_norm:
+    split_actual_forecast = _mentions_actual_and_forecast(q_norm)
+    if split_actual_forecast:
+        data_filter = ""
+    elif "actual" in q_norm:
         data_filter = "survey:isActualData true ;"
     elif "forecast" in q_norm or "forecasted" in q_norm:
         data_filter = "survey:isForecastData true ;"
     if dims == {"month"}:
-        return f"""
+        if split_actual_forecast:
+            return """
+SELECT ?monthLabel ?salesType (SUM(?units) AS ?unitsSold) WHERE {
+  ?obs a survey:VehicleSalesObservation ;
+       survey:forTimePeriod ?month ;
+       survey:unitsSold ?units .
+  OPTIONAL { ?month survey:periodLabel ?periodLabel . }
+  BIND(COALESCE(?periodLabel, REPLACE(STR(?month), "^.*/", "")) AS ?monthLabel)
+  BIND(IF(EXISTS { ?obs survey:isActualData true }, "actual", "forecast") AS ?salesType)
+}
+GROUP BY ?monthLabel ?salesType
+ORDER BY ?monthLabel ?salesType
+"""
+        query = f"""
 SELECT ?monthLabel (SUM(?units) AS ?unitsSold) WHERE {{
   ?obs a survey:VehicleSalesObservation ;
        {data_filter}
@@ -698,8 +780,23 @@ SELECT ?monthLabel (SUM(?units) AS ?unitsSold) WHERE {{
 GROUP BY ?monthLabel
 ORDER BY ?monthLabel
 """
+        return _rank_query(query, "?unitsSold") if _asks_for_rank(q_norm) else query
     if dims == {"year"}:
-        return f"""
+        if split_actual_forecast:
+            return """
+SELECT ?year ?salesType (SUM(?units) AS ?unitsSold) WHERE {
+  ?obs a survey:VehicleSalesObservation ;
+       survey:forTimePeriod ?month ;
+       survey:unitsSold ?units .
+  OPTIONAL { ?month survey:periodLabel ?periodLabel . }
+  BIND(COALESCE(?periodLabel, REPLACE(STR(?month), "^.*/", "")) AS ?label)
+  BIND(REPLACE(STR(?label), "^.*(20[0-9]{2}).*$", "$1") AS ?year)
+  BIND(IF(EXISTS { ?obs survey:isActualData true }, "actual", "forecast") AS ?salesType)
+}
+GROUP BY ?year ?salesType
+ORDER BY ?year ?salesType
+"""
+        query = f"""
 SELECT ?year (SUM(?units) AS ?unitsSold) WHERE {{
   ?obs a survey:VehicleSalesObservation ;
        {data_filter}
@@ -712,12 +809,26 @@ SELECT ?year (SUM(?units) AS ?unitsSold) WHERE {{
 GROUP BY ?year
 ORDER BY ?year
 """
+        return _rank_query(query, "?unitsSold") if _asks_for_rank(q_norm) else query
     return None
 
 
 def _shortage_direct_query(dims: set, q_norm: str) -> Optional[str]:
     scope = _scope_from_question(q_norm)
     bind_survey, origin_type, survey_var = _survey_group_projection(scope)
+    if _asks_for_company_list(q_norm):
+        return f"""
+SELECT DISTINCT ?companyName WHERE {{
+  {bind_survey}
+  ?company a survey:Company ;
+           survey:hasSurveyOrigin ?origin ;
+           survey:reportsShortage true .
+  {origin_type}
+  OPTIONAL {{ ?company survey:companyName ?name . }}
+  BIND(COALESCE(?name, REPLACE(STR(?company), "^.*/", "")) AS ?companyName)
+}}
+ORDER BY ?companyName
+"""
     if dims == {"shortage status"}:
         return f"""
 SELECT ?shortageStatus (COUNT(?company) AS ?companyCount) WHERE {{
@@ -732,7 +843,7 @@ GROUP BY ?shortageStatus
 ORDER BY ?shortageStatus
 """
     if dims in ({"survey group"}, {"survey group", "shortage status"}):
-        return f"""
+        query = f"""
 SELECT {survey_var} ?shortageStatus (COUNT(?company) AS ?companyCount) WHERE {{
   {bind_survey}
   ?company a survey:Company ;
@@ -744,6 +855,7 @@ SELECT {survey_var} ?shortageStatus (COUNT(?company) AS ?companyCount) WHERE {{
 GROUP BY {survey_var} ?shortageStatus
 ORDER BY {survey_var} ?shortageStatus
 """
+        return _rank_query(query, "?companyCount") if _asks_for_rank(q_norm) else query
     return None
 
 
@@ -751,6 +863,13 @@ def _autonomous_driving_direct_query(dims: set, q_norm: str) -> Optional[str]:
     supported = {"vehicle type", "sae level", "year"}
     if not dims or not dims.issubset(supported):
         return None
+    if "sae level" in dims and re.search(r"\b(count|how many|number of|total count)\b", q_norm):
+        return """
+SELECT (COUNT(DISTINCT ?sae) AS ?saeLevelCount) WHERE {
+  ?entry a survey:AutonomousDrivingDevelopment ;
+         survey:hasSAELevel ?sae .
+}
+"""
     scope = _scope_from_question(q_norm)
     if scope and scope[1] == "Semiconductor_Survey":
         return None
@@ -783,7 +902,7 @@ def _autonomous_driving_direct_query(dims: set, q_norm: str) -> Optional[str]:
         triples.insert(-1, "survey:hasYear ?year ;")
         select_parts.append("?year")
         group_parts.append("?year")
-    return f"""
+    query = f"""
 SELECT {' '.join(select_parts)} (AVG(?pct) AS ?avgPercentage) WHERE {{
   {' '.join(triples)}
   {' '.join(binds)}
@@ -791,11 +910,15 @@ SELECT {' '.join(select_parts)} (AVG(?pct) AS ?avgPercentage) WHERE {{
 GROUP BY {' '.join(group_parts)}
 ORDER BY {' '.join(group_parts)}
 """
+    return _rank_query(query, "?avgPercentage") if _asks_for_rank(q_norm) else query
 
 
 def _inventory_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    if "trend" in dims and not any(phrase in q_norm for phrase in ("trend", "increase", "decrease", "stable")):
+        dims = set(dims)
+        dims.discard("trend")
     if dims == {"component"}:
-        return """
+        query = """
 SELECT ?component (SUM(?participants) AS ?participantTotal) WHERE {
   ?entry a survey:InventoryDevelopment_Tier1 ;
          survey:forComponent ?component ;
@@ -804,6 +927,7 @@ SELECT ?component (SUM(?participants) AS ?participantTotal) WHERE {
 GROUP BY ?component
 ORDER BY ?component
 """
+        return _rank_query(query, "?participantTotal") if _asks_for_rank(q_norm) else query
     if dims == {"component", "trend"}:
         return """
 SELECT ?component ?trend (SUM(?participants) AS ?participantTotal) WHERE {
@@ -816,7 +940,7 @@ GROUP BY ?component ?trend
 ORDER BY ?component ?trend
 """
     if dims == {"technology category"}:
-        return """
+        query = """
 SELECT ?technologyCategory (COUNT(?entry) AS ?entryCount) WHERE {
   ?entry a survey:InventoryDevelopment_Semi ;
          survey:forTechnologyCategory ?technology .
@@ -825,6 +949,7 @@ SELECT ?technologyCategory (COUNT(?entry) AS ?entryCount) WHERE {
 GROUP BY ?technologyCategory
 ORDER BY ?technologyCategory
 """
+        return _rank_query(query, "?entryCount") if _asks_for_rank(q_norm) else query
     if dims == {"technology category", "trend"}:
         return """
 SELECT ?technologyCategory ?trend (COUNT(?entry) AS ?entryCount) WHERE {
@@ -847,7 +972,7 @@ def _order_cancellation_direct_query(dims: set, q_norm: str) -> Optional[str]:
         dims = set(dims)
         dims.discard("response type")
     if dims == {"technology category"}:
-        return """
+        query = """
 SELECT ?technologyCategory (SUM(?participants) AS ?participantCount) WHERE {
   ?entry a survey:OrderCancellation ;
          survey:forTechnologyCategory ?technology ;
@@ -857,8 +982,9 @@ SELECT ?technologyCategory (SUM(?participants) AS ?participantCount) WHERE {
 GROUP BY ?technologyCategory
 ORDER BY ?technologyCategory
 """
+        return _rank_query(query, "?participantCount") if _asks_for_rank(q_norm) else query
     if dims == {"response type"}:
-        return """
+        query = """
 SELECT ?responseType (SUM(?participants) AS ?participantCount) WHERE {
   ?entry a survey:OrderCancellation ;
          survey:hasResponseType ?responseType ;
@@ -867,6 +993,7 @@ SELECT ?responseType (SUM(?participants) AS ?participantCount) WHERE {
 GROUP BY ?responseType
 ORDER BY ?responseType
 """
+        return _rank_query(query, "?participantCount") if _asks_for_rank(q_norm) else query
     if dims == {"technology category", "response type"}:
         return """
 SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE {
@@ -883,6 +1010,12 @@ ORDER BY ?technologyCategory ?responseType
 
 
 def _catalog_lookup_direct_query(dims: set, q_norm: str) -> Optional[str]:
+    if dims == {"companies"} and re.search(r"\b(count|how many|number of|total)\b", q_norm):
+        return """
+SELECT (COUNT(DISTINCT ?company) AS ?companyCount) WHERE {
+  ?company a survey:Company .
+}
+"""
     if dims == {"regions"}:
         return """
 SELECT DISTINCT ?regionName WHERE {

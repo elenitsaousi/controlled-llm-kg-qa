@@ -69,18 +69,34 @@ FINAL_SYSTEM_EVALUATION = {
     "kg_questions": 800,
     "ontology_definition_questions": 150,
     "advisory_questions": 50,
-    "overall_accuracy": 0.859,
-    "kg_accuracy": 0.826,
+    "overall_accuracy": 0.875,
+    "kg_accuracy": 0.846,
     "ontology_accuracy": 1.0,
     "advisory_accuracy": 0.96,
-    "deterministic_questions": 448,
-    "deterministic_accuracy": 0.938,
-    "llm_fallback_questions": 552,
-    "llm_fallback_accuracy": 0.795,
-    "llm_calls": 549,
-    "llm_call_reduction": 0.451,
+    "correct_answers": 875,
+    "incorrect_answers": 125,
+    "deterministic_questions": 537,
+    "deterministic_correct": 493,
+    "deterministic_incorrect": 44,
+    "deterministic_accuracy": 0.918,
+    "llm_fallback_questions": 463,
+    "llm_fallback_correct": 382,
+    "llm_fallback_incorrect": 81,
+    "llm_fallback_accuracy": 0.825,
+    "llm_calls": 463,
+    "llm_call_reduction": 0.537,
+    "estimated_cost_eur": 92.60,
+    "all_llm_baseline_cost_eur": 200.00,
+    "estimated_savings_eur": 107.40,
+    "warm_cache_llm_calls": 2,
+    "warm_cache_cost_eur": 0.40,
+    "warm_cache_call_reduction": 0.998,
     "fallback_selection_accuracy": 0.683,
     "fallback_candidate_coverage": 0.913,
+    "failure_easy": 21,
+    "failure_medium": 26,
+    "failure_hard": 76,
+    "failure_advisory_interpretation": 2,
 }
 APP_LOG_DIR = PROJECT_ROOT / "logs"
 SESSION_LOG_PATH = APP_LOG_DIR / "kgqa_sessions.jsonl"
@@ -3988,6 +4004,7 @@ def _graph_overview_report(
     fallback_selection_accuracy = f"{100 * final_eval['fallback_selection_accuracy']:.1f}%"
     fallback_candidate_coverage = f"{100 * final_eval['fallback_candidate_coverage']:.1f}%"
     llm_reduction = f"{100 * final_eval['llm_call_reduction']:.1f}%"
+    warm_cache_reduction = f"{100 * final_eval['warm_cache_call_reduction']:.1f}%"
     class_lines = "\n".join(f"- {item}" for item in sorted(schema_dict.get("classes") or []))
     predicate_lines = "\n".join(f"- {item}" for item in sorted(predicates))
     property_lines = "\n".join(f"- {item}" for item in sorted(properties))
@@ -4036,14 +4053,21 @@ This application provides natural-language access to the True Demand knowledge g
 
 ## Final evaluation snapshot
 - Benchmark: {final_eval['benchmark_questions']} mixed questions ({final_eval['kg_questions']} KG analytics, {final_eval['ontology_definition_questions']} ontology definitions, {final_eval['advisory_questions']} advisory).
-- Audited answer-level accuracy: **{overall_accuracy}**.
+- Audited answer-level accuracy: **{overall_accuracy}** ({final_eval['correct_answers']} correct, {final_eval['incorrect_answers']} incorrect).
 - KG analytics accuracy: **{kg_accuracy}**.
 - DR ontology definition accuracy: **{ontology_accuracy}**.
 - Advisory question accuracy: **{advisory_accuracy}**.
-- Deterministic / graph-supported route: {final_eval['deterministic_questions']} questions, **{deterministic_accuracy}** accuracy.
-- LLM fallback route: {final_eval['llm_fallback_questions']} questions, **{fallback_accuracy}** answer-level accuracy.
+- Deterministic / graph-supported route: {final_eval['deterministic_questions']} questions, **{deterministic_accuracy}** accuracy ({final_eval['deterministic_correct']} correct, {final_eval['deterministic_incorrect']} incorrect).
+- LLM fallback route: {final_eval['llm_fallback_questions']} questions, **{fallback_accuracy}** answer-level accuracy ({final_eval['llm_fallback_correct']} correct, {final_eval['llm_fallback_incorrect']} incorrect).
 - LLM fallback selection: **{fallback_selection_accuracy}** Top-1 with **{fallback_candidate_coverage}** candidate coverage.
-- LLM calls: {final_eval['llm_calls']} instead of {final_eval['benchmark_questions']}, a **{llm_reduction}** reduction compared with an all-LLM baseline.
+- Cold-cache LLM calls: {final_eval['llm_calls']} instead of {final_eval['benchmark_questions']}, a **{llm_reduction}** reduction compared with an all-LLM baseline.
+- Estimated cold-cache cost: EUR {final_eval['estimated_cost_eur']:.2f} instead of EUR {final_eval['all_llm_baseline_cost_eur']:.2f}; estimated saving EUR {final_eval['estimated_savings_eur']:.2f}.
+- Warm-cache rerun: {final_eval['warm_cache_llm_calls']} new LLM calls, EUR {final_eval['warm_cache_cost_eur']:.2f}, **{warm_cache_reduction}** call reduction. This is reported as cache reuse, not as the main cold-cache thesis cost claim.
+
+## Remaining incorrect answers
+- Total incorrect answers: {final_eval['incorrect_answers']} / {final_eval['benchmark_questions']}.
+- Human SPARQL difficulty among incorrect answers: {final_eval['failure_easy']} easy, {final_eval['failure_medium']} medium, {final_eval['failure_hard']} hard, and {final_eval['failure_advisory_interpretation']} advisory-interpretation cases.
+- Main failure patterns: semantic contract mismatches, survey-scope mismatches, grouped-vs-top answer-shape mismatches, missing baseline scope, company-list questions answered as counts, and advisory requests routed to raw analytics instead of synthesized recommendations.
 
 ## Example questions
 {example_lines}
