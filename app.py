@@ -69,34 +69,38 @@ FINAL_SYSTEM_EVALUATION = {
     "kg_questions": 800,
     "ontology_definition_questions": 150,
     "advisory_questions": 50,
-    "overall_accuracy": 0.875,
-    "kg_accuracy": 0.846,
+    "overall_accuracy": 0.908,
+    "kg_accuracy": 0.8875,
     "ontology_accuracy": 1.0,
     "advisory_accuracy": 0.96,
-    "correct_answers": 875,
-    "incorrect_answers": 125,
-    "deterministic_questions": 537,
-    "deterministic_correct": 493,
-    "deterministic_incorrect": 44,
-    "deterministic_accuracy": 0.918,
-    "llm_fallback_questions": 463,
-    "llm_fallback_correct": 382,
-    "llm_fallback_incorrect": 81,
-    "llm_fallback_accuracy": 0.825,
-    "llm_calls": 463,
-    "llm_call_reduction": 0.537,
-    "estimated_cost_eur": 92.60,
+    "correct_answers": 908,
+    "incorrect_answers": 92,
+    "deterministic_questions": 514,
+    "deterministic_correct": 506,
+    "deterministic_incorrect": 8,
+    "deterministic_accuracy": 0.984,
+    "llm_fallback_questions": 486,
+    "llm_fallback_correct": 402,
+    "llm_fallback_incorrect": 84,
+    "llm_fallback_accuracy": 0.827,
+    "llm_calls": 486,
+    "llm_call_reduction": 0.514,
+    "estimated_cost_eur": 97.20,
     "all_llm_baseline_cost_eur": 200.00,
-    "estimated_savings_eur": 107.40,
-    "warm_cache_llm_calls": 2,
-    "warm_cache_cost_eur": 0.40,
-    "warm_cache_call_reduction": 0.998,
+    "estimated_savings_eur": 102.80,
+    "warm_cache_llm_calls": 0,
+    "warm_cache_cost_eur": 0.00,
+    "warm_cache_call_reduction": 1.0,
     "fallback_selection_accuracy": 0.683,
     "fallback_candidate_coverage": 0.913,
-    "failure_easy": 21,
-    "failure_medium": 26,
-    "failure_hard": 76,
-    "failure_advisory_interpretation": 2,
+    "failure_easy": 8,
+    "failure_medium": 21,
+    "failure_hard": 63,
+    "failure_advisory_interpretation": 0,
+    "failure_autonomous_driving": 24,
+    "failure_current_demand": 20,
+    "failure_vehicle_sales": 14,
+    "failure_future_demand": 12,
 }
 APP_LOG_DIR = PROJECT_ROOT / "logs"
 SESSION_LOG_PATH = APP_LOG_DIR / "kgqa_sessions.jsonl"
@@ -4062,12 +4066,13 @@ This application provides natural-language access to the True Demand knowledge g
 - LLM fallback selection: **{fallback_selection_accuracy}** Top-1 with **{fallback_candidate_coverage}** candidate coverage.
 - Cold-cache LLM calls: {final_eval['llm_calls']} instead of {final_eval['benchmark_questions']}, a **{llm_reduction}** reduction compared with an all-LLM baseline.
 - Estimated cold-cache cost: EUR {final_eval['estimated_cost_eur']:.2f} instead of EUR {final_eval['all_llm_baseline_cost_eur']:.2f}; estimated saving EUR {final_eval['estimated_savings_eur']:.2f}.
-- Warm-cache rerun: {final_eval['warm_cache_llm_calls']} new LLM calls, EUR {final_eval['warm_cache_cost_eur']:.2f}, **{warm_cache_reduction}** call reduction. This is reported as cache reuse, not as the main cold-cache thesis cost claim.
+- Warm-cache rerun: {final_eval['warm_cache_llm_calls']} new LLM calls, EUR {final_eval['warm_cache_cost_eur']:.2f}, **{warm_cache_reduction}** call reduction. This is reported only as cache reuse. The main cost claim is the cold-cache estimate above.
 
 ## Remaining incorrect answers
 - Total incorrect answers: {final_eval['incorrect_answers']} / {final_eval['benchmark_questions']}.
-- Human SPARQL difficulty among incorrect answers: {final_eval['failure_easy']} easy, {final_eval['failure_medium']} medium, {final_eval['failure_hard']} hard, and {final_eval['failure_advisory_interpretation']} advisory-interpretation cases.
-- Main failure patterns: semantic contract mismatches, survey-scope mismatches, grouped-vs-top answer-shape mismatches, missing baseline scope, company-list questions answered as counts, and advisory requests routed to raw analytics instead of synthesized recommendations.
+- Human SPARQL difficulty among incorrect answers: {final_eval['failure_easy']} easy, {final_eval['failure_medium']} medium, and {final_eval['failure_hard']} hard.
+- Main failure families: autonomous-driving complex grouping ({final_eval['failure_autonomous_driving']}), current-demand baseline or scope ({final_eval['failure_current_demand']}), vehicle-sales metric or dimension ({final_eval['failure_vehicle_sales']}), and future-demand complex dimensions ({final_eval['failure_future_demand']}).
+- Interpretation: the deterministic route now answers only when the graph-supported path is known and evidence is available. Most remaining failures are concentrated in schema-dependent compositional questions handled by the LLM fallback.
 
 ## Example questions
 {example_lines}

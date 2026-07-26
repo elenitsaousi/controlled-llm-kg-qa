@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520">
+  <rect width="100%" height="100%" fill="white"/>
+  <style>
+    .title{font:700 26px Arial, sans-serif; fill:#14212b}
+    .sub{font:400 14px Arial, sans-serif; fill:#5f7280}
+    .label{font:600 14px Arial, sans-serif; fill:#14212b}
+    .small{font:400 12px Arial, sans-serif; fill:#5f7280}
+    .num{font:700 18px Arial, sans-serif; fill:#14212b}
+  </style>
+  <text x="60" y="60" class="title">Route Correctness Heatmap</text>
+<text x="60" y="88" class="sub">This is not a classifier confusion matrix; it shows answer correctness by route.</text>
+<text x="290" y="130" class="label">Correct</text><text x="550" y="130" class="label">Incorrect</text>
+<text x="80" y="218" class="label">Deterministic</text>
+<rect x="250" y="160" width="230" height="105" rx="12" fill="#18a572" opacity="1.00" stroke="#14212b"/>
+<text x="365.0" y="208" text-anchor="middle" font-family="Arial" font-size="30" font-weight="700" fill="#14212b">506</text>
+<text x="365.0" y="234" text-anchor="middle" class="small">98.4% of route</text>
+<rect x="498" y="160" width="230" height="105" rx="12" fill="#ef4444" opacity="0.26" stroke="#14212b"/>
+<text x="613.0" y="208" text-anchor="middle" font-family="Arial" font-size="30" font-weight="700" fill="#14212b">8</text>
+<text x="613.0" y="234" text-anchor="middle" class="small">1.6% of route</text>
+<text x="80" y="345" class="label">LLM fallback</text>
+<rect x="250" y="287" width="230" height="105" rx="12" fill="#18a572" opacity="1.00" stroke="#14212b"/>
+<text x="365.0" y="335" text-anchor="middle" font-family="Arial" font-size="30" font-weight="700" fill="#14212b">402</text>
+<text x="365.0" y="361" text-anchor="middle" class="small">82.7% of route</text>
+<rect x="498" y="287" width="230" height="105" rx="12" fill="#ef4444" opacity="0.41" stroke="#14212b"/>
+<text x="613.0" y="335" text-anchor="middle" font-family="Arial" font-size="30" font-weight="700" fill="#14212b">84</text>
+<text x="613.0" y="361" text-anchor="middle" class="small">17.3% of route</text>
+<text x="80" y="440" class="small">Use this slide to explain false automatic answers: only 8 deterministic answers were incorrect after strict routing.</text>
+</svg>

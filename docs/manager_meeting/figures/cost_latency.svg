@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560">
+  <rect width="100%" height="100%" fill="white"/>
+  <style>
+    .title{font:700 26px Arial, sans-serif; fill:#14212b}
+    .sub{font:400 14px Arial, sans-serif; fill:#5f7280}
+    .label{font:600 14px Arial, sans-serif; fill:#14212b}
+    .small{font:400 12px Arial, sans-serif; fill:#5f7280}
+    .num{font:700 18px Arial, sans-serif; fill:#14212b}
+  </style>
+  <text x="60" y="60" class="title">Cost and Latency Impact</text>
+<text x="60" y="88" class="sub">Cold-cost estimate uses EUR 0.20 per LLM call. The attached run used cache, so actual observed LLM calls were zero.</text>
+<rect x="70" y="135" width="300" height="140" rx="16" fill="#fef2f2" stroke="#ef4444"/>
+<text x="94" y="173" class="label">All-LLM baseline</text>
+<text x="94" y="213" class="num">1000 calls</text>
+<text x="94" y="247" font-family="Arial" font-size="26" font-weight="700" fill="#ef4444">EUR 200.00</text>
+<rect x="410" y="135" width="300" height="140" rx="16" fill="#ecfdf5" stroke="#18a572"/>
+<text x="434" y="173" class="label">Hybrid cold estimate</text>
+<text x="434" y="213" class="num">486 calls</text>
+<text x="434" y="247" font-family="Arial" font-size="26" font-weight="700" fill="#18a572">EUR 97.20</text>
+<rect x="750" y="135" width="300" height="140" rx="16" fill="#eff6ff" stroke="#2f7de1"/>
+<text x="774" y="173" class="label">Estimated savings</text>
+<text x="774" y="213" class="num">514 calls skipped</text>
+<text x="774" y="247" font-family="Arial" font-size="26" font-weight="700" fill="#2f7de1">EUR 102.80</text>
+<text x="70" y="340" class="label">Observed average response time in cached evaluation</text>
+<text x="70" y="394" class="small">Direct graph-supported</text>
+<rect x="280" y="370" width="760" height="28" rx="7" fill="#edf3f4"/>
+<rect x="280" y="370" width="56.96" height="28" rx="7" fill="#18a572"/>
+<text x="348.96" y="390" class="small">142.4 ms</text>
+<text x="70" y="439" class="small">Cached LLM + ranking</text>
+<rect x="280" y="415" width="760" height="28" rx="7" fill="#edf3f4"/>
+<rect x="280" y="415" width="727.68" height="28" rx="7" fill="#2f7de1"/>
+<text x="1019.68" y="435" class="small">1819.2 ms</text>
+<text x="70" y="484" class="small">Overall observed</text>
+<rect x="280" y="460" width="760" height="28" rx="7" fill="#edf3f4"/>
+<rect x="280" y="460" width="382.92" height="28" rx="7" fill="#0f8f86"/>
+<text x="674.9200000000001" y="480" class="small">957.3 ms</text>
+</svg>

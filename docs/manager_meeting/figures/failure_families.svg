@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="100%" height="100%" fill="white"/>
+  <style>
+    .title{font:700 26px Arial, sans-serif; fill:#14212b}
+    .sub{font:400 14px Arial, sans-serif; fill:#5f7280}
+    .label{font:600 14px Arial, sans-serif; fill:#14212b}
+    .small{font:400 12px Arial, sans-serif; fill:#5f7280}
+    .num{font:700 18px Arial, sans-serif; fill:#14212b}
+  </style>
+  <text x="60" y="60" class="title">Remaining Error Families</text>
+<text x="60" y="88" class="sub">Manual audit categories for the 92 incorrect answers.</text>
+<text x="60" y="152" class="small">Autonomous driving complex grouping</text>
+<rect x="390" y="130" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="130" width="650.0" height="28" rx="7" fill="#2f7de1"/>
+<text x="1052.0" y="150" class="small">24</text>
+<text x="60" y="200" class="small">Current demand BL/scope</text>
+<rect x="390" y="178" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="178" width="541.6666666666666" height="28" rx="7" fill="#2f7de1"/>
+<text x="943.6666666666666" y="198" class="small">20</text>
+<text x="60" y="248" class="small">Vehicle sales metric/dimension</text>
+<rect x="390" y="226" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="226" width="379.1666666666667" height="28" rx="7" fill="#2f7de1"/>
+<text x="781.1666666666667" y="246" class="small">14</text>
+<text x="60" y="296" class="small">Future demand complex dimension</text>
+<rect x="390" y="274" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="274" width="325.0" height="28" rx="7" fill="#2f7de1"/>
+<text x="727.0" y="294" class="small">12</text>
+<text x="60" y="344" class="small">Other semantic mismatch</text>
+<rect x="390" y="322" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="322" width="243.75" height="28" rx="7" fill="#f59e0b"/>
+<text x="645.75" y="342" class="small">9</text>
+<text x="60" y="392" class="small">Wrong scope/grouping</text>
+<rect x="390" y="370" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="370" width="135.41666666666666" height="28" rx="7" fill="#f59e0b"/>
+<text x="537.4166666666666" y="390" class="small">5</text>
+<text x="60" y="440" class="small">Incomplete comparison</text>
+<rect x="390" y="418" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="418" width="54.166666666666664" height="28" rx="7" fill="#f59e0b"/>
+<text x="456.1666666666667" y="438" class="small">2</text>
+<text x="60" y="488" class="small">Advisory not synthesized</text>
+<rect x="390" y="466" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="466" width="54.166666666666664" height="28" rx="7" fill="#ef4444"/>
+<text x="456.1666666666667" y="486" class="small">2</text>
+<text x="60" y="536" class="small">Regional demand scope/dimension</text>
+<rect x="390" y="514" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="514" width="54.166666666666664" height="28" rx="7" fill="#ef4444"/>
+<text x="456.1666666666667" y="534" class="small">2</text>
+<text x="60" y="584" class="small">Wrong answer shape</text>
+<rect x="390" y="562" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="562" width="27.083333333333332" height="28" rx="7" fill="#ef4444"/>
+<text x="429.0833333333333" y="582" class="small">1</text>
+<text x="60" y="632" class="small">Shortage scope/shape</text>
+<rect x="390" y="610" width="650" height="28" rx="7" fill="#edf3f4"/>
+<rect x="390" y="610" width="27.083333333333332" height="28" rx="7" fill="#ef4444"/>
+<text x="429.0833333333333" y="630" class="small">1</text>
+</svg>

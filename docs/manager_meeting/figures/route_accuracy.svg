@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560">
+  <rect width="100%" height="100%" fill="white"/>
+  <style>
+    .title{font:700 26px Arial, sans-serif; fill:#14212b}
+    .sub{font:400 14px Arial, sans-serif; fill:#5f7280}
+    .label{font:600 14px Arial, sans-serif; fill:#14212b}
+    .small{font:400 12px Arial, sans-serif; fill:#5f7280}
+    .num{font:700 18px Arial, sans-serif; fill:#14212b}
+  </style>
+  <text x="60" y="60" class="title">Accuracy by Answer Route</text>
+<text x="60" y="88" class="sub">Final audited labels: correct / incorrect / question-level manual review.</text>
+<text x="95" y="158" class="label">Deterministic / auto-answer</text>
+<rect x="95" y="170" width="760" height="42" rx="9" fill="#edf3f4" stroke="#d9e5e8"/>
+<rect x="95" y="170" width="747.84" height="42" rx="9" fill="#18a572"/>
+<text x="111" y="197" fill="white" font-family="Arial" font-size="16" font-weight="700">506/514</text>
+<text x="890" y="199" class="num">98.4%</text>
+<text x="95" y="263" class="label">LLM fallback + guarded ranking</text>
+<rect x="95" y="275" width="760" height="42" rx="9" fill="#edf3f4" stroke="#d9e5e8"/>
+<rect x="95" y="275" width="628.52" height="42" rx="9" fill="#2f7de1"/>
+<text x="111" y="302" fill="white" font-family="Arial" font-size="16" font-weight="700">402/486</text>
+<text x="890" y="304" class="num">82.7%</text>
+<text x="95" y="368" class="label">Overall audited system</text>
+<rect x="95" y="380" width="760" height="42" rx="9" fill="#edf3f4" stroke="#d9e5e8"/>
+<rect x="95" y="380" width="690.08" height="42" rx="9" fill="#0f8f86"/>
+<text x="111" y="407" fill="white" font-family="Arial" font-size="16" font-weight="700">908/1000</text>
+<text x="890" y="409" class="num">90.8%</text>
+<text x="95" y="515" class="small">Interpretation: deterministic routing is used only when a graph-supported path is already known; the LLM fallback handles unresolved or genuinely ambiguous questions.</text>
+</svg>
