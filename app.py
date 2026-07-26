@@ -3998,17 +3998,6 @@ def _graph_overview_report(
     subject_entities_text = (
         f"{graph_stats['subject_entities']:,}" if "subject_entities" in graph_stats else "Unavailable"
     )
-    final_eval = FINAL_SYSTEM_EVALUATION
-    overall_accuracy = f"{100 * final_eval['overall_accuracy']:.1f}%"
-    kg_accuracy = f"{100 * final_eval['kg_accuracy']:.1f}%"
-    ontology_accuracy = f"{100 * final_eval['ontology_accuracy']:.1f}%"
-    advisory_accuracy = f"{100 * final_eval['advisory_accuracy']:.1f}%"
-    deterministic_accuracy = f"{100 * final_eval['deterministic_accuracy']:.1f}%"
-    fallback_accuracy = f"{100 * final_eval['llm_fallback_accuracy']:.1f}%"
-    fallback_selection_accuracy = f"{100 * final_eval['fallback_selection_accuracy']:.1f}%"
-    fallback_candidate_coverage = f"{100 * final_eval['fallback_candidate_coverage']:.1f}%"
-    llm_reduction = f"{100 * final_eval['llm_call_reduction']:.1f}%"
-    warm_cache_reduction = f"{100 * final_eval['warm_cache_call_reduction']:.1f}%"
     class_lines = "\n".join(f"- {item}" for item in sorted(schema_dict.get("classes") or []))
     predicate_lines = "\n".join(f"- {item}" for item in sorted(predicates))
     property_lines = "\n".join(f"- {item}" for item in sorted(properties))
@@ -4054,25 +4043,6 @@ This application provides natural-language access to the True Demand knowledge g
 - Predicates: {len(predicates)}
 - Properties: {len(properties)}
 - Declared relationships: {len(relationships)}
-
-## Final evaluation snapshot
-- Benchmark: {final_eval['benchmark_questions']} mixed questions ({final_eval['kg_questions']} KG analytics, {final_eval['ontology_definition_questions']} ontology definitions, {final_eval['advisory_questions']} advisory).
-- Audited answer-level accuracy: **{overall_accuracy}** ({final_eval['correct_answers']} correct, {final_eval['incorrect_answers']} incorrect).
-- KG analytics accuracy: **{kg_accuracy}**.
-- DR ontology definition accuracy: **{ontology_accuracy}**.
-- Advisory question accuracy: **{advisory_accuracy}**.
-- Deterministic / graph-supported route: {final_eval['deterministic_questions']} questions, **{deterministic_accuracy}** accuracy ({final_eval['deterministic_correct']} correct, {final_eval['deterministic_incorrect']} incorrect).
-- LLM fallback route: {final_eval['llm_fallback_questions']} questions, **{fallback_accuracy}** answer-level accuracy ({final_eval['llm_fallback_correct']} correct, {final_eval['llm_fallback_incorrect']} incorrect).
-- LLM fallback selection: **{fallback_selection_accuracy}** Top-1 with **{fallback_candidate_coverage}** candidate coverage.
-- Cold-cache LLM calls: {final_eval['llm_calls']} instead of {final_eval['benchmark_questions']}, a **{llm_reduction}** reduction compared with an all-LLM baseline.
-- Estimated cold-cache cost: EUR {final_eval['estimated_cost_eur']:.2f} instead of EUR {final_eval['all_llm_baseline_cost_eur']:.2f}; estimated saving EUR {final_eval['estimated_savings_eur']:.2f}.
-- Warm-cache rerun: {final_eval['warm_cache_llm_calls']} new LLM calls, EUR {final_eval['warm_cache_cost_eur']:.2f}, **{warm_cache_reduction}** call reduction. This is reported only as cache reuse. The main cost claim is the cold-cache estimate above.
-
-## Remaining incorrect answers
-- Total incorrect answers: {final_eval['incorrect_answers']} / {final_eval['benchmark_questions']}.
-- Human SPARQL difficulty among incorrect answers: {final_eval['failure_easy']} easy, {final_eval['failure_medium']} medium, and {final_eval['failure_hard']} hard.
-- Main failure families: autonomous-driving complex grouping ({final_eval['failure_autonomous_driving']}), current-demand baseline or scope ({final_eval['failure_current_demand']}), vehicle-sales metric or dimension ({final_eval['failure_vehicle_sales']}), and future-demand complex dimensions ({final_eval['failure_future_demand']}).
-- Interpretation: the deterministic route now answers only when the graph-supported path is known and evidence is available. Most remaining failures are concentrated in schema-dependent compositional questions handled by the LLM fallback.
 
 ## Example questions
 {example_lines}
@@ -4449,22 +4419,12 @@ def _render_graph_overview(
     )
     st.caption("Open the downloaded HTML report and use its `Print / Save as PDF` button for a PDF copy.")
 
-    st.subheader("Final evaluation snapshot")
-    metric_cols = st.columns(4)
-    metric_cols[0].metric("Audited accuracy", f"{100 * FINAL_SYSTEM_EVALUATION['overall_accuracy']:.1f}%")
-    metric_cols[1].metric("Deterministic route", f"{FINAL_SYSTEM_EVALUATION['deterministic_questions']} q", f"{100 * FINAL_SYSTEM_EVALUATION['deterministic_accuracy']:.1f}%")
-    metric_cols[2].metric("LLM fallback", f"{FINAL_SYSTEM_EVALUATION['llm_fallback_questions']} q", f"{100 * FINAL_SYSTEM_EVALUATION['llm_fallback_accuracy']:.1f}%")
-    metric_cols[3].metric("LLM-call reduction", f"{100 * FINAL_SYSTEM_EVALUATION['llm_call_reduction']:.1f}%")
-    st.caption(
-        "Final mixed benchmark: "
-        f"{FINAL_SYSTEM_EVALUATION['kg_questions']} KG analytics, "
-        f"{FINAL_SYSTEM_EVALUATION['ontology_definition_questions']} ontology definitions, "
-        f"{FINAL_SYSTEM_EVALUATION['advisory_questions']} advisory questions. "
-        f"Fallback selection: {100 * FINAL_SYSTEM_EVALUATION['fallback_selection_accuracy']:.1f}% Top-1, "
-        f"{100 * FINAL_SYSTEM_EVALUATION['fallback_candidate_coverage']:.1f}% candidate coverage."
-    )
-
     st.markdown(report)
+    st.info(
+        "This page describes the graph, schema, and ontology assets. "
+        "Accuracy, routing, cost, and failure analysis are shown in the "
+        "KGQA Confidence Routing Dashboard."
+    )
 
     _render_webvowl_framework_panel(
         title="WebVOWL Ontology Viewer",
@@ -4646,6 +4606,132 @@ def _dashboard_distribution_rows(values: object) -> List[Dict[str, object]]:
     return rows
 
 
+def _final_eval_pct(key: str) -> str:
+    return f"{100 * float(FINAL_SYSTEM_EVALUATION[key]):.1f}%"
+
+
+def _render_final_system_evaluation_dashboard() -> None:
+    eval_data = FINAL_SYSTEM_EVALUATION
+    st.subheader("Final System Evaluation")
+    st.caption(
+        "Audited answer-level results from the strict deterministic v2 full-system benchmark. "
+        "These are user-facing final-answer metrics, not only raw candidate-selection metrics."
+    )
+
+    cols = st.columns(4)
+    cols[0].metric(
+        "Overall audited accuracy",
+        _final_eval_pct("overall_accuracy"),
+        f"{eval_data['correct_answers']}/{eval_data['benchmark_questions']} correct",
+    )
+    cols[1].metric(
+        "Deterministic route",
+        _final_eval_pct("deterministic_accuracy"),
+        f"{eval_data['deterministic_questions']} questions",
+    )
+    cols[2].metric(
+        "LLM fallback",
+        _final_eval_pct("llm_fallback_accuracy"),
+        f"{eval_data['llm_fallback_questions']} questions",
+    )
+    cols[3].metric(
+        "LLM-call reduction",
+        _final_eval_pct("llm_call_reduction"),
+        f"EUR {eval_data['estimated_savings_eur']:.2f} saved est.",
+    )
+
+    st.markdown("##### Benchmark composition and route performance")
+    st.dataframe(
+        [
+            {
+                "Layer": "KG analytics",
+                "Questions": eval_data["kg_questions"],
+                "Correct": int(round(eval_data["kg_questions"] * eval_data["kg_accuracy"])),
+                "Accuracy": _final_eval_pct("kg_accuracy"),
+                "Role": "True Demand analytical questions over RDF graph data",
+            },
+            {
+                "Layer": "DR ontology definitions",
+                "Questions": eval_data["ontology_definition_questions"],
+                "Correct": int(round(eval_data["ontology_definition_questions"] * eval_data["ontology_accuracy"])),
+                "Accuracy": _final_eval_pct("ontology_accuracy"),
+                "Role": "Deterministic concept/property definitions and ontology-model lookup",
+            },
+            {
+                "Layer": "Advisory questions",
+                "Questions": eval_data["advisory_questions"],
+                "Correct": int(round(eval_data["advisory_questions"] * eval_data["advisory_accuracy"])),
+                "Accuracy": _final_eval_pct("advisory_accuracy"),
+                "Role": "Conservative graph-grounded planning guidance from query outputs",
+            },
+        ],
+        width="stretch",
+        hide_index=True,
+    )
+    st.dataframe(
+        [
+            {
+                "Route": "Deterministic / auto-answer",
+                "Questions": eval_data["deterministic_questions"],
+                "Correct": eval_data["deterministic_correct"],
+                "Incorrect": eval_data["deterministic_incorrect"],
+                "Accuracy": _final_eval_pct("deterministic_accuracy"),
+                "When used": "Known graph/ontology/advisory path with evidence",
+            },
+            {
+                "Route": "LLM fallback + ranking",
+                "Questions": eval_data["llm_fallback_questions"],
+                "Correct": eval_data["llm_fallback_correct"],
+                "Incorrect": eval_data["llm_fallback_incorrect"],
+                "Accuracy": _final_eval_pct("llm_fallback_accuracy"),
+                "When used": "Unsupported, unsafe, or genuinely ambiguous deterministic route",
+            },
+        ],
+        width="stretch",
+        hide_index=True,
+    )
+
+
+def _render_final_cost_and_failure_dashboard() -> None:
+    eval_data = FINAL_SYSTEM_EVALUATION
+    st.subheader("Cost, Failure Families, and Human Difficulty")
+    cost_cols = st.columns(4)
+    cost_cols[0].metric("Cold LLM calls", str(eval_data["llm_calls"]), f"baseline {eval_data['benchmark_questions']}")
+    cost_cols[1].metric("Cold estimate", f"EUR {eval_data['estimated_cost_eur']:.2f}")
+    cost_cols[2].metric("All-LLM baseline", f"EUR {eval_data['all_llm_baseline_cost_eur']:.2f}")
+    cost_cols[3].metric("Estimated saving", f"EUR {eval_data['estimated_savings_eur']:.2f}")
+    st.caption(
+        "The final benchmark was also run with cache reuse. The cost claim shown here is the cold-run estimate: "
+        f"{eval_data['llm_calls']} fallback LLM calls at EUR 0.20 each instead of sending all "
+        f"{eval_data['benchmark_questions']} questions to the LLM."
+    )
+
+    cols = st.columns(2)
+    with cols[0]:
+        st.markdown("##### Remaining incorrect answers by human SPARQL difficulty")
+        st.dataframe(
+            [
+                {"Difficulty": "Easy", "Incorrect": eval_data["failure_easy"], "Meaning": "A schema-aware human would likely write the correct query quickly."},
+                {"Difficulty": "Medium", "Incorrect": eval_data["failure_medium"], "Meaning": "Requires schema awareness and careful metric/scope mapping."},
+                {"Difficulty": "Hard", "Incorrect": eval_data["failure_hard"], "Meaning": "Requires graph exploration, indirect joins, or iterative SPARQL testing."},
+            ],
+            width="stretch",
+            hide_index=True,
+        )
+    with cols[1]:
+        st.markdown("##### Main remaining failure families")
+        st.dataframe(
+            [
+                {"Family": "Autonomous-driving complex grouping", "Incorrect": eval_data["failure_autonomous_driving"]},
+                {"Family": "Current-demand baseline / scope", "Incorrect": eval_data["failure_current_demand"]},
+                {"Family": "Vehicle-sales metric / dimension", "Incorrect": eval_data["failure_vehicle_sales"]},
+                {"Family": "Future-demand complex dimensions", "Incorrect": eval_data["failure_future_demand"]},
+            ],
+            width="stretch",
+            hide_index=True,
+        )
+
+
 def _dashboard_cases(report: Dict[str, object], case_set: str) -> List[Dict[str, object]]:
     if case_set == "low_confidence_examples":
         return [dict(row) for row in report.get("low_confidence_examples") or []]
@@ -4685,7 +4771,11 @@ def _render_confidence_dashboard_summary(report: Dict[str, object]) -> None:
     auto = _dashboard_policy_bucket(report, "auto_answer")
     clarification = _dashboard_policy_bucket(report, "clarification")
 
-    st.subheader("System Metrics")
+    st.subheader("Candidate Selection / Confidence Report")
+    st.caption(
+        "This section comes from a confidence-routing JSON report. "
+        "It describes candidate selection and confidence buckets, not the final mixed-system audit."
+    )
     cols = st.columns(5)
     cols[0].metric(
         "Forced Top1",
@@ -4798,17 +4888,32 @@ def _render_confidence_dashboard_cases(report: Dict[str, object]) -> None:
 
 def _render_confidence_routing_dashboard() -> None:
     st.title("KGQA Confidence Routing Dashboard")
+    st.caption(
+        "Evaluation-focused page: final audited metrics, deterministic-vs-LLM routing, "
+        "cost estimates, error families, and optional confidence-routing case analysis."
+    )
+
+    _render_final_system_evaluation_dashboard()
+    st.divider()
+    _render_final_cost_and_failure_dashboard()
+    st.divider()
+
+    st.subheader("Optional Confidence Routing Report")
     report_path = st.text_input(
         "Routing report JSON",
         value=_default_confidence_routing_report_path(),
+        help=(
+            "Optional diagnostic JSON for score/margin buckets and high-confidence/low-confidence cases. "
+            "Final system metrics above do not depend on this file."
+        ),
     )
     if not report_path.strip():
-        st.info("Enter a confidence routing JSON report path.")
+        st.info("Enter a confidence routing JSON report path to inspect candidate-selection buckets.")
         return
     try:
         report = _load_confidence_routing_report(report_path.strip())
     except Exception as exc:
-        st.error(f"Could not load report: {exc}")
+        st.warning(f"Could not load optional confidence report: {exc}")
         return
 
     _render_confidence_dashboard_summary(report)
@@ -4822,7 +4927,7 @@ st.set_page_config(page_title="True Demand KG QA", layout="wide")
 _inject_app_styles()
 
 with st.sidebar:
-    page = st.radio("Page", ["Ask", "Confidence Routing Dashboard", "Graph Overview"])
+    page = st.radio("Page", ["Ask", "Graph Overview", "Confidence Routing Dashboard"])
     st.markdown(
         '<div class="kg-sidebar-note">Ask questions over the True Demand KG or open the overview report.</div>',
         unsafe_allow_html=True,
