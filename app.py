@@ -2580,6 +2580,110 @@ def _normalize_question_key(question: str) -> str:
     return " ".join(str(question or "").strip().lower().rstrip("?.!").split())
 
 
+OFF_TOPIC_EXAMPLES = [
+    "What is a Technology Node?",
+    "Show future demand by region.",
+    "Which region should be monitored based on current demand?",
+    "Show vehicle sales by month.",
+    "How many companies reported shortages by survey group?",
+]
+
+
+def _is_out_of_scope_question(question: str) -> Tuple[bool, str]:
+    q = _norm_text(question)
+    if not q:
+        return False, ""
+
+    off_topic_patterns = (
+        r"\bweather\b",
+        r"\btemperature outside\b",
+        r"\brain\b",
+        r"\bforecast for (today|tomorrow|athens|zurich|munich|new york|london)\b",
+        r"\brecipe\b",
+        r"\bcook\b",
+        r"\bmovie\b",
+        r"\bsports?\b",
+        r"\bfootball\b",
+        r"\bstock price\b",
+        r"\bexchange rate\b",
+        r"\bbitcoin\b",
+        r"\biphone\b",
+        r"\bmacbook\b",
+        r"\btesla\b",
+        r"\bcompetitor products?\b",
+        r"\bproducts? (do you|does infineon|are they) sell\b",
+        r"\bwho is\b.*\b(president|prime minister|ceo)\b",
+    )
+    for pattern in off_topic_patterns:
+        if re.search(pattern, q):
+            return True, "The question appears to be outside the True Demand KG and Digital Reference ontology scope."
+
+    in_scope_terms = (
+        "true demand",
+        "demand",
+        "future demand",
+        "current demand",
+        "regional demand",
+        "oem",
+        "tier1",
+        "semiconductor",
+        "survey",
+        "region",
+        "quarter",
+        "month",
+        "year",
+        "vehicle",
+        "vehicle type",
+        "sales",
+        "inventory",
+        "shortage",
+        "order cancellation",
+        "autonomous driving",
+        "sae",
+        "technology",
+        "technology node",
+        "technology category",
+        "component",
+        "company",
+        "market segment",
+        "baseline",
+        "percentage",
+        "trend",
+        "capacity",
+        "process",
+        "product",
+        "material",
+        "resource",
+        "planning",
+        "supply chain",
+        "digital reference",
+        "ontology",
+        "class",
+        "property",
+        "domain",
+        "range",
+    )
+    if any(term in q for term in in_scope_terms):
+        return False, ""
+
+    # Very short generic questions without graph/ontology vocabulary are safer to reject.
+    tokens = re.findall(r"[a-zA-Z][a-zA-Z0-9_-]*", q)
+    if len(tokens) <= 8:
+        return True, "I could not match the question to the True Demand graph or Digital Reference ontology."
+    return False, ""
+
+
+def _render_out_of_scope_message(reason: str) -> None:
+    st.warning(
+        "I cannot answer this question because it is outside the available True Demand knowledge graph "
+        "and Digital Reference ontology."
+    )
+    if reason:
+        st.caption(reason)
+    st.markdown("You can ask graph- or ontology-grounded questions such as:")
+    st.markdown("\n".join(f"- {example}" for example in OFF_TOPIC_EXAMPLES))
+
+
 @st.cache_data(show_spinner=False)
 def _load_guided_query_lookup() -> Dict[str, str]:
     lookup: Dict[str, str] = {}
@@ -5467,6 +5571,63 @@ if asked:
     if not question.strip():
         st.warning("Please enter a question.")
     else:
+        out_of_scope, out_of_scope_reason = _is_out_of_scope_question(question)
+        if (
+            out_of_scope
+            and not guided_query
+            and dr_definition is None
+            and advisory_plan is None
+        ):
+            request_id = uuid.uuid4().hex
+            result = {
+                "answer": "Out-of-scope request.",
+                "selected_query": "",
+                "candidates": [],
+                "metadata": {"llm_skipped": True, "out_of_scope": True},
+                "policy": "out_of_scope_guard",
+                "selection_reason": out_of_scope_reason,
+                "confidence_route": {
+                    "enabled": True,
+                    "route": "controlled_no_answer",
+                    "score1": 0.98,
+                    "score2": 0.0,
+                    "margin": 0.98,
+                    "selected_query": "",
+                    "reason": out_of_scope_reason,
+                    "options": [],
+                    "safety_flags": ["out_of_scope"],
+                    "blocking_safety_flags": ["out_of_scope"],
+                },
+                "answerability": {
+                    "status": "out_of_scope",
+                    "can_answer": False,
+                    "reason": out_of_scope_reason,
+                },
+            }
+            st.session_state["last_qa_result"] = result
+            st.session_state["last_graph_rows"] = []
+            st.session_state["last_selected_query"] = ""
+            st.session_state["last_graph_answer"] = ""
+            st.session_state["last_question"] = question
+            st.session_state["last_request_id"] = request_id
+            try:
+                _write_user_audit_record(
+                    _user_audit_payload(
+                        request_id=request_id,
+                        question=question,
+                        result=result,
+                        selected_query="",
+                        graph_rows=[],
+                        graph_exec_error="",
+                        graph_answer="Out-of-scope request.",
+                        latency_s=0.0,
+                    )
+                )
+            except Exception:
+                pass
+            _render_out_of_scope_message(out_of_scope_reason)
+            st.stop()
+
         try:
             schema = _load_schema_from_path(schema_path)
         except Exception as exc:
