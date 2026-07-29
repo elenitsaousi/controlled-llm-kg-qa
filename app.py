@@ -2590,7 +2590,7 @@ OFF_TOPIC_EXAMPLES = [
 
 
 def _is_out_of_scope_question(question: str) -> Tuple[bool, str]:
-    q = _norm_text(question)
+    q = _normalize_question_key(question)
     if not q:
         return False, ""
 
