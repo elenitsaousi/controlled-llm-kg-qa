@@ -2362,6 +2362,11 @@ def _render_confidence_route_badge(route: Dict[str, object]) -> None:
         except (TypeError, ValueError):
             pass
         st.success("High-confidence graph answer" + suffix + ".")
+    elif route.get("route") == "controlled_no_answer":
+        st.warning("No graph-backed answer was found for this exact request.")
+        reason = str(route.get("reason") or "").strip()
+        if reason:
+            st.caption(reason[0].upper() + reason[1:] if reason else reason)
     else:
         st.warning(
             "The system found multiple plausible interpretations. "
@@ -2415,26 +2420,26 @@ def _render_confidence_clarification(
     graph_path: str,
     max_preview_rows: int,
 ) -> None:
-    st.subheader("Clarify Interpretation")
-    st.write("I found multiple possible interpretations.")
-    st.markdown("**Did you mean...**")
     options = list(route.get("options") or [])
+    active_question = str(st.session_state.get("last_question") or "")
+    fuseki_url = _active_fuseki_query_url()
     if not options:
         options = _capability_backed_clarification_options(
-            question=str(st.session_state.get("last_question") or ""),
+            question=active_question,
             graph_path=graph_path,
-            fuseki_query_url=_active_fuseki_query_url(),
+            fuseki_query_url=fuseki_url,
             max_options=3,
         )
         if not options:
-            st.warning("No candidate interpretations are available for clarification.")
+            st.warning(
+                "I could not find an answerable graph interpretation for this request. "
+                "Please revise the question or use one of the validated examples."
+            )
             return
     answerable_options = []
     skipped_empty = 0
     if execute_selected and _graph_backend_available(graph_path):
-        fuseki_url = _active_fuseki_query_url()
         schema_dict = _load_schema_dict_cached(str(DEFAULT_SCHEMA_PATH))
-        active_question = str(st.session_state.get("last_question") or "")
         for option in options:
             query = str(option.get("query", "") or "").strip()
             flags = _confidence_safety_flags(
@@ -2487,6 +2492,16 @@ def _render_confidence_clarification(
         )
         st.info("Using the only graph-supported interpretation.")
         return
+    if len(options) < 2:
+        st.warning(
+            "I could not find multiple answerable interpretations to show for clarification. "
+            "Please revise the question or use the guided builder."
+        )
+        return
+
+    st.subheader("Clarify Interpretation")
+    st.write("I found multiple possible interpretations.")
+    st.markdown("**Did you mean...**")
     for option in options[:3]:
         with st.container(border=True):
             st.markdown(f"**{str(option.get('label') or 'Interpretation')}**")
@@ -5768,18 +5783,11 @@ if asked:
             and not graph_exec_error
             and not graph_rows
         ):
-            confidence_route["route"] = "clarification"
-            confidence_route["reason"] = (
-                "The selected high-confidence query executed successfully but returned 0 rows. "
-                "The system should not auto-answer without graph evidence."
-            )
-            result["confidence_route"] = confidence_route
-            route_needs_clarification = True
             fallback_options = _capability_backed_clarification_options(
                 question=effective_question or question,
                 graph_path=graph_path,
                 fuseki_query_url=_active_fuseki_query_url(),
-                max_options=2,
+                max_options=3,
             )
             if len(fallback_options) == 1 and str(fallback_options[0].get("id", "")).startswith("capability_direct"):
                 fallback_query = str(fallback_options[0].get("query", "") or "").strip()
@@ -5821,6 +5829,32 @@ if asked:
                             answer_synthesis_elapsed = time.perf_counter() - answer_synthesis_started
                     except Exception as exc:
                         graph_exec_error = str(exc)
+            elif len(fallback_options) >= 2:
+                confidence_route["route"] = "clarification"
+                confidence_route["reason"] = (
+                    "The selected high-confidence query executed successfully but returned 0 rows. "
+                    "The system found alternative graph-supported interpretations that should be checked by the user."
+                )
+                confidence_route["options"] = fallback_options
+                result["confidence_route"] = confidence_route
+                route_needs_clarification = True
+            else:
+                confidence_route["route"] = "controlled_no_answer"
+                confidence_route["reason"] = (
+                    "The selected interpretation returned 0 rows and no alternative answerable "
+                    "interpretations were available for clarification."
+                )
+                confidence_route["options"] = []
+                result["confidence_route"] = confidence_route
+                result["answerability"] = {
+                    "status": "no_rows_for_generated_queries",
+                    "can_answer": False,
+                    "reason": (
+                        "The selected graph interpretation returned no rows, and the system did not "
+                        "find multiple answerable alternatives to show for clarification."
+                    ),
+                }
+                route_needs_clarification = False
         if selected_query and graph_rows and not graph_exec_error:
             result["selected_query"] = selected_query
             result["errors"] = []
