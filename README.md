@@ -3,18 +3,17 @@
 Controlled LLM-to-SPARQL question answering over the True Demand knowledge graph.
 
 The system combines graph-backed candidate generation, ML-assisted query selection,
-confidence-aware routing, clarification options, Fuseki execution, and WebVOWL
-ontology visualization.
+confidence-aware routing, clarification options, deterministic ontology/advisory
+routing, Fuseki execution, evidence visualization, and user testing audit logs.
 
 ## What Is In This Repository
 
-- `app.py` - retained Streamlit application for natural-language KGQA, clarification, feedback, and graph views.
-- `True Demand-lovable/` - React frontend for the same KGQA runtime.
-- `api/` - FastAPI adapter connecting the React frontend to the existing Python pipeline.
+- `app.py` - main Streamlit application for natural-language KGQA, clarification, feedback, DR ontology browsing, audit logging, and graph views.
+- `True Demand-lovable/` - archived/prototype React frontend. The current managed-machine UI is the Python-only Streamlit app.
+- `api/` - optional FastAPI adapter for the archived React frontend.
 - `data/infineon/graph.ttl` - full True Demand RDF knowledge graph used for SPARQL execution.
 - `data/infineon/schema.json` - schema metadata used by generation, validation, and ranking.
 - `data/infineon/true_demand_ontology_extracted.ttl` - readable ontology/schema layer extracted from the full graph.
-- `data/infineon/true_demand_webvowl.json` - precomputed WebVOWL export for ontology visualization.
 - `pipeline/`, `llm/`, `kg/`, `validation/` - runtime KGQA pipeline components.
 - `ranking/` - ranker feature extraction, training scripts, and saved models.
 - `evaluation/` - benchmark evaluation, error analysis, confidence routing, and audit scripts.
@@ -25,17 +24,19 @@ ontology visualization.
 ```text
 User question
   -> Streamlit UI
-  -> optional graph-aware guidance / capability resolution
-  -> direct graph-supported capability execution when exactly one interpretation is resolved
-  -> LLM candidate SPARQL generation
+  -> request routing: KG analytics, DR definition, advisory, unsupported, or fallback
+  -> deterministic route when one checked graph/ontology/advisory path is available
+  -> LLM candidate SPARQL generation only for unresolved or genuinely ambiguous questions
   -> validation + semantic/contract features
   -> ML ranking and confidence routing
   -> Fuseki SPARQL execution over the full True Demand KG
-  -> answer synthesis + evidence graph / clarification if needed
+  -> answer synthesis + evidence graph / clarification or controlled no-answer if needed
+  -> user audit logging
 ```
 
-WebVOWL is used only for ontology/schema visualization. The full graph remains in
-Fuseki for query execution.
+The full graph remains in Fuseki for query execution. Ontology/model questions
+are routed to the Digital Reference ontology when `TRUE_DEMAND_DR_ONTOLOGY_PATH`
+or `DR_ONTOLOGY_PATH` is configured.
 
 ## Main Artifacts
 
@@ -54,9 +55,47 @@ Important generated/evaluation artifacts include:
 Some local or historical artifacts may not be committed if they are too large,
 machine-specific, or generated during experiments.
 
-## Required Services
+## Recommended Shared Deployment For Internal Testing
 
-For the React UI, keep Fuseki, the FastAPI adapter, and the frontend in separate terminals.
+For Philipp, Hans, and other testers, do not ask each user to run the repository
+locally. The recommended setup is one shared Streamlit deployment managed by the
+deployment owner.
+
+The shared deployment should provide:
+
+- one Streamlit app URL for all users;
+- one shared Fuseki endpoint loaded with `data/infineon/graph.ttl`;
+- `DigitalReference.ttl` available on the server and configured through an
+  environment variable;
+- persistent storage for the `logs/` folder;
+- LLM credentials configured server-side if fallback LLM answering is enabled;
+- developer mode disabled for normal users.
+
+The app writes every submitted question to:
+
+- `logs/kgqa_user_audit.jsonl`
+- `logs/kgqa_user_audit.sqlite3`
+
+These logs include the question, route, confidence, selected/top query, answer,
+row count, timing, and metadata. If everyone uses the same deployed app, the
+testing data is collected centrally. If each user runs a local copy, the logs
+stay on each user's machine.
+
+Minimal server environment:
+
+```env
+FUSEKI_QUERY_URL=http://<server>:3030/infineon/sparql
+TRUE_DEMAND_DR_ONTOLOGY_PATH=/path/to/DigitalReference.ttl
+INFINEON_ENABLE_LLM_CACHE=1
+TRUE_DEMAND_ENABLE_DEVELOPER_MODE=0
+```
+
+Use `TRUE_DEMAND_ENABLE_DEVELOPER_MODE=1` only for debugging by the deployment
+owner.
+
+## Required Services For Local Development
+
+For local development, keep Fuseki and Streamlit in separate terminals.
 
 ### 1. Fuseki
 
@@ -77,9 +116,38 @@ http://localhost:3030/infineon/sparql
 If `java` is not recognized, run Fuseki with the full Java path or add the JDK
 `bin` directory to the current PowerShell session.
 
-### 2. FastAPI adapter
+### 2. Python-only Streamlit UI
+
+This is the recommended UI on managed Windows machines where Node.js/npm is not
+available. It uses the same KGQA runtime and keeps the direct routing, ML
+selection, clarification, evidence graph, examples, guided builder, DR ontology
+browser, audit logging, and dashboard in one Python app.
 
 From the repository root:
+
+```powershell
+python -m pip install -r requirements-ui.txt
+$env:FUSEKI_QUERY_URL="http://localhost:3030/infineon/sparql"
+$env:TRUE_DEMAND_DR_ONTOLOGY_PATH="C:\path\to\DigitalReference.ttl"
+$env:INFINEON_ENABLE_LLM_CACHE="1"
+python -m streamlit run app.py --server.port 8501
+```
+
+Open `http://localhost:8501`.
+
+If PowerShell blocks local scripts, use:
+
+```powershell
+.\run_streamlit_ui.bat
+```
+
+or:
+
+```powershell
+.\run_streamlit_ui.ps1
+```
+
+### 3. FastAPI adapter for the archived React frontend
 
 ```powershell
 python -m pip install -r requirements-api.txt
@@ -89,34 +157,7 @@ python -m uvicorn api.main:app --reload --port 8000
 
 The API health endpoint is `http://localhost:8000/api/health`.
 
-### 3. Python-only Streamlit UI
-
-Use this path on managed Windows machines where Node.js/npm is not available.
-It uses the same KGQA runtime and keeps the direct routing, ML selection,
-clarification, evidence graph, examples, guided builder, and dashboard in one
-Python app.
-
-```powershell
-cd C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa
-python -m pip install -r requirements-ui.txt
-.\run_streamlit_ui.ps1
-```
-
-If PowerShell blocks local scripts, use the batch launcher instead:
-
-```powershell
-.\run_streamlit_ui.bat
-```
-
-Equivalent command:
-
-```powershell
-python -m streamlit run app.py --server.port 8501
-```
-
-Open `http://localhost:8501`.
-
-### 4. React frontend (optional)
+### 4. React frontend (archived/optional)
 
 The React/Lovable UI is optional and requires Node.js/npm.
 
@@ -130,42 +171,9 @@ Open the URL printed by Vite, currently `http://localhost:8080`. The frontend us
 `http://localhost:8000` by default and can be configured with
 `VITE_API_BASE_URL` or from its Settings page.
 
-### 5. WebVOWL (optional standalone viewer)
-
-If WebVOWL was already built and has a `deploy` folder:
-
-```powershell
-cd C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\WebVOWL
-python -m http.server 8080 -d deploy
-```
-
-Open:
-
-```text
-http://localhost:8080
-```
-
-Load this file in WebVOWL:
-
-```text
-C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa\data\infineon\true_demand_webvowl.json
-```
-
-### 6. Streamlit direct command
-
-```powershell
-cd C:\Users\tsaousieleni\Documents\controlled-llm-kg-qa
-python -m streamlit run app.py
-```
-
-The app usually opens at:
-
-```text
-http://localhost:8501
-```
-
-The React integration does not replace or delete `app.py`; both interfaces call
-the same KGQA pipeline and use the same Fuseki dataset.
+The Streamlit app is the current recommended interface. The React integration
+does not replace or delete `app.py`; both interfaces call the same KGQA pipeline
+and use the same Fuseki dataset.
 
 ## Key Environment Variables
 
@@ -178,10 +186,10 @@ INFINEON_MODEL=gpt-4o
 INFINEON_API_KEY=...
 
 FUSEKI_QUERY_URL=http://localhost:3030/infineon/sparql
-WEBVOWL_URL=http://localhost:8080
 TRUE_DEMAND_ONTOLOGY_PATH=data/infineon/true_demand_ontology_extracted.ttl
-TRUE_DEMAND_WEBVOWL_JSON_PATH=data/infineon/true_demand_webvowl.json
-TRUE_DEMAND_DR_ONTOLOGY_PATH=C:\Users\tsaousieleni\Downloads\dr\DigitalReference.ttl
+TRUE_DEMAND_DR_ONTOLOGY_PATH=/path/to/DigitalReference.ttl
+DR_ONTOLOGY_PATH=/path/to/DigitalReference.ttl
+TRUE_DEMAND_ENABLE_DEVELOPER_MODE=0
 
 # Optional cost/latency controls used by the Streamlit demo
 INFINEON_ENABLE_LLM_CACHE=1
@@ -198,7 +206,7 @@ outputs only when the prompt/model/settings hash is identical. This reduces demo
 cost and latency without changing the ranking logic for new or ambiguous
 questions.
 
-`TRUE_DEMAND_DR_ONTOLOGY_PATH` is optional. If it points to the Digital Reference
+`TRUE_DEMAND_DR_ONTOLOGY_PATH` or `DR_ONTOLOGY_PATH` is optional. If it points to the Digital Reference
 ontology, definition-style questions such as "What is Demand?" or "What is
 Product?" are answered directly from DR labels, comments, definitions, domains,
 and ranges before the LLM is called. Analytical questions such as demand trends,
