@@ -217,10 +217,17 @@ def synthesize_advisory_answer(question: str, plan: AdvisoryPlan, rows: List[Dic
 
     answer = (
         f"Based on the graph results, {group} is the first area to inspect for this request"
-        f"{value_text}. This is a data-grounded analytical signal, not an autonomous "
+        f"{value_text}. I selected this advice because the deterministic advisory route "
+        f"computed {plan.value_label} for each returned group, sorted the graph-backed "
+        "results in descending order, and used the strongest returned signal as the "
+        "priority for review. This is a data-grounded analytical signal, not an autonomous "
         "business decision."
     )
     if preview_text:
-        answer += f" Top returned signals: {preview_text}."
-    answer += f" The deterministic advisory template used here was: {plan.objective}."
+        answer += f" The top returned evidence rows were: {preview_text}."
+    answer += (
+        f" The deterministic advisory template used here was designed to {plan.objective}; "
+        "therefore the recommendation should be read as a prioritization cue for human review, "
+        "not as a final operational decision."
+    )
     return answer

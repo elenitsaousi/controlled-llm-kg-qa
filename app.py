@@ -3,8 +3,8 @@ import time
 import json
 import re
 import uuid
-import hashlib
 import math
+import sqlite3
 import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
@@ -40,12 +40,6 @@ from visualization.interactive_graph import (
     collect_full_graph_triples,
     collect_query_subgraph_triples,
 )
-from visualization.webvowl_adapter import (
-    WEBVOWL_CACHE_DIR,
-    build_webvowl_iframe_html,
-    convert_ontology_with_owl2vowl,
-    write_relationship_slice_ontology,
-)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -61,9 +55,7 @@ except Exception:
 DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
 DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
 DEFAULT_ONTOLOGY_PATH = PROJECT_ROOT / "data" / "infineon" / "true_demand_ontology_extracted.ttl"
-DEFAULT_WEBVOWL_JSON_PATH = PROJECT_ROOT / "data" / "infineon" / "true_demand_webvowl.json"
 DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
-DEFAULT_WEBVOWL_URL = "http://localhost:8080"
 FINAL_SYSTEM_EVALUATION = {
     "benchmark_questions": 1000,
     "kg_questions": 800,
@@ -105,6 +97,8 @@ FINAL_SYSTEM_EVALUATION = {
 APP_LOG_DIR = PROJECT_ROOT / "logs"
 SESSION_LOG_PATH = APP_LOG_DIR / "kgqa_sessions.jsonl"
 FEEDBACK_LOG_PATH = APP_LOG_DIR / "kgqa_feedback.jsonl"
+USER_AUDIT_LOG_PATH = APP_LOG_DIR / "kgqa_user_audit.jsonl"
+USER_AUDIT_DB_PATH = APP_LOG_DIR / "kgqa_user_audit.sqlite3"
 DEFAULT_ML_MODEL_PATHS = [
     PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_current.json",
     PROJECT_ROOT / "ranking" / "models" / "final1000_wf_ranker_scope_origin.json",
@@ -295,6 +289,87 @@ def _append_jsonl(path: Path, payload: Dict[str, Any]) -> None:
         f.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
 
 
+def _init_user_audit_db(path: Path = USER_AUDIT_DB_PATH) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS qa_audit (
+                request_id TEXT PRIMARY KEY,
+                timestamp_utc TEXT NOT NULL,
+                question TEXT NOT NULL,
+                route TEXT,
+                route_family TEXT,
+                confidence_index REAL,
+                confidence_label TEXT,
+                selected_source TEXT,
+                selected_query TEXT,
+                answer_text TEXT,
+                graph_row_count INTEGER,
+                graph_error TEXT,
+                latency_s REAL,
+                llm_estimated_calls INTEGER,
+                advisory_plan_id TEXT,
+                dr_term TEXT,
+                row_preview_json TEXT,
+                metadata_json TEXT
+            )
+            """
+        )
+        conn.commit()
+
+
+def _write_user_audit_record(payload: Dict[str, Any]) -> None:
+    _append_jsonl(USER_AUDIT_LOG_PATH, payload)
+    _init_user_audit_db(USER_AUDIT_DB_PATH)
+    with sqlite3.connect(USER_AUDIT_DB_PATH) as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO qa_audit (
+                request_id,
+                timestamp_utc,
+                question,
+                route,
+                route_family,
+                confidence_index,
+                confidence_label,
+                selected_source,
+                selected_query,
+                answer_text,
+                graph_row_count,
+                graph_error,
+                latency_s,
+                llm_estimated_calls,
+                advisory_plan_id,
+                dr_term,
+                row_preview_json,
+                metadata_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                payload.get("request_id"),
+                payload.get("timestamp_utc"),
+                payload.get("question"),
+                payload.get("route"),
+                payload.get("route_family"),
+                payload.get("confidence_index"),
+                payload.get("confidence_label"),
+                payload.get("selected_source"),
+                payload.get("selected_query"),
+                payload.get("answer_text"),
+                payload.get("graph_row_count"),
+                payload.get("graph_error"),
+                payload.get("latency_s"),
+                payload.get("llm_estimated_calls"),
+                payload.get("advisory_plan_id"),
+                payload.get("dr_term"),
+                json.dumps(payload.get("row_preview") or [], ensure_ascii=False, default=str),
+                json.dumps(payload.get("metadata") or {}, ensure_ascii=False, default=str),
+            ),
+        )
+        conn.commit()
+
+
 def _route_label(result: Dict[str, Any] | None) -> str:
     if not isinstance(result, dict):
         return "unknown"
@@ -306,6 +381,21 @@ def _route_label(result: Dict[str, Any] | None) -> str:
     if isinstance(result.get("clarification"), dict) and result["clarification"].get("needs_clarification"):
         return "legacy_clarification"
     return "auto_answer"
+
+
+def _route_family(result: Dict[str, Any] | None) -> str:
+    if not isinstance(result, dict):
+        return "unknown"
+    metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    if metadata.get("dr_ontology_route"):
+        return "dr_ontology_definition"
+    if metadata.get("advisory_route"):
+        return "advisory"
+    if metadata.get("direct_capability_route"):
+        return "kg_direct_template"
+    if metadata.get("guided_query"):
+        return "guided_template"
+    return "llm_fallback"
 
 
 def _session_log_payload(
@@ -354,6 +444,50 @@ def _session_log_payload(
             "applied": bool(metadata.get("schema_slicing_applied")),
             "confidence": metadata.get("schema_slice_confidence"),
             "families": metadata.get("schema_slice_names") or [],
+        },
+    }
+
+
+def _user_audit_payload(
+    *,
+    request_id: str,
+    question: str,
+    result: Dict[str, Any],
+    selected_query: str,
+    graph_rows: List[Dict[str, str]],
+    graph_exec_error: str,
+    graph_answer: str,
+    latency_s: float,
+) -> Dict[str, Any]:
+    metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    confidence_value = _confidence_index_from_result(result, graph_rows=graph_rows, graph_exec_error=graph_exec_error)
+    confidence_label = _confidence_label(confidence_value)
+    return {
+        "request_id": request_id,
+        "timestamp_utc": _utc_now_iso(),
+        "question": question,
+        "route": _route_label(result),
+        "route_family": _route_family(result),
+        "confidence_index": round(confidence_value, 4),
+        "confidence_label": confidence_label,
+        "selected_source": _selected_candidate_source(result, selected_query),
+        "selected_query": selected_query,
+        "answer_text": str(graph_answer or result.get("answer") or "")[:5000],
+        "graph_row_count": len(graph_rows or []),
+        "graph_error": graph_exec_error,
+        "latency_s": round(float(latency_s), 3),
+        "llm_estimated_calls": _estimated_llm_calls_from_metadata(metadata),
+        "advisory_plan_id": metadata.get("advisory_plan_id"),
+        "dr_term": metadata.get("matched_term"),
+        "row_preview": list(graph_rows or [])[:10],
+        "metadata": {
+            "policy": result.get("policy"),
+            "selection_reason": result.get("selection_reason"),
+            "answerability": result.get("answerability"),
+            "confidence_route": result.get("confidence_route"),
+            "candidate_count": len(result.get("candidates") or []),
+            "llm_skipped": bool(metadata.get("llm_skipped")),
+            "llm_cache_hit": bool(metadata.get("llm_cache_hit")),
         },
     }
 
@@ -664,12 +798,68 @@ def _confidence_index_from_route(confidence_route: Dict[str, Any]) -> float:
         margin = float(confidence_route.get("margin") or 0.0)
     except (TypeError, ValueError):
         margin = 0.0
-    margin_signal = max(0.0, min(1.0, margin))
+    margin_signal = max(0.0, min(1.0, margin / (margin + 0.15))) if margin > 0 else 0.0
     blocking_flags = confidence_route.get("blocking_safety_flags") or []
-    safety_penalty = 1.0 if blocking_flags else 0.0
+    safety_penalty = 0.35 if blocking_flags else 0.0
     if confidence_route.get("route") != "auto_answer":
-        safety_penalty = max(safety_penalty, 0.35)
-    return max(0.0, min(1.0, 0.75 * score + 0.25 * margin_signal - safety_penalty))
+        safety_penalty = max(safety_penalty, 0.45)
+    return max(0.0, min(1.0, 0.85 * score + 0.15 * margin_signal - safety_penalty))
+
+
+def _confidence_index_from_result(
+    result: Dict[str, Any],
+    *,
+    graph_rows: List[Dict[str, str]] | None = None,
+    graph_exec_error: str = "",
+) -> float:
+    metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    has_rows = bool(graph_rows)
+    if graph_exec_error:
+        return 0.12
+    if metadata.get("dr_ontology_route"):
+        return 0.98
+    if metadata.get("direct_capability_route"):
+        return 0.96 if has_rows else 0.72
+    if metadata.get("guided_query"):
+        return 0.94 if has_rows else 0.68
+    if metadata.get("advisory_route"):
+        return 0.91 if has_rows else 0.62
+    confidence_route = result.get("confidence_route")
+    if isinstance(confidence_route, dict):
+        value = _confidence_index_from_route(confidence_route)
+        if has_rows:
+            value = min(0.97, value + 0.04)
+        return value
+    confidence, _reason = _confidence_summary(result)
+    return {"High": 0.86, "Medium": 0.64, "Low": 0.31}.get(confidence, 0.5)
+
+
+def _confidence_label(value: float) -> str:
+    if value >= 0.85:
+        return "High"
+    if value >= 0.60:
+        return "Medium"
+    return "Low"
+
+
+def _confidence_percent(value: float) -> str:
+    return f"{100.0 * max(0.0, min(1.0, value)):.0f}%"
+
+
+def _confidence_formula_note(result: Dict[str, Any]) -> str:
+    metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    if metadata.get("dr_ontology_route"):
+        return "Definition confidence is high because the question matched one declared Digital Reference ontology term and no LLM generation was used."
+    if metadata.get("advisory_route"):
+        return "Advisory confidence is based on a deterministic graph query, non-empty evidence rows, and a conservative template that reports a planning signal rather than making a decision."
+    if metadata.get("direct_capability_route"):
+        return "Direct-template confidence is high because the capability resolver found one supported metric, dimension, and aggregation path and the graph returned evidence."
+    if metadata.get("guided_query"):
+        return "Guided-builder confidence is high because the query comes from a pre-validated graph-supported path."
+    return (
+        "Fallback confidence combines the ranker score, the separation from competing candidates, "
+        "execution evidence, and safety flags. Lower values mean that alternatives remain plausible."
+    )
 
 
 def _render_compact_explainability(result: Dict[str, Any]) -> None:
@@ -685,16 +875,46 @@ def _render_compact_explainability(result: Dict[str, Any]) -> None:
     if isinstance(confidence_route, dict):
         st.subheader("Why This Answer")
         route = str(confidence_route.get("route", "unknown")).replace("_", " ")
+        graph_rows = list(st.session_state.get("last_graph_rows") or [])
+        graph_exec_error = ""
+        confidence_value = _confidence_index_from_result(
+            result,
+            graph_rows=graph_rows,
+            graph_exec_error=graph_exec_error,
+        )
         left, right = st.columns([1.2, 3])
         left.metric("Decision", route)
-        left.metric("Confidence index", f"{_confidence_index_from_route(confidence_route):.2f}")
+        left.metric("Confidence", _confidence_percent(confidence_value))
+        left.caption(_confidence_label(confidence_value))
         reason = str(confidence_route.get("reason") or "").strip()
         score = confidence_route.get("score1")
         margin = confidence_route.get("margin")
-        if reason:
+        metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+        if metadata.get("advisory_route"):
+            plan_title = str(metadata.get("advisory_title") or "advisory template")
+            right.write(
+                f"The system selected the deterministic **{plan_title}** route. "
+                "It executed a fixed graph query, sorted the returned evidence by the relevant metric, "
+                "and converted the leading signal into conservative planning guidance. "
+                "The recommendation is therefore tied to returned graph rows, not free-form generation."
+            )
+        elif metadata.get("dr_ontology_route"):
+            term = str(metadata.get("matched_term") or "the requested ontology term")
+            right.write(
+                f"The system treated this as an ontology definition request and matched **{term}** "
+                "in the Digital Reference ontology. The answer was retrieved deterministically from "
+                "ontology labels, definitions, type, domain/range, and hierarchy metadata."
+            )
+        elif metadata.get("direct_capability_route"):
+            right.write(
+                "The capability resolver found a single graph-supported interpretation for the requested "
+                "metric, dimension, and aggregation. Because that template returned graph evidence, the LLM was skipped."
+            )
+        elif reason:
             right.write(reason[0].upper() + reason[1:] if reason else reason)
         else:
             right.write("The selected query passed the confidence policy and safety checks.")
+        right.caption(_confidence_formula_note(result))
         score_bits = []
         try:
             score_bits.append(f"score={float(score):.3f}")
@@ -706,9 +926,11 @@ def _render_compact_explainability(result: Dict[str, Any]) -> None:
             pass
         if score_bits:
             st.caption("Selection confidence: " + ", ".join(score_bits))
+        if graph_rows:
+            st.caption(f"Evidence check: the selected path returned {len(graph_rows)} row(s).")
         flags = confidence_route.get("safety_flags") or []
         if flags:
-            st.caption("Technical safety notes are available in Developer mode.")
+            st.caption("Technical safety notes are logged for review by the deployment owner.")
         return
 
     expl = result.get("selection_explanation")
@@ -729,7 +951,12 @@ def _render_compact_explainability(result: Dict[str, Any]) -> None:
 
     st.subheader("Why This Answer")
     left, right = st.columns([1, 3])
-    left.metric("Confidence", confidence)
+    confidence_value = _confidence_index_from_result(
+        result,
+        graph_rows=list(st.session_state.get("last_graph_rows") or []),
+    )
+    left.metric("Confidence", _confidence_percent(confidence_value))
+    left.caption(confidence)
     right.write(
         "Selected because "
         + (", ".join(reason_parts) if reason_parts else "it ranked highest among the available candidates")
@@ -843,103 +1070,11 @@ def _clarified_answerability(graph_rows: List[Dict[str, str]], graph_exec_error:
     }
 
 
-def _render_webvowl_framework_panel(
-    *,
-    title: str,
-    ontology_path: str,
-    webvowl_url: str,
-    owl2vowl_jar_path: str,
-    webvowl_json_path: str = "",
-    use_precomputed_json: bool = True,
-    height_px: int = 720,
-    expanded: bool = True,
-) -> None:
-    with st.expander(title, expanded=expanded):
-        st.caption(
-            "Framework-based ontology visualization using WebVOWL + OWL2VOWL. "
-            "This is the preferred ontology viewer path; the built-in graph remains only as a fallback/debug view."
-        )
-        precomputed_json = Path(str(webvowl_json_path or "").strip())
-        if use_precomputed_json and not precomputed_json.exists():
-            precomputed_json = DEFAULT_WEBVOWL_JSON_PATH
-
-        if use_precomputed_json and precomputed_json.exists():
-            st.success(f"Using precomputed WebVOWL JSON: {precomputed_json.name}")
-            st.download_button(
-                "Download True Demand WebVOWL JSON",
-                data=precomputed_json.read_text(encoding="utf-8"),
-                file_name=precomputed_json.name,
-                mime="application/json",
-                use_container_width=True,
-            )
-            st.caption(
-                "Open the WebVOWL panel below and load this JSON from its ontology/upload menu. "
-                "For a permanent local setup, copy this JSON into the WebVOWL `deploy/data` folder "
-                "and configure it as the default ontology in WebVOWL."
-            )
-            components.html(
-                build_webvowl_iframe_html(webvowl_url, height_px=height_px),
-                height=max(460, int(height_px)) + 16,
-                scrolling=True,
-            )
-            return
-
-        source = Path(str(ontology_path or "").strip())
-        if not source.exists():
-            st.warning(f"Ontology source not found: {source}")
-            return
-        conversion = convert_ontology_with_owl2vowl(
-            ontology_path=source,
-            owl2vowl_jar_path=owl2vowl_jar_path,
-            cache_dir=PROJECT_ROOT / WEBVOWL_CACHE_DIR,
-        )
-        if not conversion.ok:
-            st.warning(conversion.message)
-            st.markdown(
-                """
-                To enable this view:
-
-                1. Run WebVOWL locally, usually at `http://localhost:8080`.
-                2. Download/build `owl2vowl.jar`.
-                3. Set `OWL2VOWL_JAR_PATH` in `.env` or Developer settings.
-                """
-            )
-            st.download_button(
-                "Download ontology source (.ttl)",
-                data=source.read_text(encoding="utf-8", errors="ignore"),
-                file_name=source.name,
-                mime="text/turtle",
-                use_container_width=True,
-            )
-            return
-
-        assert conversion.json_path is not None
-        st.success(conversion.message)
-        st.download_button(
-            "Download WebVOWL JSON",
-            data=conversion.json_path.read_text(encoding="utf-8"),
-            file_name=conversion.json_path.name,
-            mime="application/json",
-            use_container_width=True,
-        )
-        st.caption(
-            "Open the local WebVOWL panel below and load the generated JSON through its ontology/menu upload. "
-            "This keeps the visualization in the actual WebVOWL framework instead of a custom graph renderer."
-        )
-        components.html(
-            build_webvowl_iframe_html(webvowl_url, height_px=height_px),
-            height=max(460, int(height_px)) + 16,
-            scrolling=True,
-        )
-
-
 def _render_answer_subgraph(
     *,
     selected_query: str,
     graph_rows: List[Dict[str, str]],
     graph_path: str,
-    webvowl_url: str = "",
-    owl2vowl_jar_path: str = "",
 ) -> None:
     if not selected_query or not graph_path or not _graph_backend_available(graph_path):
         return
@@ -966,28 +1101,6 @@ def _render_answer_subgraph(
         "The key graph relationships used by the selected query. "
         f"Predicates: {meta.get('predicate_count', 0)} | Edges shown: {meta.get('edge_count', 0)}"
     )
-    if owl2vowl_jar_path:
-        digest = hashlib.sha1(str(selected_query).encode("utf-8")).hexdigest()[:12]
-        evidence_path = PROJECT_ROOT / WEBVOWL_CACHE_DIR / f"answer_evidence_{digest}.ttl"
-        try:
-            write_relationship_slice_ontology(
-                triples,
-                evidence_path,
-                ontology_iri=f"http://example.org/true-demand/answer-evidence/{digest}",
-            )
-            _render_webvowl_framework_panel(
-                title="WebVOWL Answer Evidence",
-                ontology_path=str(evidence_path),
-                webvowl_url=webvowl_url or DEFAULT_WEBVOWL_URL,
-                owl2vowl_jar_path=owl2vowl_jar_path,
-                webvowl_json_path="",
-                use_precomputed_json=False,
-                height_px=520,
-                expanded=True,
-            )
-        except Exception as exc:
-            st.warning(f"Could not prepare WebVOWL answer evidence: {exc}")
-
     graph_nodes = {node for s, _p, o in triples for node in (s, o)}
     graph_col, legend_col = st.columns([4.2, 1.2], gap="large")
     with graph_col:
@@ -2094,9 +2207,9 @@ def _direct_capability_result(question: str, option: Dict[str, object]) -> Dict[
             "route": "auto_answer",
             "selected_query": query,
             "reason": reason,
-            "score1": 1.0,
-            "score2": 0.0,
-            "margin": 1.0,
+            "score1": 0.96,
+            "score2": 0.18,
+            "margin": 0.78,
             "options": [option],
             "safety_flags": [],
             "blocking_safety_flags": [],
@@ -4377,9 +4490,6 @@ def _render_graph_overview(
     graph_path: str,
     *,
     ontology_path: str = "",
-    webvowl_json_path: str = "",
-    webvowl_url: str = "",
-    owl2vowl_jar_path: str = "",
     graph_height: int = 760,
     full_graph_limit: int = 3000,
     subgraph_hops: int = 1,
@@ -4424,17 +4534,6 @@ def _render_graph_overview(
         "This page describes the graph, schema, and ontology assets. "
         "Accuracy, routing, cost, and failure analysis are shown in the "
         "KGQA Confidence Routing Dashboard."
-    )
-
-    _render_webvowl_framework_panel(
-        title="WebVOWL Ontology Viewer",
-        ontology_path=ontology_path or str(DEFAULT_ONTOLOGY_PATH),
-        webvowl_url=webvowl_url or DEFAULT_WEBVOWL_URL,
-        owl2vowl_jar_path=owl2vowl_jar_path,
-        webvowl_json_path=webvowl_json_path or str(DEFAULT_WEBVOWL_JSON_PATH),
-        use_precomputed_json=True,
-        height_px=760,
-        expanded=True,
     )
 
     with st.expander("Complete schema inventory", expanded=False):
@@ -4732,6 +4831,67 @@ def _render_final_cost_and_failure_dashboard() -> None:
         )
 
 
+def _render_user_testing_log_panel() -> None:
+    st.subheader("User Testing Logs")
+    st.caption(
+        "Each submitted question is saved for later review. The JSONL file is easy to inspect; "
+        "the SQLite database is better for querying/filtering repeated internal testing sessions."
+    )
+    cols = st.columns(2)
+    jsonl_exists = USER_AUDIT_LOG_PATH.exists()
+    db_exists = USER_AUDIT_DB_PATH.exists()
+    cols[0].metric("JSONL audit log", "available" if jsonl_exists else "not created yet")
+    cols[1].metric("SQLite audit DB", "available" if db_exists else "not created yet")
+
+    dl_cols = st.columns(2)
+    if jsonl_exists:
+        dl_cols[0].download_button(
+            "Download user audit JSONL",
+            data=USER_AUDIT_LOG_PATH.read_text(encoding="utf-8", errors="ignore"),
+            file_name=USER_AUDIT_LOG_PATH.name,
+            mime="application/jsonl",
+            use_container_width=True,
+        )
+    if db_exists:
+        dl_cols[1].download_button(
+            "Download user audit SQLite",
+            data=USER_AUDIT_DB_PATH.read_bytes(),
+            file_name=USER_AUDIT_DB_PATH.name,
+            mime="application/vnd.sqlite3",
+            use_container_width=True,
+        )
+
+    if jsonl_exists:
+        try:
+            rows = []
+            with USER_AUDIT_LOG_PATH.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    rows.append(json.loads(line))
+            recent = rows[-10:]
+            if recent:
+                st.caption(f"Recent questions shown: {len(recent)} / {len(rows)} logged")
+                st.dataframe(
+                    [
+                        {
+                            "time": row.get("timestamp_utc"),
+                            "question": row.get("question"),
+                            "route": row.get("route_family"),
+                            "confidence": _confidence_percent(float(row.get("confidence_index") or 0.0)),
+                            "rows": row.get("graph_row_count"),
+                            "llm_calls": row.get("llm_estimated_calls"),
+                        }
+                        for row in recent
+                    ],
+                    width="stretch",
+                    hide_index=True,
+                )
+        except Exception as exc:
+            st.caption(f"Could not preview user audit log: {exc}")
+
+
 def _dashboard_cases(report: Dict[str, object], case_set: str) -> List[Dict[str, object]]:
     if case_set == "low_confidence_examples":
         return [dict(row) for row in report.get("low_confidence_examples") or []]
@@ -4897,6 +5057,8 @@ def _render_confidence_routing_dashboard() -> None:
     st.divider()
     _render_final_cost_and_failure_dashboard()
     st.divider()
+    _render_user_testing_log_panel()
+    st.divider()
 
     st.subheader("Optional Confidence Routing Report")
     report_path = st.text_input(
@@ -4932,7 +5094,15 @@ with st.sidebar:
         '<div class="kg-sidebar-note">Ask questions over the True Demand KG or open the overview report.</div>',
         unsafe_allow_html=True,
     )
-    developer_mode = st.checkbox("Developer mode", value=False)
+    developer_mode_enabled = (
+        os.getenv("TRUE_DEMAND_ENABLE_DEVELOPER_MODE", "0").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+    developer_mode = (
+        st.checkbox("Developer mode", value=False)
+        if developer_mode_enabled
+        else False
+    )
 
     default_url = os.environ.get("INFINEON_API_URL", "https://gpt4ifx.icp.infineon.com")
     default_model = os.environ.get("INFINEON_MODEL", "gpt-4o")
@@ -4948,10 +5118,7 @@ with st.sidebar:
     graph_path = str(DEFAULT_GRAPH_PATH)
     ontology_path = os.getenv("TRUE_DEMAND_ONTOLOGY_PATH", str(DEFAULT_ONTOLOGY_PATH)).strip()
     dr_ontology_path = os.getenv("TRUE_DEMAND_DR_ONTOLOGY_PATH", str(DEFAULT_DR_ONTOLOGY_PATH)).strip()
-    webvowl_json_path = os.getenv("TRUE_DEMAND_WEBVOWL_JSON_PATH", str(DEFAULT_WEBVOWL_JSON_PATH)).strip()
     fuseki_query_url = os.getenv("FUSEKI_QUERY_URL", DEFAULT_FUSEKI_QUERY_URL).strip()
-    webvowl_url = os.getenv("WEBVOWL_URL", DEFAULT_WEBVOWL_URL).strip()
-    owl2vowl_jar_path = os.getenv("OWL2VOWL_JAR_PATH", "").strip()
     use_ml_ranking = True
     ml_policy = "all"
     ml_model_path = _default_ml_model_path()
@@ -5004,19 +5171,14 @@ with st.sidebar:
             schema_path = st.text_input("Schema path", value=str(DEFAULT_SCHEMA_PATH))
             graph_path = st.text_input("Graph path", value=str(DEFAULT_GRAPH_PATH))
             ontology_path = st.text_input(
-                "Ontology path for WebVOWL",
+                "Ontology path",
                 value=ontology_path or str(DEFAULT_ONTOLOGY_PATH),
-                help="Ontology/schema file used for WebVOWL/OWL2VOWL visualization. Prefer ontology.ttl over the full raw graph.",
+                help="Ontology/schema file used by the built-in graph overview.",
             )
             dr_ontology_path = st.text_input(
                 "DR ontology path",
                 value=dr_ontology_path or str(DEFAULT_DR_ONTOLOGY_PATH),
                 help="Digital Reference ontology used for deterministic definition questions such as 'What is True Demand?'.",
-            )
-            webvowl_json_path = st.text_input(
-                "Precomputed WebVOWL JSON path",
-                value=webvowl_json_path or str(DEFAULT_WEBVOWL_JSON_PATH),
-                help="Ready-to-upload WebVOWL JSON. This avoids running OWL2VOWL on every machine.",
             )
             fuseki_query_url = st.text_input(
                 "Fuseki query endpoint",
@@ -5168,32 +5330,16 @@ with st.sidebar:
             )
             subgraph_hops = st.slider("Question subgraph hops", min_value=1, max_value=3, value=1, step=1)
             graph_height = st.slider("Graph canvas height (px)", min_value=400, max_value=1200, value=760, step=20)
-            webvowl_url = st.text_input(
-                "WebVOWL app URL",
-                value=webvowl_url or DEFAULT_WEBVOWL_URL,
-                help="Local WebVOWL frontend, for example http://localhost:8080 after docker-compose up.",
-            )
-            owl2vowl_jar_path = st.text_input(
-                "OWL2VOWL jar path",
-                value=owl2vowl_jar_path,
-                help="Path to owl2vowl.jar. Required to convert TTL/OWL files into WebVOWL JSON.",
-            )
 
     usable_fuseki_query_url = _usable_fuseki_query_url(fuseki_query_url)
     if usable_fuseki_query_url:
         os.environ["FUSEKI_QUERY_URL"] = usable_fuseki_query_url
     else:
         os.environ.pop("FUSEKI_QUERY_URL", None)
-    if webvowl_url.strip():
-        os.environ["WEBVOWL_URL"] = webvowl_url.strip()
-    if owl2vowl_jar_path.strip():
-        os.environ["OWL2VOWL_JAR_PATH"] = owl2vowl_jar_path.strip()
     if ontology_path.strip():
         os.environ["TRUE_DEMAND_ONTOLOGY_PATH"] = ontology_path.strip()
     if dr_ontology_path.strip():
         os.environ["TRUE_DEMAND_DR_ONTOLOGY_PATH"] = dr_ontology_path.strip()
-    if webvowl_json_path.strip():
-        os.environ["TRUE_DEMAND_WEBVOWL_JSON_PATH"] = webvowl_json_path.strip()
     os.environ["INFINEON_ENABLE_SCHEMA_SLICING"] = "1" if family_schema_routing_enabled else "0"
     os.environ["INFINEON_SCHEMA_SLICING_MAX_FAMILIES"] = str(int(family_schema_routing_max))
     os.environ["INFINEON_SCHEMA_SLICING_FULL_FALLBACK"] = "1" if family_schema_routing_fallback else "0"
@@ -5214,9 +5360,6 @@ if page == "Graph Overview":
         schema_path,
         graph_path,
         ontology_path=ontology_path,
-        webvowl_json_path=webvowl_json_path,
-        webvowl_url=webvowl_url,
-        owl2vowl_jar_path=owl2vowl_jar_path,
         graph_height=int(graph_height),
         full_graph_limit=int(full_graph_limit),
         subgraph_hops=int(subgraph_hops),
@@ -5345,9 +5488,9 @@ if asked:
                     "confidence_route": {
                         "enabled": True,
                         "route": "auto_answer",
-                        "score1": 1.0,
-                        "score2": 0.0,
-                        "margin": 1.0,
+                        "score1": 0.98,
+                        "score2": 0.05,
+                        "margin": 0.93,
                         "selected_query": "",
                         "reason": "deterministic Digital Reference ontology definition route",
                         "safety_flags": [],
@@ -5425,9 +5568,9 @@ if asked:
                     "confidence_route": {
                         "enabled": True,
                         "route": "auto_answer",
-                        "score1": 1.0,
-                        "score2": 0.0,
-                        "margin": 1.0,
+                        "score1": 0.91,
+                        "score2": 0.24,
+                        "margin": 0.67,
                         "selected_query": advisory_plan.query,
                         "reason": "deterministic graph-grounded advisory route",
                         "safety_flags": ["graph_grounded_advisory_not_business_decision"],
@@ -5552,6 +5695,9 @@ if asked:
                             "single graph-supported capability interpretation "
                             "resolved from capability, dimension, and intent"
                         ),
+                        "score1": 0.96,
+                        "score2": 0.18,
+                        "margin": 0.78,
                         "options": [direct_option],
                         "safety_flags": [],
                         "blocking_safety_flags": [],
@@ -5701,6 +5847,18 @@ if asked:
                     latency_breakdown=latency_breakdown,
                 ),
             )
+            _write_user_audit_record(
+                _user_audit_payload(
+                    request_id=request_id,
+                    question=question,
+                    result=result,
+                    selected_query=selected_query,
+                    graph_rows=graph_rows,
+                    graph_exec_error=graph_exec_error,
+                    graph_answer=graph_answer,
+                    latency_s=total_elapsed,
+                )
+            )
         except Exception:
             pass
 
@@ -5758,8 +5916,6 @@ if asked:
                         selected_query=str(st.session_state.get("last_selected_query", "")),
                         graph_rows=list(st.session_state.get("last_graph_rows") or []),
                         graph_path=graph_path,
-                        webvowl_url=webvowl_url,
-                        owl2vowl_jar_path=owl2vowl_jar_path,
                     )
         elif needs_clarification and not confidence_auto_answer:
             _render_clarification(
@@ -5786,8 +5942,6 @@ if asked:
                         selected_query=str(st.session_state.get("last_selected_query", "")),
                         graph_rows=list(st.session_state.get("last_graph_rows") or []),
                         graph_path=graph_path,
-                        webvowl_url=webvowl_url,
-                        owl2vowl_jar_path=owl2vowl_jar_path,
                     )
 
         if (
@@ -5809,8 +5963,6 @@ if asked:
                     selected_query=selected_query,
                     graph_rows=graph_rows,
                     graph_path=graph_path,
-                    webvowl_url=webvowl_url,
-                    owl2vowl_jar_path=owl2vowl_jar_path,
                 )
 
         if developer_mode:
@@ -5938,8 +6090,6 @@ if not clarification_rendered:
                         selected_query=str(st.session_state.get("last_selected_query", "")),
                         graph_rows=list(st.session_state.get("last_graph_rows") or []),
                         graph_path=graph_path,
-                        webvowl_url=webvowl_url,
-                        owl2vowl_jar_path=owl2vowl_jar_path,
                     )
     clarification = (last_result or {}).get("clarification") if isinstance(last_result, dict) else None
     if (
@@ -5972,8 +6122,6 @@ if not clarification_rendered:
                         selected_query=str(st.session_state.get("last_selected_query", "")),
                         graph_rows=list(st.session_state.get("last_graph_rows") or []),
                         graph_path=graph_path,
-                        webvowl_url=webvowl_url,
-                        owl2vowl_jar_path=owl2vowl_jar_path,
                     )
 
 if (
