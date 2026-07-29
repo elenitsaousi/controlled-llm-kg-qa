@@ -2436,11 +2436,13 @@ def _render_confidence_clarification(
                 "Please revise the question or use one of the validated examples."
             )
             return
-    answerable_options = []
+    display_options: List[Dict[str, object]] = []
+    answerable_count = 0
     skipped_empty = 0
     if execute_selected and _graph_backend_available(graph_path):
         schema_dict = _load_schema_dict_cached(str(DEFAULT_SCHEMA_PATH))
         for option in options:
+            enriched = dict(option)
             query = str(option.get("query", "") or "").strip()
             flags = _confidence_safety_flags(
                 question=active_question,
@@ -2450,7 +2452,11 @@ def _render_confidence_clarification(
             blocking = _blocking_confidence_safety_flags(flags)
             if blocking:
                 skipped_empty += 1
-                option["preview_error"] = "blocked_by_semantic_guard:" + ",".join(blocking[:4])
+                enriched["preview_error"] = "blocked_by_semantic_guard:" + ",".join(blocking[:4])
+                enriched["answerable"] = False
+                enriched["selectable"] = False
+                enriched["disabled_reason"] = "This interpretation is plausible, but it was blocked by semantic safety checks."
+                display_options.append(enriched)
                 continue
             rows, error = _preview_query_rows_cached(
                 graph_path,
@@ -2459,14 +2465,28 @@ def _render_confidence_clarification(
                 max_rows=max(1, min(int(max_preview_rows), 3)),
             )
             if rows:
-                enriched = dict(option)
                 enriched["preview_rows"] = rows
                 enriched["row_count_preview"] = len(rows)
-                answerable_options.append(enriched)
+                enriched["answerable"] = True
+                enriched["selectable"] = True
+                answerable_count += 1
+                display_options.append(enriched)
             else:
                 skipped_empty += 1
-                option["preview_error"] = error
-        options = answerable_options
+                enriched["preview_error"] = error
+                enriched["answerable"] = False
+                enriched["selectable"] = True
+                enriched["disabled_reason"] = "No rows returned for this interpretation."
+                display_options.append(enriched)
+        options = display_options
+    else:
+        for option in options:
+            enriched = dict(option)
+            enriched["answerable"] = True
+            enriched["selectable"] = True
+            display_options.append(enriched)
+        options = display_options
+        answerable_count = len(options)
     if not options:
         options = _capability_backed_clarification_options(
             question=active_question,
@@ -2475,6 +2495,10 @@ def _render_confidence_clarification(
             max_options=3,
         )
         if options:
+            for option in options:
+                option["answerable"] = True
+                option["selectable"] = True
+            answerable_count = len(options)
             st.caption("Using graph-supported interpretations from the capability inventory.")
         else:
             st.warning(
@@ -2483,8 +2507,11 @@ def _render_confidence_clarification(
             )
             return
     if skipped_empty:
-        st.caption(f"Hidden {skipped_empty} candidate interpretation(s) because they returned no graph rows.")
-    if len(options) == 1 and execute_selected:
+        st.caption(
+            f"Showing {skipped_empty} plausible but currently non-answerable interpretation(s) "
+            "with their status instead of hiding them."
+        )
+    if len(options) == 1 and answerable_count == 1 and execute_selected:
         _accept_confidence_option(
             options[0],
             graph_path=graph_path,
@@ -2505,6 +2532,18 @@ def _render_confidence_clarification(
     for option in options[:3]:
         with st.container(border=True):
             st.markdown(f"**{str(option.get('label') or 'Interpretation')}**")
+            if option.get("answerable"):
+                row_preview = option.get("row_count_preview")
+                if row_preview is not None:
+                    st.success(f"Graph evidence available. Preview rows: {row_preview}.")
+                else:
+                    st.success("Graph-supported interpretation.")
+            else:
+                reason = str(option.get("disabled_reason") or "This interpretation is not currently answerable.")
+                st.markdown(
+                    f"<div style='color:#b42318;font-weight:700;margin:0.25rem 0;'>{escape(reason)}</div>",
+                    unsafe_allow_html=True,
+                )
             what_you_will_see = str(option.get("what_you_will_see") or option.get("description") or "").strip()
             choose_if = str(option.get("choose_if") or "").strip()
             details = [str(item) for item in (option.get("details") or []) if str(item).strip()]
@@ -2522,6 +2561,7 @@ def _render_confidence_clarification(
                 "Use this interpretation",
                 key=f"confidence_clarify_{option.get('id')}",
                 use_container_width=True,
+                disabled=not bool(option.get("selectable", option.get("answerable"))),
             ):
                 _accept_confidence_option(
                     option,
