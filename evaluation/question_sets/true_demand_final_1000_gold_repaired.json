@@ -5537,7 +5537,7 @@
   {
     "id": "FINALKGQA366",
     "question": "Provide the technology category and response type for all order-cancellation participant observations?",
-    "query": "SELECT ?technologyCategory ?responseType ?participants WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } ORDER BY ?technologyCategory ?responseType",
+    "query": "SELECT ?technologyCategory ?responseType ?participants WHERE {\n  ?entry a survey:OrderCancellation ;\n    survey:forTechnologyCategory ?tech ;\n    survey:hasResponseType ?responseType ;\n    survey:participantCount ?participants .\n  BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n}\nORDER BY ?technologyCategory ?responseType",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "raw_or_lookup",
@@ -6781,7 +6781,7 @@
   {
     "id": "FINALKGQA448",
     "question": "Which Tier1 companies have not provided reports indicating a semiconductor shortage, and how many are there?",
-    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Tier1_Survey .\n                FILTER(?flag = false)\n                }",
+    "query": "SELECT ?companyName ?totalCount WHERE {\n  {\n    SELECT (COUNT(?c2) AS ?totalCount) WHERE {\n      ?c2 a survey:Company ; survey:hasSurveyOrigin ?o2 ; survey:reportsShortage false .\n      ?o2 a survey:Tier1_Survey .\n    }\n  }\n  ?c a survey:Company ; survey:companyName ?companyName ; survey:hasSurveyOrigin ?o ; survey:reportsShortage false .\n  ?o a survey:Tier1_Survey .\n}\nORDER BY ?companyName",
     "topic": "shortage",
     "family": "shortage",
     "answer_shape": "count",
@@ -7608,7 +7608,7 @@
   {
     "id": "FINALKGQA502",
     "question": "Which semiconductor companies have reported facing a shortage, and what is their total count?",
-    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Semiconductor_Survey .\n                FILTER(?flag = true)\n                }",
+    "query": "SELECT ?companyName ?totalCount WHERE {\n  {\n    SELECT (COUNT(?c2) AS ?totalCount) WHERE {\n      ?c2 a survey:Company ; survey:hasSurveyOrigin ?o2 ; survey:reportsShortage true .\n      ?o2 a survey:Semiconductor_Survey .\n    }\n  }\n  ?c a survey:Company ; survey:companyName ?companyName ; survey:hasSurveyOrigin ?o ; survey:reportsShortage true .\n  ?o a survey:Semiconductor_Survey .\n}\nORDER BY ?companyName",
     "topic": "shortage",
     "family": "shortage",
     "answer_shape": "count",
@@ -8413,7 +8413,7 @@
   {
     "id": "FINALKGQA555",
     "question": "How is the total count of semiconductor order cancellation responses distributed across different technology categories and response types?",
-    "query": "SELECT ?tech ?responseType (SUM(xsd:integer(?cnt)) AS ?responses) WHERE {\n            ?oc a survey:OrderCancellation ;\n                survey:forTechnologyCategory ?tech ;\n                survey:hasResponseType ?responseType ;\n                survey:participantCount ?cnt .\n            } GROUP BY ?tech ?responseType ORDER BY ?tech ?responseType",
+    "query": "SELECT ?technologyCategory ?responseType (SUM(xsd:integer(?cnt)) AS ?responses) WHERE {\n  ?oc a survey:OrderCancellation ;\n    survey:forTechnologyCategory ?tech ;\n    survey:hasResponseType ?responseType ;\n    survey:participantCount ?cnt .\n  BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n}\nGROUP BY ?technologyCategory ?responseType\nORDER BY ?technologyCategory ?responseType",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -8720,7 +8720,7 @@
   {
     "id": "FINALKGQA575",
     "question": "Per component, what is the total count of Tier1 inventory trend records?",
-    "query": "SELECT ?componentLabel ?trend (COUNT(?entry) AS ?entryCount) WHERE { ?entry a survey:InventoryDevelopment_Tier1 ; survey:forComponent ?component ; survey:inventoryTrend ?trend . BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) } GROUP BY ?componentLabel ?trend ORDER BY ?componentLabel ?trend",
+    "query": "SELECT ?componentLabel (COUNT(?entry) AS ?entryCount) WHERE {\n  ?entry a survey:InventoryDevelopment_Tier1 ;\n    survey:forComponent ?component ;\n    survey:inventoryTrend ?trend .\n  BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel)\n}\nGROUP BY ?componentLabel\nORDER BY ?componentLabel",
     "topic": "inventory",
     "family": "inventory",
     "answer_shape": "count",
@@ -9215,7 +9215,7 @@
   {
     "id": "FINALKGQA608",
     "question": "What is the mean autonomous-driving percentage recorded for each vehicle type when considering data from all years?",
-    "query": "SELECT ?year ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE { ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?vehicle ; survey:hasSAELevel ?level ; survey:hasYear ?year ; survey:hasPercentage ?percentage . BIND(REPLACE(STR(?vehicle), \"^.*/\", \"\") AS ?vehicleType) } GROUP BY ?year ?vehicleType ORDER BY ?year ?vehicleType",
+    "query": "SELECT ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE {\n  ?entry a survey:AutonomousDrivingDevelopment ;\n    survey:hasVehicleType ?vehicle ;\n    survey:hasPercentage ?percentage .\n  BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType)\n}\nGROUP BY ?vehicleType\nORDER BY ?vehicleType",
     "topic": "autonomous_driving",
     "family": "autonomous_driving",
     "answer_shape": "average",
@@ -9946,7 +9946,7 @@
   {
     "id": "FINALKGQA656",
     "question": "For each component, what is the total number of Tier1 inventory trend records available?",
-    "query": "SELECT ?componentLabel ?trend (COUNT(?entry) AS ?entryCount) WHERE { ?entry a survey:InventoryDevelopment_Tier1 ; survey:forComponent ?component ; survey:inventoryTrend ?trend . BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) } GROUP BY ?componentLabel ?trend ORDER BY ?componentLabel ?trend",
+    "query": "SELECT ?componentLabel (COUNT(?entry) AS ?entryCount) WHERE {\n  ?entry a survey:InventoryDevelopment_Tier1 ;\n    survey:forComponent ?component ;\n    survey:inventoryTrend ?trend .\n  BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel)\n}\nGROUP BY ?componentLabel\nORDER BY ?componentLabel",
     "topic": "inventory",
     "family": "inventory",
     "answer_shape": "count",
@@ -10173,7 +10173,7 @@
   {
     "id": "FINALKGQA671",
     "question": "What is the average autonomous driving development for each combination of vehicle type and SAE level among Tier1 suppliers?",
-    "query": "SELECT ?vehicle ?saeLabel ?year (AVG(?pct) AS ?avgPct) WHERE { survey:AutonomousDrivingDevelopment_Tier1 survey:hasDetail ?entry . ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?veh ; survey:hasSAELevel ?sae ; survey:hasPercentage ?pct ; survey:hasYear ?year . BIND( IF(CONTAINS(STR(?veh), \"BEV\"), \"BEV\", IF(CONTAINS(STR(?veh), \"BEHV\"), \"BEHV\", IF(CONTAINS(STR(?veh), \"ICE\"), \"ICE\", \"OTHER\") ) ) AS ?vehicle ) FILTER(?vehicle != \"OTHER\") BIND(STRAFTER(STR(?sae), \"SAE_Level_\") AS ?saeLabel) } GROUP BY ?vehicle ?saeLabel ?year ORDER BY ?vehicle xsd:integer(?saeLabel) xsd:integer(?year)",
+    "query": "SELECT ?vehicle ?saeLabel (AVG(?pct) AS ?avgPct) WHERE {\n  survey:AutonomousDrivingDevelopment_Tier1 survey:hasDetail ?entry .\n  ?entry a survey:AutonomousDrivingDevelopment ;\n    survey:hasVehicleType ?veh ;\n    survey:hasSAELevel ?sae ;\n    survey:hasPercentage ?pct .\n  BIND(IF(CONTAINS(STR(?veh), 'BEV'), 'BEV', IF(CONTAINS(STR(?veh), 'BEHV'), 'BEHV', IF(CONTAINS(STR(?veh), 'ICE'), 'ICE', 'OTHER'))) AS ?vehicle)\n  FILTER(?vehicle != 'OTHER')\n  BIND(STRAFTER(STR(?sae), 'SAE_Level_') AS ?saeLabel)\n}\nGROUP BY ?vehicle ?saeLabel\nORDER BY ?vehicle xsd:integer(?saeLabel)",
     "topic": "autonomous_driving",
     "family": "autonomous_driving",
     "answer_shape": "average",
