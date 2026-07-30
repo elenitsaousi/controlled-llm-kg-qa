@@ -77,7 +77,7 @@
   {
     "id": "FINALKGQA006",
     "question": "What is the total number of order cancellation responses grouped by semiconductor technology category?",
-    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "query": "SELECT ?technologyCategory (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE {\n  ?entry a survey:OrderCancellation ;\n         survey:forTechnologyCategory ?tech ;\n         survey:participantCount ?participants .\n  BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n}\nGROUP BY ?technologyCategory\nORDER BY ?technologyCategory",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -1302,7 +1302,7 @@
   {
     "id": "FINALKGQA087",
     "question": "How many order cancellation responses are recorded for each semiconductor technology category?",
-    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "query": "SELECT ?technologyCategory (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE {\n  ?entry a survey:OrderCancellation ;\n         survey:forTechnologyCategory ?tech ;\n         survey:participantCount ?participants .\n  BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n}\nGROUP BY ?technologyCategory\nORDER BY ?technologyCategory",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -3753,7 +3753,7 @@
   {
     "id": "FINALKGQA249",
     "question": "Which semiconductor technology categories have the highest counts of order cancellation responses?",
-    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "query": "SELECT ?technologyCategory ?participantCount WHERE {\n  {\n    SELECT ?technologyCategory (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE {\n      ?entry a survey:OrderCancellation ;\n             survey:forTechnologyCategory ?tech ;\n             survey:participantCount ?participants .\n      BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n    }\n    GROUP BY ?technologyCategory\n  }\n  {\n    SELECT (MAX(?count) AS ?maxCount) WHERE {\n      {\n        SELECT ?technologyCategory2 (SUM(xsd:integer(?participants2)) AS ?count) WHERE {\n          ?entry2 a survey:OrderCancellation ;\n                  survey:forTechnologyCategory ?tech2 ;\n                  survey:participantCount ?participants2 .\n          BIND(REPLACE(REPLACE(REPLACE(STR(?tech2), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory2)\n        }\n        GROUP BY ?technologyCategory2\n      }\n    }\n  }\n  FILTER(?participantCount = ?maxCount)\n}\nORDER BY ?technologyCategory",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -4199,7 +4199,7 @@
   {
     "id": "FINALKGQA278",
     "question": "Which component and trend pairs account for the highest overall Tier1 inventory responses?",
-    "query": "SELECT ?component ?trend (SUM(xsd:integer(?cnt)) AS ?responses) WHERE {\n            ?entry a survey:InventoryDevelopment_Tier1 ;\n                   survey:forComponent ?component ;\n                   survey:inventoryTrend ?trend ;\n                   survey:participantCount ?cnt .\n            } GROUP BY ?component ?trend ORDER BY ?component ?trend",
+    "query": "SELECT ?component ?trend ?responses WHERE {\n  {\n    SELECT ?component ?trend (SUM(xsd:integer(?cnt)) AS ?responses) WHERE {\n      ?entry a survey:InventoryDevelopment_Tier1 ;\n             survey:forComponent ?component ;\n             survey:inventoryTrend ?trend ;\n             survey:participantCount ?cnt .\n    }\n    GROUP BY ?component ?trend\n  }\n  {\n    SELECT (MAX(?count) AS ?maxCount) WHERE {\n      {\n        SELECT ?component2 ?trend2 (SUM(xsd:integer(?cnt2)) AS ?count) WHERE {\n          ?entry2 a survey:InventoryDevelopment_Tier1 ;\n                  survey:forComponent ?component2 ;\n                  survey:inventoryTrend ?trend2 ;\n                  survey:participantCount ?cnt2 .\n        }\n        GROUP BY ?component2 ?trend2\n      }\n    }\n  }\n  FILTER(?responses = ?maxCount)\n}\nORDER BY ?component ?trend",
     "topic": "inventory",
     "family": "inventory",
     "answer_shape": "sum",
@@ -5949,7 +5949,7 @@
   {
     "id": "FINALKGQA393",
     "question": "Which technology categories and response types have the highest counts of semiconductor order cancellation responses?",
-    "query": "SELECT ?tech ?responseType (SUM(xsd:integer(?cnt)) AS ?responses) WHERE {\n            ?oc a survey:OrderCancellation ;\n                survey:forTechnologyCategory ?tech ;\n                survey:hasResponseType ?responseType ;\n                survey:participantCount ?cnt .\n            } GROUP BY ?tech ?responseType ORDER BY ?tech ?responseType",
+    "query": "SELECT ?technologyCategory ?responseType ?participantCount WHERE {\n  {\n    SELECT ?technologyCategory ?responseType (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE {\n      ?entry a survey:OrderCancellation ;\n             survey:forTechnologyCategory ?tech ;\n             survey:hasResponseType ?responseType ;\n             survey:participantCount ?participants .\n      BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n    }\n    GROUP BY ?technologyCategory ?responseType\n  }\n  {\n    SELECT (MAX(?count) AS ?maxCount) WHERE {\n      {\n        SELECT ?technologyCategory2 ?responseType2 (SUM(xsd:integer(?participants2)) AS ?count) WHERE {\n          ?entry2 a survey:OrderCancellation ;\n                  survey:forTechnologyCategory ?tech2 ;\n                  survey:hasResponseType ?responseType2 ;\n                  survey:participantCount ?participants2 .\n          BIND(REPLACE(REPLACE(REPLACE(STR(?tech2), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory2)\n        }\n        GROUP BY ?technologyCategory2 ?responseType2\n      }\n    }\n  }\n  FILTER(?participantCount = ?maxCount)\n}\nORDER BY ?technologyCategory ?responseType",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -7456,7 +7456,7 @@
   {
     "id": "FINALKGQA492",
     "question": "For each semiconductor technology category, how many order cancellation responses have been registered?",
-    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "query": "SELECT ?technologyCategory (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE {\n  ?entry a survey:OrderCancellation ;\n         survey:forTechnologyCategory ?tech ;\n         survey:participantCount ?participants .\n  BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n}\nGROUP BY ?technologyCategory\nORDER BY ?technologyCategory",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -7713,7 +7713,7 @@
   {
     "id": "FINALKGQA509",
     "question": "Provide the average autonomous-driving percentage for every vehicle type, aggregated over all years?",
-    "query": "SELECT ?year ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE { ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?vehicle ; survey:hasSAELevel ?level ; survey:hasYear ?year ; survey:hasPercentage ?percentage . BIND(REPLACE(STR(?vehicle), \"^.*/\", \"\") AS ?vehicleType) } GROUP BY ?year ?vehicleType ORDER BY ?year ?vehicleType",
+    "query": "SELECT ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE {\n  ?entry a survey:AutonomousDrivingDevelopment ;\n         survey:hasVehicleType ?vehicle ;\n         survey:hasPercentage ?percentage .\n  BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType)\n}\nGROUP BY ?vehicleType\nORDER BY ?vehicleType",
     "topic": "autonomous_driving",
     "family": "autonomous_driving",
     "answer_shape": "average",
@@ -8503,7 +8503,7 @@
   {
     "id": "FINALKGQA561",
     "question": "Provide the overall future demand percentage per region and quarter as indicated by OEM survey responses?",
-    "query": "SELECT ?quarterLabel ?regionName (ROUND(((SUM(?pct) / ?grandTotal) * 100) * 100) / 100 AS ?percentShare) WHERE { BIND(survey:OEM_Survey AS ?surveyType) ?origin a ?surveyType . ?entry a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:quarter ?q ; survey:totalDemandPercentageChange ?pct . ?q survey:periodLabel ?quarterLabel . ?region survey:regionName ?regionName . { SELECT ?origin ?quarterLabel (SUM(?v) AS ?grandTotal) WHERE { ?e a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:quarter ?qq ; survey:totalDemandPercentageChange ?v . ?qq survey:periodLabel ?quarterLabel . } GROUP BY ?origin ?quarterLabel } } GROUP BY ?quarterLabel ?regionName ?grandTotal ORDER BY ?quarterLabel ?regionName",
+    "query": "SELECT ?quarterLabel ?regionName (ROUND(((SUM(?pct) / ?grandTotal) * 100) * 100) / 100 AS ?percentShare) WHERE {\n  BIND(survey:OEM_Survey AS ?surveyType)\n  ?origin a ?surveyType .\n  ?entry a survey:DemandForRegion ;\n         survey:hasSurveyOrigin ?origin ;\n         survey:inRegion ?region ;\n         survey:quarter ?q ;\n         survey:totalDemandPercentageChange ?pct .\n  ?q survey:periodLabel ?quarterLabel .\n  ?region survey:regionName ?regionName .\n  {\n    SELECT ?origin ?quarterLabel (SUM(?v) AS ?grandTotal) WHERE {\n      ?e a survey:DemandForRegion ;\n         survey:hasSurveyOrigin ?origin ;\n         survey:quarter ?qq ;\n         survey:totalDemandPercentageChange ?v .\n      ?qq survey:periodLabel ?quarterLabel .\n    }\n    GROUP BY ?origin ?quarterLabel\n  }\n}\nGROUP BY ?quarterLabel ?regionName ?grandTotal\nORDER BY ?quarterLabel ?regionName",
     "topic": "future_demand",
     "family": "future_demand",
     "answer_shape": "sum",
@@ -8690,7 +8690,7 @@
   {
     "id": "FINALKGQA573",
     "question": "What is the aggregate count of order cancellation responses per semiconductor technology category?",
-    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "query": "SELECT ?technologyCategory (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE {\n  ?entry a survey:OrderCancellation ;\n         survey:forTechnologyCategory ?tech ;\n         survey:participantCount ?participants .\n  BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n}\nGROUP BY ?technologyCategory\nORDER BY ?technologyCategory",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -9916,7 +9916,7 @@
   {
     "id": "FINALKGQA654",
     "question": "Across semiconductor technology categories, what is the cumulative number of order cancellation responses?",
-    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "query": "SELECT ?technologyCategory (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE {\n  ?entry a survey:OrderCancellation ;\n         survey:forTechnologyCategory ?tech ;\n         survey:participantCount ?participants .\n  BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n}\nGROUP BY ?technologyCategory\nORDER BY ?technologyCategory",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -10112,17 +10112,17 @@
   },
   {
     "id": "FINALKGQA667",
-    "question": "What is the average quarterly trend in demand percentage according to the OEM survey results?",
-    "query": "SELECT ?quarterLabel (AVG(?pct) AS ?avgPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:OEM_Survey .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ORDER BY ?quarterLabel",
-    "topic": "regional_demand",
-    "family": "regional_demand",
+    "question": "What is the average demand percentage change by vehicle type according to the OEM survey results?",
+    "query": "SELECT ?vehicleType (AVG(?pct) AS ?avgPctChange) WHERE {\n  ?response a survey:DemandResponse ;\n            survey:hasSurveyOrigin ?origin ;\n            survey:forVehicleType ?vehicle ;\n            survey:percentageChange ?pct .\n  ?origin a survey:OEM_Survey .\n  BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType)\n}\nGROUP BY ?vehicleType\nORDER BY ?vehicleType",
+    "topic": "catalog_lookup",
+    "family": "catalog_lookup",
     "answer_shape": "average",
     "complexity_label": "mid",
     "ambiguity_label": "runtime_candidate_disagreement",
     "template_id": "tmpl_ccd4731cbbeb25ee",
     "seed_id": "HIGH8",
     "seed_ambiguity_label": "high",
-    "source_question": "What is the quarterly demand percentage trend for OEM survey?",
+    "source_question": "What is the average OEM demand percentage change by vehicle type?",
     "wording_warnings": []
   },
   {
@@ -11144,7 +11144,7 @@
   {
     "id": "FINALKGQA735",
     "question": "Break down the number of order cancellation responses according to semiconductor technology category?",
-    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "query": "SELECT ?technologyCategory (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE {\n  ?entry a survey:OrderCancellation ;\n         survey:forTechnologyCategory ?tech ;\n         survey:participantCount ?participants .\n  BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n}\nGROUP BY ?technologyCategory\nORDER BY ?technologyCategory",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -12226,7 +12226,7 @@
   {
     "id": "FINALKGQA806",
     "question": "How does the average percentage of autonomous driving differ by vehicle type when looking at data from all years combined?",
-    "query": "SELECT ?year ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE { ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?vehicle ; survey:hasSAELevel ?level ; survey:hasYear ?year ; survey:hasPercentage ?percentage . BIND(REPLACE(STR(?vehicle), \"^.*/\", \"\") AS ?vehicleType) } GROUP BY ?year ?vehicleType ORDER BY ?year ?vehicleType",
+    "query": "SELECT ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE {\n  ?entry a survey:AutonomousDrivingDevelopment ;\n         survey:hasVehicleType ?vehicle ;\n         survey:hasPercentage ?percentage .\n  BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType)\n}\nGROUP BY ?vehicleType\nORDER BY ?vehicleType",
     "topic": "autonomous_driving",
     "family": "autonomous_driving",
     "answer_shape": "average",
@@ -12376,7 +12376,7 @@
   {
     "id": "FINALKGQA816",
     "question": "How many order cancellation responses pertain to each semiconductor technology category?",
-    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "query": "SELECT ?technologyCategory (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE {\n  ?entry a survey:OrderCancellation ;\n         survey:forTechnologyCategory ?tech ;\n         survey:participantCount ?participants .\n  BIND(REPLACE(REPLACE(REPLACE(STR(?tech), '^.*/OrderCancellationChange_Semi_', ''), 'lt%3D_7nm', '<=_7nm'), '_to_lt', '_to_<') AS ?technologyCategory)\n}\nGROUP BY ?technologyCategory\nORDER BY ?technologyCategory",
     "topic": "order_cancellation",
     "family": "order_cancellation",
     "answer_shape": "sum",
@@ -13612,7 +13612,7 @@
   {
     "id": "FINALKGQA897",
     "question": "What is the average autonomous-driving percentage per vehicle type, considering data from every year?",
-    "query": "SELECT ?year ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE { ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?vehicle ; survey:hasSAELevel ?level ; survey:hasYear ?year ; survey:hasPercentage ?percentage . BIND(REPLACE(STR(?vehicle), \"^.*/\", \"\") AS ?vehicleType) } GROUP BY ?year ?vehicleType ORDER BY ?year ?vehicleType",
+    "query": "SELECT ?vehicleType (AVG(?percentage) AS ?avgPercentage) WHERE {\n  ?entry a survey:AutonomousDrivingDevelopment ;\n         survey:hasVehicleType ?vehicle ;\n         survey:hasPercentage ?percentage .\n  BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType)\n}\nGROUP BY ?vehicleType\nORDER BY ?vehicleType",
     "topic": "autonomous_driving",
     "family": "autonomous_driving",
     "answer_shape": "average",

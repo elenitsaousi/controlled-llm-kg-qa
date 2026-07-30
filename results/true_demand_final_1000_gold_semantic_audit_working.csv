@@ -4,7 +4,7 @@ FINALKGQA002,What is the number of Tier1 Automotive current-demand records assoc
 FINALKGQA003,What is the total number of FutureDemandAnalysis records associated with Semiconductor surveys?,True,1,False,,future_demand,count,,,,,
 FINALKGQA004,What are the total annual sales figures broken down by vehicle type and year?,True,6,False,,vehicle_sales,sum,,,,,
 FINALKGQA005,Identify the combination of vehicle type and SAE level with the greatest proportion of autonomous driving adoption?,True,1,False,,autonomous_driving,ranking_top,,,,,
-FINALKGQA006,What is the total number of order cancellation responses grouped by semiconductor technology category?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA006,What is the total number of order cancellation responses grouped by semiconductor technology category?,True,15,False,,order_cancellation,sum,,correct,Correct after repair: returns one summed order-cancellation response/participant count per semiconductor technology category.,correct,Correct after repair: returns one summed order-cancellation response/participant count per semiconductor technology category.
 FINALKGQA007,"What is the number of companies indicating a shortage, broken down by each survey type?",True,6,False,,shortage,count,,,,,
 FINALKGQA008,How many Tier1 inventory trends are recorded for each component?,True,9,False,,inventory,count,,,,correct,Returns Tier1 inventory trend counts for each component; component and trend breakdown matches the question.
 FINALKGQA009,Which technology categories show their current demand figures along with the percentage change?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
@@ -15,7 +15,7 @@ FINALKGQA013,How many vehicle sales units are forecasted in total according to t
 FINALKGQA014,What is the average percentage of autonomous driving capability for each type of vehicle over the years?,True,9,False,,autonomous_driving,average,,correct,"Manual semantic spot check: query returns year, vehicle type, and average autonomous-driving percentage, matching the requested grouped average over years.",correct,"Manual semantic spot check: query returns year, vehicle type, and average autonomous-driving percentage, matching the requested grouped average over years."
 FINALKGQA015,What is the number of OrderCancellation records associated with the Semiconductor survey?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA016,What is the number of Tier1 companies that have not indicated a semiconductor shortage in their reports?,True,1,False,,shortage,count,,,,,
-FINALKGQA017,Which Tier1 inventory trend data points are available for each component?,True,18,False,,inventory,raw_or_lookup,,,,,
+FINALKGQA017,Which Tier1 inventory trend data points are available for each component?,True,18,False,,inventory,raw_or_lookup,,correct,Correct: raw Tier1 inventory trend observations are returned with component labels; GROUP BY is not required for a raw/list-style question.,correct,Correct: raw Tier1 inventory trend observations are returned with component labels; GROUP BY is not required for a raw/list-style question.
 FINALKGQA018,Which regions are included in the available data?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA019,How much OEM demand is there in total for the Americas region?,True,1,False,,regional_demand,sum,,,,correct,Returns total OEM demand for Americas; matches the question.
 FINALKGQA020,What is the total percentage change in current demand for BL1 and BL2 within Tier1?,True,2,False,,current_demand_baselines,sum,,,,,
@@ -24,7 +24,7 @@ FINALKGQA022,Identify the month with the greatest number of forecasted vehicle s
 FINALKGQA023,Which vehicle type accounts for the highest percentage at Level 5 autonomy?,True,1,False,,autonomous_driving,ranking_top,,,,,
 FINALKGQA024,What is the total number of OrderCancellation records available?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA025,How many OEM companies reported experiencing a shortage compared to those that did not?,True,2,False,,shortage,count,,,,,
-FINALKGQA026,Identify the component with the highest total number of Tier1 inventory participants?,True,1,False,,inventory,ranking_top,,,,,
+FINALKGQA026,Identify the component with the highest total number of Tier1 inventory participants?,True,1,False,,inventory,ranking_top,,correct,Correct: sums Tier1 inventory participants by component and returns the top component.,correct,Correct: sums Tier1 inventory participants by component and returns the top component.
 FINALKGQA027,What is the total number of unique regions represented in the survey data?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA028,How does the average demand percentage for the Semiconductor survey change each quarter?,True,7,False,,regional_demand,average,,,,correct,Returns average Semiconductor demand percentage by quarter; matches the question.
 FINALKGQA029,How much does the Tier1 current demand percentage change differ between BL1 and BL2 in total?,True,1,False,,current_demand_baselines,sum,,,,correct,"Returns BL1 sum, BL2 sum, and BL1-BL2 delta for Tier1 current demand; matches the requested total difference."
@@ -35,7 +35,7 @@ FINALKGQA033,Identify the order cancellation response type that involves the hig
 FINALKGQA034,What is the number of OEM companies that have indicated experiencing a semiconductor shortage?,True,1,False,,shortage,count,,,,correct,Counts OEM companies with reportsShortage=true; matches the requested number of OEM companies indicating shortage.
 FINALKGQA035,What is the total Tier1 inventory response for each component and trend combination?,True,9,False,,inventory,sum,,,,,
 FINALKGQA036,What is the total number of companies associated with the Tier1 survey?,True,1,False,,catalog_lookup,count,,,,,
-FINALKGQA037,What is the number of DemandForRegion records associated with Tier1 survey data?,True,1,False,,regional_demand,count,,,,,
+FINALKGQA037,What is the number of DemandForRegion records associated with Tier1 survey data?,True,1,False,,regional_demand,count,,correct,Correct: counts DemandForRegion records associated with Tier1 survey data.,correct,Correct: counts DemandForRegion records associated with Tier1 survey data.
 FINALKGQA038,How much does the current-demand change on average for Tier1 companies in the Automotive sector at BL1 and BL2 levels?,True,2,False,,current_demand_baselines,average,,,,,
 FINALKGQA039,Identify the technology category with the greatest average percentage change in projected demand?,True,1,False,,future_demand,ranking_top,,,,correct,Returns the technology category with the highest average projected future-demand percentage change; matches the top-category question.
 FINALKGQA040,What is the total number of vehicles sold each month based on actual sales data?,True,12,False,,vehicle_sales,sum,,,,,
@@ -43,7 +43,7 @@ FINALKGQA041,What is the mean percentage of autonomous driving development for e
 FINALKGQA042,Which technology categories and response types are associated with each order-cancellation participant observation?,True,15,False,,order_cancellation,raw_or_lookup,,,,,
 FINALKGQA043,How many semiconductor companies reported experiencing a shortage compared to those that did not?,True,2,False,,shortage,count,,,,correct,Returns yes/no shortage counts for semiconductor companies; matches the question.
 FINALKGQA044,What is the most frequently occurring pairing of semiconductor technology category and inventory trend?,True,1,False,,inventory,ranking_top,,,,,
-FINALKGQA045,"What kinds of surveys are included across Tier1, OEM, and Semiconductor categories?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
+FINALKGQA045,"What kinds of surveys are included across Tier1, OEM, and Semiconductor categories?",True,3,False,,catalog_lookup,raw_or_lookup,,correct,"Correct: returns the three survey classes/types present for Tier1, OEM, and Semiconductor.",correct,"Correct: returns the three survey classes/types present for Tier1, OEM, and Semiconductor."
 FINALKGQA046,How does the average demand compare among different survey types when considering all regions?,True,3,False,,regional_demand,average,,correct,"Manual semantic spot check: query returns survey type and average demand across regions, matching the requested comparison among survey types.",correct,"Manual semantic spot check: query returns survey type and average demand across regions, matching the requested comparison among survey types."
 FINALKGQA047,What is the combined percentage change in current demand for BL1 and BL2 among Tier1 automotive respondents?,True,1,False,,current_demand_baselines,sum,,,,,
 FINALKGQA048,What is the average percentage change in projected demand for each vehicle type by quarter?,True,24,False,,future_demand,average,,,,,
@@ -67,16 +67,16 @@ FINALKGQA065,How much does the current demand for Tier1 differ between BL1 and B
 FINALKGQA066,What is the total number of FutureDemandAnalysis records associated with OEM surveys?,True,1,False,,future_demand,count,,,,correct,Counts FutureDemandAnalysis records linked to OEM survey origins; matches the requested OEM-associated future-demand record count.
 FINALKGQA067,What are the total vehicle sales units reported each month in the actual data?,True,12,False,,vehicle_sales,sum,,,,correct,Returns monthly actual vehicle-sales unit totals; matches the question.
 FINALKGQA068,"What is the average percentage of autonomous driving for each vehicle, SAE level, and year, grouped by OEM?",True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA069,How many semiconductor order cancellation responses are recorded for each technology category and response type?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA069,How many semiconductor order cancellation responses are recorded for each technology category and response type?,True,15,False,,order_cancellation,sum,,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.
 FINALKGQA070,What is the number of semiconductor companies that have indicated experiencing a semiconductor shortage?,True,1,False,,shortage,count,,,,,
 FINALKGQA071,"What is the number of inventory records for Tier1 companies that are classified as increase, stable, or decrease?",True,3,False,,inventory,count,,,,correct,Counts Tier1 inventory records by increase/stable/decrease trend; matches the question.
 FINALKGQA072,What is the total number of TechnologyCategory entries in the system?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA073,"For each quarter, what is the number of demand records reported in every survey type?",True,21,False,,regional_demand,count,,correct,"Manual semantic spot check: query returns survey type, quarter, and demand-record count, matching the requested count by quarter and survey type. Survey type is returned as URI but the grouping is correct.",correct,"Manual semantic spot check: query returns survey type, quarter, and demand-record count, matching the requested count by quarter and survey type. Survey type is returned as URI but the grouping is correct."
 FINALKGQA074,What is the combined percentage change for BL1 and BL2 in Tier1 Automotive current demand according to the survey data?,True,2,False,,current_demand_baselines,sum,,,,,
-FINALKGQA075,What are the future-demand percentages for each technology category in every quarter?,True,120,False,,future_demand,raw_or_lookup,,,,,
+FINALKGQA075,What are the future-demand percentages for each technology category in every quarter?,True,120,False,,future_demand,raw_or_lookup,,correct,Correct: returns raw future-demand percentage records by technology category and quarter; repeated rows reflect underlying records.,correct,Correct: returns raw future-demand percentage records by technology category and quarter; repeated rows reflect underlying records.
 FINALKGQA076,What is the total number of VehicleSalesObservation entries available?,True,1,False,,vehicle_sales,count,,,,,
 FINALKGQA077,How does the average autonomous driving development differ across vehicle types and SAE levels among Tier1 suppliers?,True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA078,What is the total number of OrderCancellation records associated with Tier1 survey responses?,True,1,False,,order_cancellation,count,,,,,
+FINALKGQA078,What is the total number of OrderCancellation records associated with Tier1 survey responses?,True,1,False,,order_cancellation,count,,correct,Correct: counts OrderCancellation records linked to Tier1 survey responses; result is 0 against the loaded KG.,correct,Correct: counts OrderCancellation records linked to Tier1 survey responses; result is 0 against the loaded KG.
 FINALKGQA079,What is the number of OEM companies that have not indicated experiencing a semiconductor shortage?,True,1,False,,shortage,count,,,,,
 FINALKGQA080,What is the total number of Tier1 inventory participants for each component?,True,3,False,,inventory,sum,,,,correct,"Semantically valid: question explicitly asks total number of Tier1 inventory participants for each component, and the query sums participantCount per component."
 FINALKGQA081,"Which OEMs have experienced a change in current demand percentage for BEV, BEHV, and ICE vehicle types?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
@@ -85,8 +85,8 @@ FINALKGQA083,Which baseline types are present in the available data?,True,5,Fals
 FINALKGQA084,What is the average change in future demand for each technology bucket by quarter?,True,40,False,,future_demand,average,,,,,
 FINALKGQA085,"What are the total vehicle sales for each month, both actual and forecasted?",True,48,False,,vehicle_sales,sum,,,,,
 FINALKGQA086,What is the total number of distinct SAE levels included?,True,1,False,,autonomous_driving,count,,,,,
-FINALKGQA087,How many order cancellation responses are recorded for each semiconductor technology category?,True,15,False,,order_cancellation,sum,,,,,
-FINALKGQA088,Which companies indicated experiencing a shortage of semiconductors in their survey responses?,True,6,False,,shortage,raw_or_lookup,,,,,
+FINALKGQA087,How many order cancellation responses are recorded for each semiconductor technology category?,True,15,False,,order_cancellation,sum,,correct,Correct after repair: returns one summed order-cancellation response/participant count per semiconductor technology category.,correct,Correct after repair: returns one summed order-cancellation response/participant count per semiconductor technology category.
+FINALKGQA088,Which companies indicated experiencing a shortage of semiconductors in their survey responses?,True,6,False,,shortage,raw_or_lookup,,correct,Correct: lists companies reporting shortage and includes their survey type; response-type flag is a false positive from the word responses.,correct,Correct: lists companies reporting shortage and includes their survey type; response-type flag is a false positive from the word responses.
 FINALKGQA089,What is the number of Tier1 inventory trends associated with each component?,True,9,False,,inventory,count,,correct,"Manual semantic spot check: query returns Tier1 component, inventory trend, and count, matching the requested count of inventory trends by component.",correct,"Manual semantic spot check: query returns Tier1 component, inventory trend, and count, matching the requested count of inventory trends by component."
 FINALKGQA090,What is the total number of companies associated with the Semiconductor survey?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA091,How much demand is reported in each region according to the OEM survey?,True,5,False,,regional_demand,sum,,,,correct,Returns OEM demand totals by region; matches the question.
@@ -96,23 +96,23 @@ FINALKGQA094,During which month were actual vehicle sales at their peak?,True,1,
 FINALKGQA095,What is the total number of AutonomousDrivingDevelopment records available?,True,1,False,,autonomous_driving,count,,,,,
 FINALKGQA096,How many OrderCancellation items are connected to the Semiconductor survey?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA097,What is the number of semiconductor companies that have not indicated experiencing a semiconductor shortage?,True,1,False,,shortage,count,,,,,
-FINALKGQA098,Show the Tier1 inventory trend values broken down by component?,True,18,False,,inventory,raw_or_lookup,,,,,
+FINALKGQA098,Show the Tier1 inventory trend values broken down by component?,True,18,False,,inventory,raw_or_lookup,,correct,Correct: returns Tier1 inventory trend values with component labels; no aggregation is requested.,correct,Correct: returns Tier1 inventory trend values with component labels; no aggregation is requested.
 FINALKGQA099,Which conversion factors correspond to each combination of technology category and vehicle type?,True,15,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA100,What is the number of Tier1 demand records associated with the Americas region?,True,1,False,,regional_demand,count,,,,,
 FINALKGQA101,Identify the Tier1 Automotive baseline with the highest average percentage change in current demand?,True,1,False,,current_demand_baselines,ranking_top,,,,,
 FINALKGQA102,Identify the vehicle type with the greatest average change in projected demand?,True,1,False,,future_demand,ranking_top,,,,,
-FINALKGQA103,What is the total number of vehicles forecasted to be sold each month?,True,36,False,,vehicle_sales,sum,,,,needs_recheck,"Pasted output shows an autonomous-driving top result, but the gold question asks monthly forecast vehicle-sales totals; likely wrong output was pasted for this ID."
+FINALKGQA103,What is the total number of vehicles forecasted to be sold each month?,True,36,False,,vehicle_sales,sum,,correct,Correct: returns monthly SUM of forecast vehicle-sales units.,correct,Correct: returns monthly SUM of forecast vehicle-sales units.
 FINALKGQA104,What is the vehicle type and SAE level pairing with the largest percentage of autonomous driving?,True,1,False,,autonomous_driving,ranking_top,,,,correct,Returns the vehicle type and SAE-level pairing with the maximum autonomous-driving percentage; top-ranked shape matches the question.
 FINALKGQA105,How many OrderCancellation entries are recorded in the system?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA106,"Among all survey types, which one is associated with the highest number of companies indicating a shortage?",True,1,False,,shortage,ranking_top,,,,,
-FINALKGQA107,Which component accounts for the greatest number of Tier1 inventory participants?,True,1,False,,inventory,ranking_top,,,,,
+FINALKGQA107,Which component accounts for the greatest number of Tier1 inventory participants?,True,1,False,,inventory,ranking_top,,correct,Correct: sums Tier1 inventory participants by component and returns the top component.,correct,Correct: sums Tier1 inventory participants by component and returns the top component.
 FINALKGQA108,"For each Tier1 company, what is the number of active component share categories they possess?",True,3,False,,catalog_lookup,count,,,,,
 FINALKGQA109,How do the total and average demand figures appear in the Tier1 survey results?,True,1,False,,regional_demand,average,,,,,
 FINALKGQA110,How much do the percentage changes in current demand for BL1 and BL2 add up to for Tier1?,True,2,False,,current_demand_baselines,sum,,,,,
 FINALKGQA111,What is the number of FutureDemandAnalysis records associated with Tier1 survey data?,True,1,False,,future_demand,count,,,,,
 FINALKGQA112,How do the total sales numbers differ across vehicle types for each year?,True,6,False,,vehicle_sales,sum,,,,,
 FINALKGQA113,How do the average autonomous-driving percentages compare among different vehicle types throughout the years?,True,9,False,,autonomous_driving,average,,,,,
-FINALKGQA114,Which order cancellation response type accounts for the largest participant total?,True,1,False,,order_cancellation,ranking_top,,,,,
+FINALKGQA114,Which order cancellation response type accounts for the largest participant total?,True,1,False,,order_cancellation,ranking_top,,correct,Correct: returns the order-cancellation response type with the largest participant total.,correct,Correct: returns the order-cancellation response type with the largest participant total.
 FINALKGQA115,How many Tier1 companies reported experiencing a shortage compared to those that did not?,True,2,False,,shortage,count,,,,,
 FINALKGQA116,"For each component and trend, what is the combined Tier1 inventory response?",True,9,False,,inventory,sum,,,,,
 FINALKGQA117,What are the names of all technology categories available?,True,5,False,,catalog_lookup,raw_or_lookup,,correct,"Manual semantic spot check: query returns distinct technology category names, matching the requested catalog lookup.",correct,"Manual semantic spot check: query returns distinct technology category names, matching the requested catalog lookup."
@@ -121,13 +121,13 @@ FINALKGQA119,What is the total difference in Tier1 current demand percentage cha
 FINALKGQA120,What is the total number of FutureDemandAnalysis records available?,True,1,False,,future_demand,count,,,,,
 FINALKGQA121,What is the combined forecasted vehicle sales unit count from all available records?,True,1,False,,vehicle_sales,sum,,correct,"Manual semantic spot check: query returns one aggregate SUM of forecast vehicle sales units, matching the requested combined forecast sales total.",correct,"Manual semantic spot check: query returns one aggregate SUM of forecast vehicle sales units, matching the requested combined forecast sales total."
 FINALKGQA122,Identify the vehicle type with the largest percentage representation at Level 5 autonomy?,True,1,False,,autonomous_driving,ranking_top,,,,,
-FINALKGQA123,"For each order-cancellation participant observation, what are the corresponding technology category and response type?",True,15,False,,order_cancellation,raw_or_lookup,,,,,
+FINALKGQA123,"For each order-cancellation participant observation, what are the corresponding technology category and response type?",True,15,False,,order_cancellation,raw_or_lookup,,correct,"Correct: returns each order-cancellation observation with technology category, response type, and participant count.",correct,"Correct: returns each order-cancellation observation with technology category, response type, and participant count."
 FINALKGQA124,What is the number of Tier1 companies that have indicated experiencing a semiconductor shortage?,True,1,False,,shortage,count,,,,,
 FINALKGQA125,Which combination of semiconductor technology category and inventory trend is observed with the highest frequency?,True,1,False,,inventory,ranking_top,,,,,
 FINALKGQA126,What is the total number of Quarter entities present?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA127,Identify the region with the smallest overall demand according to the Tier1 survey results?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA128,"For Tier1 organizations in Automotive, what is the mean change in current-demand at both BL1 and BL2?",True,2,False,,current_demand_baselines,average,,,,,
-FINALKGQA129,What is the total projected Tier1 demand in each region for every upcoming quarter?,True,35,False,,future_demand,sum,,,,needs_recheck,Repaired query to return summed Tier1 totalDemandPercentageChange by quarter and region rather than percent share; rerun before final correct.
+FINALKGQA129,What is the total projected Tier1 demand in each region for every upcoming quarter?,True,35,False,,future_demand,sum,,correct,Correct: returns Tier1 projected/future demand by region and quarter using the repaired DemandForRegion path.,correct,Correct: returns Tier1 projected/future demand by region and quarter using the repaired DemandForRegion path.
 FINALKGQA130,During which month are forecasted vehicle sales expected to reach their peak?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA131,"Across various vehicle types and SAE levels, what is the mean autonomous driving development level observed?",True,15,False,,autonomous_driving,average,,,,,
 FINALKGQA132,How many OrderCancellation records are connected to OEM survey responses?,True,1,False,,order_cancellation,count,,correct,Manual semantic spot check: query returns a count of OEM-linked OrderCancellation records. A zero count is valid for this count question.,correct,Manual semantic spot check: query returns a count of OEM-linked OrderCancellation records. A zero count is valid for this count question.
@@ -142,13 +142,13 @@ FINALKGQA140,How does the average percentage of autonomous driving development v
 FINALKGQA141,Which semiconductor technology categories have experienced the highest overall order cancellations?,True,5,False,,order_cancellation,sum,,,,,
 FINALKGQA142,How many semiconductor companies reported experiencing a shortage compared to those that did not?,True,2,False,,shortage,count,,,,,
 FINALKGQA143,"Could you provide the overall inventory amounts for EV, non-EV, and mixed components?",True,3,False,,inventory,sum,,,,,
-FINALKGQA144,What is the total number of companies associated with the OEM survey?,True,1,False,,catalog_lookup,count,,,,,
+FINALKGQA144,What is the total number of companies associated with the OEM survey?,True,1,False,,catalog_lookup,count,,correct,Correct: counts companies associated with the OEM survey.,correct,Correct: counts companies associated with the OEM survey.
 FINALKGQA145,Identify the regions where OEM current demand reaches its highest total?,True,5,False,,regional_demand,sum,,,,,
 FINALKGQA146,Show the percentage changes associated with Tier1 automotive baselines BL1 and BL2?,True,2,False,,current_demand_baselines,raw_or_lookup,,,,,
 FINALKGQA147,Show the aggregate future semiconductor demand broken down by technology category and quarter?,True,40,False,,future_demand,sum,,,,,
 FINALKGQA148,How many vehicles were sold in total in each month according to actual sales figures?,True,12,False,,vehicle_sales,sum,,,,,
 FINALKGQA149,"Across different vehicle types, SAE levels, and years, what is the mean value of autonomous-driving development associated with OEMs?",True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA150,Show the total number of semiconductor order cancellation responses grouped according to technology category and response type?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA150,Show the total number of semiconductor order cancellation responses grouped according to technology category and response type?,True,15,False,,order_cancellation,sum,,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.
 FINALKGQA151,"For each survey type, what is the count of companies that have reported a shortage?",True,6,False,,shortage,count,,,,correct,Returns shortage yes/no counts grouped by survey type; matches the requested per-survey-type shortage count.
 FINALKGQA152,"How many inventory items among Tier1 companies fall into the categories of increase, stable, or decrease?",True,3,False,,inventory,count,,,,,
 FINALKGQA153,"What are the technology categories, including their present demand and the corresponding percentage changes?",True,5,False,,catalog_lookup,raw_or_lookup,,,,,
@@ -159,10 +159,10 @@ FINALKGQA157,What is the sum of all actual vehicle-sales units documented?,True,
 FINALKGQA158,"For Tier1 suppliers, what is the mean value of autonomous-driving development when grouped by vehicle type, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
 FINALKGQA159,How many OrderCancellation cases have a connection to the Tier1 survey?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA160,How many Tier1 companies have not reported experiencing a semiconductor shortage?,True,1,False,,shortage,count,,,,,
-FINALKGQA161,How many Tier1 inventory participants are there in total for each component?,True,3,False,,inventory,sum,,,,,
+FINALKGQA161,How many Tier1 inventory participants are there in total for each component?,True,3,False,,inventory,sum,,correct,Correct: sums Tier1 inventory participants by component.,correct,Correct: sums Tier1 inventory participants by component.
 FINALKGQA162,What are the names of all regions represented in the dataset?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA163,"How does the combined demand from Tier1, OEM, and Semiconductor surveys differ between regions?",True,15,False,,regional_demand,sum,,,,,
-FINALKGQA164,How much is the total percentage change for BL1 and BL2 in Automotive current demand based on Tier1 survey responses?,True,2,False,,current_demand_baselines,sum,,,,,
+FINALKGQA164,How much is the total percentage change for BL1 and BL2 in Automotive current demand based on Tier1 survey responses?,True,2,False,,current_demand_baselines,sum,,correct,Correct: returns total BL1 and BL2 percentage change for Tier1 Automotive current demand; response-type flag is a false positive.,correct,Correct: returns total BL1 and BL2 percentage change for Tier1 Automotive current demand; response-type flag is a false positive.
 FINALKGQA165,How is the future demand percentage for Semiconductor distributed across different regions and quarters?,True,35,False,,future_demand,sum,,,,correct,Returns Semiconductor future-demand percentage distribution by region and quarter; matches the question.
 FINALKGQA166,How does the count of actual vehicle sales observations compare to the count of forecasted ones?,True,2,False,,vehicle_sales,count,,,,correct,Returns actual versus forecast vehicle-sales observation counts; matches the question.
 FINALKGQA167,"How does the average autonomous driving percentage differ across vehicles, SAE levels, and years for each OEM?",True,45,False,,autonomous_driving,average,,,,,
@@ -177,7 +177,7 @@ FINALKGQA175,How many vehicle sales units were recorded per month in the actual 
 FINALKGQA176,"For Tier1 suppliers, what is the mean level of autonomous driving development when grouped by both vehicle type and SAE level?",True,45,False,,autonomous_driving,average,,,,,
 FINALKGQA177,What is the total count of OrderCancellation instances that pertain to the Semiconductor survey?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA178,How many OEMs have reported facing a shortage of semiconductors?,True,1,False,,shortage,count,,,,,
-FINALKGQA179,What are the recorded Tier1 inventory trend figures for each component?,True,18,False,,inventory,raw_or_lookup,,,,,
+FINALKGQA179,What are the recorded Tier1 inventory trend figures for each component?,True,18,False,,inventory,raw_or_lookup,,correct,Correct: returns recorded Tier1 inventory trend entries by component as raw observations.,correct,Correct: returns recorded Tier1 inventory trend entries by component as raw observations.
 FINALKGQA180,How many companies have a connection to the Tier1 survey?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA181,Identify the region with the greatest overall demand according to the OEM survey results?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA182,Could you provide the count of Tier1 Automotive current-demand entries linked to each of the baselines BL1 and BL2?,True,2,False,,current_demand_baselines,count,,,,,
@@ -193,7 +193,7 @@ FINALKGQA191,Which Tier1 Automotive baseline stands out for having the largest a
 FINALKGQA192,"How does the cumulative future demand for Option1, Option2, and Option3 in Automotive differ across quarters?",True,8,False,,future_demand,sum,,,,,
 FINALKGQA193,"Show the monthly sums of vehicle sales, distinguishing between actual and forecast figures?",True,48,False,,vehicle_sales,sum,,,,correct,Returns monthly actual and forecast vehicle-sales sums in separate columns; matches the requested distinction.
 FINALKGQA194,How many entries are recorded for AutonomousDrivingDevelopment?,True,1,False,,autonomous_driving,count,,,,,
-FINALKGQA195,What is the order cancellation response type with the greatest number of participants?,True,1,False,,order_cancellation,ranking_top,,,,,
+FINALKGQA195,What is the order cancellation response type with the greatest number of participants?,True,1,False,,order_cancellation,ranking_top,,correct,Correct: sums participants by order-cancellation response type and returns the greatest one.,correct,Correct: sums participants by order-cancellation response type and returns the greatest one.
 FINALKGQA196,How does the number of OEM companies facing shortages compare to those not facing shortages?,True,2,False,,shortage,count,,,,correct,Returns yes/no shortage counts for OEM companies; matches the requested comparison.
 FINALKGQA197,Show the aggregate Tier1 inventory responses broken down by both component and trend?,True,9,False,,inventory,sum,,,,,
 FINALKGQA198,What is the technology category showing the greatest current demand?,True,1,False,,catalog_lookup,ranking_top,,,,,
@@ -208,7 +208,7 @@ FINALKGQA206,Identify the semiconductor technology category and inventory trend 
 FINALKGQA207,How many companies are currently recorded?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA208,Identify the region where semiconductor demand reaches its peak?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA209,Calculate the overall BL1 to BL2 change in Tier1 current demand percentage?,True,1,False,,current_demand_baselines,sum,,,,,
-FINALKGQA210,Show the future-demand percentage values broken down by technology category and quarter?,True,120,False,,future_demand,raw_or_lookup,,,,,
+FINALKGQA210,Show the future-demand percentage values broken down by technology category and quarter?,True,120,False,,future_demand,raw_or_lookup,,correct,Correct: returns raw future-demand percentage values by technology category and quarter; repeated rows reflect underlying records.,correct,Correct: returns raw future-demand percentage values by technology category and quarter; repeated rows reflect underlying records.
 FINALKGQA211,How many vehicle units are projected to be sold per month according to the forecast data?,True,36,False,,vehicle_sales,sum,,,,,
 FINALKGQA212,"For each vehicle type, what has been the average percentage of autonomous driving capability across all years?",True,9,False,,autonomous_driving,average,,,,,
 FINALKGQA213,How many OrderCancellation entries correspond to OEM survey results?,True,1,False,,order_cancellation,count,,,,,
@@ -223,13 +223,13 @@ FINALKGQA221,"Among vehicles at Level 5 autonomy, which type holds the greatest 
 FINALKGQA222,"Across the various semiconductor technology categories, what is the cumulative count of order cancellations?",True,5,False,,order_cancellation,sum,,,,,
 FINALKGQA223,How many OEM companies have not reported facing a semiconductor shortage?,True,1,False,,shortage,count,,,,,
 FINALKGQA224,"What are the inventory totals when grouped by EV, non-EV, and mixed component types?",True,3,False,,inventory,sum,,,,,
-FINALKGQA225,"List the current-demand percentage changes for each OEM across BEV, BEHV, and ICE categories?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
+FINALKGQA225,"List the current-demand percentage changes for each OEM across BEV, BEHV, and ICE categories?",True,3,False,,catalog_lookup,raw_or_lookup,,probably_correct,"Probably correct: query interprets OEM as the OEM survey aggregate and returns BEV/BEHV/ICE percentage changes; if individual OEM companies are required, this should be revised.",probably_correct,"Probably correct: query interprets OEM as the OEM survey aggregate and returns BEV/BEHV/ICE percentage changes; if individual OEM companies are required, this should be revised."
 FINALKGQA226,How much Tier1 demand has been recorded in the Americas region?,True,1,False,,regional_demand,sum,,,,,
 FINALKGQA227,What is the total percentage change in current demand for BL1 and BL2 reported by Tier1 automotive companies?,True,1,False,,current_demand_baselines,sum,,,,,
 FINALKGQA228,How does the summed percentage change in future demand differ among technology categories for each quarter?,True,40,False,,future_demand,sum,,,,,
 FINALKGQA229,How many forecast vehicle sales units have been documented in aggregate?,True,1,False,,vehicle_sales,sum,,,,,
 FINALKGQA230,"For each combination of vehicle type and SAE level, what is the average autonomous driving development value?",True,15,False,,autonomous_driving,average,,,,,
-FINALKGQA231,"For each technology category and response type, how many semiconductor order cancellation responses have been registered?",True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA231,"For each technology category and response type, how many semiconductor order cancellation responses have been registered?",True,15,False,,order_cancellation,sum,,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.
 FINALKGQA232,Which companies have reported facing a semiconductor shortage according to survey data?,True,6,False,,shortage,raw_or_lookup,,,,,
 FINALKGQA233,"Could you provide the count of Tier1 company inventory entries categorized as increase, stable, or decrease?",True,3,False,,inventory,count,,,,,
 FINALKGQA234,How many companies have a connection to the Semiconductor survey?,True,1,False,,catalog_lookup,count,,,,,
@@ -247,10 +247,10 @@ FINALKGQA245,Calculate the sum of the current demand difference between BL1 and 
 FINALKGQA246,How many FutureDemandAnalysis items have connections to the Tier1 survey?,True,1,False,,future_demand,count,,correct,Manual semantic spot check: query returns a count of FutureDemandAnalysis items linked to Tier1 survey. A zero count is a valid result for this count question.,correct,Manual semantic spot check: query returns a count of FutureDemandAnalysis items linked to Tier1 survey. A zero count is a valid result for this count question.
 FINALKGQA247,Which vehicle type leads in total annual sales?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA248,"For each combination of vehicle type, SAE level, and year, what is the average value of autonomous-driving development linked to OEMs?",True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA249,Which semiconductor technology categories have the highest counts of order cancellation responses?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA249,Which semiconductor technology categories have the highest counts of order cancellation responses?,True,15,False,,order_cancellation,sum,,correct,Correct after repair: returns all semiconductor technology categories tied for the highest order-cancellation response count.,correct,Correct after repair: returns all semiconductor technology categories tied for the highest order-cancellation response count.
 FINALKGQA250,For which survey type do the largest number of companies report experiencing a shortage?,True,1,False,,shortage,ranking_top,,,,,
 FINALKGQA251,Which components have the most Tier1 inventory trend records?,True,9,False,,inventory,count,,,,,
-FINALKGQA252,Which Tier1 companies have how many active component share categories?,True,3,False,,catalog_lookup,count,,,,,
+FINALKGQA252,Which Tier1 companies have how many active component share categories?,True,3,False,,catalog_lookup,count,,probably_correct,"Probably correct: returns component-share category counts per Tier1-named company, but the query relies on the ComponentShare path rather than an explicit Tier1 survey filter.",probably_correct,"Probably correct: returns component-share category counts per Tier1-named company, but the query relies on the ComponentShare path rather than an explicit Tier1 survey filter."
 FINALKGQA253,Identify the regions where the overall current demand for semiconductors is greatest?,True,5,False,,regional_demand,sum,,,,,
 FINALKGQA254,What are the summed percentage-change figures for BL1 and BL2 in Tier1 Automotive current demand?,True,2,False,,current_demand_baselines,sum,,,,,
 FINALKGQA255,How many entries are recorded under FutureDemandAnalysis?,True,1,False,,future_demand,count,,,,correct,Counts all FutureDemandAnalysis entries; matches the question.
@@ -276,14 +276,14 @@ FINALKGQA274,What is the total count of vehicle sales observations that are mark
 FINALKGQA275,"Among Tier1 suppliers, what is the average level of autonomous driving development segmented by vehicle type and SAE level?",True,45,False,,autonomous_driving,average,,,,,
 FINALKGQA276,"For order cancellations, which response type sees participation from the largest group of participants?",True,1,False,,order_cancellation,ranking_top,,,,correct,Returns the order-cancellation response type with the largest summed participant count; matches the question.
 FINALKGQA277,"What is the number of companies identified with shortages according to the Tier1, OEM, and Semiconductor survey data?",True,6,False,,shortage,count,,,,,
-FINALKGQA278,Which component and trend pairs account for the highest overall Tier1 inventory responses?,True,9,False,,inventory,sum,,,,,
+FINALKGQA278,Which component and trend pairs account for the highest overall Tier1 inventory responses?,True,9,False,,inventory,sum,,correct,Correct after repair: returns component/trend pairs tied for the highest Tier1 inventory response count.,correct,Correct after repair: returns component/trend pairs tied for the highest Tier1 inventory response count.
 FINALKGQA279,What are the quarter labels available in the dataset?,True,8,False,,catalog_lookup,raw_or_lookup,,,,correct,Lists available quarter labels; matches the question.
 FINALKGQA280,How much demand is recorded in each region according to the Tier1 survey?,True,5,False,,regional_demand,sum,,,,,
 FINALKGQA281,"For Tier1 Automotive baselines, which shows the highest average percentage change in current demand?",True,1,False,,current_demand_baselines,ranking_top,,,,correct,Returns the Tier1 Automotive baseline with highest average percentage change; matches the question.
 FINALKGQA282,Provide the summed future demand for semiconductors segmented by technology category and quarter?,True,40,False,,future_demand,sum,,,,,
 FINALKGQA283,Provide the sum of vehicle sales units for each month based on actual observations?,True,12,False,,vehicle_sales,sum,,,,correct,Returns monthly sums of actual vehicle-sales units; matches the question.
 FINALKGQA284,What is the count of SAE levels that appear in the data?,True,1,False,,autonomous_driving,count,,,,,
-FINALKGQA285,What technology category and response type are recorded for each order-cancellation participant observation?,True,15,False,,order_cancellation,raw_or_lookup,,,,,
+FINALKGQA285,What technology category and response type are recorded for each order-cancellation participant observation?,True,15,False,,order_cancellation,raw_or_lookup,,correct,Correct: returns technology category and response type for each order-cancellation participant observation.,correct,Correct: returns technology category and response type for each order-cancellation participant observation.
 FINALKGQA286,How does the number of semiconductor companies facing shortages compare to those not affected?,True,2,False,,shortage,count,,,,,
 FINALKGQA287,"Among all semiconductor technology categories and inventory trends, which pairing is seen the most?",True,1,False,,inventory,ranking_top,,,,correct,Returns the most frequent semiconductor technology-category and inventory-trend pairing with ORDER BY count DESC LIMIT 1; matches the top-pairing question.
 FINALKGQA288,How many companies have a connection to the OEM survey?,True,1,False,,catalog_lookup,count,,,,,
@@ -303,7 +303,7 @@ FINALKGQA301,How do the monthly totals of actual vehicle sales stack up against 
 FINALKGQA302,Which combination of vehicle type and SAE level records the maximum percentage for autonomous driving?,True,1,False,,autonomous_driving,ranking_top,,,,,
 FINALKGQA303,"For each semiconductor technology category, how many order cancellations have occurred in total?",True,5,False,,order_cancellation,sum,,,,,
 FINALKGQA304,Count the Tier1 companies that have not mentioned a semiconductor shortage?,True,1,False,,shortage,count,,,,,
-FINALKGQA305,"How much inventory is held for each of the EV, non-EV, and mixed component groups?",True,3,False,,inventory,sum,,,,needs_recheck,"Reworded question to inventory trend-record counts, matching the available KG evidence; rerun/check before final correct."
+FINALKGQA305,"How many Tier1 inventory trend records are recorded for each of the EV, non-EV, and mixed component groups?",True,3,False,,inventory,sum,,correct,"Correct: returns Tier1 inventory trend counts for EV, non-EV, and mixed component groups.",correct,"Correct: returns Tier1 inventory trend counts for EV, non-EV, and mixed component groups."
 FINALKGQA306,Could you provide the complete list of region names present in the data?,True,5,False,,catalog_lookup,raw_or_lookup,,,,correct,Lists region names in the data; matches the question.
 FINALKGQA307,How do the total and average demand levels reported in the OEM survey compare?,True,1,False,,regional_demand,average,,,,correct,Returns total and average OEM demand; matches the question.
 FINALKGQA308,What is the average current-demand change at BL1 and BL2 for Automotive Tier1 respondents?,True,2,False,,current_demand_baselines,average,,,,,
@@ -339,11 +339,11 @@ FINALKGQA337,What is the overall sum of forecast vehicle sales units captured in
 FINALKGQA338,What is the yearly average percentage recorded for autonomous driving development?,True,3,False,,autonomous_driving,average,,,,,
 FINALKGQA339,How many OrderCancellation cases are related to the Semiconductor survey?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA340,How many OEM companies indicated a shortage versus those that reported no shortage?,True,2,False,,shortage,count,,,,,
-FINALKGQA341,Display the Tier1 inventory trend entries organized by component?,True,18,False,,inventory,raw_or_lookup,,,,,
+FINALKGQA341,Display the Tier1 inventory trend entries organized by component?,True,18,False,,inventory,raw_or_lookup,,correct,Correct: returns Tier1 inventory trend entries organized by component.,correct,Correct: returns Tier1 inventory trend entries organized by component.
 FINALKGQA342,Which technology category currently leads in demand?,True,1,False,,catalog_lookup,ranking_top,,,,,
 FINALKGQA343,What is the number of DemandForRegion records associated with OEM surveys?,True,1,False,,regional_demand,count,,,,,
 FINALKGQA344,Provide the aggregate percentage-change values for BL1 and BL2 within Tier1 Automotive current demand?,True,2,False,,current_demand_baselines,sum,,,,correct,Returns summed BL1 and BL2 percentage-change values for Tier1 Automotive current demand; matches the requested aggregate baseline values.
-FINALKGQA345,Which future-demand percentage figures are available for each technology category across all quarters?,True,120,False,,future_demand,raw_or_lookup,,,,,
+FINALKGQA345,Which future-demand percentage figures are available for each technology category across all quarters?,True,120,False,,future_demand,raw_or_lookup,,correct,Correct: returns available future-demand percentage records by technology category and quarter.,correct,Correct: returns available future-demand percentage records by technology category and quarter.
 FINALKGQA346,What is the month with the largest forecast vehicle sales total?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA347,"Which average autonomous-driving development values are observed for OEMs when grouped by vehicle type, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
 FINALKGQA348,What is the total count of OrderCancellation entries in the database?,True,1,False,,order_cancellation,count,,,,,
@@ -355,7 +355,7 @@ FINALKGQA353,What are the baseline types recorded in this dataset?,True,5,False,
 FINALKGQA354,"Across all technology buckets and quarters, what is the average future-demand change?",True,40,False,,future_demand,average,,,,,
 FINALKGQA355,Name the vehicle type that achieves the maximum total sales within a year?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA356,"Across vehicle types, SAE levels, and years, what is the average value of autonomous-driving development among Tier1 suppliers?",True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA357,Which response type in order cancellations is associated with the maximum participant count?,True,1,False,,order_cancellation,ranking_top,,,,,
+FINALKGQA357,Which response type in order cancellations is associated with the maximum participant count?,True,1,False,,order_cancellation,ranking_top,,correct,Correct: sums order-cancellation participants by response type and returns the maximum response type.,correct,Correct: sums order-cancellation participants by response type and returns the maximum response type.
 FINALKGQA358,Count the semiconductor companies that have reported experiencing a shortage of semiconductors?,True,1,False,,shortage,count,,,,,
 FINALKGQA359,How much Tier1 inventory response is recorded for every component and trend pairing?,True,9,False,,inventory,sum,,,,,
 FINALKGQA360,Could you tell me the count of TechnologyCategory entities available?,True,1,False,,catalog_lookup,count,,,,,
@@ -364,10 +364,10 @@ FINALKGQA362,"Please list the number of Tier1 Automotive current-demand entries 
 FINALKGQA363,"For each technology category and quarter, what is the combined percentage change in anticipated demand?",True,40,False,,future_demand,sum,,,,correct,Returns combined future-demand percentage change by technology category and quarter; matches the question.
 FINALKGQA364,"Show the monthly sum of vehicle units sold, considering only actual sales data?",True,12,False,,vehicle_sales,sum,,,,,
 FINALKGQA365,"Across vehicles, SAE levels, and years, what is the average autonomous driving percentage reported for each OEM?",True,45,False,,autonomous_driving,average,,,,correct,"Returns OEM autonomous-driving averages grouped by vehicle type, SAE level, and year; matches the requested grouping."
-FINALKGQA366,Provide the technology category and response type for all order-cancellation participant observations?,True,15,False,,order_cancellation,raw_or_lookup,,,,correct,"Rechecked after repair: returns order-cancellation technology category, response type, and participant observations with cleaned technology labels; semantically matches the question."
+FINALKGQA366,Provide the technology category and response type for all order-cancellation participant observations?,True,15,False,,order_cancellation,raw_or_lookup,,correct,"Correct: query returns all order-cancellation observations with technology category, response type, and participant count.",correct,"Correct: query returns all order-cancellation observations with technology category, response type, and participant count."
 FINALKGQA367,Count the OEM companies that have not mentioned a semiconductor shortage?,True,1,False,,shortage,count,,,,,
 FINALKGQA368,Which pairing of semiconductor technology category and inventory trend is recorded most frequently?,True,1,False,,inventory,ranking_top,,,,,
-FINALKGQA369,"What are the current-demand percentage changes by OEM for BEV, BEHV, and ICE segments?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
+FINALKGQA369,"What are the current-demand percentage changes by OEM for BEV, BEHV, and ICE segments?",True,3,False,,catalog_lookup,raw_or_lookup,,probably_correct,Probably correct: query interprets OEM as the OEM survey aggregate and returns current-demand percentage changes for BEV/BEHV/ICE; not per individual OEM company.,probably_correct,Probably correct: query interprets OEM as the OEM survey aggregate and returns current-demand percentage changes for BEV/BEHV/ICE; not per individual OEM company.
 FINALKGQA370,What is the average OEM demand level reported for the Americas region?,True,1,False,,regional_demand,average,,,,,
 FINALKGQA371,Which Tier1 Automotive baseline records the maximum average percentage change in current demand?,True,1,False,,current_demand_baselines,ranking_top,,,,,
 FINALKGQA372,Which vehicle type experiences the highest average shift in expected future demand?,True,1,False,,future_demand,ranking_top,,,,,
@@ -385,17 +385,17 @@ FINALKGQA383,How many unique SAE levels are listed?,True,1,False,,autonomous_dri
 FINALKGQA384,In which semiconductor technology categories has the sum of order cancellations been the greatest?,True,5,False,,order_cancellation,sum,,,,,
 FINALKGQA385,Count the semiconductor companies that have not disclosed any semiconductor shortage?,True,1,False,,shortage,count,,,,correct,Counts semiconductor companies not disclosing shortage; matches the question.
 FINALKGQA386,"Please break down the aggregate inventory by EV, non-EV, and mixed component classifications?",True,3,False,,inventory,sum,,,,,
-FINALKGQA387,What are the conversion factors for each technology category and vehicle type?,True,15,False,,catalog_lookup,raw_or_lookup,,,,,
+FINALKGQA387,What are the conversion factors for each technology category and vehicle type?,True,15,False,,catalog_lookup,raw_or_lookup,,correct,Correct: returns conversion factors by technology category and vehicle type; raw lookup does not require GROUP BY.,correct,Correct: returns conversion factors by technology category and vehicle type; raw lookup does not require GROUP BY.
 FINALKGQA388,What is the combined OEM demand reported for the Americas region?,True,1,False,,regional_demand,sum,,,,,
 FINALKGQA389,How large is the aggregate percentage change in Tier1 current demand when comparing BL1 to BL2?,True,1,False,,current_demand_baselines,sum,,,,,
 FINALKGQA390,Could you tell me the count of FutureDemandAnalysis entries present in the system?,True,1,False,,future_demand,count,,,,,
 FINALKGQA391,List the monthly totals of vehicle sales units from the actual data?,True,12,False,,vehicle_sales,sum,,correct,"Manual semantic spot check: query returns monthly actual vehicle-sales totals, matching the requested actual-sales monthly breakdown.",correct,"Manual semantic spot check: query returns monthly actual vehicle-sales totals, matching the requested actual-sales monthly breakdown."
 FINALKGQA392,How many AutonomousDrivingDevelopment items are present?,True,1,False,,autonomous_driving,count,,,,,
-FINALKGQA393,Which technology categories and response types have the highest counts of semiconductor order cancellation responses?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA393,Which technology categories and response types have the highest counts of semiconductor order cancellation responses?,True,15,False,,order_cancellation,sum,,correct,Correct after repair: returns technology-category/response-type combinations tied for the highest order-cancellation response count.,correct,Correct after repair: returns technology-category/response-type combinations tied for the highest order-cancellation response count.
 FINALKGQA394,Which survey type sees the greatest number of companies reporting a shortage?,True,1,False,,shortage,ranking_top,,,,,
 FINALKGQA395,"What count of inventory entries are labeled as increase, stable, or decrease within Tier1 companies?",True,3,False,,inventory,count,,,,,
 FINALKGQA396,List the count of active component share categories associated with every Tier1 company?,True,3,False,,catalog_lookup,count,,,,correct,Counts active component-share categories per Tier1 company; matches the question.
-FINALKGQA397,What is the average quarterly trend in demand percentage observed in the Semiconductor survey?,True,7,False,,regional_demand,average,,,,,
+FINALKGQA397,What is the average quarterly trend in demand percentage observed in the Semiconductor survey?,True,7,False,,regional_demand,average,,correct,Correct: computes average Semiconductor demand percentage change by quarter; trend flag is a false positive from wording.,correct,Correct: computes average Semiconductor demand percentage change by quarter; trend flag is a false positive from wording.
 FINALKGQA398,"Across BL1 and BL2, what is the average current-demand change reported by Tier1 participants in the Automotive category?",True,2,False,,current_demand_baselines,average,,,,,
 FINALKGQA399,"For Tier1, what are the aggregated future demand values broken down by region and quarter?",True,35,False,,future_demand,sum,,,,,
 FINALKGQA400,How many VehicleSalesObservation data points are present?,True,1,False,,vehicle_sales,count,,,,,
@@ -420,7 +420,7 @@ FINALKGQA418,For which month were the most actual vehicle sales recorded?,True,1
 FINALKGQA419,"For Level 5 autonomous driving, which vehicle type leads in percentage?",True,1,False,,autonomous_driving,ranking_top,,,,,
 FINALKGQA420,What is the count of OrderCancellation events that have a relationship with the Semiconductor survey?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA421,"For each of the Tier1, OEM, and Semiconductor surveys, what is the count of companies marked as having shortages?",True,6,False,,shortage,count,,,,,
-FINALKGQA422,"For each component, what are the Tier1 inventory trend observations recorded in the system?",True,18,False,,inventory,raw_or_lookup,,,,,
+FINALKGQA422,"For each component, what are the Tier1 inventory trend observations recorded in the system?",True,18,False,,inventory,raw_or_lookup,,correct,Correct: returns Tier1 inventory trend observations by component.,correct,Correct: returns Tier1 inventory trend observations by component.
 FINALKGQA423,Show me the set of quarter labels included in this dataset?,True,8,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA424,List the regions with the greatest total current demand from Tier1?,True,5,False,,regional_demand,sum,,,,,
 FINALKGQA425,How much greater or less is the current demand for Tier1 in BL1 compared to BL2 when summed?,True,1,False,,current_demand_baselines,sum,,,,,
@@ -431,7 +431,7 @@ FINALKGQA429,Could you provide the number of OrderCancellation entries currently
 FINALKGQA430,How is the number of semiconductor companies distributed between those experiencing shortages and those not experiencing shortages?,True,2,False,,shortage,count,,,,,
 FINALKGQA431,Which component stands out with the highest participant total in Tier1 inventory?,True,1,False,,inventory,ranking_top,,,,,
 FINALKGQA432,How many companies are referenced in relation to the OEM survey?,True,1,False,,catalog_lookup,count,,,,,
-FINALKGQA433,Which regions and quarters experienced the greatest overall percentage change in Tier1 demand?,True,35,False,,regional_demand,sum,,,,needs_recheck,Repaired query to rank by total percentage change and return the greatest region-quarter result; rerun before final correct.
+FINALKGQA433,Which regions and quarters experienced the greatest overall percentage change in Tier1 demand?,True,35,False,,regional_demand,sum,,correct,Correct: returns the top region/quarter combination by Tier1 percentage-change total.,correct,Correct: returns the top region/quarter combination by Tier1 percentage-change total.
 FINALKGQA434,Calculate the total percentage change for BL1 and BL2 in current demand among Tier1 Automotive respondents?,True,2,False,,current_demand_baselines,sum,,,,,
 FINALKGQA435,Provide the summed future demand percentage for Semiconductor by each region and quarter?,True,35,False,,future_demand,sum,,,,,
 FINALKGQA436,"How much did each vehicle type sell annually, grouped by year and type?",True,6,False,,vehicle_sales,sum,,,,,
@@ -445,11 +445,11 @@ FINALKGQA443,Identify the baseline types that exist within the dataset?,True,5,F
 FINALKGQA444,Which technology category leads in terms of average percentage change in forecasted demand?,True,1,False,,future_demand,ranking_top,,,,,
 FINALKGQA445,Please provide the total forecasted vehicle sales units as documented in the dataset?,True,1,False,,vehicle_sales,sum,,,,,
 FINALKGQA446,"Could you provide the average autonomous-driving development figures for OEMs, segmented by vehicle type, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA447,Identify the technology category and response type for each observation involving an order-cancellation participant?,True,15,False,,order_cancellation,raw_or_lookup,,,,,
-FINALKGQA448,"Which Tier1 companies have not provided reports indicating a semiconductor shortage, and how many are there?",True,1,False,,shortage,count,,,,correct,Rechecked after repair: returns Tier1 company name(s) with the total count for companies not reporting shortage; matches the question.
+FINALKGQA447,Identify the technology category and response type for each observation involving an order-cancellation participant?,True,15,False,,order_cancellation,raw_or_lookup,,correct,Correct: returns technology category and response type for each order-cancellation participant observation.,correct,Correct: returns technology category and response type for each order-cancellation participant observation.
+FINALKGQA448,"Which Tier1 companies have not provided reports indicating a semiconductor shortage, and how many are there?",True,1,False,,shortage,count,,correct,Correct: query lists Tier1 companies with reportsShortage=false and includes the total count.,correct,Correct: query lists Tier1 companies with reportsShortage=false and includes the total count.
 FINALKGQA449,Which semiconductor technology category together with an inventory trend is found in the largest number of instances?,True,1,False,,inventory,ranking_top,,,,,
 FINALKGQA450,Show me every region name that appears in our records?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
-FINALKGQA451,How many entries are recorded for DemandForRegion overall?,True,1,False,,regional_demand,count,,,,,
+FINALKGQA451,How many entries are recorded for DemandForRegion overall?,True,1,False,,regional_demand,count,,correct,Correct: counts all DemandForRegion records.,correct,Correct: counts all DemandForRegion records.
 FINALKGQA452,"For each of the baselines BL1 and BL2, how many Tier1 Automotive current-demand entries have been captured?",True,2,False,,current_demand_baselines,count,,,,,
 FINALKGQA453,Which vehicle types experience the highest and lowest average percentage changes in future demand for each quarter?,True,24,False,,future_demand,average,,,,,
 FINALKGQA454,Which month records the highest projected vehicle sales figures?,True,1,False,,vehicle_sales,ranking_top,,,,,
@@ -478,7 +478,7 @@ FINALKGQA476,"How many inventory records in Tier1 companies are designated as in
 FINALKGQA477,"Show the survey types available for Tier1, OEM, and Semiconductor groups?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA478,Could you provide the combined and mean demand levels reported in the Tier1 survey?,True,1,False,,regional_demand,average,,,,correct,Returns total and average demand for Tier1 survey; matches the question.
 FINALKGQA479,What is the combined BL1 versus BL2 percentage change for Tier1 current demand?,True,1,False,,current_demand_baselines,sum,,,,,
-FINALKGQA480,Provide the future-demand percentage data organized by technology category and quarter?,True,120,False,,future_demand,raw_or_lookup,,,,,
+FINALKGQA480,Provide the future-demand percentage data organized by technology category and quarter?,True,120,False,,future_demand,raw_or_lookup,,correct,Correct: returns future-demand percentage data by technology category and quarter.,correct,Correct: returns future-demand percentage data by technology category and quarter.
 FINALKGQA481,Could you tell me the overall total of actual vehicle-sales units captured in the records?,True,1,False,,vehicle_sales,sum,,,,,
 FINALKGQA482,How many SAE levels can be found in the dataset?,True,1,False,,autonomous_driving,count,,,,,
 FINALKGQA483,How many OrderCancellation entries are connected with the Tier1 survey?,True,1,False,,order_cancellation,count,,,,,
@@ -490,28 +490,28 @@ FINALKGQA488,"On average, how does current-demand shift at BL1 and BL2 for Tier1
 FINALKGQA489,What is the average future-demand change observed per technology bucket and quarter?,True,40,False,,future_demand,average,,,,,
 FINALKGQA490,What are the counts of vehicle sales observations reported as actual and as forecast?,True,2,False,,vehicle_sales,count,,,,,
 FINALKGQA491,What is the number of AutonomousDrivingDevelopment entries currently listed?,True,1,False,,autonomous_driving,count,,,,,
-FINALKGQA492,"For each semiconductor technology category, how many order cancellation responses have been registered?",True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA492,"For each semiconductor technology category, how many order cancellation responses have been registered?",True,15,False,,order_cancellation,sum,,correct,Correct after repair: returns one aggregate order-cancellation response count per semiconductor technology category.,correct,Correct after repair: returns one aggregate order-cancellation response count per semiconductor technology category.
 FINALKGQA493,Provide the count of Tier1 companies that have reported a shortage and those that have not?,True,2,False,,shortage,count,,,,,
 FINALKGQA494,List the number of Tier1 inventory trend records for every component?,True,9,False,,inventory,count,,,,,
 FINALKGQA495,What is the number of companies included in the database?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA496,"Among all regions, which one reports the least total demand based on Tier1 survey data?",True,1,False,,regional_demand,ranking_top,,correct,"Manual semantic spot check: query returns the Tier1 region with the least total demand, matching the requested minimum-region question.",correct,"Manual semantic spot check: query returns the Tier1 region with the least total demand, matching the requested minimum-region question."
-FINALKGQA497,"Across Tier1 automotive survey responses, what is the overall percentage change in current demand when combining BL1 and BL2?",True,1,False,,current_demand_baselines,sum,,,,,
+FINALKGQA497,"Across Tier1 automotive survey responses, what is the overall percentage change in current demand when combining BL1 and BL2?",True,1,False,,current_demand_baselines,sum,,correct,Correct: returns combined BL1 and BL2 current-demand percentage change for Tier1 Automotive responses; response-type flag is false positive.,correct,Correct: returns combined BL1 and BL2 current-demand percentage change for Tier1 Automotive responses; response-type flag is false positive.
 FINALKGQA498,Which technology categories show the greatest overall percentage change in future demand per quarter?,True,40,False,,future_demand,sum,,,,,
 FINALKGQA499,"For each month, what is the combined number of vehicle sales units according to the actual data?",True,12,False,,vehicle_sales,sum,,,,,
 FINALKGQA500,Which vehicle type together with SAE level stands out for having the top autonomous driving percentage?,True,1,False,,autonomous_driving,ranking_top,,,,,
 FINALKGQA501,How many OrderCancellation records have a link to the Semiconductor survey?,True,1,False,,order_cancellation,count,,,,,
-FINALKGQA502,"Which semiconductor companies have reported facing a shortage, and what is their total count?",True,1,False,,shortage,count,,incorrect,"Question asks which semiconductor companies reported shortage and their total count, but the query returns only the count and omits company identifiers/names.",correct,Rechecked after repair: returns semiconductor company name(s) with the total count for companies reporting shortage; matches the question.
+FINALKGQA502,"Which semiconductor companies have reported facing a shortage, and what is their total count?",True,1,False,,shortage,count,,correct,Correct: query lists Semiconductor companies with reportsShortage=true and includes the total count.,correct,Correct: query lists Semiconductor companies with reportsShortage=true and includes the total count.
 FINALKGQA503,Give me the Tier1 inventory trend details for every component?,True,18,False,,inventory,raw_or_lookup,,,,,
 FINALKGQA504,What is the number of TechnologyCategory items currently listed?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA505,What is the combined Semiconductor demand value attributed to the Americas region?,True,1,False,,regional_demand,sum,,,,correct,Returns combined Semiconductor demand for Americas; matches the question.
 FINALKGQA506,How do the percentage changes for baselines BL1 and BL2 compare in the Tier1 automotive segment?,True,2,False,,current_demand_baselines,raw_or_lookup,,,,,
 FINALKGQA507,For which vehicle type is the average change in forecasted demand the greatest?,True,1,False,,future_demand,ranking_top,,,,,
 FINALKGQA508,What is the overall count of VehicleSalesObservation records stored?,True,1,False,,vehicle_sales,count,,,,,
-FINALKGQA509,"Provide the average autonomous-driving percentage for every vehicle type, aggregated over all years?",True,9,False,,autonomous_driving,average,,,,,
+FINALKGQA509,"Provide the average autonomous-driving percentage for every vehicle type, aggregated over all years?",True,9,False,,autonomous_driving,average,,correct,Correct after repair: averages autonomous-driving percentage by vehicle type across all years combined.,correct,Correct after repair: averages autonomous-driving percentage by vehicle type across all years combined.
 FINALKGQA510,How many OrderCancellation records can be found in the dataset?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA511,How many OEM companies have not disclosed any semiconductor shortage?,True,1,False,,shortage,count,,,,,
-FINALKGQA512,Which component is associated with the largest number of participants in Tier1 inventory?,True,1,False,,inventory,ranking_top,,,,,
-FINALKGQA513,"For BEV, BEHV, and ICE, what is the current-demand percentage change reported by each OEM?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
+FINALKGQA512,Which component is associated with the largest number of participants in Tier1 inventory?,True,1,False,,inventory,ranking_top,,correct,Correct: sums Tier1 inventory participants by component and returns the largest component.,correct,Correct: sums Tier1 inventory participants by component and returns the largest component.
+FINALKGQA513,"For BEV, BEHV, and ICE, what is the current-demand percentage change reported by each OEM?",True,3,False,,catalog_lookup,raw_or_lookup,,probably_correct,Probably correct: query returns OEM-survey BEV/BEHV/ICE current-demand percentage changes; wording could be read as individual OEMs.,probably_correct,Probably correct: query returns OEM-survey BEV/BEHV/ICE current-demand percentage changes; wording could be read as individual OEMs.
 FINALKGQA514,List the regions with the greatest total current demand reported by OEMs?,True,5,False,,regional_demand,sum,,,,,
 FINALKGQA515,What is the overall current demand gap between BL1 and BL2 for Tier1?,True,1,False,,current_demand_baselines,sum,,,,,
 FINALKGQA516,How many FutureDemandAnalysis entries correspond to the Tier1 survey?,True,1,False,,future_demand,count,,,,,
@@ -546,20 +546,20 @@ FINALKGQA544,"For each vehicle type and year, what is the combined sales volume?
 FINALKGQA545,"What is the average autonomous-driving development value among OEMs when categorized by vehicle type, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
 FINALKGQA546,What is the total volume of order cancellations recorded for each semiconductor technology category?,True,5,False,,order_cancellation,sum,,,,,
 FINALKGQA547,"Among Tier1 companies, what is the count of those that have reported a shortage and those that have not?",True,2,False,,shortage,count,,,,,
-FINALKGQA548,"What is the sum of inventory for each category: EV, non-EV, and mixed components?",True,3,False,,inventory,sum,,,,,
+FINALKGQA548,"What is the sum of inventory for each category: EV, non-EV, and mixed components?",True,3,False,,inventory,sum,,correct,"Correct: returns inventory trend counts and total per EV, non-EV, and mixed component category.",correct,"Correct: returns inventory trend counts and total per EV, non-EV, and mixed component category."
 FINALKGQA549,Show me every technology category name in the catalog?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA550,Which region reports the largest total demand based on the OEM survey data?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA551,"Within Tier1 Automotive baselines, which has experienced the highest average percentage change in current demand?",True,1,False,,current_demand_baselines,ranking_top,,,,,
-FINALKGQA552,"What are the combined future demand figures for semiconductors, organized by technology category and quarter?",True,40,False,,future_demand,sum,,,,,
+FINALKGQA552,"What are the combined future demand figures for semiconductors, organized by technology category and quarter?",True,40,False,,future_demand,sum,,correct,Correct: returns combined Semiconductor future-demand figures by technology category and quarter across options.,correct,Correct: returns combined Semiconductor future-demand figures by technology category and quarter across options.
 FINALKGQA553,What is the aggregate number of forecast vehicle sales units reflected in the records?,True,1,False,,vehicle_sales,sum,,correct,"Manual semantic spot check: query returns one aggregate SUM of forecast vehicle sales units, matching the requested aggregate forecast sales total.",correct,"Manual semantic spot check: query returns one aggregate SUM of forecast vehicle sales units, matching the requested aggregate forecast sales total."
 FINALKGQA554,"What are the average autonomous-driving development metrics for Tier1 suppliers, organized according to vehicle type, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA555,How is the total count of semiconductor order cancellation responses distributed across different technology categories and response types?,True,15,False,,order_cancellation,sum,,,,correct,Rechecked after repair: returns total order-cancellation response counts by cleaned technology category and response type; matches the question.
+FINALKGQA555,How is the total count of semiconductor order cancellation responses distributed across different technology categories and response types?,True,15,False,,order_cancellation,sum,,correct,Correct: query sums order-cancellation participant counts by technology category and response type.,correct,Correct: query sums order-cancellation participant counts by technology category and response type.
 FINALKGQA556,What is the total count of Tier1 companies that mention a semiconductor shortage in their reports?,True,1,False,,shortage,count,,,,,
 FINALKGQA557,"How many inventory entries in Tier1 companies have a status of increase, stable, or decrease?",True,3,False,,inventory,count,,,,,
 FINALKGQA558,What is the count of all Quarter entities in the system?,True,1,False,,catalog_lookup,count,,,,,
-FINALKGQA559,What is the average quarterly trend in demand percentage reported by the Tier1 survey?,True,7,False,,regional_demand,average,,,,,
+FINALKGQA559,What is the average quarterly trend in demand percentage reported by the Tier1 survey?,True,7,False,,regional_demand,average,,correct,Correct: computes average Tier1 demand percentage change by quarter; trend flag is a false positive from wording.,correct,Correct: computes average Tier1 demand percentage change by quarter; trend flag is a false positive from wording.
 FINALKGQA560,How large is the overall percentage change in current demand for BL1 and BL2 when considering Tier1?,True,2,False,,current_demand_baselines,sum,,,,,
-FINALKGQA561,Provide the overall future demand percentage per region and quarter as indicated by OEM survey responses?,True,35,False,,future_demand,sum,,,,,
+FINALKGQA561,Provide the overall future demand percentage per region and quarter as indicated by OEM survey responses?,True,35,False,,future_demand,sum,,correct,Correct: returns OEM future-demand percentage share by region and quarter.,correct,Correct: returns OEM future-demand percentage share by region and quarter.
 FINALKGQA562,For which month are forecast vehicle sales projected to be the highest?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA563,"What is the average autonomous driving percentage per OEM, segmented by vehicle, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
 FINALKGQA564,What is the count of OrderCancellation events that are linked with the Tier1 survey?,True,1,False,,order_cancellation,count,,,,,
@@ -571,9 +571,9 @@ FINALKGQA569,What is the total Tier1 current demand percentage change difference
 FINALKGQA570,"List the future demand percentage totals for Semiconductor, organized by region and quarter?",True,35,False,,future_demand,sum,,,,,
 FINALKGQA571,Which vehicle type posts the highest total sales in a given year?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA572,"Across Tier1 suppliers, how does autonomous driving development average out when analyzed by both vehicle type and SAE level?",True,45,False,,autonomous_driving,average,,needs_recheck,"Pasted Fuseki output showed no data, but the repaired gold validation reported this query as non-empty. Re-run using evaluation/question_sets/true_demand_final_1000_gold_repaired.json with prefixes to confirm.",correct,Rechecked using the repaired gold query; corrected Tier1 autonomous-driving hasDetail path returns data and matches the requested vehicle type and SAE-level grouping.
-FINALKGQA573,What is the aggregate count of order cancellation responses per semiconductor technology category?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA573,What is the aggregate count of order cancellation responses per semiconductor technology category?,True,15,False,,order_cancellation,sum,,correct,Correct after repair: returns aggregate order-cancellation response count per semiconductor technology category.,correct,Correct after repair: returns aggregate order-cancellation response count per semiconductor technology category.
 FINALKGQA574,"For semiconductor companies, how many reported a shortage versus those that did not?",True,2,False,,shortage,count,,,,,
-FINALKGQA575,"Per component, what is the total count of Tier1 inventory trend records?",True,9,False,,inventory,count,,,,correct,Rechecked after repair: returns one total Tier1 inventory trend-record count per component; matches the question.
+FINALKGQA575,"Per component, what is the total count of Tier1 inventory trend records?",True,9,False,,inventory,count,,correct,Correct: query counts Tier1 inventory trend records per component.,correct,Correct: query counts Tier1 inventory trend records per component.
 FINALKGQA576,How many companies are listed as being linked with the OEM survey?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA577,Which region leads in semiconductor demand volume?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA578,What is the mean current-demand change at BL1 and BL2 levels for Automotive Tier1 survey participants?,True,2,False,,current_demand_baselines,average,,,,correct,Returns mean current-demand change for BL1 and BL2 in Tier1 Automotive; matches the question.
@@ -582,8 +582,8 @@ FINALKGQA580,"List the aggregate number of vehicle units sold by month, using on
 FINALKGQA581,What is the number of SAE levels represented in the available information?,True,1,False,,autonomous_driving,count,,,,correct,Counts distinct SAE levels represented; matches the question.
 FINALKGQA582,How many OrderCancellation transactions are tied to the Semiconductor survey?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA583,"Which survey types have companies reporting shortages, and what is the count for each type?",True,6,False,,shortage,count,,,,,
-FINALKGQA584,How does the Tier1 inventory trend data appear for each component?,True,18,False,,inventory,raw_or_lookup,,,,,
-FINALKGQA585,Which technology categories can be identified along with their current demand values and the respective percent changes?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
+FINALKGQA584,How does the Tier1 inventory trend data appear for each component?,True,18,False,,inventory,raw_or_lookup,,correct,Correct: returns Tier1 inventory trend data by component.,correct,Correct: returns Tier1 inventory trend data by component.
+FINALKGQA585,Which technology categories can be identified along with their current demand values and the respective percent changes?,True,5,False,,catalog_lookup,raw_or_lookup,,correct,Correct: returns technology categories with current demand and B1/B2 percent-change values.,correct,Correct: returns technology categories with current demand and B1/B2 percent-change values.
 FINALKGQA586,Could you provide both the total and the average demand levels reported in the Semiconductor survey?,True,1,False,,regional_demand,average,,,,,
 FINALKGQA587,"When considering Tier1 automotive survey feedback, what is the summed percentage change in current demand for BL1 and BL2?",True,1,False,,current_demand_baselines,sum,,,,correct,Returns summed BL1 and BL2 current-demand percentage changes for Tier1 automotive; matches the question.
 FINALKGQA588,"Across different quarters, how does the average percentage change in future demand differ among vehicle types?",True,24,False,,future_demand,average,,,,,
@@ -591,29 +591,29 @@ FINALKGQA589,What is the aggregate number of actual vehicle-sales units reported
 FINALKGQA590,How many AutonomousDrivingDevelopment records are there?,True,1,False,,autonomous_driving,count,,,,,
 FINALKGQA591,What is the aggregate number of OrderCancellation entries?,True,1,False,,order_cancellation,count,,,,correct,Counts OrderCancellation entries; matches the aggregate-count question.
 FINALKGQA592,How many Tier1 companies are there that have not reported any semiconductor shortages?,True,1,False,,shortage,count,,,,,
-FINALKGQA593,What component has the greatest overall Tier1 inventory participant count?,True,1,False,,inventory,ranking_top,,,,,
+FINALKGQA593,What component has the greatest overall Tier1 inventory participant count?,True,1,False,,inventory,ranking_top,,correct,Correct: sums Tier1 inventory participants by component and returns the greatest component.,correct,Correct: sums Tier1 inventory participants by component and returns the greatest component.
 FINALKGQA594,Identify all regions that are recorded in the system?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA595,What is the aggregate Tier1 demand reported for the Americas region?,True,1,False,,regional_demand,sum,,,,,
 FINALKGQA596,Identify the percentage changes recorded for BL1 and BL2 baselines under Tier1 automotive?,True,2,False,,current_demand_baselines,raw_or_lookup,,,,,
 FINALKGQA597,"What are the quarterly totals of future demand for Option1, Option2, and Option3 in Automotive?",True,8,False,,future_demand,sum,,,,correct,"Returns quarterly future-demand totals for Option1, Option2, and Option3 in Automotive; shape matches the requested pivoted totals."
 FINALKGQA598,Could you provide the number of vehicle sales observations identified as actual and those identified as forecast?,True,2,False,,vehicle_sales,count,,,,,
 FINALKGQA599,Which pairing of vehicle type and SAE level reports the highest percentage of autonomous driving?,True,1,False,,autonomous_driving,ranking_top,,,,correct,Returns the vehicle type and SAE-level pairing with the highest autonomous-driving percentage; matches the question.
-FINALKGQA600,Which order cancellation response type attracts the largest number of participants?,True,1,False,,order_cancellation,ranking_top,,,,,
+FINALKGQA600,Which order cancellation response type attracts the largest number of participants?,True,1,False,,order_cancellation,ranking_top,,correct,Correct: sums order-cancellation participants by response type and returns the largest response type.,correct,Correct: sums order-cancellation participants by response type and returns the largest response type.
 FINALKGQA601,"How many OEM companies have indicated a shortage, and how many have not?",True,2,False,,shortage,count,,,,correct,Returns yes/no shortage counts for OEM companies; matches the question.
 FINALKGQA602,List the total Tier1 inventory responses segmented by both component and trend?,True,9,False,,inventory,sum,,,,,
 FINALKGQA603,What is the number of regions captured in the survey data?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA604,How does the combined demand from Tier1 and OEM differ across regions?,True,5,False,,regional_demand,sum,,,,,
-FINALKGQA605,Determine the total current demand delta by subtracting BL2 from BL1 for Tier1?,True,1,False,,current_demand_baselines,sum,,,,,
+FINALKGQA605,Determine the total current demand delta by subtracting BL2 from BL1 for Tier1?,True,1,False,,current_demand_baselines,sum,,correct,Correct: computes the Tier1 BL1-minus-BL2 current-demand delta.,correct,Correct: computes the Tier1 BL1-minus-BL2 current-demand delta.
 FINALKGQA606,How many FutureDemandAnalysis records are tied to OEM survey information?,True,1,False,,future_demand,count,,,,correct,Counts FutureDemandAnalysis records tied to OEM survey information; matches the question.
 FINALKGQA607,Which months had what total vehicle sales units according to the actual figures?,True,12,False,,vehicle_sales,sum,,,,,
-FINALKGQA608,What is the mean autonomous-driving percentage recorded for each vehicle type when considering data from all years?,True,9,False,,autonomous_driving,average,,incorrect,"Question asks for the mean autonomous-driving percentage for each vehicle type considering all years, but the query groups by both year and vehicle type, returning a year-level breakdown instead of one value per vehicle type.",correct,Rechecked after repair: returns mean autonomous-driving percentage by vehicle type across all years; matches the question.
-FINALKGQA609,How is each order-cancellation participant observation classified by technology category and response type?,True,15,False,,order_cancellation,raw_or_lookup,,,,,
+FINALKGQA608,What is the mean autonomous-driving percentage recorded for each vehicle type when considering data from all years?,True,9,False,,autonomous_driving,average,,correct,Correct: query averages autonomous-driving percentage by vehicle type across all years without grouping by year.,correct,Correct: query averages autonomous-driving percentage by vehicle type across all years without grouping by year.
+FINALKGQA609,How is each order-cancellation participant observation classified by technology category and response type?,True,15,False,,order_cancellation,raw_or_lookup,,correct,Correct: returns classification of each order-cancellation participant observation by technology category and response type.,correct,Correct: returns classification of each order-cancellation participant observation by technology category and response type.
 FINALKGQA610,Identify the total number of OEM companies that have reported a semiconductor shortage?,True,1,False,,shortage,count,,,,,
 FINALKGQA611,Which semiconductor technology category combined with an inventory trend occurs in the greatest number of records?,True,1,False,,inventory,ranking_top,,,,,
 FINALKGQA612,How many distinct companies are tied to the Tier1 survey?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA613,How many DemandForRegion items are connected to the Semiconductor survey?,True,1,False,,regional_demand,count,,,,,
 FINALKGQA614,How do the percentage-change values for BL1 and BL2 add up in Tier1 Automotive current demand?,True,2,False,,current_demand_baselines,sum,,correct,"Manual semantic spot check: query returns BL1 and BL2 percentage-change sums for Tier1 Automotive current demand, matching the requested grouped baseline sum.",correct,"Manual semantic spot check: query returns BL1 and BL2 percentage-change sums for Tier1 Automotive current demand, matching the requested grouped baseline sum."
-FINALKGQA615,Display the future-demand percentages sorted by technology category and quarter?,True,120,False,,future_demand,raw_or_lookup,,,,,
+FINALKGQA615,Display the future-demand percentages sorted by technology category and quarter?,True,120,False,,future_demand,raw_or_lookup,,correct,Correct: returns future-demand percentages ordered by technology category and quarter.,correct,Correct: returns future-demand percentages ordered by technology category and quarter.
 FINALKGQA616,How many VehicleSalesObservation records have been recorded?,True,1,False,,vehicle_sales,count,,,,,
 FINALKGQA617,Which vehicle type features the highest percentage at Level 5 autonomy?,True,1,False,,autonomous_driving,ranking_top,,,,correct,Returns the vehicle type with the highest SAE Level 5 autonomous-driving percentage; matches the question.
 FINALKGQA618,How many OrderCancellation entries reference OEM survey documents?,True,1,False,,order_cancellation,count,,,,,
@@ -634,14 +634,14 @@ FINALKGQA632,What is the quantity of Tier1 Automotive current-demand entries reg
 FINALKGQA633,"Across quarters, how much does the percentage change in future demand add up to for each technology category?",True,40,False,,future_demand,sum,,,,correct,Returns summed future-demand percentage change grouped by technology category and quarter; matches the requested cumulative per-quarter breakdown.
 FINALKGQA634,Which month saw the highest volume of actual vehicle sales?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA635,What is the average percentage of autonomous driving development reported annually?,True,3,False,,autonomous_driving,average,,,,,
-FINALKGQA636,What is the total number of semiconductor order cancellation responses for each combination of technology category and response type?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA636,What is the total number of semiconductor order cancellation responses for each combination of technology category and response type?,True,15,False,,order_cancellation,sum,,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.
 FINALKGQA637,What is the distribution of Tier1 companies based on whether they reported a shortage or not?,True,2,False,,shortage,count,,,,,
 FINALKGQA638,"Among Tier1 companies, what is the total number of inventory entries with a status of increase, stable, or decrease?",True,3,False,,inventory,count,,,,,
 FINALKGQA639,How many companies are registered in the catalog?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA640,Which region reports the largest total demand based on Tier1 survey data?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA641,Which Tier1 Automotive baseline leads in terms of average current-demand percentage change?,True,1,False,,current_demand_baselines,ranking_top,,,,,
 FINALKGQA642,Which vehicle type demonstrates the maximum average change in predicted future demand?,True,1,False,,future_demand,ranking_top,,,,,
-FINALKGQA643,What are the monthly aggregated vehicle unit counts from the forecast data?,True,36,False,,vehicle_sales,sum,,,,,
+FINALKGQA643,What are the monthly aggregated vehicle unit counts from the forecast data?,True,36,False,,vehicle_sales,sum,,correct,Correct: returns monthly aggregated forecast vehicle unit counts.,correct,Correct: returns monthly aggregated forecast vehicle unit counts.
 FINALKGQA644,"Please show the average autonomous-driving development for OEMs, broken down by vehicle type, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
 FINALKGQA645,How many OrderCancellation items are associated with the Tier1 survey?,True,1,False,,order_cancellation,count,,,,correct,Counts OrderCancellation items linked to Tier1 survey; zero count is valid evidence for this count question.
 FINALKGQA646,How many companies classified as semiconductor firms have reported a shortage in semiconductors?,True,1,False,,shortage,count,,,,,
@@ -652,36 +652,36 @@ FINALKGQA650,"For Tier1, what is the total of the current demand percentage chan
 FINALKGQA651,How many FutureDemandAnalysis entries are tied to the Tier1 survey?,True,1,False,,future_demand,count,,,,correct,Counts FutureDemandAnalysis entries tied to Tier1 survey; zero count is valid for this count question.
 FINALKGQA652,List the overall sales totals for every vehicle type in each year?,True,6,False,,vehicle_sales,sum,,,,,
 FINALKGQA653,"Among Tier1 suppliers, how is the average autonomous-driving development distributed when considering vehicle type, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA654,"Across semiconductor technology categories, what is the cumulative number of order cancellation responses?",True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA654,"Across semiconductor technology categories, what is the cumulative number of order cancellation responses?",True,15,False,,order_cancellation,sum,,correct,Correct after repair: returns cumulative order-cancellation response count across semiconductor technology categories.,correct,Correct after repair: returns cumulative order-cancellation response count across semiconductor technology categories.
 FINALKGQA655,What is the total number of OEM companies that did not report a semiconductor shortage?,True,1,False,,shortage,count,,,,,
-FINALKGQA656,"For each component, what is the total number of Tier1 inventory trend records available?",True,9,False,,inventory,count,,,,correct,Rechecked after repair: returns one total Tier1 inventory trend-record count per component; matches the question.
+FINALKGQA656,"For each component, what is the total number of Tier1 inventory trend records available?",True,9,False,,inventory,count,,correct,Correct: query counts Tier1 inventory trend records per component.,correct,Correct: query counts Tier1 inventory trend records per component.
 FINALKGQA657,"Provide the current-demand percentage change for BEV, BEHV, and ICE for every OEM?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA658,Identify the survey type that records the maximum aggregate demand across all data?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA659,What is the cumulative difference in Tier1 current demand percentage change between BL1 and BL2?,True,1,False,,current_demand_baselines,sum,,,,,
 FINALKGQA660,How many FutureDemandAnalysis items are currently listed?,True,1,False,,future_demand,count,,,,,
 FINALKGQA661,Could you tell me the sum of all forecast vehicle sales units reported in the data?,True,1,False,,vehicle_sales,sum,,,,,
-FINALKGQA662,"How does the average percentage of autonomous driving vary for OEMs when analyzed by vehicle, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,correct,Rechecked with repaired dataset: query is valid and returns 45 rows for OEM vehicle x SAE level x year; matches the question.
+FINALKGQA662,"How does the average percentage of autonomous driving vary for OEMs when analyzed by vehicle, SAE level, and year?",True,45,False,,autonomous_driving,average,,correct,"Correct: query averages OEM autonomous-driving percentage by vehicle type, SAE level, and year.",correct,"Correct: query averages OEM autonomous-driving percentage by vehicle type, SAE level, and year."
 FINALKGQA663,What is the quantity of OrderCancellation entries that reference the Semiconductor survey?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA664,Which companies have disclosed a semiconductor shortage in their survey feedback?,True,6,False,,shortage,raw_or_lookup,,,,correct,Lists companies disclosing shortage across survey types; matches the question.
-FINALKGQA665,What Tier1 inventory trend information is documented for each component?,True,18,False,,inventory,raw_or_lookup,,,,,
+FINALKGQA665,What Tier1 inventory trend information is documented for each component?,True,18,False,,inventory,raw_or_lookup,,correct,Correct: returns Tier1 inventory trend information by component.,correct,Correct: returns Tier1 inventory trend information by component.
 FINALKGQA666,How many distinct companies are listed as participants in the Semiconductor survey?,True,1,False,,catalog_lookup,count,,,,,
-FINALKGQA667,What is the average quarterly trend in demand percentage according to the OEM survey results?,True,7,False,,regional_demand,average,,,,,
+FINALKGQA667,What is the average demand percentage change by vehicle type according to the OEM survey results?,True,7,False,,catalog_lookup,average,,correct,Correct after repair: question now matches the populated OEM DemandResponse percentage-change path grouped by vehicle type; the original quarterly wording was not supported by a percentage-scale quarterly path.,correct,Correct after repair: question now matches the populated OEM DemandResponse percentage-change path grouped by vehicle type; the original quarterly wording was not supported by a percentage-scale quarterly path.
 FINALKGQA668,"For Tier1 respondents in the Automotive domain, what average change in current-demand is seen at BL1 and BL2?",True,2,False,,current_demand_baselines,average,,,,,
 FINALKGQA669,How much future demand is expected for Tier1 when grouped by region and quarter?,True,35,False,,future_demand,sum,,,,,
 FINALKGQA670,Name the month when forecasted vehicle sales are at their highest level?,True,1,False,,vehicle_sales,ranking_top,,,,,
-FINALKGQA671,What is the average autonomous driving development for each combination of vehicle type and SAE level among Tier1 suppliers?,True,45,False,,autonomous_driving,average,,,,correct,Rechecked after repair: returns average Tier1 autonomous-driving development by vehicle type and SAE level; matches the question.
+FINALKGQA671,What is the average autonomous driving development for each combination of vehicle type and SAE level among Tier1 suppliers?,True,45,False,,autonomous_driving,average,,correct,Correct: query averages Tier1 autonomous-driving development by vehicle type and SAE level.,correct,Correct: query averages Tier1 autonomous-driving development by vehicle type and SAE level.
 FINALKGQA672,How many OrderCancellation records exist in total?,True,1,False,,order_cancellation,count,,,,,
 FINALKGQA673,What is the total count of semiconductor companies that have not reported any semiconductor shortage?,True,1,False,,shortage,count,,,,,
 FINALKGQA674,Which component is linked to the highest total of Tier1 inventory participants?,True,1,False,,inventory,ranking_top,,,,,
-FINALKGQA675,"For each technology category and vehicle type, what conversion factors are available?",True,15,False,,catalog_lookup,raw_or_lookup,,,,,
-FINALKGQA676,Could you provide the overall and mean demand levels indicated by the OEM survey?,True,1,False,,regional_demand,average,,,,,
-FINALKGQA677,What is the total of the percentage changes in current demand for BL1 and BL2 based on Tier1 automotive survey responses?,True,1,False,,current_demand_baselines,sum,,,,,
+FINALKGQA675,"For each technology category and vehicle type, what conversion factors are available?",True,15,False,,catalog_lookup,raw_or_lookup,,correct,Correct: returns conversion factors for each technology category and vehicle type.,correct,Correct: returns conversion factors for each technology category and vehicle type.
+FINALKGQA676,Could you provide the overall and mean demand levels indicated by the OEM survey?,True,1,False,,regional_demand,average,,correct,Correct: returns both total and average OEM demand levels.,correct,Correct: returns both total and average OEM demand levels.
+FINALKGQA677,What is the total of the percentage changes in current demand for BL1 and BL2 based on Tier1 automotive survey responses?,True,1,False,,current_demand_baselines,sum,,correct,Correct: returns combined BL1 and BL2 Tier1 Automotive current-demand percentage changes.,correct,Correct: returns combined BL1 and BL2 Tier1 Automotive current-demand percentage changes.
 FINALKGQA678,How many FutureDemandAnalysis entries are tied to Semiconductor surveys?,True,1,False,,future_demand,count,,,,,
 FINALKGQA679,Which vehicle type reaches the top spot for total yearly sales?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA680,How many SAE levels are covered in the data?,True,1,False,,autonomous_driving,count,,,,,
 FINALKGQA681,Which response type for order cancellations has the highest overall participant involvement?,True,1,False,,order_cancellation,ranking_top,,,,,
-FINALKGQA682,Which survey type is linked to the highest count of companies that have reported a shortage?,True,1,False,,shortage,ranking_top,,,,needs_recheck,"Query returns only one survey type with LIMIT 1, but the visible shortage counts suggest a tie across survey types. Repair to return all top-tied survey types or explicitly handle ties, then rerun."
-FINALKGQA683,Report the sum of Tier1 inventory responses organized according to component and trend?,True,9,False,,inventory,sum,,,,,
+FINALKGQA682,Which survey type is linked to the highest count of companies that have reported a shortage?,True,1,False,,shortage,ranking_top,,correct,Correct: returns all survey types tied for the highest shortage-reporting company count.,correct,Correct: returns all survey types tied for the highest shortage-reporting company count.
+FINALKGQA683,Report the sum of Tier1 inventory responses organized according to component and trend?,True,9,False,,inventory,sum,,correct,Correct: returns summed Tier1 inventory responses by component and trend.,correct,Correct: returns summed Tier1 inventory responses by component and trend.
 FINALKGQA684,How many active component share categories are linked to each Tier1 company?,True,3,False,,catalog_lookup,count,,,,,
 FINALKGQA685,Which region stands out with the largest total demand based on the Semiconductor survey data?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA686,Could you specify the percentage changes for BL1 and BL2 baselines relevant to Tier1 automotive?,True,2,False,,current_demand_baselines,raw_or_lookup,,,,,
@@ -690,7 +690,7 @@ FINALKGQA688,"How many vehicle units were sold per month, taking into account on
 FINALKGQA689,Could you tell me the total count of AutonomousDrivingDevelopment entries?,True,1,False,,autonomous_driving,count,,correct,"Manual semantic spot check: query returns the total count of AutonomousDrivingDevelopment entries, matching the requested count.",correct,"Manual semantic spot check: query returns the total count of AutonomousDrivingDevelopment entries, matching the requested count."
 FINALKGQA690,Detail the technology category and response type assigned to each order-cancellation participant observation?,True,15,False,,order_cancellation,raw_or_lookup,,,,,
 FINALKGQA691,What is the distribution of Tier1 companies based on whether they reported a shortage or not?,True,2,False,,shortage,count,,,,,
-FINALKGQA692,Which semiconductor technology category and inventory trend pairing is documented most often in the data?,True,1,False,,inventory,ranking_top,,,,needs_recheck,Paste contains the SPARQL query text rather than the Fuseki result; rerun this ID and provide the result rows before marking correct.
+FINALKGQA692,Which semiconductor technology category and inventory trend pairing is documented most often in the data?,True,1,False,,inventory,ranking_top,,correct,Correct: returns the most frequent semiconductor technology-category and inventory-trend pairing.,correct,Correct: returns the most frequent semiconductor technology-category and inventory-trend pairing.
 FINALKGQA693,What technology category names are present in the catalog?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA694,What is the mean Tier1 demand reported for the Americas region?,True,1,False,,regional_demand,average,,,,,
 FINALKGQA695,What is the combined current demand for Tier1 in BL1 after subtracting the BL2 value?,True,1,False,,current_demand_baselines,sum,,,,,
@@ -698,7 +698,7 @@ FINALKGQA696,List the summed future demand percentages by region and quarter as 
 FINALKGQA697,Give me the combined total of actual vehicle-sales units that have been logged?,True,1,False,,vehicle_sales,sum,,,,,
 FINALKGQA698,What vehicle type and SAE level combination reaches the peak percentage for autonomous driving?,True,1,False,,autonomous_driving,ranking_top,,,,,
 FINALKGQA699,What is the quantity of OrderCancellation entries that pertain to OEM survey materials?,True,1,False,,order_cancellation,count,,,,,
-FINALKGQA700,How many Tier1 companies have disclosed a semiconductor shortage in their survey responses?,True,1,False,,shortage,count,,,,,
+FINALKGQA700,How many Tier1 companies have disclosed a semiconductor shortage in their survey responses?,True,1,False,,shortage,count,,correct,Correct: counts Tier1 companies disclosing shortage; response-type flag is false positive.,correct,Correct: counts Tier1 companies disclosing shortage; response-type flag is false positive.
 FINALKGQA701,What is the total number of semiconductor inventory trends available for every technology category?,True,9,False,,inventory,count,,,,,
 FINALKGQA702,How many Quarter entities can be found in the data?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA703,"What is the total demand reported by Tier1, OEM, and Semiconductor groups in each region?",True,15,False,,regional_demand,sum,,,,,
@@ -715,7 +715,7 @@ FINALKGQA713,What baseline types does the dataset contain?,True,5,False,,current
 FINALKGQA714,"For technology categories, which one reports the highest average percentage change in predicted future demand?",True,1,False,,future_demand,ranking_top,,,,correct,Returns the technology category with highest average projected future-demand percentage change; matches the question.
 FINALKGQA715,Give the total number of vehicle sales units for every month using actual data?,True,12,False,,vehicle_sales,sum,,,,,
 FINALKGQA716,"At Level 5 autonomy, which vehicle type records the peak percentage?",True,1,False,,autonomous_driving,ranking_top,,,,,
-FINALKGQA717,"Across technology categories and response types, what is the cumulative count of semiconductor order cancellation responses?",True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA717,"Across technology categories and response types, what is the cumulative count of semiconductor order cancellation responses?",True,15,False,,order_cancellation,sum,,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.
 FINALKGQA718,"Among semiconductor companies, what is the count of firms that indicated a shortage versus those that reported no shortage?",True,2,False,,shortage,count,,,,correct,Returns yes/no shortage counts for Semiconductor-survey companies; matches the requested shortage-vs-no-shortage count.
 FINALKGQA719,"Within Tier1 companies, what is the total count of inventory entries assigned to the increase, stable, or decrease categories?",True,3,False,,inventory,count,,,,,
 FINALKGQA720,What is the count of companies that are tied to the OEM survey?,True,1,False,,catalog_lookup,count,,,,,
@@ -733,11 +733,11 @@ FINALKGQA731,Which Tier1 Automotive baseline demonstrates the highest average pe
 FINALKGQA732,"How does the total future demand for Option1, Option2, and Option3 in Automotive break down per quarter?",True,8,False,,future_demand,sum,,,,,
 FINALKGQA733,How do the total vehicle sales per month differ between actual results and forecasts?,True,48,False,,vehicle_sales,sum,,,,,
 FINALKGQA734,"In each year, what was the average percentage reached in autonomous driving development?",True,3,False,,autonomous_driving,average,,,,,
-FINALKGQA735,Break down the number of order cancellation responses according to semiconductor technology category?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA735,Break down the number of order cancellation responses according to semiconductor technology category?,True,15,False,,order_cancellation,sum,,correct,Correct after repair: breaks down order-cancellation response count by semiconductor technology category.,correct,Correct after repair: breaks down order-cancellation response count by semiconductor technology category.
 FINALKGQA736,What is the total count of Tier1 companies that have not reported a semiconductor shortage?,True,1,False,,shortage,count,,,,,
 FINALKGQA737,How many Tier1 inventory trend records pertain to each component?,True,9,False,,inventory,count,,,,,
 FINALKGQA738,What region names can be found in the database?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
-FINALKGQA739,Could you tell me the mean OEM demand figure for the Americas region?,True,1,False,,regional_demand,average,,,,,
+FINALKGQA739,Could you tell me the mean OEM demand figure for the Americas region?,True,1,False,,regional_demand,average,,correct,Correct: returns mean OEM demand for the Americas region.,correct,Correct: returns mean OEM demand for the Americas region.
 FINALKGQA740,"In Tier1, how much is the percentage change in current demand when BL1 and BL2 are combined?",True,2,False,,current_demand_baselines,sum,,,,correct,Returns BL1 and BL2 summed percentage changes in Tier1 current demand; matches the question.
 FINALKGQA741,How many FutureDemandAnalysis entries are linked with OEM survey results?,True,1,False,,future_demand,count,,,,,
 FINALKGQA742,Point out the month with the maximum actual vehicle sales figure?,True,1,False,,vehicle_sales,ranking_top,,,,,
@@ -748,7 +748,7 @@ FINALKGQA746,Could you enumerate the Tier1 inventory trend results for each comp
 FINALKGQA747,How many separate regions are recorded in the survey results?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA748,Provide the sum of OEM demand categorized by both region and quarter?,True,35,False,,regional_demand,sum,,,,,
 FINALKGQA749,How much is the net percentage change in Tier1 current demand when moving from BL1 to BL2?,True,1,False,,current_demand_baselines,sum,,,,,
-FINALKGQA750,"For each technology category and quarter, what are the reported future-demand percentage values?",True,120,False,,future_demand,raw_or_lookup,,,,,
+FINALKGQA750,"For each technology category and quarter, what are the reported future-demand percentage values?",True,120,False,,future_demand,raw_or_lookup,,correct,Correct: returns reported future-demand percentage values by technology category and quarter.,correct,Correct: returns reported future-demand percentage values by technology category and quarter.
 FINALKGQA751,List the sum of vehicle units for every month as provided in the forecast data?,True,36,False,,vehicle_sales,sum,,,,,
 FINALKGQA752,"For Tier1 suppliers, how does autonomous-driving development average out when analyzed by vehicle type, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
 FINALKGQA753,What is the overall quantity of OrderCancellation entries?,True,1,False,,order_cancellation,count,,,,,
@@ -756,10 +756,10 @@ FINALKGQA754,How many OEM companies have acknowledged a semiconductor shortage i
 FINALKGQA755,"Among all components, which one has the most Tier1 inventory participants?",True,1,False,,inventory,ranking_top,,,,,
 FINALKGQA756,How many company records are related to the Tier1 survey?,True,1,False,,catalog_lookup,count,,,,,
 FINALKGQA757,Please provide the aggregate OEM demand value for the Americas region?,True,1,False,,regional_demand,sum,,,,,
-FINALKGQA758,What average change in current-demand is indicated at BL1 and BL2 by Tier1 Automotive survey responses?,True,2,False,,current_demand_baselines,average,,,,,
+FINALKGQA758,What average change in current-demand is indicated at BL1 and BL2 by Tier1 Automotive survey responses?,True,2,False,,current_demand_baselines,average,,correct,Correct: averages BL1 and BL2 Tier1 Automotive current-demand percentage changes.,correct,Correct: averages BL1 and BL2 Tier1 Automotive current-demand percentage changes.
 FINALKGQA759,"On a per-quarter basis, what is the mean future-demand change for each technology bucket?",True,40,False,,future_demand,average,,correct,"Manual semantic spot check: query returns average future-demand change by technology category and quarter, matching the requested per-quarter technology-bucket breakdown.",correct,"Manual semantic spot check: query returns average future-demand change by technology category and quarter, matching the requested per-quarter technology-bucket breakdown."
 FINALKGQA760,What is the aggregate number of vehicles sold per type for each year?,True,6,False,,vehicle_sales,sum,,,,,
-FINALKGQA761,"Show the average autonomous driving percentage for OEMs, categorized by vehicle, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
+FINALKGQA761,"Show the average autonomous driving percentage for OEMs, categorized by vehicle, SAE level, and year?",True,45,False,,autonomous_driving,average,,correct,"Correct: returns OEM autonomous-driving average percentage by vehicle type, SAE level, and year.",correct,"Correct: returns OEM autonomous-driving average percentage by vehicle type, SAE level, and year."
 FINALKGQA762,Which order cancellation response type records the largest participant involvement?,True,1,False,,order_cancellation,ranking_top,,,,correct,Returns the order-cancellation response type with the largest participant count; matches the question.
 FINALKGQA763,How many semiconductor companies fall into each category of having reported a shortage or not?,True,2,False,,shortage,count,,,,,
 FINALKGQA764,How does the sum of Tier1 inventory responses vary across different components and trends?,True,9,False,,inventory,sum,,,,,
@@ -767,7 +767,7 @@ FINALKGQA765,"Which types of surveys are represented in the Tier1, OEM, and Semi
 FINALKGQA766,"On a quarterly basis, what is the average trend in demand percentage reported in the Semiconductor survey?",True,7,False,,regional_demand,average,,,,correct,Returns average Semiconductor demand percentage by quarter; matches the question.
 FINALKGQA767,"Among Tier1 automotive survey participants, what is the cumulative percentage change in current demand for BL1 and BL2?",True,1,False,,current_demand_baselines,sum,,,,,
 FINALKGQA768,What is the aggregate percentage change in future demand for each technology category broken down by quarter?,True,40,False,,future_demand,sum,,,,,
-FINALKGQA769,How many forecast vehicle sales units are collectively reported across all entries?,True,1,False,,vehicle_sales,sum,,,,,
+FINALKGQA769,How many forecast vehicle sales units are collectively reported across all entries?,True,1,False,,vehicle_sales,sum,,correct,Correct: returns aggregate SUM of forecast vehicle-sales units across all entries.,correct,Correct: returns aggregate SUM of forecast vehicle-sales units across all entries.
 FINALKGQA770,"For Tier1 suppliers, how does the average autonomous driving development break down according to vehicle type and SAE level?",True,45,False,,autonomous_driving,average,,,,,
 FINALKGQA771,Which technology category and response type pertain to each observation of an order-cancellation participant?,True,15,False,,order_cancellation,raw_or_lookup,,,,,
 FINALKGQA772,"For OEM companies, what are the counts for those that confirmed a shortage and those that did not?",True,2,False,,shortage,count,,,,,
@@ -796,16 +796,16 @@ FINALKGQA794,What is the cumulative percentage change for BL1 and BL2 in Tier1 A
 FINALKGQA795,How many FutureDemandAnalysis entries have been created in total?,True,1,False,,future_demand,count,,,,,
 FINALKGQA796,"What is the sum of vehicle units sold for each month, limited to actual sales observations?",True,12,False,,vehicle_sales,sum,,,,,
 FINALKGQA797,Which vehicle type and SAE level combination exhibits the highest percentage of autonomous driving?,True,1,False,,autonomous_driving,ranking_top,,,,,
-FINALKGQA798,How many semiconductor order cancellation responses correspond to each technology category paired with each response type?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA798,How many semiconductor order cancellation responses correspond to each technology category paired with each response type?,True,15,False,,order_cancellation,sum,,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.,correct,Correct: sums semiconductor order-cancellation participant counts by technology category and response type.
 FINALKGQA799,How many OEM companies are there that have not reported any semiconductor shortages?,True,1,False,,shortage,count,,,,,
 FINALKGQA800,"In Tier1 companies, what is the total number of inventory entries that are identified as increase, stable, or decrease?",True,3,False,,inventory,count,,,,,
 FINALKGQA801,"How does the current-demand percentage change compare among OEMs for BEV, BEHV, and ICE vehicle categories?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA802,Show the sum of Tier1 demand percentage changes broken down by region and quarter?,True,35,False,,regional_demand,sum,,,,,
 FINALKGQA803,Enumerate the baseline types documented in the dataset?,True,5,False,,current_demand_baselines,raw_or_lookup,,correct,"Manual semantic spot check: query returns distinct baseline types documented in the dataset, matching the requested catalog lookup.",correct,"Manual semantic spot check: query returns distinct baseline types documented in the dataset, matching the requested catalog lookup."
 FINALKGQA804,"What are the overall future demand totals for Tier1, separated by region and quarter?",True,35,False,,future_demand,sum,,,,,
-FINALKGQA805,How many actual vehicle-sales units have been accumulated across all records?,True,1,False,,vehicle_sales,sum,,,,,
-FINALKGQA806,How does the average percentage of autonomous driving differ by vehicle type when looking at data from all years combined?,True,9,False,,autonomous_driving,average,,,,,
-FINALKGQA807,How many OrderCancellation records are referenced by the Tier1 survey?,True,1,False,,order_cancellation,count,,,,,
+FINALKGQA805,How many actual vehicle-sales units have been accumulated across all records?,True,1,False,,vehicle_sales,sum,,correct,Correct: returns aggregate SUM of actual vehicle-sales units across all records.,correct,Correct: returns aggregate SUM of actual vehicle-sales units across all records.
+FINALKGQA806,How does the average percentage of autonomous driving differ by vehicle type when looking at data from all years combined?,True,9,False,,autonomous_driving,average,,correct,Correct after repair: averages autonomous-driving percentage by vehicle type across all years combined.,correct,Correct after repair: averages autonomous-driving percentage by vehicle type across all years combined.
+FINALKGQA807,How many OrderCancellation records are referenced by the Tier1 survey?,True,1,False,,order_cancellation,count,,correct,Correct: counts OrderCancellation records referenced by the Tier1 survey; result is 0 against the loaded KG.,correct,Correct: counts OrderCancellation records referenced by the Tier1 survey; result is 0 against the loaded KG.
 FINALKGQA808,Which companies have stated in surveys that they encountered a semiconductor shortage?,True,6,False,,shortage,raw_or_lookup,,,,correct,Lists companies reporting shortages across survey types; matches the question.
 FINALKGQA809,Report the total Tier1 inventory participant numbers categorized by component?,True,3,False,,inventory,sum,,,,,
 FINALKGQA810,How many company records are tied to the Semiconductor survey?,True,1,False,,catalog_lookup,count,,,,,
@@ -814,7 +814,7 @@ FINALKGQA812,How does the count of Tier1 Automotive current-demand entries diffe
 FINALKGQA813,How many FutureDemandAnalysis entries have links to Semiconductor surveys?,True,1,False,,future_demand,count,,,,,
 FINALKGQA814,"How many vehicle sales observations are recorded as actual, and how many are recorded as forecast?",True,2,False,,vehicle_sales,count,,,,,
 FINALKGQA815,Which vehicle type stands out with the top percentage at Level 5 autonomy?,True,1,False,,autonomous_driving,ranking_top,,,,,
-FINALKGQA816,How many order cancellation responses pertain to each semiconductor technology category?,True,15,False,,order_cancellation,sum,,,,,
+FINALKGQA816,How many order cancellation responses pertain to each semiconductor technology category?,True,15,False,,order_cancellation,sum,,correct,Correct after repair: returns one order-cancellation response count per semiconductor technology category.,correct,Correct after repair: returns one order-cancellation response count per semiconductor technology category.
 FINALKGQA817,How many semiconductor companies have not mentioned facing a semiconductor shortage?,True,1,False,,shortage,count,,,,correct,Counts semiconductor companies not reporting shortage; matches the question.
 FINALKGQA818,Which components are linked to how many Tier1 inventory trend records?,True,9,False,,inventory,count,,,,,
 FINALKGQA819,Identify the conversion factors linked to each technology category and vehicle type?,True,15,False,,catalog_lookup,raw_or_lookup,,,,,
@@ -825,7 +825,7 @@ FINALKGQA823,How does the total number of vehicle sales units vary month by mont
 FINALKGQA824,"For each vehicle type and SAE level, what is the average autonomous driving development value recorded?",True,15,False,,autonomous_driving,average,,,,,
 FINALKGQA825,How many OrderCancellation records are directly linked with the Semiconductor survey?,True,1,False,,order_cancellation,count,,,,correct,Counts OrderCancellation records directly linked to Semiconductor survey; zero count is valid for this direct-link count question.
 FINALKGQA826,"Across all survey types, where do the most companies report a shortage?",True,1,False,,shortage,ranking_top,,,,,
-FINALKGQA827,Which Tier1 inventory trend measurements exist for each component?,True,18,False,,inventory,raw_or_lookup,,,,,
+FINALKGQA827,Which Tier1 inventory trend measurements exist for each component?,True,18,False,,inventory,raw_or_lookup,,correct,Correct: returns Tier1 inventory trend measurements by component.,correct,Correct: returns Tier1 inventory trend measurements by component.
 FINALKGQA828,What is the count of active component share categories for each Tier1 company?,True,3,False,,catalog_lookup,count,,,,,
 FINALKGQA829,Which regions account for the combined demand values in the OEM survey?,True,5,False,,regional_demand,sum,,,,correct,Returns OEM-survey demand totals grouped by region and ordered by total demand; matches the requested regional contribution breakdown.
 FINALKGQA830,What percentage change in current demand results from adding BL1 and BL2 together for Tier1?,True,2,False,,current_demand_baselines,sum,,,,,
@@ -841,7 +841,7 @@ FINALKGQA839,What is the overall Tier1 current demand percentage change when sub
 FINALKGQA840,"Show the aggregate future demand percentage for Semiconductor, categorized by region and quarter?",True,35,False,,future_demand,sum,,,,,
 FINALKGQA841,"Display the sum of vehicle sales for each month, categorized by whether the figures are actual or forecasted?",True,48,False,,vehicle_sales,sum,,,,,
 FINALKGQA842,"What are the average autonomous-driving development metrics for OEMs, organized according to vehicle type, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA843,Which response type for order cancellations is linked to the greatest number of participants?,True,1,False,,order_cancellation,ranking_top,,,,,
+FINALKGQA843,Which response type for order cancellations is linked to the greatest number of participants?,True,1,False,,order_cancellation,ranking_top,,correct,Correct: sums participants by order-cancellation response type and returns the greatest one.,correct,Correct: sums participants by order-cancellation response type and returns the greatest one.
 FINALKGQA844,How many Tier1 companies have identified a semiconductor shortage in their survey data?,True,1,False,,shortage,count,,,,,
 FINALKGQA845,Detail the Tier1 inventory response totals for each combination of component and trend?,True,9,False,,inventory,sum,,,,,
 FINALKGQA846,What is the overall quantity of Quarter entities recorded?,True,1,False,,catalog_lookup,count,,,,correct,Counts Quarter entities; matches the question.
@@ -871,7 +871,7 @@ FINALKGQA869,"In Tier1 suppliers, what is the average autonomous driving develop
 FINALKGQA870,"In terms of order cancellations, which semiconductor technology categories have the highest accumulated totals?",True,5,False,,order_cancellation,sum,,,,,
 FINALKGQA871,"List the number of companies that have reported shortages, grouped by survey type?",True,6,False,,shortage,count,,,,,
 FINALKGQA872,"How is the overall inventory amount allocated to EV, non-EV, and mixed component groups?",True,3,False,,inventory,sum,,,,,
-FINALKGQA873,"For each technology category, what is the current demand and its percentage change?",True,5,False,,catalog_lookup,raw_or_lookup,,,,,
+FINALKGQA873,"For each technology category, what is the current demand and its percentage change?",True,5,False,,catalog_lookup,raw_or_lookup,,correct,Correct: returns technology-category current demand and B1/B2 percentage changes.,correct,Correct: returns technology-category current demand and B1/B2 percentage changes.
 FINALKGQA874,Please provide the aggregate Semiconductor demand figure for the Americas region?,True,1,False,,regional_demand,sum,,,,,
 FINALKGQA875,What is the summed difference in current demand for Tier1 when comparing BL1 against BL2?,True,1,False,,current_demand_baselines,sum,,,,,
 FINALKGQA876,How many FutureDemandAnalysis entries reference OEM surveys?,True,1,False,,future_demand,count,,,,,
@@ -881,7 +881,7 @@ FINALKGQA879,How many Tier1 companies have no record of reporting a semiconducto
 FINALKGQA880,Which regions are listed within our current data collection?,True,5,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA881,Which regions accumulate the largest overall current demand from OEMs?,True,5,False,,regional_demand,sum,,correct,"Manual semantic spot check: query returns OEM regional demand totals ordered descending, matching the requested largest-current-demand regional comparison.",correct,"Manual semantic spot check: query returns OEM regional demand totals ordered descending, matching the requested largest-current-demand regional comparison."
 FINALKGQA882,Determine the total of the percentage-change values for BL1 and BL2 in Tier1 Automotive current demand?,True,2,False,,current_demand_baselines,sum,,,,correct,Returns total BL1 and BL2 percentage-change values for Tier1 Automotive current demand; matches the question.
-FINALKGQA883,How do the future-demand percentages vary for each technology category in each quarter?,True,120,False,,future_demand,raw_or_lookup,,,,,
+FINALKGQA883,How do the future-demand percentages vary for each technology category in each quarter?,True,120,False,,future_demand,raw_or_lookup,,correct,Correct: returns future-demand percentage records by technology category and quarter.,correct,Correct: returns future-demand percentage records by technology category and quarter.
 FINALKGQA884,Forecasted vehicle sales are expected to be highest in which month?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA885,What is the overall quantity of AutonomousDrivingDevelopment entries?,True,1,False,,autonomous_driving,count,,,,,
 FINALKGQA886,How many regions can be found in the survey database?,True,1,False,,catalog_lookup,count,,,,,
@@ -895,7 +895,7 @@ FINALKGQA893,"Which regions have the highest overall demand when aggregating dat
 FINALKGQA894,"Determine the number of Tier1 Automotive current-demand entries assigned to each baseline, BL1 and BL2?",True,2,False,,current_demand_baselines,count,,,,correct,Counts Tier1 Automotive current-demand entries assigned to BL1 and BL2; matches the question.
 FINALKGQA895,How does the total future demand percentage change for each technology category compare from quarter to quarter?,True,40,False,,future_demand,sum,,,,,
 FINALKGQA896,"Report the total vehicle units sold per month, restricted to actual sales data?",True,12,False,,vehicle_sales,sum,,,,,
-FINALKGQA897,"What is the average autonomous-driving percentage per vehicle type, considering data from every year?",True,9,False,,autonomous_driving,average,,,,,
+FINALKGQA897,"What is the average autonomous-driving percentage per vehicle type, considering data from every year?",True,9,False,,autonomous_driving,average,,correct,Correct after repair: averages autonomous-driving percentage by vehicle type across all years combined.,correct,Correct after repair: averages autonomous-driving percentage by vehicle type across all years combined.
 FINALKGQA898,"What survey types are associated with Tier1, OEM, and Semiconductor groups?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
 FINALKGQA899,Which region records the minimum total demand in the context of the Semiconductor survey?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA900,Which Tier1 Automotive baseline reflects the highest average percentage change in current demand?,True,1,False,,current_demand_baselines,ranking_top,,,,,
@@ -909,7 +909,7 @@ FINALKGQA907,What count of FutureDemandAnalysis entries are linked with the Tier
 FINALKGQA908,What is the breakdown of vehicle sales observation counts between actual and forecast types?,True,2,False,,vehicle_sales,count,,,,,
 FINALKGQA909,What average autonomous driving development figures are reported for the various combinations of vehicle type and SAE level?,True,15,False,,autonomous_driving,average,,,,,
 FINALKGQA910,What is the total count of company instances stored in the database?,True,1,False,,catalog_lookup,count,,,,,
-FINALKGQA911,Could you provide the average demand percentage trend per quarter based on Tier1 survey data?,True,7,False,,regional_demand,average,,,,,
+FINALKGQA911,Could you provide the average demand percentage trend per quarter based on Tier1 survey data?,True,7,False,,regional_demand,average,,correct,Correct: computes average Tier1 demand percentage change per quarter; trend flag is a false positive from wording.,correct,Correct: computes average Tier1 demand percentage change per quarter; trend flag is a false positive from wording.
 FINALKGQA912,What is the total Tier1 current demand percentage change when comparing BL1 against BL2?,True,1,False,,current_demand_baselines,sum,,,,,
 FINALKGQA913,What is the current total of FutureDemandAnalysis entries?,True,1,False,,future_demand,count,,correct,"Manual semantic spot check: query returns the total count of FutureDemandAnalysis entries, matching the requested count.",correct,"Manual semantic spot check: query returns the total count of FutureDemandAnalysis entries, matching the requested count."
 FINALKGQA914,Report the aggregate vehicle sales units for each month using only actual sales data?,True,12,False,,vehicle_sales,sum,,,,,
@@ -920,7 +920,7 @@ FINALKGQA918,What is the average change in current-demand for Tier1 Automotive p
 FINALKGQA919,"List the cumulative future demand for Tier1, detailing the amounts per region and quarter?",True,35,False,,future_demand,sum,,,,,
 FINALKGQA920,What is the number of VehicleSalesObservation records that are available?,True,1,False,,vehicle_sales,count,,,,,
 FINALKGQA921,"In relation to OEMs, what are the average autonomous-driving development values when considering vehicle type, SAE level, and year as grouping factors?",True,45,False,,autonomous_driving,average,,,,correct,"Returns OEM autonomous-driving averages grouped by vehicle type, SAE level, and year; matches the requested grouping."
-FINALKGQA922,"Identify the current-demand percentage change for each OEM within the BEV, BEHV, and ICE groups?",True,3,False,,catalog_lookup,raw_or_lookup,,,,,
+FINALKGQA922,"Identify the current-demand percentage change for each OEM within the BEV, BEHV, and ICE groups?",True,3,False,,catalog_lookup,raw_or_lookup,,probably_correct,Probably correct: query returns OEM-survey current-demand percentage change for BEV/BEHV/ICE; wording could imply individual OEMs.,probably_correct,Probably correct: query returns OEM-survey current-demand percentage change for BEV/BEHV/ICE; wording could imply individual OEMs.
 FINALKGQA923,Where is semiconductor demand at its maximum among all regions?,True,1,False,,regional_demand,ranking_top,,,,,
 FINALKGQA924,"Within Tier1 automotive survey data, how much is the percentage change in current demand for BL1 plus BL2 combined?",True,1,False,,current_demand_baselines,sum,,,,,
 FINALKGQA925,How many FutureDemandAnalysis records pertain to Semiconductor surveys?,True,1,False,,future_demand,count,,,,,
@@ -932,7 +932,7 @@ FINALKGQA930,"For Tier1 automotive, what are the percentage changes tied to base
 FINALKGQA931,"Report the total anticipated semiconductor demand, categorized by technology type and quarter?",True,40,False,,future_demand,sum,,,,,
 FINALKGQA932,Highlight the month when actual vehicle sales were at their highest level?,True,1,False,,vehicle_sales,ranking_top,,,,,
 FINALKGQA933,"Provide the average percentage of autonomous driving for OEMs, organized according to vehicle, SAE level, and year?",True,45,False,,autonomous_driving,average,,,,,
-FINALKGQA934,Detail the conversion factors grouped according to technology category and vehicle type?,True,15,False,,catalog_lookup,raw_or_lookup,,,,,
+FINALKGQA934,Detail the conversion factors grouped according to technology category and vehicle type?,True,15,False,,catalog_lookup,raw_or_lookup,,correct,Correct: returns conversion factors grouped in the output by technology category and vehicle type.,correct,Correct: returns conversion factors grouped in the output by technology category and vehicle type.
 FINALKGQA935,Please provide the total amount of Tier1 demand associated with the Americas region?,True,1,False,,regional_demand,sum,,,,,
 FINALKGQA936,"How much does Tier1's current demand increase or decrease when moving from BL2 to BL1, considering the total across all items?",True,1,False,,current_demand_baselines,sum,,correct,"Manual semantic spot check: query returns the BL1 minus BL2 percentage-change delta for Tier1 current demand, matching the requested baseline difference.",correct,"Manual semantic spot check: query returns the BL1 minus BL2 percentage-change delta for Tier1 current demand, matching the requested baseline difference."
 FINALKGQA937,"Show the cumulative future demand percentage from OEM surveys, organized by region and quarter?",True,35,False,,future_demand,sum,,,,,
@@ -943,7 +943,7 @@ FINALKGQA941,What are the total demand figures from Tier1 and OEM sources for ea
 FINALKGQA942,What is the total of BL1 and BL2 percentage-change values for current demand in the Tier1 Automotive segment?,True,2,False,,current_demand_baselines,sum,,,,,
 FINALKGQA943,"What are the overall future demand percentages for Semiconductor, grouped by region and quarter?",True,35,False,,future_demand,sum,,,,,
 FINALKGQA944,Detail the summed sales amounts for all vehicle types across different years?,True,6,False,,vehicle_sales,sum,,,,,
-FINALKGQA945,How many SAE levels exist within the data?,True,1,False,,autonomous_driving,count,,,,,
+FINALKGQA945,How many SAE levels exist within the data?,True,1,False,,autonomous_driving,count,,correct,Correct: counts distinct SAE levels used in the data.,correct,Correct: counts distinct SAE levels used in the data.
 FINALKGQA946,Which technology category names can be found in the catalog?,True,5,False,,catalog_lookup,raw_or_lookup,,,,correct,Lists technology category names in the catalog; matches the question.
 FINALKGQA947,What count of DemandForRegion entries correspond to the Semiconductor survey?,True,1,False,,regional_demand,count,,correct,"Manual semantic spot check: query returns the count of DemandForRegion entries for Semiconductor survey, matching the requested count.",correct,"Manual semantic spot check: query returns the count of DemandForRegion entries for Semiconductor survey, matching the requested count."
 FINALKGQA948,What kinds of baseline types are documented in the data?,True,5,False,,current_demand_baselines,raw_or_lookup,,,,,
@@ -988,7 +988,7 @@ FINALKGQA986,"Calculate the sum of vehicle units sold each month, considering ex
 FINALKGQA987,What is the average future demand percentage change grouped by vehicle type and quarter?,True,24,False,,future_demand,average,,,,,
 FINALKGQA988,"List the quarterly future demand sums for Option1, Option2, and Option3 in the Automotive area?",True,8,False,,future_demand,sum,,,,,
 FINALKGQA989,How many FutureDemandAnalysis entries are connected to OEM survey responses?,True,1,False,,future_demand,count,,,,correct,Counts FutureDemandAnalysis entries linked to OEM survey responses; matches the question.
-FINALKGQA990,What future-demand percentage numbers are recorded for each technology category and quarter?,True,120,False,,future_demand,raw_or_lookup,,,,,
+FINALKGQA990,What future-demand percentage numbers are recorded for each technology category and quarter?,True,120,False,,future_demand,raw_or_lookup,,correct,Correct: returns recorded future-demand percentage numbers by technology category and quarter.,correct,Correct: returns recorded future-demand percentage numbers by technology category and quarter.
 FINALKGQA991,Which average future-demand change corresponds to each technology bucket and quarter?,True,40,False,,future_demand,average,,,,,
 FINALKGQA992,"For each technology category and quarter, what is the total future demand percentage change?",True,40,False,,future_demand,sum,,,,,
 FINALKGQA993,Which vehicle type stands out with the top average change in future demand?,True,1,False,,future_demand,ranking_top,,,,,

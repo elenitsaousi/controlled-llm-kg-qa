@@ -82,6 +82,8 @@ FIELDNAMES = [
     "execution_checked",
     "valid",
     "row_count",
+    "execution_error",
+    "row_preview",
     "selected_vars",
     "group_vars",
     "has_limit",
@@ -102,6 +104,14 @@ def _load_manual_audit(path: str) -> Dict[str, Dict[str, str]]:
         return {}
     with Path(path).open("r", encoding="utf-8-sig", newline="") as f:
         return {str(row.get("id") or ""): row for row in csv.DictReader(f)}
+
+
+def _load_ids_from_csv(path: str, column: str = "id") -> List[str]:
+    if not path:
+        return []
+    with Path(path).open("r", encoding="utf-8-sig", newline="") as f:
+        ids = [str(row.get(column) or "").strip() for row in csv.DictReader(f)]
+    return [request_id for request_id in ids if request_id]
 
 
 def _compact_query(query: Any) -> str:
@@ -390,12 +400,17 @@ def _make_graph(graph_path: str, fuseki_query_url: str):
     return graph
 
 
-def _execute_query(graph: Any, query: str) -> Tuple[bool, Optional[int], str]:
+def _serialize_binding_row(row: Any) -> List[str]:
+    return [str(value) for value in row]
+
+
+def _execute_query(graph: Any, query: str, preview_limit: int = 5) -> Tuple[bool, Optional[int], str, str]:
     try:
         rows = list(graph.query(_ensure_prefixes(_strip_comments(query))))
-        return True, len(rows), ""
+        preview = [_serialize_binding_row(row) for row in rows[:preview_limit]]
+        return True, len(rows), "", json.dumps(preview, ensure_ascii=False)
     except Exception as exc:  # pragma: no cover - depends on external graph/Fuseki.
-        return False, None, str(exc)
+        return False, None, str(exc), ""
 
 
 def _manual_status(row: Dict[str, str]) -> str:
@@ -422,8 +437,12 @@ def analyze(
     graph_path: str = "",
     fuseki_query_url: str = "",
     execute: bool = False,
+    include_ids: Optional[Sequence[str]] = None,
 ) -> Dict[str, Any]:
     rows = _load_json_rows(dataset_path)
+    if include_ids:
+        include_set = set(include_ids)
+        rows = [row for row in rows if str(row.get("id") or "") in include_set]
     audit = _load_manual_audit(audit_path)
     graph = None
     execution_checked = False
@@ -442,8 +461,9 @@ def analyze(
         valid: Any = ""
         row_count: Any = ""
         exec_error = ""
+        row_preview = ""
         if graph is not None:
-            valid, row_count, exec_error = _execute_query(graph, str(row.get("query") or ""))
+            valid, row_count, exec_error, row_preview = _execute_query(graph, str(row.get("query") or ""))
             if not valid:
                 errors.append("query_execution_error")
             elif row_count == 0:
@@ -490,6 +510,8 @@ def analyze(
                 "execution_checked": str(execution_checked),
                 "valid": valid,
                 "row_count": row_count,
+                "execution_error": exec_error,
+                "row_preview": row_preview,
                 "selected_vars": ", ".join(features["selected_vars"]),
                 "group_vars": ", ".join(features["group_vars"]),
                 "has_limit": str(features["has_limit"]),
@@ -502,6 +524,7 @@ def analyze(
         "summary": {
             "dataset": dataset_path,
             "audit": audit_path,
+            "filtered_to_ids": len(include_ids or []),
             "questions": len(rows),
             "execution_checked": execution_checked,
             "manual_audit_counts": dict(_manual_counts(audit)),
@@ -572,6 +595,8 @@ def main() -> None:
     parser.add_argument("--graph", default="data/infineon/graph.ttl")
     parser.add_argument("--fuseki-query-url", default="")
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--ids-from-csv", default="")
+    parser.add_argument("--ids-column", default="id")
     parser.add_argument("--out-csv", default="results/gold_semantic_validation_auto.csv")
     parser.add_argument("--out-review-csv", default="results/gold_semantic_manual_review_only.csv")
     parser.add_argument("--out-json", default="")
@@ -584,6 +609,7 @@ def main() -> None:
         graph_path=args.graph,
         fuseki_query_url=args.fuseki_query_url,
         execute=args.execute,
+        include_ids=_load_ids_from_csv(args.ids_from_csv, args.ids_column),
     )
     cases = report["cases"]
     review_rows = [row for row in cases if row.get("auto_decision") == "manual_review"]
