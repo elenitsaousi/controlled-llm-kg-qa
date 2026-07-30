@@ -130,3 +130,28 @@ python evaluation\build_system_accuracy_audit.py `
   --log logs\kgqa_system_accuracy_1000_repaired.jsonl `
   --questions evaluation\question_sets\true_demand_full_system_1000_repaired.json `
   --out-csv results\kgqa_system_accuracy_audit_1000_repaired.csv
+
+# ---------------------------------------------------------------------------
+# 6. Label and summarize final answer-level accuracy.
+#    If a previous labeled repaired audit exists, unchanged rows reuse those
+#    labels; changed KG rows are checked against the repaired gold result
+#    signature.
+# ---------------------------------------------------------------------------
+if (Test-Path results\kgqa_system_accuracy_audit_1000_repaired_labeled.csv) {
+  python evaluation\label_full_system_audit.py `
+    --audit-csv results\kgqa_system_accuracy_audit_1000_repaired.csv `
+    --gold evaluation\question_sets\true_demand_final_1000_gold_repaired.json `
+    --graph data\infineon\graph.ttl `
+    --previous-labeled-csv results\kgqa_system_accuracy_audit_1000_repaired_labeled.csv `
+    --out-csv results\kgqa_system_accuracy_audit_1000_repaired_labeled.csv `
+    --out-json results\kgqa_system_accuracy_audit_1000_repaired_labeled_summary.json `
+    --out-md results\kgqa_system_accuracy_audit_1000_repaired_labeled_summary.md
+} else {
+  python evaluation\label_full_system_audit.py `
+    --audit-csv results\kgqa_system_accuracy_audit_1000_repaired.csv `
+    --gold evaluation\question_sets\true_demand_final_1000_gold_repaired.json `
+    --graph data\infineon\graph.ttl `
+    --out-csv results\kgqa_system_accuracy_audit_1000_repaired_labeled.csv `
+    --out-json results\kgqa_system_accuracy_audit_1000_repaired_labeled_summary.json `
+    --out-md results\kgqa_system_accuracy_audit_1000_repaired_labeled_summary.md
+}
