@@ -2,10 +2,14 @@ import argparse
 import json
 import os
 import signal
+import socket
 import sys
 from collections import Counter
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Tuple
+from urllib import error as urllib_error
+from urllib import parse as urllib_parse
+from urllib import request as urllib_request
 from rdflib import Graph
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
@@ -86,6 +90,65 @@ def _result_signature(rows: List[Tuple]) -> Counter:
 class QueryTimeout(Exception):
     pass
 
+def _json_literal_n3(binding: Dict) -> str:
+    value = str(binding.get("value", ""))
+    quoted = json.dumps(value, ensure_ascii=False)
+    datatype = str(binding.get("datatype", "")).strip()
+    lang = str(binding.get("xml:lang", "")).strip()
+    if lang:
+        return f"{quoted}@{lang}"
+    if datatype and datatype != "http://www.w3.org/2001/XMLSchema#string":
+        return f"{quoted}^^<{datatype}>"
+    return quoted
+
+def _json_binding_n3(binding: Optional[Dict]) -> str:
+    if not isinstance(binding, dict):
+        return "NULL"
+    kind = str(binding.get("type", "")).strip().lower()
+    value = str(binding.get("value", ""))
+    if kind == "uri":
+        return f"<{value}>"
+    if kind in {"bnode", "blank"}:
+        return f"_:{value}"
+    if kind == "literal" or "datatype" in binding or "xml:lang" in binding:
+        return _json_literal_n3(binding)
+    return json.dumps(value, ensure_ascii=False)
+
+def _run_fuseki_query(query: str, timeout_s: Optional[float]) -> Counter:
+    endpoint = os.environ.get("FUSEKI_QUERY_URL", "").strip()
+    if not endpoint:
+        raise RuntimeError("FUSEKI_QUERY_URL is not set.")
+
+    data = urllib_parse.urlencode({"query": query}).encode("utf-8")
+    req = urllib_request.Request(
+        endpoint,
+        data=data,
+        headers={
+            "Accept": "application/sparql-results+json",
+            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+        },
+        method="POST",
+    )
+    timeout = float(timeout_s) if timeout_s and timeout_s > 0 else None
+    try:
+        with urllib_request.urlopen(req, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (socket.timeout, TimeoutError, urllib_error.URLError) as exc:
+        reason = getattr(exc, "reason", None)
+        if isinstance(exc, (socket.timeout, TimeoutError)) or isinstance(reason, (socket.timeout, TimeoutError)):
+            raise QueryTimeout(f"Query exceeded {timeout_s} seconds") from exc
+        raise
+
+    if "boolean" in payload:
+        return Counter(((json.dumps(bool(payload["boolean"])),),))
+
+    head_vars = payload.get("head", {}).get("vars", [])
+    bindings = payload.get("results", {}).get("bindings", [])
+    rows = []
+    for row in bindings:
+        rows.append(tuple(_json_binding_n3(row.get(var)) for var in head_vars))
+    return Counter(rows)
+
 @contextmanager
 def _time_limit(seconds: Optional[float]):
     if not seconds or seconds <= 0:
@@ -105,6 +168,8 @@ def _time_limit(seconds: Optional[float]):
         signal.signal(signal.SIGALRM, old_handler)
 
 def _run_query(graph: Graph, query: str, timeout_s: Optional[float]) -> Counter:
+    if os.environ.get("FUSEKI_QUERY_URL", "").strip():
+        return _run_fuseki_query(query, timeout_s)
     with _time_limit(timeout_s):
         results = graph.query(query)
         return _result_signature(list(results))
