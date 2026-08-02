@@ -97,7 +97,26 @@ python evaluation\sweep_guarded_ml_rerank.py `
   --current-baseline-rescue-min-score 0.20 `
   --current-baseline-rescue-min-margin -0.25
 
-# 5. Evaluate raw, schema/semantic, old ML, and new clean ML on untouched holdout.
+# 5. Apply the best tune thresholds back to tune, then derive a conservative
+# family policy. This policy is learned on tune only, never on holdout.
+python evaluation\apply_best_guarded_ml_from_sweep.py `
+  --sweep results\final1000_repaired_tune200_guarded_ml_sweep.json `
+  --results results\final1000_repaired_tune200_raw_candidates.json `
+  --model $NewModel `
+  --schema $Schema `
+  --out results\final1000_repaired_tune200_clean_guarded_ml_selection.json
+
+python evaluation\derive_family_selection_policy.py `
+  --raw-results results\final1000_repaired_tune200_raw_candidates.json `
+  --selected-results results\final1000_repaired_tune200_clean_guarded_ml_selection.json `
+  --dataset $TuneSet `
+  --min-delta-questions 1 `
+  --min-gain-loss-ratio 1.0 `
+  --out-json results\final1000_repaired_tune200_family_ml_policy.json `
+  --out-md results\final1000_repaired_tune200_family_ml_policy.md
+
+# 6. Evaluate raw, schema/semantic, old ML, clean ML, and family-gated clean ML
+# on untouched holdout.
 python evaluation\analyze_infineon_results.py `
   --results results\final1000_repaired_holdout200_raw_candidates.json `
   --dataset $HoldoutSet `
@@ -151,12 +170,27 @@ python evaluation\analyze_infineon_results.py `
   --out-json results\final1000_repaired_holdout200_clean_guarded_ml_analysis.json `
   --out-md results\final1000_repaired_holdout200_clean_guarded_ml_analysis.md
 
+python evaluation\apply_family_gated_selection.py `
+  --raw-results results\final1000_repaired_holdout200_raw_candidates.json `
+  --selected-results results\final1000_repaired_holdout200_clean_guarded_ml_selection.json `
+  --dataset $HoldoutSet `
+  --policy results\final1000_repaired_tune200_family_ml_policy.json `
+  --out results\final1000_repaired_holdout200_family_gated_clean_ml_selection.json
+
+python evaluation\analyze_infineon_results.py `
+  --results results\final1000_repaired_holdout200_family_gated_clean_ml_selection.json `
+  --dataset $HoldoutSet `
+  --schema $Schema `
+  --out-json results\final1000_repaired_holdout200_family_gated_clean_ml_analysis.json `
+  --out-md results\final1000_repaired_holdout200_family_gated_clean_ml_analysis.md
+
 if (Test-Path "results\final1000_repaired_holdout200_old_guarded_ml_analysis.json") {
   python evaluation\compare_selection_analysis_reports.py `
     --report raw=results\final1000_repaired_holdout200_raw_analysis.json `
     --report schema=results\final1000_repaired_holdout200_schema_semantic_analysis.json `
     --report old_ml=results\final1000_repaired_holdout200_old_guarded_ml_analysis.json `
     --report clean_ml=results\final1000_repaired_holdout200_clean_guarded_ml_analysis.json `
+    --report family_gated_clean_ml=results\final1000_repaired_holdout200_family_gated_clean_ml_analysis.json `
     --out-json results\final1000_repaired_holdout200_clean_ml_comparison.json `
     --out-md results\final1000_repaired_holdout200_clean_ml_comparison.md
 } else {
@@ -164,6 +198,7 @@ if (Test-Path "results\final1000_repaired_holdout200_old_guarded_ml_analysis.jso
     --report raw=results\final1000_repaired_holdout200_raw_analysis.json `
     --report schema=results\final1000_repaired_holdout200_schema_semantic_analysis.json `
     --report clean_ml=results\final1000_repaired_holdout200_clean_guarded_ml_analysis.json `
+    --report family_gated_clean_ml=results\final1000_repaired_holdout200_family_gated_clean_ml_analysis.json `
     --out-json results\final1000_repaired_holdout200_clean_ml_comparison.json `
     --out-md results\final1000_repaired_holdout200_clean_ml_comparison.md
 }
@@ -173,5 +208,6 @@ Write-Host "Done. Check:"
 Write-Host "  results\final1000_repaired_holdout200_clean_ml_comparison.md"
 Write-Host "  results\final1000_repaired_train_tune_holdout_manifest.json"
 Write-Host "  results\final1000_repaired_train600_ranker_cv.json"
+Write-Host "  results\final1000_repaired_tune200_family_ml_policy.md"
 Write-Host ""
-Write-Host "Do not promote the new model unless clean_ml improves the untouched holdout."
+Write-Host "Do not promote the new model unless family_gated_clean_ml improves the untouched holdout."
