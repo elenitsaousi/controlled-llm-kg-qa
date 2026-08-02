@@ -209,6 +209,11 @@ if (Test-Path "results\final1000_repaired_holdout200_old_guarded_ml_analysis.jso
     --report old_ml=results\final1000_repaired_holdout200_old_guarded_ml_analysis.json `
     --report clean_ml=results\final1000_repaired_holdout200_clean_guarded_ml_analysis.json `
     --report family_gated_clean_ml=results\final1000_repaired_holdout200_family_gated_clean_ml_analysis.json `
+    --selection raw=results\final1000_repaired_holdout200_raw_candidates.json `
+    --selection schema=results\final1000_repaired_holdout200_schema_semantic_selection.json `
+    --selection old_ml=results\final1000_repaired_holdout200_old_guarded_ml_selection.json `
+    --selection clean_ml=results\final1000_repaired_holdout200_clean_guarded_ml_selection.json `
+    --selection family_gated_clean_ml=results\final1000_repaired_holdout200_family_gated_clean_ml_selection.json `
     --out-json results\final1000_repaired_holdout200_clean_ml_comparison.json `
     --out-md results\final1000_repaired_holdout200_clean_ml_comparison.md
 } else {
@@ -217,6 +222,10 @@ if (Test-Path "results\final1000_repaired_holdout200_old_guarded_ml_analysis.jso
     --report schema=results\final1000_repaired_holdout200_schema_semantic_analysis.json `
     --report clean_ml=results\final1000_repaired_holdout200_clean_guarded_ml_analysis.json `
     --report family_gated_clean_ml=results\final1000_repaired_holdout200_family_gated_clean_ml_analysis.json `
+    --selection raw=results\final1000_repaired_holdout200_raw_candidates.json `
+    --selection schema=results\final1000_repaired_holdout200_schema_semantic_selection.json `
+    --selection clean_ml=results\final1000_repaired_holdout200_clean_guarded_ml_selection.json `
+    --selection family_gated_clean_ml=results\final1000_repaired_holdout200_family_gated_clean_ml_selection.json `
     --out-json results\final1000_repaired_holdout200_clean_ml_comparison.json `
     --out-md results\final1000_repaired_holdout200_clean_ml_comparison.md
 }
