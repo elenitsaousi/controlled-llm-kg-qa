@@ -124,6 +124,12 @@ python evaluation\analyze_infineon_results.py `
   --out-json results\final1000_repaired_holdout200_raw_analysis.json `
   --out-md results\final1000_repaired_holdout200_raw_analysis.md
 
+python evaluation\analyze_selection_equivalence.py `
+  --results results\final1000_repaired_holdout200_raw_candidates.json `
+  --dataset $HoldoutSet `
+  --out-json results\final1000_repaired_holdout200_raw_equivalence.json `
+  --out-md results\final1000_repaired_holdout200_raw_equivalence.md
+
 python evaluation\apply_selection_to_results.py `
   --results results\final1000_repaired_holdout200_raw_candidates.json `
   --out results\final1000_repaired_holdout200_schema_semantic_selection.json `
@@ -170,6 +176,12 @@ python evaluation\analyze_infineon_results.py `
   --out-json results\final1000_repaired_holdout200_clean_guarded_ml_analysis.json `
   --out-md results\final1000_repaired_holdout200_clean_guarded_ml_analysis.md
 
+python evaluation\analyze_selection_equivalence.py `
+  --results results\final1000_repaired_holdout200_clean_guarded_ml_selection.json `
+  --dataset $HoldoutSet `
+  --out-json results\final1000_repaired_holdout200_clean_guarded_ml_equivalence.json `
+  --out-md results\final1000_repaired_holdout200_clean_guarded_ml_equivalence.md
+
 python evaluation\apply_family_gated_selection.py `
   --raw-results results\final1000_repaired_holdout200_raw_candidates.json `
   --selected-results results\final1000_repaired_holdout200_clean_guarded_ml_selection.json `
@@ -183,6 +195,12 @@ python evaluation\analyze_infineon_results.py `
   --schema $Schema `
   --out-json results\final1000_repaired_holdout200_family_gated_clean_ml_analysis.json `
   --out-md results\final1000_repaired_holdout200_family_gated_clean_ml_analysis.md
+
+python evaluation\analyze_selection_equivalence.py `
+  --results results\final1000_repaired_holdout200_family_gated_clean_ml_selection.json `
+  --dataset $HoldoutSet `
+  --out-json results\final1000_repaired_holdout200_family_gated_clean_ml_equivalence.json `
+  --out-md results\final1000_repaired_holdout200_family_gated_clean_ml_equivalence.md
 
 if (Test-Path "results\final1000_repaired_holdout200_old_guarded_ml_analysis.json") {
   python evaluation\compare_selection_analysis_reports.py `
@@ -209,5 +227,6 @@ Write-Host "  results\final1000_repaired_holdout200_clean_ml_comparison.md"
 Write-Host "  results\final1000_repaired_train_tune_holdout_manifest.json"
 Write-Host "  results\final1000_repaired_train600_ranker_cv.json"
 Write-Host "  results\final1000_repaired_tune200_family_ml_policy.md"
+Write-Host "  results\final1000_repaired_holdout200_family_gated_clean_ml_equivalence.md"
 Write-Host ""
 Write-Host "Do not promote the new model unless family_gated_clean_ml improves the untouched holdout."
