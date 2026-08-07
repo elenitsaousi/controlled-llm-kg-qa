@@ -33,10 +33,29 @@ class InfineonGPTClient:
         temperature: float = 0.2,
         max_tokens: int = 2048,
     ) -> None:
-        self.model = model or os.environ.get("INFINEON_MODEL", "gpt-4o")
-        self.base_url = base_url or os.environ.get("INFINEON_API_URL")
-        self.api_key = api_key or os.environ.get("INFINEON_API_KEY")
-        self.chat_endpoint = os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
+        self.backend = os.environ.get("LLM_BACKEND", "infineon").strip().lower()
+        litellm_mode = self.backend in {"litellm", "lite_llm"}
+        self.model = (
+            model
+            or os.environ.get("LITELLM_MODEL")
+            or os.environ.get("INFINEON_MODEL")
+            or "gpt-4o"
+        )
+        self.base_url = (
+            base_url
+            or os.environ.get("LITELLM_BASE_URL")
+            or os.environ.get("INFINEON_API_URL")
+        )
+        self.api_key = (
+            api_key
+            or os.environ.get("LITELLM_API_KEY")
+            or os.environ.get("INFINEON_API_KEY")
+        )
+        self.chat_endpoint = (
+            os.environ.get("LITELLM_CHAT_ENDPOINT")
+            or os.environ.get("INFINEON_CHAT_ENDPOINT")
+            or "/chat/completions"
+        )
         self.auth_endpoint = os.environ.get("INFINEON_AUTH_ENDPOINT", "/auth/token")
         self.temperature = temperature
         self.max_tokens = max_tokens
@@ -44,7 +63,7 @@ class InfineonGPTClient:
         self.retry_backoff_sec = float(os.environ.get("INFINEON_RETRY_BACKOFF_SEC", "1.0"))
         self.request_timeout_sec = float(os.environ.get("INFINEON_REQUEST_TIMEOUT_SEC", "120"))
         self.auth_timeout_sec = float(os.environ.get("INFINEON_AUTH_TIMEOUT_SEC", "60"))
-        self.auto_refresh_token = _env_bool("INFINEON_AUTO_REFRESH_TOKEN", True)
+        self.auto_refresh_token = (not litellm_mode) and _env_bool("INFINEON_AUTO_REFRESH_TOKEN", True)
         self.api_user = os.environ.get("INFINEON_API_USER") or os.environ.get("USER_LLM")
         self.api_password = os.environ.get("INFINEON_API_PASSWORD") or os.environ.get("PASSWORD_LLM")
         self.verify = _requests_verify_setting()
@@ -54,8 +73,8 @@ class InfineonGPTClient:
             self.refresh_api_key()
         if not self.api_key:
             raise ValueError(
-                "Missing API key. Set INFINEON_API_KEY or set USER_LLM/PASSWORD_LLM "
-                "for automatic token retrieval."
+                "Missing API key. Set LITELLM_API_KEY/INFINEON_API_KEY or set "
+                "USER_LLM/PASSWORD_LLM for legacy automatic token retrieval."
             )
 
     def generate(self, prompt: str, k: int = 5) -> List[str]:

@@ -5263,10 +5263,14 @@ with st.sidebar:
         else False
     )
 
-    default_url = os.environ.get("INFINEON_API_URL", "https://gpt4ifx.icp.infineon.com")
-    default_model = os.environ.get("INFINEON_MODEL", "gpt-4o")
-    default_endpoint = os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
-    default_key = os.environ.get("INFINEON_API_KEY", "")
+    llm_backend = os.environ.get("LLM_BACKEND", "infineon").strip().lower()
+    default_url = os.environ.get("LITELLM_BASE_URL") or os.environ.get("INFINEON_API_URL", "")
+    default_model = os.environ.get("LITELLM_MODEL") or os.environ.get("INFINEON_MODEL", "gpt-4o")
+    default_endpoint = (
+        os.environ.get("LITELLM_CHAT_ENDPOINT")
+        or os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
+    )
+    default_key = os.environ.get("LITELLM_API_KEY") or os.environ.get("INFINEON_API_KEY", "")
 
     api_url = default_url
     api_endpoint = default_endpoint
@@ -5320,10 +5324,16 @@ with st.sidebar:
             st.divider()
 
             st.subheader("Backend")
-            api_url = st.text_input("INFINEON_API_URL", value=default_url)
-            api_endpoint = st.text_input("INFINEON_CHAT_ENDPOINT", value=default_endpoint)
-            model_name = st.text_input("INFINEON_MODEL", value=default_model)
-            api_key = st.text_input("INFINEON_API_KEY", value=default_key, type="password")
+            llm_backend = st.selectbox(
+                "LLM backend",
+                options=["infineon", "litellm"],
+                index=1 if llm_backend in {"litellm", "lite_llm"} else 0,
+                help="Use litellm for the OpenAI-compatible LiteLLM gateway.",
+            )
+            api_url = st.text_input("LLM base URL", value=default_url)
+            api_endpoint = st.text_input("LLM chat endpoint", value=default_endpoint)
+            model_name = st.text_input("LLM model", value=default_model)
+            api_key = st.text_input("LLM API key", value=default_key, type="password")
             temperature = st.slider("Temperature", min_value=0.0, max_value=1.0, value=0.2, step=0.05)
 
             st.subheader("Data")
@@ -5654,6 +5664,7 @@ if asked:
             and advisory_plan is None
             and not direct_capability_option
             and not api_key.strip()
+            and not os.environ.get("LITELLM_API_KEY")
             and not (os.environ.get("USER_LLM") or os.environ.get("INFINEON_API_USER"))
         ):
             st.error("Missing API key or token-refresh credentials.")
@@ -5800,6 +5811,14 @@ if asked:
                 if not api_url.strip():
                     st.error("Missing API URL.")
                     st.stop()
+                os.environ["LLM_BACKEND"] = llm_backend.strip() or "infineon"
+                if llm_backend in {"litellm", "lite_llm"}:
+                    os.environ["LITELLM_BASE_URL"] = api_url.strip()
+                    os.environ["LITELLM_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
+                    os.environ["LITELLM_MODEL"] = model_name.strip() or default_model
+                    if api_key.strip():
+                        os.environ["LITELLM_API_KEY"] = api_key.strip()
+                    os.environ["INFINEON_AUTO_REFRESH_TOKEN"] = "0"
                 os.environ["INFINEON_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
                 client = InfineonGPTClient(
                     model=model_name.strip() or None,

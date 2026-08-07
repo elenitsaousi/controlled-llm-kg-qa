@@ -86,12 +86,31 @@ Minimal server environment:
 ```env
 FUSEKI_QUERY_URL=http://<server>:3030/infineon/sparql
 TRUE_DEMAND_DR_ONTOLOGY_PATH=/path/to/DigitalReference.ttl
+LLM_BACKEND=litellm
+LITELLM_BASE_URL=https://<litellm-gateway>
+LITELLM_CHAT_ENDPOINT=/chat/completions
+LITELLM_MODEL=<approved-model-name>
+LITELLM_API_KEY=<server-side-key>
 INFINEON_ENABLE_LLM_CACHE=1
 TRUE_DEMAND_ENABLE_DEVELOPER_MODE=0
 ```
 
 Use `TRUE_DEMAND_ENABLE_DEVELOPER_MODE=1` only for debugging by the deployment
 owner.
+
+For deployed Streamlit, bind the server to all interfaces and make sure the
+reverse proxy supports Streamlit websocket traffic:
+
+```bash
+python -m streamlit run app.py \
+  --server.address 0.0.0.0 \
+  --server.port 8501 \
+  --server.enableCORS false \
+  --server.enableXsrfProtection false
+```
+
+If Fuseki runs in a different container or service, `FUSEKI_QUERY_URL` must use
+that internal service URL, not `localhost`.
 
 ## Required Services For Local Development
 
