@@ -5264,13 +5264,19 @@ with st.sidebar:
     )
 
     llm_backend = os.environ.get("LLM_BACKEND", "infineon").strip().lower()
-    default_url = os.environ.get("LITELLM_BASE_URL") or os.environ.get("INFINEON_API_URL", "")
-    default_model = os.environ.get("LITELLM_MODEL") or os.environ.get("INFINEON_MODEL", "gpt-4o")
-    default_endpoint = (
-        os.environ.get("LITELLM_CHAT_ENDPOINT")
-        or os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
-    )
-    default_key = os.environ.get("LITELLM_API_KEY") or os.environ.get("INFINEON_API_KEY", "")
+    if llm_backend in {"litellm", "lite_llm"}:
+        default_url = os.environ.get("LITELLM_BASE_URL") or os.environ.get("INFINEON_API_URL", "")
+        default_model = os.environ.get("LITELLM_MODEL") or os.environ.get("INFINEON_MODEL", "gpt-4o")
+        default_endpoint = (
+            os.environ.get("LITELLM_CHAT_ENDPOINT")
+            or os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
+        )
+        default_key = os.environ.get("LITELLM_API_KEY") or os.environ.get("INFINEON_API_KEY", "")
+    else:
+        default_url = os.environ.get("INFINEON_API_URL", "https://gpt4ifx.icp.infineon.com")
+        default_model = os.environ.get("INFINEON_MODEL", "gpt-4o")
+        default_endpoint = os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
+        default_key = os.environ.get("INFINEON_API_KEY", "")
 
     api_url = default_url
     api_endpoint = default_endpoint

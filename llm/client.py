@@ -35,27 +35,20 @@ class InfineonGPTClient:
     ) -> None:
         self.backend = os.environ.get("LLM_BACKEND", "infineon").strip().lower()
         litellm_mode = self.backend in {"litellm", "lite_llm"}
-        self.model = (
-            model
-            or os.environ.get("LITELLM_MODEL")
-            or os.environ.get("INFINEON_MODEL")
-            or "gpt-4o"
-        )
-        self.base_url = (
-            base_url
-            or os.environ.get("LITELLM_BASE_URL")
-            or os.environ.get("INFINEON_API_URL")
-        )
-        self.api_key = (
-            api_key
-            or os.environ.get("LITELLM_API_KEY")
-            or os.environ.get("INFINEON_API_KEY")
-        )
-        self.chat_endpoint = (
-            os.environ.get("LITELLM_CHAT_ENDPOINT")
-            or os.environ.get("INFINEON_CHAT_ENDPOINT")
-            or "/chat/completions"
-        )
+        if litellm_mode:
+            self.model = model or os.environ.get("LITELLM_MODEL") or os.environ.get("INFINEON_MODEL", "gpt-4o")
+            self.base_url = base_url or os.environ.get("LITELLM_BASE_URL") or os.environ.get("INFINEON_API_URL")
+            self.api_key = api_key or os.environ.get("LITELLM_API_KEY") or os.environ.get("INFINEON_API_KEY")
+            self.chat_endpoint = (
+                os.environ.get("LITELLM_CHAT_ENDPOINT")
+                or os.environ.get("INFINEON_CHAT_ENDPOINT")
+                or "/chat/completions"
+            )
+        else:
+            self.model = model or os.environ.get("INFINEON_MODEL", "gpt-4o")
+            self.base_url = base_url or os.environ.get("INFINEON_API_URL")
+            self.api_key = api_key or os.environ.get("INFINEON_API_KEY")
+            self.chat_endpoint = os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
         self.auth_endpoint = os.environ.get("INFINEON_AUTH_ENDPOINT", "/auth/token")
         self.temperature = temperature
         self.max_tokens = max_tokens
