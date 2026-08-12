@@ -33,15 +33,14 @@ class InfineonGPTClient:
         temperature: float = 0.2,
         max_tokens: int = 2048,
     ) -> None:
-        self.backend = os.environ.get("LLM_BACKEND", "infineon").strip().lower()
+        self.backend = _env_first("LLM_BACKEND", "KGQA_LLM_BACKEND", default="infineon").strip().lower()
         litellm_mode = self.backend in {"litellm", "lite_llm"}
         if litellm_mode:
-            self.model = model or os.environ.get("LITELLM_MODEL") or os.environ.get("INFINEON_MODEL", "gpt-4o")
-            self.base_url = base_url or os.environ.get("LITELLM_BASE_URL") or os.environ.get("INFINEON_API_URL")
-            self.api_key = api_key or os.environ.get("LITELLM_API_KEY") or os.environ.get("INFINEON_API_KEY")
+            self.model = model or _env_first("LITELLM_MODEL", "LITE_LLM_MODEL", "INFINEON_MODEL", default="gpt-4o")
+            self.base_url = base_url or _env_first("LITELLM_BASE_URL", "LITE_LLM_BASE_URL", "BASE_URL", "INFINEON_API_URL")
+            self.api_key = api_key or _env_first("LITELLM_API_KEY", "LITE_LLM_TOKEN", "LITE_LLM_API_KEY", "INFINEON_API_KEY")
             self.chat_endpoint = (
-                os.environ.get("LITELLM_CHAT_ENDPOINT")
-                or os.environ.get("INFINEON_CHAT_ENDPOINT")
+                _env_first("LITELLM_CHAT_ENDPOINT", "LITE_LLM_CHAT_ENDPOINT", "INFINEON_CHAT_ENDPOINT")
                 or "/chat/completions"
             )
         else:
@@ -66,7 +65,7 @@ class InfineonGPTClient:
             self.refresh_api_key()
         if not self.api_key:
             raise ValueError(
-                "Missing API key. Set LITELLM_API_KEY/INFINEON_API_KEY or set "
+                "Missing API key. Set LITELLM_API_KEY/LITE_LLM_TOKEN/INFINEON_API_KEY or set "
                 "USER_LLM/PASSWORD_LLM for legacy automatic token retrieval."
             )
 
@@ -257,6 +256,14 @@ def _env_bool(name: str, default: bool) -> bool:
     if raw is None:
         return default
     return raw.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _env_first(*names: str, default: Optional[str] = None) -> Optional[str]:
+    for name in names:
+        raw = os.environ.get(name)
+        if raw is not None and raw.strip():
+            return raw.strip()
+    return default
 
 
 def _requests_verify_setting() -> Union[bool, str]:

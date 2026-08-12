@@ -95,6 +95,17 @@ INFINEON_ENABLE_LLM_CACHE=1
 TRUE_DEMAND_ENABLE_DEVELOPER_MODE=0
 ```
 
+For the Infineon LiteLLM deployment, the application also accepts the aliases
+used by the platform team:
+
+```env
+LLM_BACKEND=litellm
+BASE_URL=https://litellm.icp.infineon.com
+LITE_LLM_TOKEN=<server-side-key>
+LITELLM_MODEL=<approved-model-name>
+LITELLM_CHAT_ENDPOINT=/chat/completions
+```
+
 Use `TRUE_DEMAND_ENABLE_DEVELOPER_MODE=1` only for debugging by the deployment
 owner.
 

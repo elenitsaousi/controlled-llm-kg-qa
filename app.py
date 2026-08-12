@@ -5263,15 +5263,34 @@ with st.sidebar:
         else False
     )
 
-    llm_backend = os.environ.get("LLM_BACKEND", "infineon").strip().lower()
+    llm_backend = (
+        os.environ.get("LLM_BACKEND")
+        or os.environ.get("KGQA_LLM_BACKEND")
+        or "infineon"
+    ).strip().lower()
     if llm_backend in {"litellm", "lite_llm"}:
-        default_url = os.environ.get("LITELLM_BASE_URL") or os.environ.get("INFINEON_API_URL", "")
-        default_model = os.environ.get("LITELLM_MODEL") or os.environ.get("INFINEON_MODEL", "gpt-4o")
+        default_url = (
+            os.environ.get("LITELLM_BASE_URL")
+            or os.environ.get("LITE_LLM_BASE_URL")
+            or os.environ.get("BASE_URL")
+            or os.environ.get("INFINEON_API_URL", "")
+        )
+        default_model = (
+            os.environ.get("LITELLM_MODEL")
+            or os.environ.get("LITE_LLM_MODEL")
+            or os.environ.get("INFINEON_MODEL", "gpt-4o")
+        )
         default_endpoint = (
             os.environ.get("LITELLM_CHAT_ENDPOINT")
+            or os.environ.get("LITE_LLM_CHAT_ENDPOINT")
             or os.environ.get("INFINEON_CHAT_ENDPOINT", "/chat/completions")
         )
-        default_key = os.environ.get("LITELLM_API_KEY") or os.environ.get("INFINEON_API_KEY", "")
+        default_key = (
+            os.environ.get("LITELLM_API_KEY")
+            or os.environ.get("LITE_LLM_TOKEN")
+            or os.environ.get("LITE_LLM_API_KEY")
+            or os.environ.get("INFINEON_API_KEY", "")
+        )
     else:
         default_url = os.environ.get("INFINEON_API_URL", "https://gpt4ifx.icp.infineon.com")
         default_model = os.environ.get("INFINEON_MODEL", "gpt-4o")
@@ -5824,6 +5843,8 @@ if asked:
                     os.environ["LITELLM_MODEL"] = model_name.strip() or default_model
                     if api_key.strip():
                         os.environ["LITELLM_API_KEY"] = api_key.strip()
+                    os.environ.setdefault("BASE_URL", api_url.strip())
+                    os.environ.setdefault("LITE_LLM_TOKEN", api_key.strip())
                     os.environ["INFINEON_AUTO_REFRESH_TOKEN"] = "0"
                 os.environ["INFINEON_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
                 client = InfineonGPTClient(
