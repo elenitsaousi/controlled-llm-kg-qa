@@ -181,15 +181,20 @@ def generate_candidate_prompt(
 def _default_client():
     import os
 
-    provider = (os.getenv("LLM_PROVIDER") or os.getenv("LLM_BACKEND", "infineon")).strip().lower()
+    provider = (
+        os.getenv("LLM_PROVIDER")
+        or os.getenv("LLM_BACKEND")
+        or os.getenv("KGQA_LLM_BACKEND")
+        or "infineon"
+    ).strip().lower()
     if provider == "infiineon":
         provider = "infineon"
 
-    if provider == "infineon":
+    if provider in {"infineon", "litellm", "lite_llm"}:
         return InfineonGPTClient()
     raise ValueError(
         f"Unknown/unsupported LLM backend '{provider}'. "
-        "Supported backend: infineon."
+        "Supported backends: infineon, litellm."
     )
 
 

@@ -245,17 +245,24 @@ def _load_questions(path: str) -> List[Dict[str, str]]:
 def _build_llm_client(choice: str, temperature: float):
     choice = (choice or "auto").lower()
     if choice == "auto":
-        choice = (os.environ.get("LLM_PROVIDER") or os.environ.get("LLM_BACKEND") or "infineon").strip().lower()
+        choice = (
+            os.environ.get("LLM_PROVIDER")
+            or os.environ.get("LLM_BACKEND")
+            or os.environ.get("KGQA_LLM_BACKEND")
+            or "infineon"
+        ).strip().lower()
     if choice == "infiineon":
         choice = "infineon"
     if choice == "infineon":
         if not os.environ.get("INFINEON_API_URL") or not os.environ.get("INFINEON_API_KEY"):
             raise RuntimeError("Missing INFINEON_API_URL or INFINEON_API_KEY.")
         return InfineonGPTClient(temperature=temperature)
+    if choice in {"litellm", "lite_llm"}:
+        return InfineonGPTClient(temperature=temperature)
     if choice == "none":
         return None
     raise RuntimeError(
-        f"Unsupported LLM backend '{choice}'. Supported backend: infineon."
+        f"Unsupported LLM backend '{choice}'. Supported backends: infineon, litellm."
     )
 
 
