@@ -11,6 +11,7 @@ import numpy as np
 
 from ranking.feature_config import FEATURE_NAMES
 from ranking.feature_extraction import extract_features, extract_query_plan
+from ranking.local_embedding_similarity import local_embedding_cosine, local_embedding_cosines
 from ranking.query_contract import (
     compare_contracts,
     extract_query_contract,
@@ -125,6 +126,7 @@ EXTRA_FEATURE_NAMES = [
     "metric_keyword_missing",
     "metric_keyword_conflict",
     "query_description_tfidf_similarity",
+    "query_description_embedding_similarity",
     "shortage_status_grouped_count_requested",
     "shortage_status_query_has_status_grouping",
     "shortage_status_query_has_count_aggregation",
@@ -566,6 +568,10 @@ def _query_description_token_similarity(question: str, query: str, labels: Seque
     return len(q_tokens & desc_tokens) / float(len(q_tokens | desc_tokens))
 
 
+def _query_description_embedding_similarity(question: str, query: str, labels: Sequence[str]) -> float:
+    return local_embedding_cosine(question, _candidate_query_description(query, labels))
+
+
 def _metric_conflicts_for_features(requested: set[str], actual: set[str]) -> set[str]:
     if not requested or not actual:
         return set()
@@ -855,6 +861,7 @@ def _extra_feature_values(
     source: str,
     position: int,
     schema_dict: Dict[str, object] | None = None,
+    embedding_similarity: float | None = None,
 ) -> List[float]:
     labels = list(query_plan_labels or [])
     if not labels:
@@ -896,7 +903,12 @@ def _extra_feature_values(
         question,
         query,
     ) + [
-        _query_description_token_similarity(question, query, labels)
+        _query_description_token_similarity(question, query, labels),
+        (
+            float(embedding_similarity)
+            if embedding_similarity is not None
+            else _query_description_embedding_similarity(question, query, labels)
+        ),
     ] + _shortage_status_grouped_count_feature_values(
         question,
         query,
@@ -1174,6 +1186,11 @@ class NPTfidfRanker:
             candidate_query_plan_labels = [[] for _ in candidate_queries]
         if candidate_sources is None:
             candidate_sources = ["llm" for _ in candidate_queries]
+        descriptions = [
+            _candidate_query_description(query, labels)
+            for query, labels in zip(candidate_queries, candidate_query_plan_labels)
+        ]
+        embedding_similarities = local_embedding_cosines(question, descriptions)
         for position, (query, base_features, labels, source) in enumerate(
             zip(
                 candidate_queries,
@@ -1190,6 +1207,9 @@ class NPTfidfRanker:
                 source=source,
                 position=position,
                 schema_dict=schema_dict,
+                embedding_similarity=embedding_similarities[position]
+                if position < len(embedding_similarities)
+                else None,
             )
             rows.append(
                 _align_feature_row(
@@ -1268,6 +1288,11 @@ def _build_rows_for_qids(
     for qid in qids:
         item = data[qid]
         any_correct[qid] = any(c.is_correct == 1 for c in item.candidates)
+        descriptions = [
+            _candidate_query_description(cand.query, cand.query_plan_labels)
+            for cand in item.candidates
+        ]
+        embedding_similarities = local_embedding_cosines(item.question, descriptions)
         for position, cand in enumerate(item.candidates):
             sim = vectorizer.similarity(item.question, cand.query)
             extra = _extra_feature_values(
@@ -1276,6 +1301,9 @@ def _build_rows_for_qids(
                 query_plan_labels=cand.query_plan_labels,
                 source=cand.source,
                 position=position,
+                embedding_similarity=embedding_similarities[position]
+                if position < len(embedding_similarities)
+                else None,
             )
             rows.append(
                 _build_feature_row(

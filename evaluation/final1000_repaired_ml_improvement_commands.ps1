@@ -11,6 +11,12 @@
 # It evaluates improved selection features and XGBoost learning-to-rank on a
 # clean train/tune/holdout split. Do not promote a model unless it improves the
 # untouched holdout.
+#
+# Optional local embeddings:
+#   $env:KGQA_LOCAL_EMBEDDINGS="1"
+#   $env:KGQA_LOCAL_EMBEDDING_MODEL="C:\path\to\local\sentence-transformers-model"
+# Check before training with:
+#   python evaluation\check_local_embedding_similarity.py
 
 $ErrorActionPreference = "Stop"
 
@@ -126,14 +132,17 @@ function Apply-SweptModel {
   $TuneSelected = "results\final1000_repaired_tune200_${Name}_selection.json"
   $HoldoutSelected = "results\final1000_repaired_holdout200_${Name}_selection.json"
 
+  # Compact grid by design: the full Cartesian sweep is slow on Windows and
+  # does not call the LLM, so these thresholds cover conservative, neutral, and
+  # permissive guarded-selection settings without running hundreds of variants.
   python evaluation\sweep_guarded_ml_rerank.py `
     --results $TuneResults `
     --model $Model `
     --schema $Schema `
     --out $Sweep `
-    --margins "-1.00,-0.50,-0.25,-0.10,0.00,0.05,0.10,0.15,0.20,0.25" `
-    --scores "-10.00,-2.00,-1.00,-0.50,0.00,0.20,0.35,0.45,0.55,0.65" `
-    --max-ranks "1,2,3,4,5,6,8" `
+    --margins="-1.00,0.00,0.10" `
+    --scores="-10.00,0.00,0.45" `
+    --max-ranks="1,4,8" `
     --structured-guard `
     --enable-rank2-trusted-rescue `
     --trusted-rescue-max-rank 4 `
