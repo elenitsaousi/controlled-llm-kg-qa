@@ -9,6 +9,7 @@ from ranking.np_tfidf_ranker import (
     NPTfidfRanker,
     QuestionItem,
     SimpleTfidf,
+    _align_feature_row,
     _build_feature_row,
     _extra_feature_values,
     build_grouped_stratified_folds,
@@ -57,7 +58,7 @@ class XGBoostCandidateRanker:
             position=position,
             schema_dict=schema_dict,
         )
-        return _build_feature_row(
+        row = _build_feature_row(
             base_features,
             sim,
             extra,
@@ -65,6 +66,7 @@ class XGBoostCandidateRanker:
             disabled_feature_names=self.disabled_feature_names,
             disabled_feature_prefixes=self.disabled_feature_prefixes,
         )
+        return _align_feature_row(row, compose_feature_names(), self.feature_names)
 
     def score_question_candidates(
         self,

@@ -109,6 +109,22 @@ EXTRA_FEATURE_NAMES = [
     "scope_query_has_oem",
     "scope_query_has_tier1",
     "scope_query_has_semiconductor",
+    "scope_strict_match",
+    "scope_forbidden_extra",
+    "scope_oem_missing",
+    "scope_tier1_missing",
+    "scope_semiconductor_missing",
+    "demand_temporal_requested_current",
+    "demand_temporal_requested_future",
+    "demand_temporal_query_current",
+    "demand_temporal_query_future",
+    "demand_temporal_exact_match",
+    "demand_temporal_missing",
+    "demand_temporal_conflict",
+    "metric_keyword_exact_match",
+    "metric_keyword_missing",
+    "metric_keyword_conflict",
+    "query_description_tfidf_similarity",
     "shortage_status_grouped_count_requested",
     "shortage_status_query_has_status_grouping",
     "shortage_status_query_has_count_aggregation",
@@ -485,7 +501,101 @@ def _scope_origin_feature_values(question: str, query: str) -> List[float]:
         1.0 if requested and requested == actual else (0.0 if not requested else -1.0),
         *[1.0 if scope in requested else 0.0 for scope in known_scopes],
         *[1.0 if scope in actual else 0.0 for scope in known_scopes],
+        1.0 if requested == actual else (-1.0 if requested or actual else 0.0),
+        -1.0 if extra else 0.0,
+        -1.0 if "oem" in requested and "oem" not in actual else 0.0,
+        -1.0 if "tier1" in requested and "tier1" not in actual else 0.0,
+        -1.0 if "semiconductor" in requested and "semiconductor" not in actual else 0.0,
     ]
+
+
+def _demand_temporal_feature_values(question: str, query: str) -> List[float]:
+    q = " ".join(str(question or "").lower().replace("future-demand", "future demand").replace("current-demand", "current demand").split())
+    query_lower = str(query or "").lower()
+    requested_current = "current demand" in q or "current-demand" in q
+    requested_future = "future demand" in q or "future-demand" in q or "forecast demand" in q or "demand forecast" in q
+    query_current = "currentdemandanalysis" in query_lower or "current demand analysis" in query_lower
+    query_future = "futuredemandanalysis" in query_lower or "future demand analysis" in query_lower or "hasfuturedemand" in query_lower
+
+    if not (requested_current or requested_future):
+        return [0.0] * 7
+
+    exact = (
+        (requested_current == query_current)
+        and (requested_future == query_future)
+        and (query_current or query_future)
+    )
+    missing = (requested_current and not query_current) or (requested_future and not query_future)
+    conflict = (requested_current and query_future and not query_current) or (
+        requested_future and query_current and not query_future
+    )
+    return [
+        1.0 if requested_current else 0.0,
+        1.0 if requested_future else 0.0,
+        1.0 if query_current else 0.0,
+        1.0 if query_future else 0.0,
+        1.0 if exact else (-1.0 if conflict else 0.0),
+        -1.0 if missing else 0.0,
+        -1.0 if conflict else 0.0,
+    ]
+
+
+def _metric_keyword_feature_values(question: str, query: str) -> List[float]:
+    try:
+        requested = set(extract_question_contract(question).metrics or set())
+        actual = set(extract_query_contract(query).metrics or set())
+    except Exception:
+        return [0.0, 0.0, 0.0]
+    if not requested:
+        return [0.0, 0.0, 0.0]
+    matched = requested & actual
+    missing = requested - actual
+    conflicts = _metric_conflicts_for_features(requested, actual)
+    return [
+        float(len(matched)) / float(len(requested)) if requested else 0.0,
+        -float(len(missing)) / float(len(requested)) if requested else 0.0,
+        -float(len(conflicts)) / float(max(1, len(actual))) if actual else 0.0,
+    ]
+
+
+def _query_description_token_similarity(question: str, query: str, labels: Sequence[str]) -> float:
+    q_tokens = set(_tokenize(question))
+    desc_tokens = set(_tokenize(_candidate_query_description(query, labels)))
+    if not q_tokens or not desc_tokens:
+        return 0.0
+    return len(q_tokens & desc_tokens) / float(len(q_tokens | desc_tokens))
+
+
+def _metric_conflicts_for_features(requested: set[str], actual: set[str]) -> set[str]:
+    if not requested or not actual:
+        return set()
+    allowed = set(requested)
+    if "demand" in requested:
+        allowed.add("demand")
+    return {metric for metric in actual if metric not in allowed}
+
+
+def _candidate_query_description(query: str, labels: Sequence[str]) -> str:
+    try:
+        contract = extract_query_contract(query)
+        parts: List[str] = []
+        if contract.metrics:
+            parts.append("metric " + " ".join(sorted(contract.metrics)))
+        if contract.aggregation:
+            parts.append("aggregation " + contract.aggregation)
+        if contract.scopes:
+            parts.append("scope " + " ".join(sorted(contract.scopes)))
+        if contract.dimensions:
+            parts.append("dimensions " + " ".join(sorted(contract.dimensions)))
+        if contract.filters:
+            parts.append("filters " + " ".join(sorted(contract.filters)))
+        if contract.answer_shape:
+            parts.append("answer shape " + contract.answer_shape)
+        if labels:
+            parts.append("labels " + " ".join(_label_tokens(labels)))
+        return " ; ".join(parts) or query
+    except Exception:
+        return query
 
 
 def _shortage_status_grouped_count_feature_values(
@@ -779,7 +889,15 @@ def _extra_feature_values(
     ) + _scope_origin_feature_values(
         question,
         query,
-    ) + _shortage_status_grouped_count_feature_values(
+    ) + _demand_temporal_feature_values(
+        question,
+        query,
+    ) + _metric_keyword_feature_values(
+        question,
+        query,
+    ) + [
+        _query_description_token_similarity(question, query, labels)
+    ] + _shortage_status_grouped_count_feature_values(
         question,
         query,
         labels,
@@ -954,6 +1072,28 @@ def _build_feature_row(
     return row
 
 
+def _align_feature_row(
+    row: Sequence[float],
+    source_feature_names: Sequence[str],
+    target_feature_names: Sequence[str],
+) -> List[float]:
+    """Align a freshly computed feature row to the feature schema of a saved model.
+
+    This keeps older serialized models usable after adding new feature columns.
+    Missing target features are filled with zero; extra current features are
+    ignored when scoring an older model.
+    """
+
+    if len(row) == len(target_feature_names) and list(source_feature_names) == list(target_feature_names):
+        return [float(v) for v in row]
+    by_name = {
+        str(name): float(row[idx])
+        for idx, name in enumerate(source_feature_names)
+        if idx < len(row)
+    }
+    return [by_name.get(str(name), 0.0) for name in target_feature_names]
+
+
 def _fit_scaler(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     mean = X.mean(axis=0)
     std = X.std(axis=0)
@@ -1052,13 +1192,17 @@ class NPTfidfRanker:
                 schema_dict=schema_dict,
             )
             rows.append(
-                _build_feature_row(
-                    base_features,
-                    sim,
-                    extra,
-                    FEATURE_NAMES,
-                    disabled_feature_names=self.disabled_feature_names,
-                    disabled_feature_prefixes=self.disabled_feature_prefixes,
+                _align_feature_row(
+                    _build_feature_row(
+                        base_features,
+                        sim,
+                        extra,
+                        FEATURE_NAMES,
+                        disabled_feature_names=self.disabled_feature_names,
+                        disabled_feature_prefixes=self.disabled_feature_prefixes,
+                    ),
+                    compose_feature_names(FEATURE_NAMES),
+                    self.feature_names,
                 )
             )
         if not rows:

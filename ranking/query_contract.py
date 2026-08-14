@@ -162,6 +162,8 @@ def extract_question_contract(question: str) -> QueryContract:
 
     _add_if("actual" in toks or "actuals" in toks or "actually sold" in q, contract.filters, "actual")
     _add_if("forecast" in toks or "forecasted" in toks or "projected" in toks, contract.filters, "forecast")
+    _add_if("current demand" in q or "current-demand" in q, contract.filters, "current_demand")
+    _add_if("future demand" in q or "future-demand" in q or "demand forecast" in q or "forecast demand" in q, contract.filters, "future_demand")
     _add_if("bl1" in toks, contract.filters, "bl1")
     _add_if("bl2" in toks, contract.filters, "bl2")
     _add_if("option1" in toks, contract.filters, "option1")
@@ -276,6 +278,8 @@ def extract_query_contract(query: str) -> QueryContract:
 
     _add_if("isactualdata" in query_lower or "actual data" in hay, contract.filters, "actual")
     _add_if("isforecastdata" in query_lower or "forecast data" in hay, contract.filters, "forecast")
+    _add_if("currentdemandanalysis" in query_lower or "current demand analysis" in hay, contract.filters, "current_demand")
+    _add_if("futuredemandanalysis" in query_lower or "future demand analysis" in hay or "hasfuturedemand" in query_lower, contract.filters, "future_demand")
     _add_if("bl1" in hay, contract.filters, "bl1")
     _add_if("bl2" in hay, contract.filters, "bl2")
     _add_if("option1" in hay, contract.filters, "option1")
@@ -374,6 +378,8 @@ def compare_contracts(question_contract: QueryContract, query_contract: QueryCon
     incompatible_filters = {
         "actual": "forecast",
         "forecast": "actual",
+        "current_demand": "future_demand",
+        "future_demand": "current_demand",
         "shortage_yes": "shortage_no",
         "shortage_no": "shortage_yes",
     }
@@ -387,7 +393,7 @@ def compare_contracts(question_contract: QueryContract, query_contract: QueryCon
             score -= 2.0
             reasons.append(f"contract_filter_conflict:{opposite}")
             _record(conflicts, "filters", opposite)
-        elif flt in {"actual", "forecast", "bl1", "bl2", "option1", "option2", "option3"}:
+        elif flt in {"actual", "forecast", "current_demand", "future_demand", "bl1", "bl2", "option1", "option2", "option3"}:
             score -= 0.9
             reasons.append(f"contract_filter_missing:{flt}")
             _record(missing, "filters", flt)
