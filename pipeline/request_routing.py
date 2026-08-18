@@ -127,6 +127,36 @@ OUT_OF_DOMAIN_HINTS = {
     "recipe",
 }
 
+UNSUPPORTED_RELATIVE_TIME_PATTERNS = (
+    re.compile(
+        r"\b(?:past|last|recent|previous)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)?\s*"
+        r"(?:days?|weeks?|months?)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"\b(?:over|during|in)\s+the\s+(?:past|last|recent|previous)\s+"
+        r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)?\s*"
+        r"(?:days?|weeks?|months?)\b",
+        re.IGNORECASE,
+    ),
+)
+
+UNSUPPORTED_LIVE_TIME_PATTERNS = (
+    re.compile(r"\b(?:today|right now|real[- ]?time|live|latest|up[- ]?to[- ]date)\b", re.IGNORECASE),
+    re.compile(r"\b(?:currently|now)\b", re.IGNORECASE),
+)
+
+TREND_INTENT_PATTERN = re.compile(
+    r"\b(?:develop(?:ing|ment)?|evolv(?:e|ing|es)|trend(?:s|ing)?|change(?:s|d)? over time|progress(?:ion)?)\b",
+    re.IGNORECASE,
+)
+
+SUPPORTED_TIME_OR_BREAKDOWN_PATTERN = re.compile(
+    r"\b(?:by|per|across|grouped by|broken down by|for each)\s+"
+    r"(?:month|months|quarter|quarters|year|years|region|regions|technology|technology category|vehicle|vehicle type|survey|survey group)\b",
+    re.IGNORECASE,
+)
+
 DEFINITION_PATTERNS = (
     re.compile(r"^\s*what\s+is\s+(?:the\s+)?(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*what\s+does\s+(.+?)\s+mean\s*\??\s*$", re.IGNORECASE),
@@ -232,6 +262,94 @@ def _looks_like_kg_query(question: str, matched_text: str = "") -> bool:
     if re.search(r"\bhow\s+(many|much)\b", q):
         return True
     return False
+
+
+def _unsupported_relative_time_route(question: str, glossary: Dict[str, Dict[str, str]]) -> Optional[Dict[str, object]]:
+    if not any(pattern.search(question or "") for pattern in UNSUPPORTED_RELATIVE_TIME_PATTERNS):
+        return None
+    if not _contains_domain_term(question, glossary):
+        return None
+    return {
+        "route": "controlled_no_answer",
+        "answer": (
+            "I cannot answer this exact request because the graph does not define a rolling "
+            "relative time window such as the past three months. The available time dimensions "
+            "are explicit graph periods such as months, quarters, years, and time-period labels. "
+            "Please ask with a concrete month, quarter, year, or supported breakdown."
+        ),
+        "confidence": "High",
+        "reason": (
+            "Unsupported relative-time window. The True Demand KG contains explicit time-period "
+            "values, but not a live/current 'past N months' window."
+        ),
+    }
+
+
+def _unsupported_live_time_route(question: str, glossary: Dict[str, Dict[str, str]]) -> Optional[Dict[str, object]]:
+    q = _normalize(question)
+    if not any(pattern.search(q) for pattern in UNSUPPORTED_LIVE_TIME_PATTERNS):
+        return None
+    if "current demand" in q or "current-demand" in q:
+        return None
+    if not _contains_domain_term(question, glossary):
+        return None
+    return {
+        "route": "controlled_no_answer",
+        "answer": (
+            "I cannot answer live, latest, or real-time requests from the current graph. "
+            "The True Demand KG contains explicit survey and time-period records, not a "
+            "live operational feed. Please ask for a concrete month, quarter, year, or "
+            "a supported graph breakdown."
+        ),
+        "confidence": "High",
+        "reason": (
+            "Unsupported live/latest time request. The graph is a fixed RDF dataset with "
+            "explicit time-period values, not a real-time data source."
+        ),
+    }
+
+
+def _vague_trend_route(question: str, glossary: Dict[str, Dict[str, str]]) -> Optional[Dict[str, object]]:
+    q = _normalize(question)
+    if not TREND_INTENT_PATTERN.search(q):
+        return None
+    if not _contains_domain_term(question, glossary):
+        return None
+    if SUPPORTED_TIME_OR_BREAKDOWN_PATTERN.search(q):
+        return None
+    if any(pattern.search(q) for pattern in UNSUPPORTED_RELATIVE_TIME_PATTERNS):
+        return None
+    options: List[Dict[str, str]] = [
+        {
+            "id": "quarter",
+            "label": "Show semiconductor demand by quarter.",
+            "rewritten_question": "Show semiconductor demand by quarter.",
+        },
+        {
+            "id": "region_quarter",
+            "label": "Show semiconductor demand percentage change by region and quarter.",
+            "rewritten_question": "Show summed percentage change in semiconductor demand for each region per quarter.",
+        },
+        {
+            "id": "future_tech_quarter",
+            "label": "Show future semiconductor demand by technology category and quarter.",
+            "rewritten_question": "Show future semiconductor demand by technology category and quarter.",
+        },
+    ]
+    return {
+        "route": "clarification_needed",
+        "answer": "",
+        "request_clarification": {
+            "needs_clarification": True,
+            "reason": (
+                "The question asks for a trend, but it does not specify a supported graph "
+                "breakdown such as quarter, region, technology category, or vehicle type."
+            ),
+            "question": "Which trend view should be used?",
+            "options": options,
+        },
+        "confidence": "Low",
+    }
 
 
 def _definition_route(
@@ -350,6 +468,18 @@ def route_request(
             "confidence": "High",
             "reason": "No Infineon KG concept was detected and the request appears outside the dataset scope.",
         }
+
+    unsupported_time = _unsupported_relative_time_route(question, glossary)
+    if unsupported_time is not None:
+        return unsupported_time
+
+    unsupported_live_time = _unsupported_live_time_route(question, glossary)
+    if unsupported_live_time is not None:
+        return unsupported_live_time
+
+    vague_trend = _vague_trend_route(question, glossary)
+    if vague_trend is not None:
+        return vague_trend
 
     unknown_definition = _unknown_definition_route(question)
     if unknown_definition is not None:

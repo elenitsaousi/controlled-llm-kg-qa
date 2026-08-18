@@ -2673,6 +2673,40 @@ def _is_out_of_scope_question(question: str) -> Tuple[bool, str]:
     return False, ""
 
 
+def _is_unsupported_relative_time_question(question: str) -> Tuple[bool, str]:
+    q = _normalize_question_key(question)
+    if not q:
+        return False, ""
+    relative_time_patterns = (
+        r"\b(?:past|last|recent|previous)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)?\s*(?:days?|weeks?|months?)\b",
+        r"\b(?:over|during|in)\s+the\s+(?:past|last|recent|previous)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)?\s*(?:days?|weeks?|months?)\b",
+    )
+    if not any(re.search(pattern, q) for pattern in relative_time_patterns):
+        return False, ""
+    in_scope_terms = (
+        "demand",
+        "semiconductor",
+        "survey",
+        "region",
+        "quarter",
+        "month",
+        "year",
+        "vehicle",
+        "sales",
+        "inventory",
+        "shortage",
+        "order cancellation",
+        "technology",
+        "component",
+    )
+    if not any(term in q for term in in_scope_terms):
+        return False, ""
+    return True, (
+        "The graph contains explicit month, quarter, year, and time-period values, "
+        "but it does not define a live rolling window such as 'the past 3 months'."
+    )
+
+
 def _render_out_of_scope_message(reason: str) -> None:
     st.warning(
         "I cannot answer this question because it is outside the available True Demand knowledge graph "
@@ -2682,6 +2716,20 @@ def _render_out_of_scope_message(reason: str) -> None:
         st.caption(reason)
     st.markdown("You can ask graph- or ontology-grounded questions such as:")
     st.markdown("\n".join(f"- {example}" for example in OFF_TOPIC_EXAMPLES))
+
+
+def _render_unsupported_time_message(reason: str) -> None:
+    st.warning("I cannot answer this exact relative-time request from the current graph.")
+    if reason:
+        st.caption(reason)
+    st.markdown("Use an explicit graph time dimension instead, for example:")
+    examples = [
+        "Show semiconductor demand by quarter.",
+        "Show summed percentage change in semiconductor demand for each region per quarter.",
+        "Show future semiconductor demand by technology category and quarter.",
+        "Show vehicle sales by month.",
+    ]
+    st.markdown("\n".join(f"- {example}" for example in examples))
 
 
 @st.cache_data(show_spinner=False)
@@ -5663,6 +5711,63 @@ if asked:
             _render_out_of_scope_message(out_of_scope_reason)
             st.stop()
 
+        unsupported_time, unsupported_time_reason = _is_unsupported_relative_time_question(question)
+        if (
+            unsupported_time
+            and not guided_query
+            and dr_definition is None
+            and advisory_plan is None
+        ):
+            request_id = uuid.uuid4().hex
+            result = {
+                "answer": "Unsupported relative-time request.",
+                "selected_query": "",
+                "candidates": [],
+                "metadata": {"llm_skipped": True, "unsupported_relative_time": True},
+                "policy": "unsupported_relative_time_guard",
+                "selection_reason": unsupported_time_reason,
+                "confidence_route": {
+                    "enabled": True,
+                    "route": "controlled_no_answer",
+                    "score1": 0.96,
+                    "score2": 0.0,
+                    "margin": 0.96,
+                    "selected_query": "",
+                    "reason": unsupported_time_reason,
+                    "options": [],
+                    "safety_flags": ["unsupported_relative_time"],
+                    "blocking_safety_flags": ["unsupported_relative_time"],
+                },
+                "answerability": {
+                    "status": "unsupported_relative_time",
+                    "can_answer": False,
+                    "reason": unsupported_time_reason,
+                },
+            }
+            st.session_state["last_qa_result"] = result
+            st.session_state["last_graph_rows"] = []
+            st.session_state["last_selected_query"] = ""
+            st.session_state["last_graph_answer"] = "Unsupported relative-time request."
+            st.session_state["last_question"] = question
+            st.session_state["last_request_id"] = request_id
+            try:
+                _write_user_audit_record(
+                    _user_audit_payload(
+                        request_id=request_id,
+                        question=question,
+                        result=result,
+                        selected_query="",
+                        graph_rows=[],
+                        graph_exec_error="",
+                        graph_answer="Unsupported relative-time request.",
+                        latency_s=0.0,
+                    )
+                )
+            except Exception:
+                pass
+            _render_unsupported_time_message(unsupported_time_reason)
+            st.stop()
+
         try:
             schema = _load_schema_from_path(schema_path)
         except Exception as exc:
@@ -5836,6 +5941,18 @@ if asked:
                 if not api_url.strip():
                     st.error("Missing API URL.")
                     st.stop()
+                os.environ["INFINEON_REQUEST_TIMEOUT_SEC"] = os.environ.get(
+                    "KGQA_INTERACTIVE_LLM_TIMEOUT_SEC",
+                    "8",
+                )
+                os.environ["INFINEON_MAX_RETRIES"] = os.environ.get(
+                    "KGQA_INTERACTIVE_LLM_MAX_RETRIES",
+                    "0",
+                )
+                os.environ["INFINEON_RETRY_BACKOFF_SEC"] = os.environ.get(
+                    "KGQA_INTERACTIVE_LLM_RETRY_BACKOFF_SEC",
+                    "0.25",
+                )
                 os.environ["LLM_BACKEND"] = llm_backend.strip() or "infineon"
                 if llm_backend in {"litellm", "lite_llm"}:
                     os.environ["LITELLM_BASE_URL"] = api_url.strip()

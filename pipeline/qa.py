@@ -2602,8 +2602,11 @@ def answer_question(
     clarification_candidate_window: int = 8,
     enable_answerability_assessment: bool = True,
 ) -> Dict[str, object]:
-    alias_index = _get_default_entity_alias_index() if enable_entity_linking else None
+    alias_index = None
     request_route = route_request(question, schema=schema, alias_index=alias_index)
+    if request_route.get("route") == "kg_query" and enable_entity_linking:
+        alias_index = _get_default_entity_alias_index()
+        request_route = route_request(question, schema=schema, alias_index=alias_index)
     if request_route.get("route") != "kg_query":
         answer = str(request_route.get("answer", ""))
         if request_route.get("route") == "general_definition":
@@ -2645,7 +2648,7 @@ def answer_question(
             "clarification": None,
             "answerability": {
                 "status": "non_kg_request",
-                "can_answer": bool(answer),
+                "can_answer": bool(answer) and request_route.get("route") != "controlled_no_answer",
                 "reason": str(request_route.get("reason", request_route.get("route"))),
                 "selected_has_rows": None,
                 "selected_error": None,
