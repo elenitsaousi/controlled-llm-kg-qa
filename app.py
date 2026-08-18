@@ -5,9 +5,11 @@ import re
 import uuid
 import math
 import sqlite3
+import socket
 import urllib.error
 import urllib.request
 from collections import Counter, defaultdict
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
@@ -56,6 +58,9 @@ DEFAULT_SCHEMA_PATH = PROJECT_ROOT / "data" / "infineon" / "schema.json"
 DEFAULT_GRAPH_PATH = PROJECT_ROOT / "data" / "infineon" / "graph.ttl"
 DEFAULT_ONTOLOGY_PATH = PROJECT_ROOT / "data" / "infineon" / "true_demand_ontology_extracted.ttl"
 DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
+DEFAULT_INTERACTIVE_TIME_BUDGET_SEC = 10.0
+DEFAULT_INTERACTIVE_LLM_TIMEOUT_SEC = 6.0
+DEFAULT_INTERACTIVE_QUERY_TIMEOUT_SEC = 3.0
 FINAL_SYSTEM_EVALUATION = {
     "benchmark_questions": 1000,
     "kg_questions": 800,
@@ -229,6 +234,34 @@ def _graph_backend_available(graph_path: str) -> bool:
     return bool(_active_fuseki_query_url()) or bool(graph_path and os.path.exists(graph_path))
 
 
+def _interactive_time_budget_sec() -> float:
+    try:
+        return max(1.0, float(os.getenv("KGQA_INTERACTIVE_TIME_BUDGET_SEC", str(DEFAULT_INTERACTIVE_TIME_BUDGET_SEC))))
+    except ValueError:
+        return DEFAULT_INTERACTIVE_TIME_BUDGET_SEC
+
+
+def _interactive_query_timeout_sec() -> float:
+    try:
+        return max(0.5, float(os.getenv("KGQA_INTERACTIVE_QUERY_TIMEOUT_SEC", str(DEFAULT_INTERACTIVE_QUERY_TIMEOUT_SEC))))
+    except ValueError:
+        return DEFAULT_INTERACTIVE_QUERY_TIMEOUT_SEC
+
+
+def _interactive_budget_exceeded(started_at: float, reserve_s: float = 0.0) -> bool:
+    return (time.perf_counter() - started_at + float(reserve_s)) >= _interactive_time_budget_sec()
+
+
+@contextmanager
+def _temporary_socket_timeout(timeout_s: float):
+    previous = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(float(timeout_s))
+    try:
+        yield
+    finally:
+        socket.setdefaulttimeout(previous)
+
+
 @st.cache_resource(show_spinner=False)
 def _load_graph_cached(graph_path: str, fuseki_query_url: str = "") -> Graph:
     if fuseki_query_url.strip():
@@ -247,7 +280,8 @@ def _execute_query_preview(
     query: str,
     max_rows: int = 200,
 ) -> Tuple[List[Dict[str, str]], bool]:
-    results = graph.query(_ensure_prefixes(query))
+    with _temporary_socket_timeout(_interactive_query_timeout_sec()):
+        results = graph.query(_ensure_prefixes(query))
     rows: List[Dict[str, str]] = []
     truncated = False
     for idx, row in enumerate(results):
@@ -1996,6 +2030,8 @@ def _capability_backed_clarification_options(
     fuseki_query_url: str,
     max_options: int = 3,
 ) -> List[Dict[str, object]]:
+    started_at = time.perf_counter()
+    option_budget_s = min(2.5, _interactive_time_budget_sec() / 3.0)
     try:
         report = CAPABILITY_REGISTRY.resolve(question)
     except Exception:
@@ -2047,6 +2083,8 @@ def _capability_backed_clarification_options(
         graph_path,
         fuseki_query_url,
     ):
+        if time.perf_counter() - started_at >= option_budget_s:
+            break
         pattern_question = str(row.get("question", "") or "")
         try:
             pattern_report = CAPABILITY_REGISTRY.resolve(pattern_question)
@@ -2730,6 +2768,47 @@ def _render_unsupported_time_message(reason: str) -> None:
         "Show vehicle sales by month.",
     ]
     st.markdown("\n".join(f"- {example}" for example in examples))
+
+
+def _interactive_timeout_result(question: str, elapsed_s: float, reason: str = "") -> Dict[str, Any]:
+    timeout_s = _interactive_time_budget_sec()
+    message = (
+        f"The request exceeded the interactive time budget of {timeout_s:.0f} seconds. "
+        "Please use a more specific supported breakdown, for example by quarter, month, region, "
+        "technology category, or vehicle type."
+    )
+    if reason:
+        message = f"{message} {reason}"
+    return {
+        "answer": message,
+        "selected_query": "",
+        "candidates": [],
+        "errors": [message],
+        "metadata": {
+            "interactive_timeout": True,
+            "llm_skipped": False,
+            "elapsed_s": elapsed_s,
+        },
+        "policy": "interactive_timeout_guard",
+        "selection_reason": "The interactive request exceeded the configured time budget.",
+        "confidence_route": {
+            "enabled": True,
+            "route": "controlled_no_answer",
+            "score1": 0.0,
+            "score2": 0.0,
+            "margin": 0.0,
+            "selected_query": "",
+            "reason": "interactive timeout",
+            "options": [],
+            "safety_flags": ["interactive_timeout"],
+            "blocking_safety_flags": ["interactive_timeout"],
+        },
+        "answerability": {
+            "status": "interactive_timeout",
+            "can_answer": False,
+            "reason": message,
+        },
+    }
 
 
 @st.cache_data(show_spinner=False)
@@ -5774,6 +5853,8 @@ if asked:
             st.error(f"Schema load failed: {exc}")
             st.stop()
 
+        request_id = uuid.uuid4().hex
+        request_started = time.perf_counter()
         direct_capability_option = None
         if (
             cost_aware_direct_answers
@@ -5781,6 +5862,7 @@ if asked:
             and dr_definition is None
             and execute_selected
             and _graph_backend_available(graph_path)
+            and not _interactive_budget_exceeded(request_started, reserve_s=2.0)
         ):
             direct_capability_option = _single_direct_capability_option(
                 question=question,
@@ -5805,8 +5887,6 @@ if asked:
             st.subheader("Candidate Generation Prompt")
             st.code(prompt, language="text")
 
-        request_id = uuid.uuid4().hex
-        request_started = time.perf_counter()
         try:
             if dr_definition is not None:
                 result = {
@@ -5943,7 +6023,7 @@ if asked:
                     st.stop()
                 os.environ["INFINEON_REQUEST_TIMEOUT_SEC"] = os.environ.get(
                     "KGQA_INTERACTIVE_LLM_TIMEOUT_SEC",
-                    "8",
+                    str(int(DEFAULT_INTERACTIVE_LLM_TIMEOUT_SEC)),
                 )
                 os.environ["INFINEON_MAX_RETRIES"] = os.environ.get(
                     "KGQA_INTERACTIVE_LLM_MAX_RETRIES",
@@ -5970,19 +6050,20 @@ if asked:
                     api_key=api_key.strip() or None,
                     temperature=float(temperature),
                 )
-                result = answer_question(
-                    question,
-                    schema,
-                    llm_client=client,
-                    enable_entity_linking=True,
-                    use_ml_ranking=bool(use_ml_ranking),
-                    ml_policy=ml_policy,
-                    ml_model_path=ml_model_path.strip() or None,
-                    ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
-                    include_candidate_diagnostics=bool(show_candidate_diagnostics),
-                    enable_clarification=not bool(fast_interactive_mode),
-                    enable_answerability_assessment=not bool(fast_interactive_mode),
-                )
+                with _temporary_socket_timeout(_interactive_query_timeout_sec()):
+                    result = answer_question(
+                        question,
+                        schema,
+                        llm_client=client,
+                        enable_entity_linking=True,
+                        use_ml_ranking=bool(use_ml_ranking),
+                        ml_policy=ml_policy,
+                        ml_model_path=ml_model_path.strip() or None,
+                        ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
+                        include_candidate_diagnostics=bool(show_candidate_diagnostics),
+                        enable_clarification=not bool(fast_interactive_mode),
+                        enable_answerability_assessment=not bool(fast_interactive_mode),
+                    )
         except LLMAuthError as exc:
             st.error("Infineon GPT authentication failed.")
             st.write(str(exc))
@@ -5995,10 +6076,15 @@ if asked:
         except LLMClientError as exc:
             st.error(f"LLM error: {exc}")
             st.stop()
+        except (TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+            elapsed = time.perf_counter() - request_started
+            result = _interactive_timeout_result(question, elapsed, reason=str(exc))
         except Exception as exc:
             st.error(f"Request failed: {exc}")
             st.stop()
         request_elapsed = time.perf_counter() - request_started
+        if _interactive_budget_exceeded(request_started, reserve_s=0.5):
+            result = _interactive_timeout_result(question, request_elapsed)
 
         effective_question = str(result.get("effective_question", "")).strip()
         if effective_question and effective_question != question.strip():
@@ -6017,7 +6103,15 @@ if asked:
             and result["metadata"].get("advisory_route")
         )
 
-        if execute_selected and not guided_query and not is_dr_ontology_route and not is_direct_capability_route and not is_advisory_route and _graph_backend_available(graph_path):
+        if (
+            execute_selected
+            and not guided_query
+            and not is_dr_ontology_route
+            and not is_direct_capability_route
+            and not is_advisory_route
+            and _graph_backend_available(graph_path)
+            and not _interactive_budget_exceeded(request_started, reserve_s=2.0)
+        ):
             execution_override = _execution_aware_selected_query_override(
                 result,
                 question=effective_question or question,
@@ -6053,7 +6147,15 @@ if asked:
                 result["confidence_route"] = confidence_route
 
         direct_option = None
-        if execute_selected and not guided_query and not is_dr_ontology_route and not is_direct_capability_route and not is_advisory_route and _graph_backend_available(graph_path):
+        if (
+            execute_selected
+            and not guided_query
+            and not is_dr_ontology_route
+            and not is_direct_capability_route
+            and not is_advisory_route
+            and _graph_backend_available(graph_path)
+            and not _interactive_budget_exceeded(request_started, reserve_s=2.0)
+        ):
             direct_option = _single_direct_capability_option(
                 question=effective_question or question,
                 graph_path=graph_path,
@@ -6099,7 +6201,13 @@ if asked:
             isinstance(confidence_route, dict)
             and confidence_route.get("route") == "clarification"
         )
-        if execute_selected and selected_query and _graph_backend_available(graph_path) and not route_needs_clarification:
+        if (
+            execute_selected
+            and selected_query
+            and _graph_backend_available(graph_path)
+            and not route_needs_clarification
+            and not _interactive_budget_exceeded(request_started, reserve_s=1.0)
+        ):
             try:
                 graph_load_started = time.perf_counter()
                 graph = _load_active_graph(graph_path)
@@ -6146,6 +6254,7 @@ if asked:
             and selected_query
             and not graph_exec_error
             and not graph_rows
+            and not _interactive_budget_exceeded(request_started, reserve_s=2.0)
         ):
             fallback_options = _capability_backed_clarification_options(
                 question=effective_question or question,
