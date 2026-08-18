@@ -1304,19 +1304,65 @@ def _graph_evidence_summary(graph_rows: List[Dict[str, str]]) -> str:
     )
 
 
-def _render_request_clarification(clarification: Dict[str, Any]) -> None:
+def _request_clarification_guided_query(
+    rewritten_question: str,
+    *,
+    graph_path: str,
+    fuseki_query_url: str,
+) -> str:
+    question_text = str(rewritten_question or "").strip()
+    if not question_text:
+        return ""
+    lookup_query = _load_guided_query_lookup().get(_normalize_question_key(question_text), "")
+    if lookup_query:
+        return lookup_query
+    try:
+        option = _single_direct_capability_option(
+            question=question_text,
+            graph_path=graph_path,
+            fuseki_query_url=fuseki_query_url,
+        )
+    except Exception:
+        option = None
+    if option:
+        return str(option.get("query", "") or "").strip()
+    return ""
+
+
+def _render_request_clarification(
+    clarification: Dict[str, Any],
+    *,
+    graph_path: str,
+    fuseki_query_url: str,
+) -> None:
     st.subheader("Clarify Request")
     st.write(str(clarification.get("reason", "The requested task is not specific enough yet.")))
     st.write(str(clarification.get("question", "What do you want to know?")))
+    rendered = 0
     for option in list(clarification.get("options") or []):
+        rewritten = str(option.get("rewritten_question", "") or "").strip()
+        query = _request_clarification_guided_query(
+            rewritten,
+            graph_path=graph_path,
+            fuseki_query_url=fuseki_query_url,
+        )
+        if not query:
+            continue
+        rendered += 1
         cols = st.columns([3, 1])
         cols[0].write(str(option.get("label", "Option")))
         cols[1].button(
             "Use",
             key=f"request_clarify_{option.get('id')}",
             use_container_width=True,
-            on_click=_set_question_input,
-            args=(str(option.get("rewritten_question", "")),),
+            on_click=_set_guided_question_input,
+            args=(rewritten, query),
+        )
+    if rendered == 0:
+        st.warning(
+            "I could not find a validated executable option for this clarification. "
+            "Please use the guided builder or ask with an explicit month, quarter, region, "
+            "technology category, or vehicle type."
         )
 
 
@@ -2490,11 +2536,6 @@ def _render_confidence_clarification(
             blocking = _blocking_confidence_safety_flags(flags)
             if blocking:
                 skipped_empty += 1
-                enriched["preview_error"] = "blocked_by_semantic_guard:" + ",".join(blocking[:4])
-                enriched["answerable"] = False
-                enriched["selectable"] = False
-                enriched["disabled_reason"] = "This interpretation is plausible, but it was blocked by semantic safety checks."
-                display_options.append(enriched)
                 continue
             rows, error = _preview_query_rows_cached(
                 graph_path,
@@ -2525,6 +2566,7 @@ def _render_confidence_clarification(
             display_options.append(enriched)
         options = display_options
         answerable_count = len(options)
+    selectable_count = sum(1 for option in options if bool(option.get("selectable", option.get("answerable"))))
     if not options:
         options = _capability_backed_clarification_options(
             question=active_question,
@@ -2546,8 +2588,8 @@ def _render_confidence_clarification(
             return
     if skipped_empty:
         st.caption(
-            f"Showing {skipped_empty} plausible but currently non-answerable interpretation(s) "
-            "with their status instead of hiding them."
+            f"{skipped_empty} generated interpretation(s) were removed or marked because they failed "
+            "semantic or graph-evidence checks."
         )
     if len(options) == 1 and answerable_count == 1 and execute_selected:
         _accept_confidence_option(
@@ -2557,9 +2599,9 @@ def _render_confidence_clarification(
         )
         st.info("Using the only graph-supported interpretation.")
         return
-    if len(options) < 2:
+    if len(options) < 2 or selectable_count == 0:
         st.warning(
-            "I could not find multiple answerable interpretations to show for clarification. "
+            "I could not find enough selectable graph-backed interpretations. "
             "Please revise the question or use the guided builder."
         )
         return
@@ -6396,7 +6438,11 @@ if asked:
         if isinstance(confidence_route, dict):
             _render_confidence_route_badge(confidence_route)
         if needs_request_clarification:
-            _render_request_clarification(request_clarification)
+            _render_request_clarification(
+                request_clarification,
+                graph_path=graph_path,
+                fuseki_query_url=_active_fuseki_query_url(),
+            )
             clarification_rendered = True
         elif route_needs_clarification:
             _render_confidence_clarification(
@@ -6559,7 +6605,11 @@ if not clarification_rendered:
         else None
     )
     if isinstance(request_clarification, dict) and request_clarification.get("needs_clarification"):
-        _render_request_clarification(request_clarification)
+        _render_request_clarification(
+            request_clarification,
+            graph_path=graph_path,
+            fuseki_query_url=_active_fuseki_query_url(),
+        )
         clarification_rendered = True
     confidence_route = (last_result or {}).get("confidence_route") if isinstance(last_result, dict) else None
     confidence_auto_answer = bool(
