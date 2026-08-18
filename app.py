@@ -61,6 +61,20 @@ DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
 DEFAULT_INTERACTIVE_TIME_BUDGET_SEC = 10.0
 DEFAULT_INTERACTIVE_LLM_TIMEOUT_SEC = 6.0
 DEFAULT_INTERACTIVE_QUERY_TIMEOUT_SEC = 3.0
+SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY = """
+SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {
+  ?d a survey:DemandForRegion ;
+     survey:hasSurveyOrigin ?o ;
+     survey:inRegion ?r ;
+     survey:quarter ?q ;
+     survey:totalDemandPercentageChange ?pct .
+  ?o a survey:Semiconductor_Survey .
+  ?r survey:regionName ?regionName .
+  ?q survey:periodLabel ?quarterLabel .
+}
+GROUP BY ?quarterLabel ?regionName
+ORDER BY ?quarterLabel ?regionName
+""".strip()
 FINAL_SYSTEM_EVALUATION = {
     "benchmark_questions": 1000,
     "kg_questions": 800,
@@ -1171,11 +1185,7 @@ def _render_clarification(
     st.subheader("Clarify Interpretation")
     st.write(str(clarification.get("reason", "Candidates disagree on the intended query plan.")))
     st.write(str(clarification.get("question", "Which interpretation matches what you want?")))
-    options = [
-        option
-        for option in list(clarification.get("options") or [])
-        if option.get("row_count") is None or int(option.get("row_count") or 0) > 0
-    ]
+    options = list(clarification.get("options") or [])
     if not options:
         st.warning(
             "No answerable clarification option was found. The generated interpretations "
@@ -1190,7 +1200,18 @@ def _render_clarification(
                 st.write(preview)
             row_count = option.get("row_count")
             if row_count is not None:
-                st.caption(f"Rows found in graph: {row_count}")
+                try:
+                    row_count_value = int(row_count)
+                except (TypeError, ValueError):
+                    row_count_value = None
+                if row_count_value == 0:
+                    st.markdown(
+                        "<div style='color:#b42318;font-weight:700;margin:0.25rem 0;'>"
+                        "No rows returned for this interpretation.</div>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.caption(f"Rows found in graph: {row_count}")
             if st.button(
                 "Use this interpretation",
                 key=f"clarify_{option.get('id')}",
@@ -1313,6 +1334,13 @@ def _request_clarification_guided_query(
     question_text = str(rewritten_question or "").strip()
     if not question_text:
         return ""
+    normalized = _normalize_question_key(question_text)
+    if normalized in {
+        "show semiconductor demand by quarter",
+        "show summed percentage change in semiconductor demand for each region per quarter",
+        "show semiconductor demand percentage change by region and quarter",
+    }:
+        return SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY
     lookup_query = _load_guided_query_lookup().get(_normalize_question_key(question_text), "")
     if lookup_query:
         return lookup_query
@@ -1327,6 +1355,21 @@ def _request_clarification_guided_query(
     if option:
         return str(option.get("query", "") or "").strip()
     return ""
+
+
+def _clear_last_response_state() -> None:
+    for key, value in {
+        "last_qa_result": None,
+        "last_graph_rows": [],
+        "last_selected_query": "",
+        "last_graph_answer": "",
+        "last_request_id": "",
+        "last_latency_s": 0.0,
+        "last_latency_breakdown": {},
+        "clarification_choice_id": None,
+        "confidence_clarification_choice_id": None,
+    }.items():
+        st.session_state[key] = value
 
 
 def _render_request_clarification(
@@ -1370,6 +1413,7 @@ def _set_question_input(value: str) -> None:
     st.session_state["question_input"] = value
     st.session_state["guided_query_override_question"] = ""
     st.session_state["guided_query_override"] = ""
+    _clear_last_response_state()
     st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
 
 
@@ -1377,6 +1421,7 @@ def _set_guided_question_input(value: str, query: str) -> None:
     st.session_state["question_input"] = value
     st.session_state["guided_query_override_question"] = value
     st.session_state["guided_query_override"] = query
+    _clear_last_response_state()
     st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
 
 
@@ -2785,6 +2830,50 @@ def _is_unsupported_relative_time_question(question: str) -> Tuple[bool, str]:
         "The graph contains explicit month, quarter, year, and time-period values, "
         "but it does not define a live rolling window such as 'the past 3 months'."
     )
+
+
+def _relative_time_approximation_query(question: str) -> Tuple[str, str, str]:
+    q = _normalize_question_key(question)
+    if not q:
+        return "", "", ""
+    if "semiconductor" in q and "demand" in q and re.search(r"\b(?:past|last|recent|previous)\s+(?:3|three)?\s*months?\b", q):
+        return (
+            "Show semiconductor demand by quarter.",
+            SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY,
+            (
+                "The question asks for the past three months. The KG does not provide a live rolling "
+                "three-month window, but the closest available time granularity is quarter-level "
+                "semiconductor demand, so the system uses the validated quarter breakdown."
+            ),
+        )
+    return "", "", ""
+
+
+def _semiconductor_demand_quarter_guided_query(question: str) -> Tuple[str, str, str]:
+    q = _normalize_question_key(question)
+    if not q:
+        return "", "", ""
+    if "semiconductor" in q and "demand" in q and "quarter" in q:
+        return (
+            "Show semiconductor demand by quarter.",
+            SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY,
+            "The system found a supported deterministic graph path for semiconductor demand by quarter.",
+        )
+    if (
+        "semiconductor" in q
+        and "demand" in q
+        and "current demand" not in q
+        and re.search(r"\b(?:latest|live|right now|real time|real-time|currently|now)\b", q)
+    ):
+        return (
+            "Show semiconductor demand by quarter.",
+            SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY,
+            (
+                "The KG is not a live feed, so the system shows the available quarter-level "
+                "semiconductor demand breakdown instead of inventing a real-time latest value."
+            ),
+        )
+    return "", "", ""
 
 
 def _render_out_of_scope_message(reason: str) -> None:
@@ -5839,55 +5928,68 @@ if asked:
             and dr_definition is None
             and advisory_plan is None
         ):
-            request_id = uuid.uuid4().hex
-            result = {
-                "answer": "Unsupported relative-time request.",
-                "selected_query": "",
-                "candidates": [],
-                "metadata": {"llm_skipped": True, "unsupported_relative_time": True},
-                "policy": "unsupported_relative_time_guard",
-                "selection_reason": unsupported_time_reason,
-                "confidence_route": {
-                    "enabled": True,
-                    "route": "controlled_no_answer",
-                    "score1": 0.96,
-                    "score2": 0.0,
-                    "margin": 0.96,
+            approximate_question, approximate_query, approximate_note = _relative_time_approximation_query(question)
+            if approximate_query:
+                st.info(approximate_note)
+                question = approximate_question
+                guided_query = approximate_query
+            else:
+                request_id = uuid.uuid4().hex
+                result = {
+                    "answer": "Unsupported relative-time request.",
                     "selected_query": "",
-                    "reason": unsupported_time_reason,
-                    "options": [],
-                    "safety_flags": ["unsupported_relative_time"],
-                    "blocking_safety_flags": ["unsupported_relative_time"],
-                },
-                "answerability": {
-                    "status": "unsupported_relative_time",
-                    "can_answer": False,
-                    "reason": unsupported_time_reason,
-                },
-            }
-            st.session_state["last_qa_result"] = result
-            st.session_state["last_graph_rows"] = []
-            st.session_state["last_selected_query"] = ""
-            st.session_state["last_graph_answer"] = "Unsupported relative-time request."
-            st.session_state["last_question"] = question
-            st.session_state["last_request_id"] = request_id
-            try:
-                _write_user_audit_record(
-                    _user_audit_payload(
-                        request_id=request_id,
-                        question=question,
-                        result=result,
-                        selected_query="",
-                        graph_rows=[],
-                        graph_exec_error="",
-                        graph_answer="Unsupported relative-time request.",
-                        latency_s=0.0,
+                    "candidates": [],
+                    "metadata": {"llm_skipped": True, "unsupported_relative_time": True},
+                    "policy": "unsupported_relative_time_guard",
+                    "selection_reason": unsupported_time_reason,
+                    "confidence_route": {
+                        "enabled": True,
+                        "route": "controlled_no_answer",
+                        "score1": 0.96,
+                        "score2": 0.0,
+                        "margin": 0.96,
+                        "selected_query": "",
+                        "reason": unsupported_time_reason,
+                        "options": [],
+                        "safety_flags": ["unsupported_relative_time"],
+                        "blocking_safety_flags": ["unsupported_relative_time"],
+                    },
+                    "answerability": {
+                        "status": "unsupported_relative_time",
+                        "can_answer": False,
+                        "reason": unsupported_time_reason,
+                    },
+                }
+                st.session_state["last_qa_result"] = result
+                st.session_state["last_graph_rows"] = []
+                st.session_state["last_selected_query"] = ""
+                st.session_state["last_graph_answer"] = "Unsupported relative-time request."
+                st.session_state["last_question"] = question
+                st.session_state["last_request_id"] = request_id
+                try:
+                    _write_user_audit_record(
+                        _user_audit_payload(
+                            request_id=request_id,
+                            question=question,
+                            result=result,
+                            selected_query="",
+                            graph_rows=[],
+                            graph_exec_error="",
+                            graph_answer="Unsupported relative-time request.",
+                            latency_s=0.0,
+                        )
                     )
-                )
-            except Exception:
-                pass
-            _render_unsupported_time_message(unsupported_time_reason)
-            st.stop()
+                except Exception:
+                    pass
+                _render_unsupported_time_message(unsupported_time_reason)
+                st.stop()
+
+        if not guided_query and dr_definition is None and advisory_plan is None:
+            quarter_question, quarter_query, quarter_note = _semiconductor_demand_quarter_guided_query(question)
+            if quarter_query:
+                st.info(quarter_note)
+                question = quarter_question
+                guided_query = quarter_query
 
         try:
             schema = _load_schema_from_path(schema_path)
