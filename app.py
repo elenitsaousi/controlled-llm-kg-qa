@@ -8,6 +8,7 @@ import sqlite3
 import socket
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -61,6 +62,7 @@ DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
 DEFAULT_INTERACTIVE_TIME_BUDGET_SEC = 10.0
 DEFAULT_INTERACTIVE_LLM_TIMEOUT_SEC = 6.0
 DEFAULT_INTERACTIVE_QUERY_TIMEOUT_SEC = 3.0
+INTERACTIVE_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="kgqa-ui")
 SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY = """
 SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {
   ?d a survey:DemandForRegion ;
@@ -266,6 +268,20 @@ def _interactive_budget_exceeded(started_at: float, reserve_s: float = 0.0) -> b
     return (time.perf_counter() - started_at + float(reserve_s)) >= _interactive_time_budget_sec()
 
 
+def _interactive_remaining_sec(started_at: float, reserve_s: float = 0.0) -> float:
+    return max(0.1, _interactive_time_budget_sec() - (time.perf_counter() - started_at) - float(reserve_s))
+
+
+def _run_with_timeout(fn, timeout_s: float, *, label: str = "operation"):
+    timeout_s = max(0.1, float(timeout_s))
+    future = INTERACTIVE_EXECUTOR.submit(fn)
+    try:
+        return future.result(timeout=timeout_s)
+    except FutureTimeoutError as exc:
+        future.cancel()
+        raise TimeoutError(f"{label} exceeded {timeout_s:.1f}s") from exc
+
+
 @contextmanager
 def _temporary_socket_timeout(timeout_s: float):
     previous = socket.getdefaulttimeout()
@@ -294,20 +310,27 @@ def _execute_query_preview(
     query: str,
     max_rows: int = 200,
 ) -> Tuple[List[Dict[str, str]], bool]:
-    with _temporary_socket_timeout(_interactive_query_timeout_sec()):
-        results = graph.query(_ensure_prefixes(query))
-    rows: List[Dict[str, str]] = []
-    truncated = False
-    for idx, row in enumerate(results):
-        if idx >= max_rows:
-            truncated = True
-            break
-        if hasattr(row, "asdict"):
-            rd = row.asdict()
-            rows.append({str(k): _format_graph_value(v) for k, v in rd.items()})
-        else:
-            rows.append({f"col{j + 1}": _format_graph_value(v) for j, v in enumerate(row)})
-    return rows, truncated
+    def _query_to_rows() -> Tuple[List[Dict[str, str]], bool]:
+        with _temporary_socket_timeout(_interactive_query_timeout_sec()):
+            results = graph.query(_ensure_prefixes(query))
+        rows: List[Dict[str, str]] = []
+        truncated = False
+        for idx, row in enumerate(results):
+            if idx >= max_rows:
+                truncated = True
+                break
+            if hasattr(row, "asdict"):
+                rd = row.asdict()
+                rows.append({str(k): _format_graph_value(v) for k, v in rd.items()})
+            else:
+                rows.append({f"col{j + 1}": _format_graph_value(v) for j, v in enumerate(row)})
+        return rows, truncated
+
+    return _run_with_timeout(
+        _query_to_rows,
+        _interactive_query_timeout_sec(),
+        label="SPARQL query execution",
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -320,8 +343,15 @@ def _preview_query_rows_cached(
     if not query.strip() or not (fuseki_query_url.strip() or (graph_path and os.path.exists(graph_path))):
         return [], "graph_backend_or_query_missing"
     try:
-        graph = _load_graph_cached(graph_path, fuseki_query_url)
-        rows, _truncated = _execute_query_preview(graph, query, max_rows=max_rows)
+        def _load_and_preview() -> Tuple[List[Dict[str, str]], bool]:
+            graph = _load_graph_cached(graph_path, fuseki_query_url)
+            return _execute_query_preview(graph, query, max_rows=max_rows)
+
+        rows, _truncated = _run_with_timeout(
+            _load_and_preview,
+            max(_interactive_query_timeout_sec(), 0.75),
+            label="graph preview",
+        )
         return rows, ""
     except Exception as exc:
         return [], str(exc)
@@ -592,7 +622,7 @@ def _system_health_snapshot(
     if fuseki_query_url:
         try:
             graph = Graph(store=SPARQLStore(fuseki_query_url))
-            list(graph.query("SELECT * WHERE { ?s ?p ?o } LIMIT 1"))
+            _execute_query_preview(graph, "SELECT * WHERE { ?s ?p ?o } LIMIT 1", max_rows=1)
             health["Graph"] = {"status": "ok", "detail": "Fuseki endpoint reachable"}
         except Exception as exc:
             health["Graph"] = {"status": "error", "detail": f"Fuseki error: {exc}"}
@@ -1133,11 +1163,18 @@ def _render_answer_subgraph(
         )
         return
     try:
-        graph = _load_active_graph(graph_path)
-        triples, meta = collect_answer_evidence_triples(
-            graph=graph,
-            query=selected_query,
-            limit=18,
+        def _collect_evidence() -> Tuple[List[Tuple[Any, Any, Any]], Dict[str, Any]]:
+            graph = _load_active_graph(graph_path)
+            return collect_answer_evidence_triples(
+                graph=graph,
+                query=selected_query,
+                limit=18,
+            )
+
+        triples, meta = _run_with_timeout(
+            _collect_evidence,
+            _interactive_query_timeout_sec(),
+            label="answer evidence graph",
         )
     except Exception:
         return
@@ -1235,7 +1272,11 @@ def _render_clarification(
                     )
                 elif execute_selected and chosen_query and _graph_backend_available(graph_path):
                     try:
-                        graph = _load_active_graph(graph_path)
+                        graph = _run_with_timeout(
+                            lambda: _load_active_graph(graph_path),
+                            _interactive_query_timeout_sec(),
+                            label="graph backend load",
+                        )
                         rows, _truncated = _execute_query_preview(
                             graph,
                             chosen_query,
@@ -4455,27 +4496,39 @@ def _overview_relationship_triples(schema_dict: Dict[str, Any]) -> List[Tuple[st
 def _graph_data_stats(graph_path: str) -> Dict[str, int]:
     if not graph_path or not _graph_backend_available(graph_path):
         return {}
-    graph = _load_active_graph(graph_path)
+    graph = _run_with_timeout(
+        lambda: _load_active_graph(graph_path),
+        _interactive_query_timeout_sec(),
+        label="graph backend load",
+    )
     if _active_fuseki_query_url():
         try:
-            triples = list(graph.query("SELECT (COUNT(*) AS ?count) WHERE { ?s ?p ?o }"))
-            subjects = list(graph.query("SELECT (COUNT(DISTINCT ?s) AS ?count) WHERE { ?s ?p ?o }"))
-            resources = list(
-                graph.query(
-                    """
-                    SELECT (COUNT(DISTINCT ?x) AS ?count)
-                    WHERE {
-                      { ?x ?p ?o }
-                      UNION
-                      { ?s ?p ?x FILTER(isIRI(?x) || isBlank(?x)) }
-                    }
-                    """
-                )
+            triples, _ = _execute_query_preview(
+                graph,
+                "SELECT (COUNT(*) AS ?count) WHERE { ?s ?p ?o }",
+                max_rows=1,
+            )
+            subjects, _ = _execute_query_preview(
+                graph,
+                "SELECT (COUNT(DISTINCT ?s) AS ?count) WHERE { ?s ?p ?o }",
+                max_rows=1,
+            )
+            resources, _ = _execute_query_preview(
+                graph,
+                """
+                SELECT (COUNT(DISTINCT ?x) AS ?count)
+                WHERE {
+                  { ?x ?p ?o }
+                  UNION
+                  { ?s ?p ?x FILTER(isIRI(?x) || isBlank(?x)) }
+                }
+                """,
+                max_rows=1,
             )
             return {
-                "triples": int(triples[0][0].toPython()) if triples else 0,
-                "resource_nodes": int(resources[0][0].toPython()) if resources else 0,
-                "subject_entities": int(subjects[0][0].toPython()) if subjects else 0,
+                "triples": int(next(iter(triples[0].values()))) if triples else 0,
+                "resource_nodes": int(next(iter(resources[0].values()))) if resources else 0,
+                "subject_entities": int(next(iter(subjects[0].values()))) if subjects else 0,
             }
         except Exception:
             return {}
@@ -6194,20 +6247,30 @@ if asked:
                     api_key=api_key.strip() or None,
                     temperature=float(temperature),
                 )
-                with _temporary_socket_timeout(_interactive_query_timeout_sec()):
-                    result = answer_question(
-                        question,
-                        schema,
-                        llm_client=client,
-                        enable_entity_linking=True,
-                        use_ml_ranking=bool(use_ml_ranking),
-                        ml_policy=ml_policy,
-                        ml_model_path=ml_model_path.strip() or None,
-                        ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
-                        include_candidate_diagnostics=bool(show_candidate_diagnostics),
-                        enable_clarification=not bool(fast_interactive_mode),
-                        enable_answerability_assessment=not bool(fast_interactive_mode),
-                    )
+                def _run_llm_pipeline() -> Dict[str, Any]:
+                    with _temporary_socket_timeout(float(os.environ["INFINEON_REQUEST_TIMEOUT_SEC"])):
+                        return answer_question(
+                            question,
+                            schema,
+                            llm_client=client,
+                            enable_entity_linking=True,
+                            use_ml_ranking=bool(use_ml_ranking),
+                            ml_policy=ml_policy,
+                            ml_model_path=ml_model_path.strip() or None,
+                            ml_ambiguity_config_path=ambiguity_config_path.strip() or None,
+                            include_candidate_diagnostics=bool(show_candidate_diagnostics),
+                            enable_clarification=not bool(fast_interactive_mode),
+                            enable_answerability_assessment=not bool(fast_interactive_mode),
+                        )
+
+                result = _run_with_timeout(
+                    _run_llm_pipeline,
+                    min(
+                        _interactive_remaining_sec(request_started, reserve_s=1.0),
+                        max(1.0, float(os.environ["INFINEON_REQUEST_TIMEOUT_SEC"]) + 1.0),
+                    ),
+                    label="LLM candidate generation and ranking",
+                )
         except LLMAuthError as exc:
             st.error("Infineon GPT authentication failed.")
             st.write(str(exc))
@@ -6354,7 +6417,11 @@ if asked:
         ):
             try:
                 graph_load_started = time.perf_counter()
-                graph = _load_active_graph(graph_path)
+                graph = _run_with_timeout(
+                    lambda: _load_active_graph(graph_path),
+                    _interactive_remaining_sec(request_started, reserve_s=1.0),
+                    label="graph backend load",
+                )
                 graph_load_elapsed = time.perf_counter() - graph_load_started
                 graph_query_started = time.perf_counter()
                 print("\n=== FINAL EXECUTION ===")
@@ -6411,7 +6478,11 @@ if asked:
                 if fallback_query:
                     try:
                         graph_load_started = time.perf_counter()
-                        graph = _load_active_graph(graph_path)
+                        graph = _run_with_timeout(
+                            lambda: _load_active_graph(graph_path),
+                            _interactive_remaining_sec(request_started, reserve_s=1.0),
+                            label="graph backend load",
+                        )
                         graph_load_elapsed = time.perf_counter() - graph_load_started
                         graph_query_started = time.perf_counter()
                         graph_rows, graph_rows_truncated = _execute_query_preview(
