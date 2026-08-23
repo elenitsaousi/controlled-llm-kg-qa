@@ -1599,7 +1599,7 @@ def _render_request_clarification(
             key=f"request_clarify_{option.get('id')}",
             use_container_width=True,
             on_click=_execute_guided_question_now,
-            args=(rewritten, query, graph_path, 200),
+            args=(rewritten, query, graph_path, 200, bool(option.get("advisory_context"))),
         )
     if rendered == 0:
         st.warning(
@@ -1682,10 +1682,16 @@ def _advisory_plan_from_evidence_selection(question: str, query: str) -> Advisor
     return None
 
 
-def _execute_guided_question_now(value: str, query: str, graph_path: str, max_preview_rows: int) -> None:
+def _execute_guided_question_now(
+    value: str,
+    query: str,
+    graph_path: str,
+    max_preview_rows: int,
+    advisory_context: bool = False,
+) -> None:
     question_text = str(value or "").strip()
     query_text = str(query or "").strip()
-    advisory_plan = _advisory_plan_from_evidence_selection(question_text, query_text)
+    advisory_plan = _advisory_plan_from_evidence_selection(question_text, query_text) if advisory_context else None
     st.session_state["question_input"] = question_text
     st.session_state["guided_query_override_question"] = question_text
     st.session_state["guided_query_override"] = query_text
@@ -3411,6 +3417,7 @@ def _advisory_request_clarification_result(question: str) -> Dict[str, Any]:
             "id": f"advisory_{idx}",
             "label": label,
             "rewritten_question": rewritten,
+            "advisory_context": True,
         }
         for idx, (label, rewritten) in enumerate(_advisory_timeout_clarification_options(question), start=1)
     ]
@@ -3472,6 +3479,7 @@ def _timeout_clarification_options(question: str) -> List[Dict[str, str]]:
                 "id": f"timeout_{idx}",
                 "label": label,
                 "rewritten_question": rewritten,
+                "advisory_context": True,
             }
             for idx, (label, rewritten) in enumerate(options[:5], start=1)
         ]
