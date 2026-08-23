@@ -77,6 +77,103 @@ SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {
 GROUP BY ?quarterLabel ?regionName
 ORDER BY ?quarterLabel ?regionName
 """.strip()
+REGIONAL_DEMAND_BY_SURVEY_QUERY = """
+SELECT ?surveyGroup ?regionName (SUM(?unitsSold) AS ?totalDemand) WHERE {
+  ?demandForRegion a survey:DemandForRegion ;
+    survey:hasSurveyOrigin ?origin ;
+    survey:inRegion ?region ;
+    survey:totalDemand ?unitsSold .
+  ?origin a ?surveyGroup .
+  ?region a survey:Region ;
+    survey:regionName ?regionName .
+}
+GROUP BY ?surveyGroup ?regionName
+ORDER BY ?surveyGroup DESC(?totalDemand)
+""".strip()
+OEM_TOTAL_DEMAND_BY_REGION_QUERY = """
+SELECT ?regionName (SUM(?unitsSold) AS ?totalDemand) WHERE {
+  ?demandForRegion a survey:DemandForRegion ;
+    survey:hasSurveyOrigin ?origin ;
+    survey:inRegion ?region ;
+    survey:totalDemand ?unitsSold .
+  ?origin a survey:OEM_Survey .
+  ?region a survey:Region ;
+    survey:regionName ?regionName .
+}
+GROUP BY ?regionName
+ORDER BY DESC(?totalDemand)
+""".strip()
+ACTUAL_VEHICLE_SALES_BY_MONTH_QUERY = """
+SELECT ?monthLabel (SUM(?units) AS ?unitsSold) WHERE {
+  ?obs a survey:VehicleSalesObservation ;
+    survey:forTimePeriod ?month ;
+    survey:isActualData true ;
+    survey:unitsSold ?units .
+  BIND(REPLACE(STR(?month), '^.*/', '') AS ?monthLabel)
+}
+GROUP BY ?monthLabel
+ORDER BY ?monthLabel
+""".strip()
+FUTURE_SEMICONDUCTOR_DEMAND_BY_TECH_QUARTER_QUERY = """
+SELECT ?techLabel ?quarter
+  (SUM(IF(?baseline = "Option1", ?pct, 0)) AS ?Option1)
+  (SUM(IF(?baseline = "Option2", ?pct, 0)) AS ?Option2)
+  (SUM(IF(?baseline = "Option3", ?pct, 0)) AS ?Option3)
+WHERE {
+  {
+    survey:SemiFutureDemand_Option1 a survey:FutureDemandAnalysis ;
+      survey:hasSurveyOrigin survey:Semiconductor_Survey ;
+      survey:hasAggregatedResult ?entry .
+    ?entry a survey:FutureDemandAnalysis ;
+      survey:analyzesTechnologyCategory ?tech ;
+      survey:forTimePeriod ?period ;
+      survey:percentageChange ?pct .
+    BIND("Option1" AS ?baseline)
+  }
+  UNION
+  {
+    survey:SemiFutureDemand_Option2 a survey:FutureDemandAnalysis ;
+      survey:hasSurveyOrigin survey:Semiconductor_Survey ;
+      survey:hasAggregatedResult ?entry .
+    ?entry a survey:FutureDemandAnalysis ;
+      survey:analyzesTechnologyCategory ?tech ;
+      survey:forTimePeriod ?period ;
+      survey:percentageChange ?pct .
+    BIND("Option2" AS ?baseline)
+  }
+  UNION
+  {
+    survey:SemiFutureDemand_Option3 a survey:FutureDemandAnalysis ;
+      survey:hasSurveyOrigin survey:Semiconductor_Survey ;
+      survey:hasAggregatedResult ?entry .
+    ?entry a survey:FutureDemandAnalysis ;
+      survey:analyzesTechnologyCategory ?tech ;
+      survey:forTimePeriod ?period ;
+      survey:percentageChange ?pct .
+    BIND("Option3" AS ?baseline)
+  }
+  FILTER(STRSTARTS(STR(?tech), STR(survey:TechCategory_)))
+  OPTIONAL { ?period survey:periodLabel ?qLabelRaw . }
+  BIND(REPLACE(COALESCE(?qLabelRaw, STRAFTER(STR(?period), "survey:")), "_", " ") AS ?quarter)
+  BIND(
+    REPLACE(
+      REPLACE(
+        REPLACE(
+          REPLACE(
+            REPLACE(STRAFTER(STR(?tech), "TechCategory_"), "%3C%3D", "<="),
+            "_to_%3C", " to <"
+          ),
+          "_or_greater", " or greater"
+        ),
+        "_", " "
+      ),
+      "lte 7nm", "<= 7nm"
+    ) AS ?techLabel
+  )
+}
+GROUP BY ?techLabel ?quarter
+ORDER BY ?techLabel ?quarter
+""".strip()
 FINAL_SYSTEM_EVALUATION = {
     "benchmark_questions": 1000,
     "kg_questions": 800,
@@ -1382,6 +1479,26 @@ def _request_clarification_guided_query(
         "show semiconductor demand percentage change by region and quarter",
     }:
         return SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY
+    if normalized in {
+        "show current demand by region",
+        "show total demand by region",
+        "break down total regional demand by survey origin and region",
+    }:
+        return REGIONAL_DEMAND_BY_SURVEY_QUERY
+    if normalized == "list oem total demand by region":
+        return OEM_TOTAL_DEMAND_BY_REGION_QUERY
+    if normalized in {
+        "show vehicle sales by month",
+        "show actual vehicle sales by month",
+        "what are the total vehicle sales units reported each month in the actual data",
+    }:
+        return ACTUAL_VEHICLE_SALES_BY_MONTH_QUERY
+    if normalized in {
+        "show future semiconductor demand by technology category and quarter",
+        "show the aggregate future semiconductor demand broken down by technology category and quarter",
+        "which technology categories account for the highest future semiconductor demand in each quarter",
+    }:
+        return FUTURE_SEMICONDUCTOR_DEMAND_BY_TECH_QUARTER_QUERY
     lookup_query = _load_guided_query_lookup().get(_normalize_question_key(question_text), "")
     if lookup_query:
         return lookup_query
@@ -2942,15 +3059,64 @@ def _render_unsupported_time_message(reason: str) -> None:
     st.markdown("\n".join(f"- {example}" for example in examples))
 
 
+def _timeout_clarification_options(question: str) -> List[Dict[str, str]]:
+    q = _normalize_question_key(question)
+    options: List[Tuple[str, str]] = []
+
+    def add(label: str, rewritten: str) -> None:
+        if rewritten and rewritten not in {item[1] for item in options}:
+            options.append((label, rewritten))
+
+    if "semiconductor" in q and "demand" in q:
+        add("Available quarter-level semiconductor demand", "Show semiconductor demand by quarter.")
+        add(
+            "Future semiconductor demand by technology category and quarter",
+            "Show future semiconductor demand by technology category and quarter.",
+        )
+        add("Regional demand by survey group and region", "Break down total regional demand by survey origin and region.")
+    if "current" in q and "demand" in q:
+        add("Current/total demand by region", "Show current demand by region.")
+        add("OEM total demand by region", "List OEM total demand by region.")
+    if "region" in q or "regional" in q:
+        add("Regional demand by survey group and region", "Break down total regional demand by survey origin and region.")
+        add("OEM total demand by region", "List OEM total demand by region.")
+    if "vehicle" in q or "sales" in q:
+        add("Actual vehicle sales by month", "Show actual vehicle sales by month.")
+    if "autonomous" in q or "driving" in q:
+        add(
+            "Average autonomous-driving development by year",
+            "For each year, what is the average autonomous driving development percentage?",
+        )
+    if "future" in q and "demand" in q:
+        add(
+            "Future semiconductor demand by technology category and quarter",
+            "Show future semiconductor demand by technology category and quarter.",
+        )
+
+    add("Regional demand by survey group and region", "Break down total regional demand by survey origin and region.")
+    add("Vehicle sales by month", "Show actual vehicle sales by month.")
+
+    return [
+        {
+            "id": f"timeout_{idx}",
+            "label": label,
+            "rewritten_question": rewritten,
+        }
+        for idx, (label, rewritten) in enumerate(options[:5], start=1)
+    ]
+
+
 def _interactive_timeout_result(question: str, elapsed_s: float, reason: str = "") -> Dict[str, Any]:
     timeout_s = _interactive_time_budget_sec()
     message = (
         f"The request exceeded the interactive time budget of {timeout_s:.0f} seconds. "
-        "Please use a more specific supported breakdown, for example by quarter, month, region, "
-        "technology category, or vehicle type."
+        "The free-text interpretation may still be answerable, but it is not suitable for immediate "
+        "automatic answering. Please choose a supported interpretation below or ask with a more "
+        "specific metric, time period, scope, and breakdown."
     )
     if reason:
         message = f"{message} {reason}"
+    options = _timeout_clarification_options(question)
     return {
         "answer": message,
         "selected_query": "",
@@ -2963,15 +3129,21 @@ def _interactive_timeout_result(question: str, elapsed_s: float, reason: str = "
         },
         "policy": "interactive_timeout_guard",
         "selection_reason": "The interactive request exceeded the configured time budget.",
+        "request_clarification": {
+            "needs_clarification": True,
+            "reason": message,
+            "question": "Which supported interpretation is closest to what you meant?",
+            "options": options,
+        },
         "confidence_route": {
             "enabled": True,
-            "route": "controlled_no_answer",
+            "route": "clarification",
             "score1": 0.0,
             "score2": 0.0,
             "margin": 0.0,
             "selected_query": "",
-            "reason": "interactive timeout",
-            "options": [],
+            "reason": "interactive timeout; user clarification required",
+            "options": options,
             "safety_flags": ["interactive_timeout"],
             "blocking_safety_flags": ["interactive_timeout"],
         },
