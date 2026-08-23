@@ -21,7 +21,15 @@ import streamlit.components.v1 as components
 from rdflib import Graph, BNode, URIRef
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
-from kg.advisory import resolve_advisory_plan, synthesize_advisory_answer
+from kg.advisory import (
+    CURRENT_DEMAND_BY_REGION,
+    FUTURE_DEMAND_BY_REGION,
+    FUTURE_DEMAND_BY_TECHNOLOGY,
+    FUTURE_DEMAND_BY_VEHICLE_TYPE,
+    SHORTAGE_BY_SURVEY_GROUP,
+    resolve_advisory_plan,
+    synthesize_advisory_answer,
+)
 from kg.dr_ontology import (
     DEFAULT_DR_ONTOLOGY_PATH,
     dr_ontology_counts,
@@ -1499,6 +1507,39 @@ def _request_clarification_guided_query(
         "which technology categories account for the highest future semiconductor demand in each quarter",
     }:
         return FUTURE_SEMICONDUCTOR_DEMAND_BY_TECH_QUARTER_QUERY
+    if normalized in {
+        "review current demand by region",
+        "review regional current demand evidence",
+        "which region should be monitored more closely based on current demand",
+        "based on current demand which region should be monitored more closely",
+    }:
+        return CURRENT_DEMAND_BY_REGION
+    if normalized in {
+        "review future demand by region",
+        "review future demand regional evidence",
+        "where should planning attention focus based on future demand",
+        "based on the survey data where should planning attention focus",
+    }:
+        return FUTURE_DEMAND_BY_REGION
+    if normalized in {
+        "review future demand by vehicle type",
+        "review vehicle type future demand evidence",
+        "which vehicle type shows the strongest future demand signal",
+    }:
+        return FUTURE_DEMAND_BY_VEHICLE_TYPE
+    if normalized in {
+        "review future demand by technology category",
+        "review technology category future demand evidence",
+        "which demand area seems most uncertain",
+        "what should i look at if i want to understand future demand risk",
+    }:
+        return FUTURE_DEMAND_BY_TECHNOLOGY
+    if normalized in {
+        "review shortage exposure by survey group",
+        "review shortage risk evidence",
+        "which survey group appears most exposed to shortage",
+    }:
+        return SHORTAGE_BY_SURVEY_GROUP
     lookup_query = _load_guided_query_lookup().get(_normalize_question_key(question_text), "")
     if lookup_query:
         return lookup_query
@@ -3059,6 +3100,136 @@ def _render_unsupported_time_message(reason: str) -> None:
     st.markdown("\n".join(f"- {example}" for example in examples))
 
 
+def _is_advisory_like_question(question: str) -> bool:
+    q = _normalize_question_key(question)
+    if not q:
+        return False
+    advisory_terms = (
+        "advise",
+        "advice",
+        "recommend",
+        "suggest",
+        "should",
+        "monitor",
+        "focus",
+        "planning attention",
+        "look at",
+        "inspect",
+        "review first",
+        "risk",
+        "uncertain",
+        "uncertainty",
+        "exposed",
+        "strongest signal",
+        "priority",
+        "prioritize",
+    )
+    graph_terms = (
+        "demand",
+        "shortage",
+        "inventory",
+        "vehicle",
+        "sales",
+        "region",
+        "technology",
+        "semiconductor",
+        "survey",
+    )
+    return any(term in q for term in advisory_terms) and any(term in q for term in graph_terms)
+
+
+def _advisory_timeout_clarification_options(question: str) -> List[Tuple[str, str]]:
+    q = _normalize_question_key(question)
+    options: List[Tuple[str, str]] = []
+
+    def add(label: str, rewritten: str) -> None:
+        if rewritten and rewritten not in {item[1] for item in options}:
+            options.append((label, rewritten))
+
+    if "current" in q or "region" in q or "monitor" in q:
+        add(
+            "Review current demand by region",
+            "Review current demand by region.",
+        )
+    if "future" in q or "risk" in q or "planning" in q or "focus" in q:
+        add(
+            "Review future demand by region",
+            "Review future demand by region.",
+        )
+    if "vehicle" in q or "strongest" in q or "signal" in q:
+        add(
+            "Review future demand by vehicle type",
+            "Review future demand by vehicle type.",
+        )
+    if "technology" in q or "semiconductor" in q or "demand area" in q:
+        add(
+            "Review future demand by technology category",
+            "Review future demand by technology category.",
+        )
+    if "shortage" in q or "exposed" in q:
+        add(
+            "Review shortage exposure by survey group",
+            "Review shortage exposure by survey group.",
+        )
+
+    add("Review current demand by region", "Review current demand by region.")
+    add("Review future demand by technology category", "Review future demand by technology category.")
+    add("Review shortage exposure by survey group", "Review shortage exposure by survey group.")
+    return options[:5]
+
+
+def _advisory_request_clarification_result(question: str) -> Dict[str, Any]:
+    options = [
+        {
+            "id": f"advisory_{idx}",
+            "label": label,
+            "rewritten_question": rewritten,
+        }
+        for idx, (label, rewritten) in enumerate(_advisory_timeout_clarification_options(question), start=1)
+    ]
+    message = (
+        "This is an advisory request, so the system needs a graph-backed evidence view before it can "
+        "give conservative guidance. Please choose the evidence path that best matches the decision "
+        "you want to support."
+    )
+    return {
+        "answer": message,
+        "selected_query": "",
+        "candidates": [],
+        "errors": [],
+        "metadata": {
+            "llm_skipped": True,
+            "advisory_clarification": True,
+        },
+        "policy": "advisory_clarification",
+        "selection_reason": "Advisory request was too broad for a single deterministic template.",
+        "request_clarification": {
+            "needs_clarification": True,
+            "reason": message,
+            "question": "Which graph-backed evidence view should the advice use?",
+            "options": options,
+        },
+        "confidence_route": {
+            "enabled": True,
+            "route": "clarification",
+            "score1": 0.0,
+            "score2": 0.0,
+            "margin": 0.0,
+            "selected_query": "",
+            "reason": "advisory request requires a specific evidence view",
+            "options": options,
+            "safety_flags": ["advisory_requires_evidence_view"],
+            "blocking_safety_flags": ["advisory_requires_evidence_view"],
+        },
+        "answerability": {
+            "status": "needs_advisory_clarification",
+            "can_answer": False,
+            "reason": "Advisory guidance is only generated after choosing a graph-backed evidence view.",
+        },
+        "clarification": None,
+    }
+
+
 def _timeout_clarification_options(question: str) -> List[Dict[str, str]]:
     q = _normalize_question_key(question)
     options: List[Tuple[str, str]] = []
@@ -3066,6 +3237,17 @@ def _timeout_clarification_options(question: str) -> List[Dict[str, str]]:
     def add(label: str, rewritten: str) -> None:
         if rewritten and rewritten not in {item[1] for item in options}:
             options.append((label, rewritten))
+
+    if _is_advisory_like_question(question):
+        options = _advisory_timeout_clarification_options(question)
+        return [
+            {
+                "id": f"timeout_{idx}",
+                "label": label,
+                "rewritten_question": rewritten,
+            }
+            for idx, (label, rewritten) in enumerate(options[:5], start=1)
+        ]
 
     if "semiconductor" in q and "demand" in q:
         add("Available quarter-level semiconductor demand", "Show semiconductor demand by quarter.")
@@ -6215,6 +6397,46 @@ if asked:
                 st.info(quarter_note)
                 question = quarter_question
                 guided_query = quarter_query
+
+        if (
+            _is_advisory_like_question(question)
+            and not guided_query
+            and dr_definition is None
+            and advisory_plan is None
+        ):
+            request_id = uuid.uuid4().hex
+            result = _advisory_request_clarification_result(question)
+            st.session_state["last_qa_result"] = result
+            st.session_state["last_graph_rows"] = []
+            st.session_state["last_selected_query"] = ""
+            st.session_state["last_graph_answer"] = ""
+            st.session_state["last_question"] = question
+            st.session_state["last_request_id"] = request_id
+            st.session_state["last_latency_s"] = 0.0
+            st.session_state["last_latency_breakdown"] = {}
+            try:
+                _write_user_audit_record(
+                    _user_audit_payload(
+                        request_id=request_id,
+                        question=question,
+                        result=result,
+                        selected_query="",
+                        graph_rows=[],
+                        graph_exec_error="",
+                        graph_answer=str(result.get("answer") or ""),
+                        latency_s=0.0,
+                    )
+                )
+            except Exception:
+                pass
+            request_clarification = result.get("request_clarification")
+            if isinstance(request_clarification, dict):
+                _render_request_clarification(
+                    request_clarification,
+                    graph_path=graph_path,
+                    fuseki_query_url=_active_fuseki_query_url(),
+                )
+            st.stop()
 
         try:
             schema = _load_schema_from_path(schema_path)
