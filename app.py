@@ -1597,8 +1597,8 @@ def _render_request_clarification(
             "Use",
             key=f"request_clarify_{option.get('id')}",
             use_container_width=True,
-            on_click=_set_guided_question_input,
-            args=(rewritten, query),
+            on_click=_execute_guided_question_now,
+            args=(rewritten, query, graph_path, 200),
         )
     if rendered == 0:
         st.warning(
@@ -1622,6 +1622,148 @@ def _set_guided_question_input(value: str, query: str) -> None:
     st.session_state["guided_query_override"] = query
     _clear_last_response_state()
     st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
+
+
+def _execute_guided_question_now(value: str, query: str, graph_path: str, max_preview_rows: int) -> None:
+    question_text = str(value or "").strip()
+    query_text = str(query or "").strip()
+    st.session_state["question_input"] = question_text
+    st.session_state["guided_query_override_question"] = question_text
+    st.session_state["guided_query_override"] = query_text
+    st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
+
+    request_id = uuid.uuid4().hex
+    started = time.perf_counter()
+    result: Dict[str, Any] = {
+        "answer": "Validated graph-supported option selected.",
+        "selected_query": query_text,
+        "candidates": [{"query": query_text, "source": "clarification_guided"}] if query_text else [],
+        "schema_ranked": [],
+        "learning_ranked": [],
+        "metadata": {"guided_query": True, "clarification_option_executed": True, "llm_skipped": True},
+        "errors": [],
+        "prompt": "",
+        "policy": "guided_clarification",
+        "entropy": 0.0,
+        "selection_reason": "User selected a validated graph-backed clarification option.",
+        "used_ml": False,
+        "effective_question": question_text,
+        "selection_explanation": {
+            "selected_policy": "guided_clarification",
+            "selection_reason": "User selected a validated graph-backed clarification option.",
+            "selected_query_valid": bool(query_text),
+            "selected_query_errors": [],
+            "selected_execution_has_rows": None,
+        },
+        "answerability": {
+            "status": "guided_pending_execution",
+            "can_answer": None,
+            "reason": "A validated clarification option was selected and executed directly.",
+        },
+        "confidence_route": {
+            "enabled": True,
+            "route": "auto_answer",
+            "score1": 0.94,
+            "score2": 0.12,
+            "margin": 0.82,
+            "selected_query": query_text,
+            "reason": "user-selected graph-backed clarification option",
+            "options": [],
+            "safety_flags": [],
+            "blocking_safety_flags": [],
+        },
+        "clarification": None,
+        "request_clarification": None,
+    }
+    rows: List[Dict[str, str]] = []
+    graph_answer = ""
+    graph_exec_error = ""
+    graph_load_elapsed = 0.0
+    graph_query_elapsed = 0.0
+    answer_synthesis_elapsed = 0.0
+    if query_text and _graph_backend_available(graph_path):
+        try:
+            graph_load_started = time.perf_counter()
+            graph = _run_with_timeout(
+                lambda: _load_active_graph(graph_path),
+                _interactive_query_timeout_sec(),
+                label="graph backend load",
+            )
+            graph_load_elapsed = time.perf_counter() - graph_load_started
+            graph_query_started = time.perf_counter()
+            rows, _truncated = _execute_query_preview(
+                graph,
+                query_text,
+                max_rows=int(max_preview_rows),
+            )
+            graph_query_elapsed = time.perf_counter() - graph_query_started
+            answer_synthesis_started = time.perf_counter()
+            graph_answer = synthesize_answer(
+                question_text,
+                query_text,
+                {"rows": rows, "matched_question_id": None, "error": None},
+                None if rows else None,
+            )
+            answer_synthesis_elapsed = time.perf_counter() - answer_synthesis_started
+            result["answerability"] = _guided_answerability(rows)
+            result["selection_explanation"]["selected_execution_has_rows"] = bool(rows)
+        except Exception as exc:
+            graph_exec_error = str(exc)
+            graph_answer = ""
+            result["errors"] = [graph_exec_error]
+            result["answerability"] = _guided_answerability([], graph_exec_error)
+    elif query_text:
+        graph_exec_error = "Graph backend unavailable."
+        result["errors"] = [graph_exec_error]
+        result["answerability"] = _guided_answerability([], graph_exec_error)
+
+    total_elapsed = time.perf_counter() - started
+    latency_breakdown = {
+        "pipeline_s": 0.0,
+        "graph_load_s": graph_load_elapsed,
+        "graph_query_s": graph_query_elapsed,
+        "answer_format_s": answer_synthesis_elapsed,
+        "total_s": total_elapsed,
+    }
+    try:
+        _append_jsonl(
+            SESSION_LOG_PATH,
+            _session_log_payload(
+                request_id=request_id,
+                question=question_text,
+                result=result,
+                selected_query=query_text,
+                graph_rows=rows,
+                graph_exec_error=graph_exec_error,
+                latency_s=total_elapsed,
+                latency_breakdown=latency_breakdown,
+            ),
+        )
+        _write_user_audit_record(
+            _user_audit_payload(
+                request_id=request_id,
+                question=question_text,
+                result=result,
+                selected_query=query_text,
+                graph_rows=rows,
+                graph_exec_error=graph_exec_error,
+                graph_answer=graph_answer,
+                latency_s=total_elapsed,
+            )
+        )
+    except Exception:
+        pass
+
+    st.session_state["last_qa_result"] = result
+    st.session_state["last_graph_rows"] = rows
+    st.session_state["last_selected_query"] = query_text
+    st.session_state["last_graph_answer"] = graph_answer
+    st.session_state["last_question"] = question_text
+    st.session_state["last_request_id"] = request_id
+    st.session_state["last_latency_s"] = total_elapsed
+    st.session_state["last_latency_breakdown"] = latency_breakdown
+    st.session_state["clarification_choice_id"] = None
+    st.session_state["confidence_clarification_choice_id"] = None
 
 
 def _append_question_input(current: str, phrase: str) -> None:
@@ -5069,6 +5211,12 @@ def _inject_app_styles() -> None:
             border-bottom: 1px solid var(--kg-border);
             box-shadow: 0 1px 8px rgba(24, 54, 64, 0.05);
         }
+        .stale-element,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stAppViewContainer"] > .main {
+            opacity: 1 !important;
+            filter: none !important;
+        }
         [data-testid="stSidebar"] {
             background: #ffffff;
             border-right: 1px solid var(--kg-border);
@@ -7247,6 +7395,41 @@ if not clarification_rendered:
                         graph_rows=list(st.session_state.get("last_graph_rows") or []),
                         graph_path=graph_path,
                     )
+
+if (
+    not asked
+    and not clarification_rendered
+    and st.session_state.get("last_selected_query")
+    and (
+        st.session_state.get("last_graph_answer")
+        or st.session_state.get("last_graph_rows")
+    )
+):
+    last_result = st.session_state.get("last_qa_result")
+    if isinstance(last_result, dict):
+        confidence_route = last_result.get("confidence_route")
+        if isinstance(confidence_route, dict):
+            _render_confidence_route_badge(confidence_route)
+    _render_answer_block(
+        answer_text=str(st.session_state.get("last_graph_answer", "")),
+        selected_query=str(st.session_state.get("last_selected_query", "")),
+        graph_rows=list(st.session_state.get("last_graph_rows") or []),
+        graph_exec_error="",
+        execute_selected=bool(execute_selected),
+        answerability=(
+            last_result.get("answerability")
+            if isinstance(last_result, dict)
+            else _clarified_answerability(list(st.session_state.get("last_graph_rows") or []))
+        ),
+    )
+    if isinstance(last_result, dict):
+        _render_compact_explainability(last_result)
+        if show_answer_evidence_graph:
+            _render_answer_subgraph(
+                selected_query=str(st.session_state.get("last_selected_query", "")),
+                graph_rows=list(st.session_state.get("last_graph_rows") or []),
+                graph_path=graph_path,
+            )
 
 if (
     st.session_state.get("last_selected_query")
