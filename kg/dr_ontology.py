@@ -70,6 +70,18 @@ def _normalize_alias(text: str) -> str:
     return "".join(re.findall(r"[a-z0-9]+", unquote(str(text or "")).lower()))
 
 
+def _clean_definition_target(text: str) -> str:
+    target = unquote(str(text or "")).strip(" \t\r\n.?!\"'`“”‘’")
+    target = re.sub(r"\s+", " ", target).strip()
+    target = re.sub(
+        r"\s+(?:relationship|relation|object\s+property|data\s+property|datatype\s+property)\s*$",
+        "",
+        target,
+        flags=re.IGNORECASE,
+    ).strip(" \t\r\n.?!\"'`“”‘’")
+    return target
+
+
 def _local_name(value: object) -> str:
     text = unquote(str(value or "")).strip()
     text = text.rsplit("#", 1)[-1].rsplit("/", 1)[-1]
@@ -202,7 +214,7 @@ def _definition_target(question: str) -> Optional[str]:
         match = pattern.match(raw)
         if not match:
             continue
-        target = match.group(1).strip(" .?!")
+        target = _clean_definition_target(match.group(1))
         return target
     return None
 
@@ -217,6 +229,10 @@ def _best_term(target: str, terms: Dict[str, DROntologyTerm]) -> Optional[DROnto
     candidates: List[Tuple[float, int, DROntologyTerm]] = []
     for alias, term in terms.items():
         if len(key) < 4:
+            continue
+        if alias.startswith(key) and "property" in term.kind.lower():
+            property_bonus = 0.15 if "property" in term.kind.lower() else 0.0
+            candidates.append((0.72 + property_bonus, len(alias), term))
             continue
         if key in alias:
             candidates.append((len(key) / max(len(alias), 1), len(alias), term))
