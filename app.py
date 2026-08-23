@@ -22,6 +22,7 @@ from rdflib import Graph, BNode, URIRef
 from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 from kg.advisory import (
+    AdvisoryPlan,
     CURRENT_DEMAND_BY_REGION,
     FUTURE_DEMAND_BY_REGION,
     FUTURE_DEMAND_BY_TECHNOLOGY,
@@ -1624,9 +1625,67 @@ def _set_guided_question_input(value: str, query: str) -> None:
     st.session_state["question_input_revision"] = int(st.session_state.get("question_input_revision", 0) or 0) + 1
 
 
+def _advisory_plan_from_evidence_selection(question: str, query: str) -> AdvisoryPlan | None:
+    query_text = str(query or "").strip()
+    if not query_text:
+        return None
+    if query_text == CURRENT_DEMAND_BY_REGION:
+        return AdvisoryPlan(
+            plan_id="selected_current_demand_region_focus",
+            title="Current-demand focus by region",
+            query=CURRENT_DEMAND_BY_REGION,
+            group_key="regionName",
+            value_key="totalDemand",
+            value_label="total current demand",
+            objective="identify the region with the highest current-demand signal",
+        )
+    if query_text == FUTURE_DEMAND_BY_REGION:
+        return AdvisoryPlan(
+            plan_id="selected_future_demand_region_focus",
+            title="Future-demand focus by region",
+            query=FUTURE_DEMAND_BY_REGION,
+            group_key="regionName",
+            value_key="avgPercentageChange",
+            value_label="average future-demand percentage change",
+            objective="identify the region with the strongest future-demand signal",
+        )
+    if query_text == FUTURE_DEMAND_BY_VEHICLE_TYPE:
+        return AdvisoryPlan(
+            plan_id="selected_future_demand_vehicle_signal",
+            title="Strongest future-demand signal by vehicle type",
+            query=FUTURE_DEMAND_BY_VEHICLE_TYPE,
+            group_key="vehicleType",
+            value_key="avgPercentageChange",
+            value_label="average future-demand percentage change",
+            objective="identify the vehicle type with the strongest future-demand signal",
+        )
+    if query_text == FUTURE_DEMAND_BY_TECHNOLOGY:
+        return AdvisoryPlan(
+            plan_id="selected_future_demand_technology_signal",
+            title="Strongest future-demand signal by technology category",
+            query=FUTURE_DEMAND_BY_TECHNOLOGY,
+            group_key="technologyCategory",
+            value_key="avgPercentageChange",
+            value_label="average future-demand percentage change",
+            objective="identify the technology category with the strongest future-demand signal",
+        )
+    if query_text == SHORTAGE_BY_SURVEY_GROUP:
+        return AdvisoryPlan(
+            plan_id="selected_shortage_survey_exposure",
+            title="Shortage exposure by survey group",
+            query=SHORTAGE_BY_SURVEY_GROUP,
+            group_key="surveyGroup",
+            value_key="companyCount",
+            value_label="companies reporting the shortage status",
+            objective="identify where shortage signals appear most visible in the survey data",
+        )
+    return None
+
+
 def _execute_guided_question_now(value: str, query: str, graph_path: str, max_preview_rows: int) -> None:
     question_text = str(value or "").strip()
     query_text = str(query or "").strip()
+    advisory_plan = _advisory_plan_from_evidence_selection(question_text, query_text)
     st.session_state["question_input"] = question_text
     st.session_state["guided_query_override_question"] = question_text
     st.session_state["guided_query_override"] = query_text
@@ -1635,22 +1694,41 @@ def _execute_guided_question_now(value: str, query: str, graph_path: str, max_pr
     request_id = uuid.uuid4().hex
     started = time.perf_counter()
     result: Dict[str, Any] = {
-        "answer": "Validated graph-supported option selected.",
+        "answer": (
+            "Graph-grounded advisory evidence selected."
+            if advisory_plan is not None
+            else "Validated graph-supported option selected."
+        ),
         "selected_query": query_text,
         "candidates": [{"query": query_text, "source": "clarification_guided"}] if query_text else [],
         "schema_ranked": [],
         "learning_ranked": [],
-        "metadata": {"guided_query": True, "clarification_option_executed": True, "llm_skipped": True},
+        "metadata": {
+            "guided_query": True,
+            "clarification_option_executed": True,
+            "llm_skipped": True,
+            "advisory_route": advisory_plan is not None,
+            "advisory_plan_id": advisory_plan.plan_id if advisory_plan is not None else None,
+            "advisory_title": advisory_plan.title if advisory_plan is not None else None,
+        },
         "errors": [],
         "prompt": "",
-        "policy": "guided_clarification",
+        "policy": "advisory_guided_clarification" if advisory_plan is not None else "guided_clarification",
         "entropy": 0.0,
-        "selection_reason": "User selected a validated graph-backed clarification option.",
+        "selection_reason": (
+            "User selected a graph-backed evidence view for advisory synthesis."
+            if advisory_plan is not None
+            else "User selected a validated graph-backed clarification option."
+        ),
         "used_ml": False,
         "effective_question": question_text,
         "selection_explanation": {
-            "selected_policy": "guided_clarification",
-            "selection_reason": "User selected a validated graph-backed clarification option.",
+            "selected_policy": "advisory_guided_clarification" if advisory_plan is not None else "guided_clarification",
+            "selection_reason": (
+                "User selected a graph-backed evidence view for advisory synthesis."
+                if advisory_plan is not None
+                else "User selected a validated graph-backed clarification option."
+            ),
             "selected_query_valid": bool(query_text),
             "selected_query_errors": [],
             "selected_execution_has_rows": None,
@@ -1667,9 +1745,13 @@ def _execute_guided_question_now(value: str, query: str, graph_path: str, max_pr
             "score2": 0.12,
             "margin": 0.82,
             "selected_query": query_text,
-            "reason": "user-selected graph-backed clarification option",
+            "reason": (
+                "user-selected graph-backed advisory evidence view"
+                if advisory_plan is not None
+                else "user-selected graph-backed clarification option"
+            ),
             "options": [],
-            "safety_flags": [],
+            "safety_flags": ["graph_grounded_advisory_not_business_decision"] if advisory_plan is not None else [],
             "blocking_safety_flags": [],
         },
         "clarification": None,
@@ -1698,12 +1780,15 @@ def _execute_guided_question_now(value: str, query: str, graph_path: str, max_pr
             )
             graph_query_elapsed = time.perf_counter() - graph_query_started
             answer_synthesis_started = time.perf_counter()
-            graph_answer = synthesize_answer(
-                question_text,
-                query_text,
-                {"rows": rows, "matched_question_id": None, "error": None},
-                None if rows else None,
-            )
+            if advisory_plan is not None:
+                graph_answer = synthesize_advisory_answer(question_text, advisory_plan, rows)
+            else:
+                graph_answer = synthesize_answer(
+                    question_text,
+                    query_text,
+                    {"rows": rows, "matched_question_id": None, "error": None},
+                    None if rows else None,
+                )
             answer_synthesis_elapsed = time.perf_counter() - answer_synthesis_started
             result["answerability"] = _guided_answerability(rows)
             result["selection_explanation"]["selected_execution_has_rows"] = bool(rows)
