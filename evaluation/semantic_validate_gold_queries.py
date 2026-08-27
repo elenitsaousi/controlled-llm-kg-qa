@@ -24,10 +24,13 @@ if str(PROJECT_ROOT) not in sys.path:
 
 try:
     from rdflib import Graph
-    from rdflib.plugins.stores.sparqlstore import SPARQLStore
 except ImportError:  # pragma: no cover - local thesis editing may not have rdflib.
     Graph = None
-    SPARQLStore = None
+
+try:
+    from kg.fuseki import make_sparql_store
+except ImportError:  # pragma: no cover - local thesis editing may not have project imports.
+    make_sparql_store = None
 
 
 DEFAULT_PREFIX = """\
@@ -392,9 +395,9 @@ def _make_graph(graph_path: str, fuseki_query_url: str):
     if Graph is None:
         raise RuntimeError("rdflib is required for execution validation.")
     if fuseki_query_url:
-        if SPARQLStore is None:
-            raise RuntimeError("rdflib SPARQLStore is required for Fuseki validation.")
-        return Graph(store=SPARQLStore(fuseki_query_url))
+        if make_sparql_store is None:
+            raise RuntimeError("kg.fuseki.make_sparql_store is required for Fuseki validation.")
+        return Graph(store=make_sparql_store(fuseki_query_url))
     graph = Graph()
     graph.parse(graph_path, format="turtle")
     return graph

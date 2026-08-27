@@ -11,10 +11,10 @@ import signal
 import numpy as np
 from rdflib import Graph
 from rdflib.plugins.sparql.parser import parseQuery
-from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 from kg.executor import execute_query_stub
 from kg.entity_linking import build_entity_alias_index
+from kg.fuseki import make_sparql_store
 from kg.schema import KGSchema, load_default_schema
 from kg.sparql_matching import is_relaxed_correct
 from kg.sparql_normalization import normalize_sparql
@@ -177,7 +177,7 @@ def _get_default_graph() -> Optional[Graph]:
     fuseki_query_url = os.getenv("FUSEKI_QUERY_URL", "").strip()
     if fuseki_query_url:
         try:
-            g = Graph(store=SPARQLStore(fuseki_query_url))
+            g = Graph(store=make_sparql_store(fuseki_query_url))
             _DEFAULT_GRAPH_CACHE = g
             return g
         except Exception:

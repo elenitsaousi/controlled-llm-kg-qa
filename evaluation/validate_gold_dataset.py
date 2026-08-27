@@ -15,10 +15,13 @@ if PROJECT_ROOT not in sys.path:
 
 try:
     from rdflib import Graph
-    from rdflib.plugins.stores.sparqlstore import SPARQLStore
 except ImportError:  # pragma: no cover - production environment has rdflib installed.
     Graph = None
-    SPARQLStore = None
+
+try:
+    from kg.fuseki import make_sparql_store
+except ImportError:  # pragma: no cover - production environment has project imports.
+    make_sparql_store = None
 
 DEFAULT_PREFIX = """\
 PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
@@ -47,11 +50,11 @@ def _make_graph(graph_path: str, fuseki_query_url: str, *, progress: bool = Fals
     if Graph is None:
         raise RuntimeError("rdflib is required to validate gold datasets.")
     if fuseki_query_url:
-        if SPARQLStore is None:
-            raise RuntimeError("rdflib SPARQLStore is required for Fuseki validation.")
+        if make_sparql_store is None:
+            raise RuntimeError("kg.fuseki.make_sparql_store is required for Fuseki validation.")
         if progress:
             print(f"Using Fuseki endpoint: {fuseki_query_url}", flush=True)
-        return Graph(store=SPARQLStore(fuseki_query_url))
+        return Graph(store=make_sparql_store(fuseki_query_url))
     graph = Graph()
     if progress:
         print(f"Loading local graph: {graph_path}", flush=True)

@@ -11,7 +11,6 @@ from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
 from rdflib import Graph
-from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -24,6 +23,7 @@ try:
 except Exception:
     pass
 
+from kg.fuseki import make_sparql_store
 from kg.schema import KGSchema, load_default_schema, load_schema
 from kg.entity_linking import (
     build_entity_alias_index,
@@ -178,7 +178,7 @@ def _run_query(graph: Graph, query: str, timeout_s: Optional[float]) -> Counter:
 def _execution_graph(graph_path: str) -> Graph:
     fuseki_url = os.environ.get("FUSEKI_QUERY_URL", "").strip()
     if fuseki_url:
-        return Graph(store=SPARQLStore(fuseki_url))
+        return Graph(store=make_sparql_store(fuseki_url))
     graph = Graph()
     graph.parse(graph_path, format="turtle")
     return graph

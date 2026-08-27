@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from rdflib import Graph
-from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -27,6 +26,7 @@ if str(ROOT) not in sys.path:
 from kg.capabilities import DEFAULT_REGISTRY
 from kg.advisory import resolve_advisory_plan, synthesize_advisory_answer
 from kg.dr_ontology import route_dr_ontology_definition
+from kg.fuseki import make_sparql_store
 from kg.schema import load_schema
 from llm.answer_synthesis import synthesize_answer
 from llm.client import InfineonGPTClient
@@ -105,7 +105,7 @@ def _counts_from_existing(rows: List[Dict[str, Any]]) -> Dict[str, int]:
 
 def _load_graph(graph_path: str, fuseki_query_url: str) -> Graph:
     if fuseki_query_url.strip():
-        return Graph(store=SPARQLStore(fuseki_query_url.strip()))
+        return Graph(store=make_sparql_store(fuseki_query_url.strip()))
     graph = Graph()
     graph.parse(graph_path, format="turtle")
     return graph

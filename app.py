@@ -19,7 +19,6 @@ from typing import Any, Dict, List, Optional, Tuple
 import streamlit as st
 import streamlit.components.v1 as components
 from rdflib import Graph, BNode, URIRef
-from rdflib.plugins.stores.sparqlstore import SPARQLStore
 
 from kg.advisory import (
     AdvisoryPlan,
@@ -38,6 +37,7 @@ from kg.dr_ontology import (
     search_dr_ontology_terms,
     route_dr_ontology_definition,
 )
+from kg.fuseki import fuseki_authorization_header, make_sparql_store
 from kg.schema import load_schema
 from kg.capabilities import DEFAULT_REGISTRY as CAPABILITY_REGISTRY
 from llm.answer_synthesis import synthesize_answer
@@ -336,6 +336,9 @@ def _fuseki_endpoint_available(fuseki_query_url: str) -> bool:
         return False
     try:
         request = urllib.request.Request(url, method="GET")
+        auth_header = fuseki_authorization_header()
+        if auth_header:
+            request.add_header("Authorization", auth_header)
         with urllib.request.urlopen(request, timeout=0.6):
             return True
     except urllib.error.HTTPError:
@@ -401,7 +404,7 @@ def _temporary_socket_timeout(timeout_s: float):
 @st.cache_resource(show_spinner=False)
 def _load_graph_cached(graph_path: str, fuseki_query_url: str = "") -> Graph:
     if fuseki_query_url.strip():
-        return Graph(store=SPARQLStore(fuseki_query_url.strip()))
+        return Graph(store=make_sparql_store(fuseki_query_url.strip()))
     g = Graph()
     g.parse(graph_path, format="turtle")
     return g
@@ -727,7 +730,7 @@ def _system_health_snapshot(
     }
     if fuseki_query_url:
         try:
-            graph = Graph(store=SPARQLStore(fuseki_query_url))
+            graph = Graph(store=make_sparql_store(fuseki_query_url))
             _execute_query_preview(graph, "SELECT * WHERE { ?s ?p ?o } LIMIT 1", max_rows=1)
             health["Graph"] = {"status": "ok", "detail": "Fuseki endpoint reachable"}
         except Exception as exc:
