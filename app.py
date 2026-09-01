@@ -4281,26 +4281,45 @@ def _join_with_and(values: List[str]) -> str:
 
 
 def _coverage_shortfall_note(original_question: str, graph_rows: List[Dict[str, str]]) -> str:
-    """If the question asked for an explicit N-period window but the graph has
-    fewer available periods than requested, say so plainly instead of silently
-    answering with less data than asked for.
+    """Say plainly when the graph has fewer available periods than the
+    question implied, instead of silently answering with less data than
+    asked for. Two cases:
+    - An explicit N was requested ("last 3 years") but fewer than N periods
+      are available.
+    - No explicit N was given, but the phrasing was plural ("upcoming
+      quarters", implying more than one) and only one period actually
+      matched -- e.g. a live graph whose future data extends only one
+      quarter past the current quarter.
     """
     time_window = extract_time_window(original_question)
-    if not time_window.is_present or time_window.n is None:
+    if not time_window.is_present:
         return ""
     period_key, unit = _TIME_WINDOW_ROW_KEYS.get(time_window.kind, (None, None))
     if not period_key:
         return ""
     values = _distinct_period_values(graph_rows, period_key)
     actual = len(values)
-    if actual == 0 or actual >= time_window.n:
+    if actual == 0:
         return ""
+    if time_window.n is not None:
+        if actual >= time_window.n:
+            return ""
+        requested_desc = f"{time_window.n}-{unit}"
+    else:
+        is_plural = bool(re.search(rf"\b{unit}s\b", time_window.raw))
+        if not is_plural or actual > 1:
+            return ""
+        requested_desc = f"{unit}s"
     values_text = _join_with_and(sorted(values))
     plural = "s" if actual != 1 else ""
+    if time_window.direction == "future":
+        closing = f"answered using the only {actual} upcoming {unit}{plural} currently in the graph."
+    else:
+        closing = f"answered using the full available {actual}-{unit} history."
     return (
-        f"The graph contains {unit} data for only {actual} available {unit}{plural}, "
-        f"{values_text}. The requested {time_window.n}-{unit} window is answered using "
-        f"the full available {actual}-{unit} history."
+        f"The graph contains {unit} data for only {actual} "
+        f"{'upcoming' if time_window.direction == 'future' else 'available'} {unit}{plural} "
+        f"matching this request, {values_text}. The requested {requested_desc} window is {closing}"
     )
 
 

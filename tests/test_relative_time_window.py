@@ -100,6 +100,34 @@ check("shortfall_note_silent_when_n_satisfied", no_shortfall == "")
 no_window = app._coverage_shortfall_note("Show current demand by region.", [])
 check("shortfall_note_silent_without_time_window", no_window == "")
 
+# Plural "upcoming quarters" with no explicit N, but the graph only has one
+# quarter of future data past the current quarter -- reported bug where the
+# answer silently gave one row with no explanation for a plural request.
+upcoming_shortfall = app._coverage_shortfall_note(
+    "What is the expected future demand for Tier1 for the upcoming quarters?",
+    [{"surveyGroup": "Tier1", "quarterLabel": "Q4 2026", "expectedFutureDemand": "13"}],
+)
+check("upcoming_shortfall_fires_for_single_row", "only 1 upcoming quarter" in upcoming_shortfall)
+check("upcoming_shortfall_names_the_quarter", "Q4 2026" in upcoming_shortfall)
+
+# Singular "upcoming quarter" getting exactly one row is expected, not a shortfall.
+upcoming_singular = app._coverage_shortfall_note(
+    "What is the expected future demand for Tier1 for the upcoming quarter?",
+    [{"surveyGroup": "Tier1", "quarterLabel": "Q4 2026", "expectedFutureDemand": "13"}],
+)
+check("upcoming_shortfall_silent_for_singular_phrasing", upcoming_singular == "")
+
+# Plural phrasing with several rows actually returned needs no note.
+upcoming_multi = app._coverage_shortfall_note(
+    "Show semiconductor demand trend for the upcoming quarters.",
+    [
+        {"quarterLabel": "Q4 2025", "x": "1"},
+        {"quarterLabel": "Q1 2026", "x": "2"},
+        {"quarterLabel": "Q2 2026", "x": "3"},
+    ],
+)
+check("upcoming_shortfall_silent_when_multiple_rows_returned", upcoming_multi == "")
+
 # Unsupported-region honesty note: question mentions a world region the
 # graph does not model at all.
 region_note = app._unsupported_region_note("What is current demand in Oceania?")
