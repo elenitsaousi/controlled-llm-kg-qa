@@ -89,6 +89,21 @@ def test_route_request_still_defines_current_demand_when_explicitly_asked():
     assert route_request("Define current demand.")["route"] == "definition"
 
 
+def test_route_request_sends_catalog_lookup_questions_to_the_graph():
+    # "What are the names of all X" / "X labels present" are catalog-lookup
+    # questions, not definition requests -- they were matching the definition
+    # fallback and returning a failure message instead of routing to kg_query.
+    assert route_request(
+        "What are the names of all regions recorded in our database?"
+    )["route"] == "kg_query"
+    assert route_request(
+        "What are the names of all technology categories?"
+    )["route"] == "kg_query"
+    assert route_request(
+        "What are the quarter labels present in our dataset?"
+    )["route"] == "kg_query"
+
+
 def test_route_request_clarifies_underspecified_entity_questions():
     route = route_request("What about BEV?")
     assert route["route"] == "clarification_needed"

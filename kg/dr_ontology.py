@@ -109,6 +109,8 @@ GRAPH_QUERY_HINTS = GRAPH_COMPARISON_HINTS | {
     "latest",
     "last",
     "monitor",
+    "names of",
+    "labels",
     "past",
     "risk",
     "should",
