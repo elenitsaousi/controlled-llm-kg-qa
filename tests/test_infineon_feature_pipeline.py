@@ -1025,6 +1025,34 @@ def test_template_candidates_cover_hard_infineon_intents():
     assert "ComponentShare" in component_share[0]
 
 
+def test_template_candidates_use_ascending_order_for_lowest_questions():
+    lowest_semiconductor = _template_candidate_queries(
+        "Which region has the lowest semiconductor demand?"
+    )
+    assert lowest_semiconductor
+    assert any("ASC(" in q for q in lowest_semiconductor)
+    assert not any("DESC(" in q for q in lowest_semiconductor)
+
+    highest_semiconductor = _template_candidate_queries(
+        "Which region has the highest semiconductor demand?"
+    )
+    assert highest_semiconductor
+    assert any("DESC(" in q for q in highest_semiconductor)
+    assert not any("ASC(" in q for q in highest_semiconductor)
+
+    lowest_tech_current_demand = _template_candidate_queries(
+        "Which technology category has the lowest current demand?"
+    )
+    assert lowest_tech_current_demand
+    assert any("ASC(" in q for q in lowest_tech_current_demand)
+
+    lowest_yearly_sales = _template_candidate_queries(
+        "Which vehicle type has the lowest yearly sales?"
+    )
+    assert lowest_yearly_sales
+    assert any("ASC(" in q for q in lowest_yearly_sales)
+
+
 def test_dev_dataset_is_separate_from_training_questions():
     train = json.load(open("data/infineon/infineon_train.json", "r", encoding="utf-8"))
     eval_rows = json.load(open("data/infineon/infineon_dev.json", "r", encoding="utf-8"))

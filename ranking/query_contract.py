@@ -21,6 +21,7 @@ WORD_RE = re.compile(r"[a-z0-9]+")
 class QueryContract:
     metrics: Set[str] = field(default_factory=set)
     aggregation: Optional[str] = None
+    direction: Optional[str] = None
     scopes: Set[str] = field(default_factory=set)
     dimensions: Set[str] = field(default_factory=set)
     filters: Set[str] = field(default_factory=set)
@@ -31,6 +32,7 @@ class QueryContract:
         return {
             "metrics": sorted(self.metrics),
             "aggregation": self.aggregation,
+            "direction": self.direction,
             "scopes": sorted(self.scopes),
             "dimensions": sorted(self.dimensions),
             "filters": sorted(self.filters),
@@ -132,6 +134,10 @@ def extract_question_contract(question: str) -> QueryContract:
     elif _has_any(q, "highest", "largest", "maximum", "top", "most", "peak", "lowest", "smallest", "minimum"):
         contract.aggregation = "rank"
         contract.answer_shape = "ranked_one"
+        if _has_any(q, "lowest", "smallest", "minimum"):
+            contract.direction = "min"
+        elif _has_any(q, "highest", "largest", "maximum", "top", "most", "peak"):
+            contract.direction = "max"
     elif asks_unit_quantity or _has_any(q, "total", "sum", "summed", "combined", "overall", "aggregate"):
         contract.aggregation = "sum"
     elif asks_record_count or asks_company_count or _has_any(q, "how many", "number of", "count of", "counts of", "counts by"):
@@ -253,6 +259,12 @@ def extract_query_contract(query: str) -> QueryContract:
     elif "order by" in query_lower and "limit" in query_lower:
         contract.aggregation = "rank"
 
+    if "order by" in query_lower and "limit" in query_lower:
+        if re.search(r"order by\s+asc\s*\(", query_lower):
+            contract.direction = "min"
+        elif re.search(r"order by\s+desc\s*\(", query_lower):
+            contract.direction = "max"
+
     _add_if("oem survey" in hay or "oem_survey" in query_lower, contract.scopes, "oem")
     _add_if("tier1 survey" in hay or "tier1_survey" in query_lower, contract.scopes, "tier1")
     _add_if("semiconductor survey" in hay or "semiconductor_survey" in query_lower, contract.scopes, "semiconductor")
@@ -354,6 +366,20 @@ def compare_contracts(question_contract: QueryContract, query_contract: QueryCon
             score -= 1.0
             reasons.append(f"contract_aggregation_missing:{question_contract.aggregation}")
             _record(missing, "aggregation", question_contract.aggregation)
+
+    if question_contract.direction:
+        if query_contract.direction == question_contract.direction:
+            score += 1.2
+            reasons.append(f"contract_direction_match:{question_contract.direction}")
+            _record(matched, "direction", question_contract.direction)
+        elif query_contract.direction:
+            score -= 2.2
+            reasons.append(f"contract_direction_conflict:{query_contract.direction}")
+            _record(conflicts, "direction", query_contract.direction)
+        else:
+            score -= 0.8
+            reasons.append(f"contract_direction_missing:{question_contract.direction}")
+            _record(missing, "direction", question_contract.direction)
 
     for scope in sorted(question_contract.scopes):
         if scope in query_contract.scopes:

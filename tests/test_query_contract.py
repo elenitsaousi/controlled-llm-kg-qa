@@ -83,6 +83,62 @@ def test_contract_penalizes_wrong_metric():
     assert comparison.score < 0
 
 
+def test_question_contract_detects_min_and_max_direction():
+    lowest = extract_question_contract("Which region has the lowest current demand?")
+    highest = extract_question_contract("Which region has the highest current demand?")
+    neutral = extract_question_contract("Show current demand by region.")
+
+    assert lowest.direction == "min"
+    assert highest.direction == "max"
+    assert neutral.direction is None
+
+
+def test_query_contract_detects_asc_and_desc_direction():
+    asc_query = """
+    PREFIX survey: <http://example/>
+    SELECT ?regionName (SUM(?demand) AS ?totalDemand)
+    WHERE {
+      ?entry a survey:DemandForRegion ;
+        survey:inRegion ?region ;
+        survey:totalDemand ?demand .
+      ?region survey:regionName ?regionName .
+    }
+    GROUP BY ?regionName
+    ORDER BY ASC(?totalDemand)
+    LIMIT 1
+    """
+    desc_query = asc_query.replace("ASC(?totalDemand)", "DESC(?totalDemand)")
+
+    assert extract_query_contract(asc_query).direction == "min"
+    assert extract_query_contract(desc_query).direction == "max"
+
+
+def test_lowest_question_prefers_asc_candidate_over_desc_candidate():
+    question = "Which region has the lowest current demand?"
+    desc_query = """
+    PREFIX survey: <http://example/>
+    SELECT ?regionName (SUM(?demand) AS ?totalDemand)
+    WHERE {
+      ?entry a survey:DemandForRegion ;
+        survey:inRegion ?region ;
+        survey:totalDemand ?demand .
+      ?region survey:regionName ?regionName .
+    }
+    GROUP BY ?regionName
+    ORDER BY DESC(?totalDemand)
+    LIMIT 1
+    """
+    asc_query = desc_query.replace("DESC(?totalDemand)", "ASC(?totalDemand)")
+
+    q_contract = extract_question_contract(question)
+    desc_comparison = compare_contracts(q_contract, extract_query_contract(desc_query))
+    asc_comparison = compare_contracts(q_contract, extract_query_contract(asc_query))
+
+    assert "contract_direction_conflict:max" in desc_comparison.reasons
+    assert "contract_direction_match:min" in asc_comparison.reasons
+    assert asc_comparison.score > desc_comparison.score
+
+
 def test_contract_selection_override_promotes_clear_aggregation_fix(monkeypatch):
     monkeypatch.setenv("INFINEON_ENABLE_CONTRACT_SELECTION_OVERRIDE", "1")
     question = "Show total OEM demand by region."

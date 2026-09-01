@@ -448,6 +448,19 @@ def _retrieve_validated_candidate_queries(question: str, limit: int = 3) -> List
     return candidates
 
 
+_MAX_DIRECTION_WORDS = ("highest", "largest", "top", "most", "strongest", "maximum", "max", "leads", "lead", "peak")
+_MIN_DIRECTION_WORDS = ("lowest", "smallest", "least", "minimum", "min", "bottom", "weakest", "lags", "lag")
+
+
+def _rank_direction(q: str) -> Optional[str]:
+    """Return 'min'/'max' ranking direction implied by the question, or None."""
+    if any(w in q for w in _MIN_DIRECTION_WORDS):
+        return "min"
+    if any(w in q for w in _MAX_DIRECTION_WORDS):
+        return "max"
+    return None
+
+
 def _template_candidate_queries(question: str) -> List[str]:
     q = (question or "").lower()
     templates: List[str] = []
@@ -848,9 +861,10 @@ def _template_candidate_queries(question: str) -> List[str]:
             )
         elif (
             ("semiconductor" in q or "semi" in q)
-            and any(w in q for w in ["top", "highest", "largest"])
+            and _rank_direction(q) is not None
             and not any(w in q for w in ["total demand", "current demand", "demand totals"])
         ):
+            order = "ASC" if _rank_direction(q) == "min" else "DESC"
             add(
                 "SELECT ?regionName (SUM(?unitsSold) AS ?semiconductorDemand) WHERE { "
                 "?demandForRegion a survey:DemandForRegion ; "
@@ -859,7 +873,7 @@ def _template_candidate_queries(question: str) -> List[str]:
                 "survey:totalDemandPercentageChange ?unitsSold . "
                 "?origin a survey:Semiconductor_Survey . "
                 "?region a survey:Region ; survey:regionName ?regionName . "
-                "} GROUP BY ?regionName ORDER BY DESC(?semiconductorDemand) LIMIT 1"
+                f"}} GROUP BY ?regionName ORDER BY {order}(?semiconductorDemand) LIMIT 1"
             )
         elif any(w in q for w in ["total demand", "current demand", "aggregate total demand", "demand totals"]):
             if "oem" in q:
@@ -926,6 +940,7 @@ def _template_candidate_queries(question: str) -> List[str]:
         )
 
     if "origin type" in q and "demand" in q:
+        origin_type_order = "ASC" if _rank_direction(q) == "min" else "DESC"
         add(
             "SELECT ?surveyType (SUM(?unitsSold) AS ?totalDemand) WHERE { "
             f"{survey_values}"
@@ -933,7 +948,7 @@ def _template_candidate_queries(question: str) -> List[str]:
             "survey:hasSurveyOrigin ?origin ; "
             "survey:totalDemandPercentageChange ?unitsSold . "
             "?origin a ?surveyClass . "
-            "} GROUP BY ?surveyType ORDER BY DESC(?totalDemand) LIMIT 1"
+            f"}} GROUP BY ?surveyType ORDER BY {origin_type_order}(?totalDemand) LIMIT 1"
         )
 
     if "average" in q and "oem" in q and "demand" in q and "japan" in q:
@@ -1010,8 +1025,9 @@ def _template_candidate_queries(question: str) -> List[str]:
         ("autonomous" in q or "sae" in q)
         and any(w in q for w in ["vehicle", "category", "type"])
         and any(w in q for w in ["level 5", "sae level 5", "full autonomy", "fully autonomous"])
-        and any(w in q for w in ["highest", "strongest", "largest", "top"])
+        and _rank_direction(q) is not None
     ):
+        sae5_order = "ASC" if _rank_direction(q) == "min" else "DESC"
         add(
             "SELECT ?vehicleType ?percentage WHERE { "
             "?entry a survey:AutonomousDrivingDevelopment ; "
@@ -1019,24 +1035,26 @@ def _template_candidate_queries(question: str) -> List[str]:
             "survey:hasSAELevel survey:SAE_Level_5 ; "
             "survey:hasPercentage ?percentage . "
             "BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) "
-            "} ORDER BY DESC(?percentage) LIMIT 1"
+            f"}} ORDER BY {sae5_order}(?percentage) LIMIT 1"
         )
 
     if (
         "autonomous" in q
         and "vehicle" in q
         and "sae" in q
-        and any(w in q for w in ["highest", "max", "maximum", "top"])
+        and _rank_direction(q) is not None
     ):
+        sae_max_order = "ASC" if _rank_direction(q) == "min" else "DESC"
+        sae_agg = "MIN" if _rank_direction(q) == "min" else "MAX"
         add(
-            "SELECT ?vehicleType ?saeLevel (MAX(?percentage) AS ?maxPercentage) WHERE { "
+            f"SELECT ?vehicleType ?saeLevel ({sae_agg}(?percentage) AS ?maxPercentage) WHERE {{ "
             "?entry a survey:AutonomousDrivingDevelopment ; "
             "survey:hasVehicleType ?vehicle ; "
             "survey:hasSAELevel ?sae ; "
             "survey:hasPercentage ?percentage . "
             "BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) "
             "BIND(REPLACE(STR(?sae), '^.*/SAE_Level_', '') AS ?saeLevel) "
-            "} GROUP BY ?vehicleType ?saeLevel ORDER BY DESC(?maxPercentage) LIMIT 1"
+            f"}} GROUP BY ?vehicleType ?saeLevel ORDER BY {sae_max_order}(?maxPercentage) LIMIT 1"
         )
 
     if "autonomous" in q and "vehicle" in q and "sae" in q and "percentage" in q:
@@ -1051,15 +1069,16 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} GROUP BY ?vehicleType ?saeLevel ORDER BY ?vehicleType xsd:integer(?saeLevel)"
         )
 
-    if asks_order_cancellation and "response type" in q and any(
-        w in q for w in ["highest", "largest", "top", "most", "overall"]
+    if asks_order_cancellation and "response type" in q and (
+        _rank_direction(q) is not None or "overall" in q
     ):
+        response_type_order = "ASC" if _rank_direction(q) == "min" else "DESC"
         add(
             "SELECT ?responseType (SUM(xsd:integer(?participants)) AS ?participantCount) WHERE { "
             "?entry a survey:OrderCancellation ; "
             "survey:hasResponseType ?responseType ; "
             "survey:participantCount ?participants . "
-            "} GROUP BY ?responseType ORDER BY DESC(?participantCount) LIMIT 1"
+            f"}} GROUP BY ?responseType ORDER BY {response_type_order}(?participantCount) LIMIT 1"
         )
 
     if asks_order_cancellation and "technology" in q and asks_count_or_sum and "response type" not in q:
@@ -1139,24 +1158,26 @@ def _template_candidate_queries(question: str) -> List[str]:
             "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) "
             "} GROUP BY ?technologyCategory ?trend ORDER BY ?technologyCategory ?trend"
         )
-        if "most" in q or "highest" in q or "common" in q or "pairing" in q:
+        if "most" in q or "least" in q or "highest" in q or "lowest" in q or "common" in q or "rarest" in q or "pairing" in q:
+            common_order = "ASC" if _rank_direction(q) == "min" or "least" in q or "rarest" in q else "DESC"
             add(
                 "SELECT ?technologyCategory ?trend (COUNT(?entry) AS ?entryCount) WHERE { "
                 "?entry a survey:InventoryDevelopment_Semi ; "
                 "survey:forTechnologyCategory ?tech ; "
                 "survey:hasInventoryTrend ?trend . "
                 "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) "
-                "} GROUP BY ?technologyCategory ?trend ORDER BY DESC(?entryCount) LIMIT 1"
+                f"}} GROUP BY ?technologyCategory ?trend ORDER BY {common_order}(?entryCount) LIMIT 1"
             )
 
-    if "future" in q and "demand" in q and "tech" in q and any(w in q for w in ["strongest", "largest", "highest"]):
+    if "future" in q and "demand" in q and "tech" in q and _rank_direction(q) is not None:
+        future_tech_order = "ASC" if _rank_direction(q) == "min" else "DESC"
         add(
             "SELECT ?techLabel (AVG(?pct) AS ?avgFutureChange) WHERE { "
             "?entry a survey:FutureDemandAnalysis ; "
             "survey:analyzesTechnologyCategory ?tech ; "
             "survey:percentageChange ?pct . "
             "BIND(REPLACE(STR(?tech), '^.*/', '') AS ?techLabel) "
-            "} GROUP BY ?techLabel ORDER BY DESC(?avgFutureChange) LIMIT 1"
+            f"}} GROUP BY ?techLabel ORDER BY {future_tech_order}(?avgFutureChange) LIMIT 1"
         )
 
     if "tier1" in q and ("bl1" in q or "b1" in q) and ("bl2" in q or "b2" in q):
@@ -1188,13 +1209,14 @@ def _template_candidate_queries(question: str) -> List[str]:
             "} ORDER BY ?technologyCategory"
         )
 
-    if "technology" in q and "current demand" in q and any(w in q for w in ["largest", "highest", "top"]):
+    if "technology" in q and "current demand" in q and _rank_direction(q) is not None:
+        tech_current_demand_order = "ASC" if _rank_direction(q) == "min" else "DESC"
         add(
             "SELECT ?technologyCategory ?currentDemand WHERE { "
             "?tech a survey:TechnologyCategory ; "
             "survey:technologyCategoryName ?technologyCategory ; "
             "survey:currentDemand ?currentDemand . "
-            "} ORDER BY DESC(?currentDemand) LIMIT 1"
+            f"}} ORDER BY {tech_current_demand_order}(?currentDemand) LIMIT 1"
         )
 
     if "conversion" in q and "technology" in q and "vehicle" in q:
@@ -1256,14 +1278,15 @@ def _template_candidate_queries(question: str) -> List[str]:
         )
 
     if asks_yearly_sales or "yearly sales" in q or "annual sales" in q:
-        if any(w in q for w in ["leads", "lead", "highest", "top", "largest", "most"]):
+        if _rank_direction(q) is not None:
+            yearly_sales_order = "ASC" if _rank_direction(q) == "min" else "DESC"
             add(
                 "SELECT ?vehicleType (SUM(?sales) AS ?totalSales) WHERE { "
                 "?entry a survey:YearlySalesData ; "
                 "survey:analyzesVehicleType ?vehicle ; "
                 "survey:yearlySales ?sales . "
                 "BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) "
-                "} GROUP BY ?vehicleType ORDER BY DESC(?totalSales) LIMIT 1"
+                f"}} GROUP BY ?vehicleType ORDER BY {yearly_sales_order}(?totalSales) LIMIT 1"
             )
         else:
             add(
