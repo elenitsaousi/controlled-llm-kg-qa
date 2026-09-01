@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from difflib import SequenceMatcher
 from html import escape
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -2669,7 +2670,13 @@ def _capability_backed_clarification_options(
         )
         if len(options) >= max_options:
             break
-    return options
+    ranked_options = _rank_relevant_option_dicts(
+        question,
+        options,
+        max_options=max_options,
+        min_score=0.12 if requested_dims else 0.2,
+    )
+    return ranked_options or options[:max_options]
 
 
 def _capability_dimension_profile_hint(capability_name: str, dimension_name: str) -> str:
@@ -3374,6 +3381,149 @@ def _is_advisory_like_question(question: str) -> bool:
     return any(term in q for term in advisory_terms) and any(term in q for term in graph_terms)
 
 
+CLARIFICATION_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "based",
+    "be",
+    "by",
+    "can",
+    "could",
+    "do",
+    "does",
+    "for",
+    "from",
+    "give",
+    "how",
+    "i",
+    "if",
+    "in",
+    "is",
+    "it",
+    "me",
+    "my",
+    "of",
+    "on",
+    "or",
+    "please",
+    "should",
+    "show",
+    "the",
+    "this",
+    "to",
+    "want",
+    "what",
+    "which",
+    "with",
+}
+
+
+def _clarification_tokens(text: str) -> set[str]:
+    normalized = _normalize_question_key(text)
+    tokens = set(re.findall(r"[a-z0-9]+", normalized))
+    return {token for token in tokens if token not in CLARIFICATION_STOPWORDS and len(token) > 1}
+
+
+def _clarification_relevance_score(question: str, *texts: str) -> float:
+    q_norm = _normalize_question_key(question)
+    option_norm = _normalize_question_key(" ".join(str(text or "") for text in texts))
+    q_tokens = _clarification_tokens(q_norm)
+    option_tokens = _clarification_tokens(option_norm)
+    if not q_tokens or not option_tokens:
+        return 0.0
+
+    overlap = q_tokens & option_tokens
+    score = len(overlap) / max(1, len(q_tokens))
+    score += 0.25 * (len(overlap) / max(1, len(option_tokens)))
+    score += 0.15 * SequenceMatcher(None, q_norm, option_norm).ratio()
+
+    domain_terms = {
+        "demand",
+        "current",
+        "future",
+        "region",
+        "regional",
+        "quarter",
+        "month",
+        "year",
+        "vehicle",
+        "sales",
+        "shortage",
+        "inventory",
+        "technology",
+        "semiconductor",
+        "survey",
+        "oem",
+        "tier1",
+        "autonomous",
+        "driving",
+        "risk",
+        "uncertain",
+        "monitor",
+        "planning",
+        "focus",
+    }
+    shared_domain = (q_tokens & option_tokens) & domain_terms
+    score += 0.2 * len(shared_domain)
+    if "demand" in q_tokens and "demand" not in option_tokens:
+        score -= 0.35
+    if "shortage" in q_tokens and "shortage" not in option_tokens:
+        score -= 0.35
+    if "vehicle" in q_tokens and not {"vehicle", "sales"} & option_tokens:
+        score -= 0.25
+    if "current" in q_tokens and "future" in option_tokens and "future" not in q_tokens:
+        score -= 0.6
+    if "future" in q_tokens and "current" in option_tokens and "current" not in q_tokens:
+        score -= 0.6
+    return max(0.0, score)
+
+
+def _rank_relevant_option_pairs(
+    question: str,
+    options: List[Tuple[str, str]],
+    *,
+    max_options: int,
+    min_score: float = 0.18,
+) -> List[Tuple[str, str]]:
+    ranked = []
+    for pos, (label, rewritten) in enumerate(options):
+        score = _clarification_relevance_score(question, label, rewritten)
+        if score >= min_score:
+            ranked.append((score, -pos, label, rewritten))
+    ranked.sort(reverse=True)
+    return [(label, rewritten) for _score, _pos, label, rewritten in ranked[:max_options]]
+
+
+def _rank_relevant_option_dicts(
+    question: str,
+    options: List[Dict[str, object]],
+    *,
+    max_options: int,
+    min_score: float = 0.18,
+) -> List[Dict[str, object]]:
+    ranked = []
+    for pos, option in enumerate(options):
+        texts = [
+            str(option.get("label") or ""),
+            str(option.get("rewritten_question") or ""),
+            str(option.get("description") or ""),
+            str(option.get("what_you_will_see") or ""),
+            str(option.get("choose_if") or ""),
+            " ".join(str(item) for item in option.get("details") or []),
+        ]
+        score = _clarification_relevance_score(question, *texts)
+        if score >= min_score:
+            enriched = dict(option)
+            enriched["relevance_score"] = round(score, 3)
+            ranked.append((score, -pos, enriched))
+    ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [item for _score, _pos, item in ranked[:max_options]]
+
+
 def _advisory_timeout_clarification_options(question: str) -> List[Tuple[str, str]]:
     q = _normalize_question_key(question)
     options: List[Tuple[str, str]] = []
@@ -3408,10 +3558,7 @@ def _advisory_timeout_clarification_options(question: str) -> List[Tuple[str, st
             "Review shortage exposure by survey group.",
         )
 
-    add("Review current demand by region", "Review current demand by region.")
-    add("Review future demand by technology category", "Review future demand by technology category.")
-    add("Review shortage exposure by survey group", "Review shortage exposure by survey group.")
-    return options[:5]
+    return _rank_relevant_option_pairs(question, options, max_options=5, min_score=0.12)
 
 
 def _advisory_request_clarification_result(question: str) -> Dict[str, Any]:
@@ -3513,8 +3660,7 @@ def _timeout_clarification_options(question: str) -> List[Dict[str, str]]:
             "Show future semiconductor demand by technology category and quarter.",
         )
 
-    add("Regional demand by survey group and region", "Break down total regional demand by survey origin and region.")
-    add("Vehicle sales by month", "Show actual vehicle sales by month.")
+    ranked_options = _rank_relevant_option_pairs(question, options, max_options=5, min_score=0.18)
 
     return [
         {
@@ -3522,7 +3668,7 @@ def _timeout_clarification_options(question: str) -> List[Dict[str, str]]:
             "label": label,
             "rewritten_question": rewritten,
         }
-        for idx, (label, rewritten) in enumerate(options[:5], start=1)
+        for idx, (label, rewritten) in enumerate(ranked_options, start=1)
     ]
 
 
