@@ -23,6 +23,9 @@ DC_DESCRIPTION = URIRef("http://purl.org/dc/elements/1.1/description")
 DEFINITION_PATTERNS = (
     re.compile(r"^\s*what\s+(?:is|are)\s+(?:the\s+|a\s+|an\s+)?(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*what\s+does\s+(.+?)\s+mean\s*\??\s*$", re.IGNORECASE),
+    re.compile(r"^\s*how\s+(?:is|are)\s+(.+?)\s+defined\s*\??\s*$", re.IGNORECASE),
+    re.compile(r"^\s*how\s+(?:do|would)\s+you\s+define\s+(.+?)\s*\??\s*$", re.IGNORECASE),
+    re.compile(r"^\s*(?:what\s+is\s+)?(?:the\s+)?definition\s+of\s+(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*define\s+(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*explain\s+(.+?)\s*\??\s*$", re.IGNORECASE),
 )
@@ -111,6 +114,12 @@ def _normalize_alias(text: str) -> str:
 def _clean_definition_target(text: str) -> str:
     target = unquote(str(text or "")).strip(" \t\r\n.?!\"'`“”‘’")
     target = re.sub(r"\s+", " ", target).strip()
+    target = re.sub(
+        r"^(?:the\s+)?(?:definition|meaning)\s+of\s+",
+        "",
+        target,
+        flags=re.IGNORECASE,
+    ).strip()
     target = re.sub(
         r"^(?:the\s+)?(?:concept|term|class|property|relationship|relation|object\s+property|data\s+property|datatype\s+property)\s+",
         "",
