@@ -47,14 +47,14 @@ ORDER BY DESC(?totalDemand)
 """.strip()
 
 FUTURE_DEMAND_BY_VEHICLE_TYPE = """
-SELECT ?vehicleType (AVG(?pct) AS ?avgPercentageChange) WHERE {
-  ?entry a survey:FutureDemandAnalysis ;
+SELECT ?vehicleType (SUM(?sales) AS ?yearlySales) WHERE {
+  ?entry a survey:YearlySalesData ;
          survey:analyzesVehicleType ?vehicle ;
-         survey:percentageChange ?pct .
+         survey:yearlySales ?sales .
   BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)
 }
 GROUP BY ?vehicleType
-ORDER BY DESC(?avgPercentageChange)
+ORDER BY DESC(?yearlySales)
 """.strip()
 
 FUTURE_DEMAND_BY_TECHNOLOGY = """

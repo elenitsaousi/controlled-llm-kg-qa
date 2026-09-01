@@ -3332,6 +3332,56 @@ def _is_out_of_scope_question(question: str) -> Tuple[bool, str]:
     return False, ""
 
 
+def _looks_like_graph_analytics_question(question: str) -> bool:
+    q = _normalize_question_key(question)
+    if not q:
+        return False
+    graph_terms = (
+        "demand",
+        "current demand",
+        "future demand",
+        "expected future demand",
+        "region",
+        "regions",
+        "quarter",
+        "month",
+        "vehicle sales",
+        "inventory",
+        "inventories",
+        "shortage",
+        "order cancellation",
+        "autonomous",
+        "sae",
+        "technology node",
+        "technology nodes",
+        "technology category",
+        "vehicle type",
+    )
+    analytic_terms = (
+        "what is",
+        "how much",
+        "how many",
+        "show",
+        "list",
+        "compare",
+        "across",
+        "by ",
+        "split",
+        "trend",
+        "development",
+        "rising",
+        "falling",
+        "stable",
+        "above target",
+        "target",
+        "last month",
+        "past",
+        "upcoming",
+        "outlook",
+    )
+    return any(term in q for term in graph_terms) and any(term in q for term in analytic_terms)
+
+
 def _is_unsupported_relative_time_question(question: str) -> Tuple[bool, str]:
     q = _normalize_question_key(question)
     if not q:
@@ -3507,16 +3557,16 @@ def _future_demand_guided_query(question: str) -> Tuple[str, str, str]:
         return (
             "Show future demand outlook by vehicle type.",
             """
-SELECT ?vehicleType (AVG(?pct) AS ?avgPercentageChange) WHERE {
-  ?entry a survey:FutureDemandAnalysis ;
+SELECT ?vehicleType (SUM(?sales) AS ?yearlySales) WHERE {
+  ?entry a survey:YearlySalesData ;
          survey:analyzesVehicleType ?vehicle ;
-         survey:percentageChange ?pct .
+         survey:yearlySales ?sales .
   BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)
 }
 GROUP BY ?vehicleType
-ORDER BY DESC(?avgPercentageChange)
+ORDER BY DESC(?yearlySales)
 """.strip(),
-            "The system detected a future-demand vehicle-type outlook question and uses average future-demand percentage change by vehicle type.",
+            "The system detected a vehicle-type outlook question and uses the available yearly sales signal by vehicle type.",
         )
     if tech_intent and region_intent:
         return (
@@ -3568,11 +3618,11 @@ def _survey_values_for_question(q_norm: str) -> str:
 
 def _future_demand_by_survey_quarter_query(values_rows: str) -> str:
     return f"""
-SELECT ?surveyGroup ?quarterLabel (AVG(?pct) AS ?avgPercentageChange) WHERE {{
-  ?entry a survey:FutureDemandAnalysis ;
+SELECT ?surveyGroup ?quarterLabel (SUM(?pct) AS ?expectedFutureDemand) WHERE {{
+  ?entry a survey:DemandForRegion ;
          survey:hasSurveyOrigin ?origin ;
-         survey:forTimePeriod ?quarter ;
-         survey:percentageChange ?pct .
+         survey:quarter ?quarter ;
+         survey:totalDemandPercentageChange ?pct .
   VALUES (?origin ?surveyGroup) {{
     {values_rows}
   }}
@@ -3685,6 +3735,15 @@ ORDER BY ?technologyCategory ?responseType
         )
     if "inventory" in q or "inventories" in q:
         if "target" in q:
+            if re.search(r"\btier\s*-?\s*1\b|\btier1\b", q):
+                return (
+                    "Report Tier1 inventory target coverage limitation.",
+                    """
+SELECT ("Tier1 inventory target-status data is not available in the current graph. The graph contains Tier1 inventory-development rows, but target indicators are available only for semiconductor inventory." AS ?coverageLimitation) WHERE {
+}
+""".strip(),
+                    "The system detected a Tier1 inventory target-status question and reports the available graph coverage instead of using semiconductor target data for Tier1.",
+                )
             return (
                 "Review semiconductor inventory target status.",
                 """
@@ -3716,12 +3775,9 @@ ORDER BY ?technologyCategory ?trend
             "Show vehicle sales development by year.",
             """
 SELECT ?year (SUM(?units) AS ?unitsSold) WHERE {
-  ?obs a survey:VehicleSalesObservation ;
-       survey:forTimePeriod ?month ;
-       survey:unitsSold ?units .
-  OPTIONAL { ?month survey:periodLabel ?periodLabel . }
-  BIND(COALESCE(?periodLabel, REPLACE(STR(?month), "^.*/", "")) AS ?label)
-  BIND(REPLACE(STR(?label), "^.*(20[0-9]{2}).*$", "$1") AS ?year)
+  ?entry a survey:YearlySalesData ;
+         survey:forYear ?year ;
+         survey:yearlySales ?units .
 }
 GROUP BY ?year
 ORDER BY ?year
@@ -3733,9 +3789,6 @@ ORDER BY ?year
             "Show autonomous driving development for OEMs by SAE level and year.",
             """
 SELECT ?saeLevel ?year (AVG(?pct) AS ?avgPercentage) WHERE {
-  ?root a survey:AutonomousDrivingDevelopment_OEM ;
-        survey:hasSurveyOrigin survey:OEM_Survey ;
-        survey:hasDetail ?entry .
   ?entry a survey:AutonomousDrivingDevelopment ;
          survey:hasSAELevel ?sae ;
          survey:hasYear ?year ;
@@ -3751,16 +3804,16 @@ ORDER BY ?saeLevel ?year
         return (
             "Show future demand outlook by vehicle type.",
             """
-SELECT ?vehicleType (AVG(?pct) AS ?avgPercentageChange) WHERE {
-  ?entry a survey:FutureDemandAnalysis ;
+SELECT ?vehicleType (SUM(?sales) AS ?yearlySales) WHERE {
+  ?entry a survey:YearlySalesData ;
          survey:analyzesVehicleType ?vehicle ;
-         survey:percentageChange ?pct .
+         survey:yearlySales ?sales .
   BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)
 }
 GROUP BY ?vehicleType
-ORDER BY DESC(?avgPercentageChange)
+ORDER BY DESC(?yearlySales)
 """.strip(),
-            "The system detected a vehicle-type demand outlook question and uses average future-demand percentage change by vehicle type.",
+            "The system detected a vehicle-type demand outlook question and uses the available yearly sales signal by vehicle type.",
         )
     return "", "", ""
 
@@ -7651,6 +7704,8 @@ clarification_rendered = False
 if asked or flexible_asked:
     guided_query = _active_guided_query(question)
     dr_definition = route_dr_ontology_definition(question)
+    if dr_definition is not None and _looks_like_graph_analytics_question(question):
+        dr_definition = None
     advisory_plan = resolve_advisory_plan(question)
     trend_route_id = ""
     if not question.strip():

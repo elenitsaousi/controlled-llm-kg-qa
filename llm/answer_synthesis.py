@@ -62,6 +62,34 @@ def _format_number(value: object) -> str:
     return f"{number:.2f}".rstrip("0").rstrip(".")
 
 
+def _period_sort_key(label: object) -> Tuple[int, int, str]:
+    text = _clean_value(label)
+    month_match = re.search(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b\s+(\d{4})", text, re.I)
+    if month_match:
+        months = {
+            "jan": 1,
+            "feb": 2,
+            "mar": 3,
+            "apr": 4,
+            "may": 5,
+            "jun": 6,
+            "jul": 7,
+            "aug": 8,
+            "sep": 9,
+            "oct": 10,
+            "nov": 11,
+            "dec": 12,
+        }
+        return (int(month_match.group(2)), months[month_match.group(1).lower()], text)
+    quarter_match = re.search(r"\bQ([1-4])\s*(\d{4})\b", text, re.I)
+    if quarter_match:
+        return (int(quarter_match.group(2)), int(quarter_match.group(1)) * 3, text)
+    year_match = re.search(r"\b(\d{4})\b", text)
+    if year_match:
+        return (int(year_match.group(1)), 0, text)
+    return (0, 0, text)
+
+
 def _numeric_rows(
     rows: List[Dict[str, object]], metric_keys: Iterable[str]
 ) -> List[Tuple[Dict[str, object], str, float]]:
@@ -319,23 +347,33 @@ def _format_future_demand_by_tech_quarter(rows: List[Dict[str, object]]) -> str:
 
 
 def _format_autonomous_driving(rows: List[Dict[str, object]], query: str = "", question: str = "") -> str:
-    if not _has_any_key(rows, ["vehicleType", "vehicle"]):
+    if not _has_any_key(rows, ["vehicleType", "vehicle", "saeLevel", "sae"]):
         return ""
     if not _has_any_key(rows, ["percentage", "maxPercentage", "avgPercentage", "avgPct"]):
         return ""
 
     if _is_grouped_query(query) and not _is_ranking_question(question):
-        return _format_grouped_breakdown_answer(
-            rows,
-            label="Autonomous-driving development",
-        )
+        scored = _numeric_rows(rows, ["maxPercentage", "percentage", "avgPercentage", "avgPct"])
+        if scored:
+            top_row, metric_key, top_value = max(scored, key=lambda item: item[2])
+            low_row, _, low_value = min(scored, key=lambda item: item[2])
+            top_sae = _clean_value(_row_get(top_row, "saeLevel", "sae", "saeLabel"))
+            top_year = _clean_value(_row_get(top_row, "year"))
+            low_sae = _clean_value(_row_get(low_row, "saeLevel", "sae", "saeLabel"))
+            low_year = _clean_value(_row_get(low_row, "year"))
+            return (
+                f"Autonomous-driving development returned {len(rows)} grouped row(s). "
+                f"The highest returned {_humanize_key(metric_key)} is {top_sae} in {top_year} with {_format_number(top_value)}. "
+                f"The lowest is {low_sae} in {low_year} with {_format_number(low_value)}."
+            )
+        return _format_grouped_breakdown_answer(rows, label="Autonomous-driving development")
 
     scored = _numeric_rows(rows, ["maxPercentage", "percentage", "avgPercentage", "avgPct"])
     if not scored:
         return ""
 
     top_row, metric_key, top_value = max(scored, key=lambda item: item[2])
-    vehicle = _clean_value(_row_get(top_row, "vehicleType", "vehicle"))
+    vehicle = _clean_value(_row_get(top_row, "vehicleType", "vehicle")) or "autonomous-driving"
     sae = _row_get(top_row, "saeLevel", "sae", "saeLabel")
     year = _row_get(top_row, "year")
     qualifiers = []
@@ -385,6 +423,28 @@ def _format_order_cancellation(rows: List[Dict[str, object]]) -> str:
     if not scored:
         return ""
 
+    totals: Dict[str, float] = {}
+    for row, metric_key_, value in scored:
+        response = _clean_value(_row_get(row, "responseType"))
+        if response:
+            totals[response] = totals.get(response, 0.0) + value
+    if totals:
+        ordered = sorted(totals.items(), key=lambda item: item[1], reverse=True)
+        leader, leader_value = ordered[0]
+        evidence = "; ".join(f"{label}: {_format_number(value)}" for label, value in ordered)
+        tied = [label for label, value in ordered if value == leader_value]
+        if len(tied) > 1:
+            return (
+                f"Order-cancellation evidence returned {len(rows)} grouped row(s). "
+                f"No single response type dominates: {', '.join(tied)} are tied at {_format_number(leader_value)} participants. "
+                f"Totals by response type: {evidence}."
+            )
+        return (
+            f"Order-cancellation evidence returned {len(rows)} grouped row(s). "
+            f"The strongest overall response signal is {leader} with {_format_number(leader_value)} participants. "
+            f"Totals by response type: {evidence}."
+        )
+
     top_row, metric_key, top_value = max(scored, key=lambda item: item[2])
     category = _row_get(top_row, "technologyCategory", "techLabel", "tech")
     response_type = _clean_value(_row_get(top_row, "responseType"))
@@ -393,6 +453,173 @@ def _format_order_cancellation(rows: List[Dict[str, object]]) -> str:
         f"Order-cancellation results returned {len(rows)} row(s). "
         f"The largest returned {_humanize_key(metric_key)} is {response_type}{category_text} "
         f"with {_format_number(top_value)}."
+    )
+
+
+def _format_inventory_status(rows: List[Dict[str, object]]) -> str:
+    if _has_any_key(rows, ["coverageLimitation"]):
+        return _clean_value(_row_get(rows[0], "coverageLimitation"))
+    if _has_any_key(rows, ["targetStatus"]):
+        counts: Dict[str, float] = {}
+        for row in rows:
+            label = _clean_value(_row_get(row, "targetStatus"))
+            count = _to_float(_row_get(row, "entryCount")) or 0.0
+            if label:
+                counts[label] = counts.get(label, 0.0) + count
+        if counts:
+            evidence = "; ".join(f"{label}: {_format_number(value)}" for label, value in sorted(counts.items()))
+            return f"Inventory target evidence returned {len(rows)} grouped row(s). Target status distribution: {evidence}."
+    if not _has_any_key(rows, ["trend"]):
+        return ""
+    counts: Dict[str, float] = {}
+    for row in rows:
+        label = _clean_value(_row_get(row, "trend"))
+        count = _to_float(_row_get(row, "entryCount")) or 0.0
+        if label:
+            counts[label] = counts.get(label, 0.0) + count
+    if not counts:
+        return ""
+    ordered = sorted(counts.items(), key=lambda item: item[1], reverse=True)
+    leader, leader_value = ordered[0]
+    evidence = "; ".join(f"{label}: {_format_number(value)}" for label, value in ordered)
+    if leader.lower() == "stable" and len(ordered) == 1:
+        conclusion = "The inventory signal is stable."
+    elif leader.lower() == "stable":
+        conclusion = "The inventory signal is partly stable, but not exclusively stable."
+    else:
+        conclusion = f"The inventory signal is not mainly stable; the largest returned trend is {leader}."
+    return (
+        f"{conclusion} The graph returned {len(rows)} grouped inventory rows. "
+        f"Trend distribution: {evidence}."
+    )
+
+
+def _format_shortage_status(rows: List[Dict[str, object]]) -> str:
+    if not _has_any_key(rows, ["shortageStatus"]) or not _has_any_key(rows, ["companyCount"]):
+        return ""
+    by_status: Dict[str, float] = {}
+    by_group = []
+    for row in rows:
+        status = _clean_value(_row_get(row, "shortageStatus")).lower()
+        count = _to_float(_row_get(row, "companyCount")) or 0.0
+        group = _row_get(row, "surveyGroup")
+        if status:
+            by_status[status] = by_status.get(status, 0.0) + count
+        if group:
+            by_group.append(f"{_clean_value(group)} {status}: {_format_number(count)}")
+    yes_count = by_status.get("yes", 0.0) + by_status.get("true", 0.0)
+    no_count = by_status.get("no", 0.0) + by_status.get("false", 0.0)
+    conclusion = "Yes, shortage is visible in the graph." if yes_count > 0 else "No shortage signal is visible in the returned graph rows."
+    if by_group:
+        return f"{conclusion} Evidence by group: {'; '.join(by_group)}."
+    return f"{conclusion} Companies with shortage: {_format_number(yes_count)}; without shortage: {_format_number(no_count)}."
+
+
+def _format_future_demand_split(rows: List[Dict[str, object]]) -> str:
+    if not _has_any_key(rows, ["expectedFutureDemand", "avgPercentageChange", "yearlySales"]):
+        return ""
+    if _has_any_key(rows, ["surveyGroup"]) and _has_any_key(rows, ["quarterLabel"]):
+        scored = _numeric_rows(rows, ["expectedFutureDemand", "avgPercentageChange"])
+        if not scored:
+            return ""
+        grouped: Dict[str, List[Tuple[str, float]]] = {}
+        for row, _key, value in scored:
+            group = _clean_value(_row_get(row, "surveyGroup"))
+            quarter = _clean_value(_row_get(row, "quarterLabel"))
+            if group and quarter:
+                grouped.setdefault(group, []).append((quarter, value))
+        parts = []
+        for group, values in sorted(grouped.items()):
+            values.sort(key=lambda item: _period_sort_key(item[0]))
+            first_q, first_v = values[0]
+            last_q, last_v = values[-1]
+            delta = last_v - first_v
+            direction = "rising" if delta > 0 else "falling" if delta < 0 else "stable"
+            parts.append(
+                f"{group}: {direction}, from {_format_number(first_v)} in {first_q} "
+                f"to {_format_number(last_v)} in {last_q} (delta {_format_number(delta)})"
+            )
+        return (
+            f"Expected future-demand development returned {len(rows)} grouped row(s). "
+            f"{'; '.join(parts)}."
+        )
+    if _has_any_key(rows, ["vehicleType"]) and _has_any_key(rows, ["yearlySales"]):
+        scored = _numeric_rows(rows, ["yearlySales"])
+        if not scored:
+            return ""
+        top_row, _, top_value = max(scored, key=lambda item: item[2])
+        vehicle = _clean_value(_row_get(top_row, "vehicleType"))
+        evidence = "; ".join(
+            f"{_clean_value(_row_get(row, 'vehicleType'))}: {_format_number(value)}"
+            for row, _, value in scored[:5]
+        )
+        return (
+            f"The strongest available vehicle-type demand outlook signal is {vehicle} "
+            f"with yearly sales of {_format_number(top_value)}. Evidence: {evidence}."
+        )
+    if _has_any_key(rows, ["view", "dimension"]):
+        scored = _numeric_rows(rows, ["expectedFutureDemand", "avgPercentageChange"])
+        if not scored:
+            return ""
+        by_view: Dict[str, Tuple[Dict[str, object], str, float]] = {}
+        for row, key, value in scored:
+            view = _clean_value(_row_get(row, "view"))
+            if view and (view not in by_view or value > by_view[view][2]):
+                by_view[view] = (row, key, value)
+        parts = []
+        for view, (row, key, value) in sorted(by_view.items()):
+            dim = _clean_value(_row_get(row, "dimension"))
+            quarter = _clean_value(_row_get(row, "quarterLabel"))
+            group = _clean_value(_row_get(row, "surveyGroup"))
+            suffix = f" in {quarter}" if quarter else ""
+            prefix = f"{group} " if group else ""
+            parts.append(f"{view}: {prefix}{dim}{suffix} ({_humanize_key(key)} {_format_number(value)})")
+        return (
+            f"Future-demand split returned {len(rows)} grouped row(s). "
+            f"The graph contains separate regional and technology-category views, not a single joint region-by-technology cube. "
+            f"Top returned signals: {'; '.join(parts)}."
+        )
+    if _has_any_key(rows, ["regionName"]):
+        scored = _numeric_rows(rows, ["expectedFutureDemand", "avgPercentageChange"])
+        if not scored:
+            return ""
+        top_row, metric_key, top_value = max(scored, key=lambda item: item[2])
+        region = _clean_value(_row_get(top_row, "regionName"))
+        group = _row_get(top_row, "surveyGroup")
+        group_text = f" for {_clean_value(group)}" if group else ""
+        evidence = "; ".join(
+            f"{_clean_value(_row_get(row, 'regionName'))}: {_format_number(value)}"
+            for row, _, value in scored[:5]
+        )
+        return (
+            f"Expected future demand by region returned {len(rows)} grouped row(s). "
+            f"The highest returned {_humanize_key(metric_key)}{group_text} is {region} with {_format_number(top_value)}. "
+            f"Evidence from the returned rows: {evidence}."
+        )
+    return ""
+
+
+def _format_yearly_vehicle_sales(rows: List[Dict[str, object]]) -> str:
+    if not _has_any_key(rows, ["year"]) or not _has_any_key(rows, ["unitsSold", "yearlySales"]):
+        return ""
+    scored = []
+    for row in rows:
+        year = _clean_value(_row_get(row, "year"))
+        value = _to_float(_row_get(row, "unitsSold", "yearlySales"))
+        if year and value is not None:
+            scored.append((year, value))
+    scored.sort(key=lambda item: item[0])
+    if len(scored) < 2:
+        return _format_grouped_breakdown_answer(rows, label="Vehicle-sales development")
+    first_year, first_value = scored[0]
+    last_year, last_value = scored[-1]
+    delta = last_value - first_value
+    direction = "rising" if delta > 0 else "falling" if delta < 0 else "stable"
+    evidence = "; ".join(f"{year}: {_format_number(value)}" for year, value in scored)
+    return (
+        f"Vehicle-sales development is {direction} over the available yearly data. "
+        f"It changes from {_format_number(first_value)} in {first_year} to {_format_number(last_value)} in {last_year} "
+        f"(delta {_format_number(delta)}). Evidence: {evidence}."
     )
 
 
@@ -485,6 +712,22 @@ def _format_infineon_answer(rows: List[Dict[str, object]], query: str, question:
     query_lower = query.lower()
 
     formatters = []
+    if _has_any_key(rows, ["coverageLimitation", "trend", "targetStatus"]):
+        answer = _format_inventory_status(rows)
+        if answer:
+            return answer
+    if _has_any_key(rows, ["shortageStatus", "companyCount"]):
+        answer = _format_shortage_status(rows)
+        if answer:
+            return answer
+    if _has_any_key(rows, ["expectedFutureDemand", "avgPercentageChange", "yearlySales"]):
+        answer = _format_future_demand_split(rows)
+        if answer:
+            return answer
+    if _has_any_key(rows, ["year"]) and _has_any_key(rows, ["unitsSold", "yearlySales"]):
+        answer = _format_yearly_vehicle_sales(rows)
+        if answer:
+            return answer
     if "currentdemandanalysis" in query_lower or "baseline" in query_lower:
         formatters.append(_format_current_bl_comparison)
     if "vehiclesalesobservation" in query_lower or _has_any_key(rows, ["monthLabel"]):
