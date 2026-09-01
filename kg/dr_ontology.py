@@ -27,6 +27,12 @@ DEFINITION_PATTERNS = (
     re.compile(r"^\s*explain\s+(.+?)\s*\??\s*$", re.IGNORECASE),
 )
 
+COMPARISON_PATTERNS = (
+    re.compile(r"^\s*(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s*\??\s*$", re.IGNORECASE),
+    re.compile(r"^\s*(?:what\s+is\s+)?(?:the\s+)?difference\s+between\s+(.+?)\s+and\s+(.+?)\s*\??\s*$", re.IGNORECASE),
+    re.compile(r"^\s*compare\s+(.+?)\s+(?:and|with|to)\s+(.+?)\s*\??\s*$", re.IGNORECASE),
+)
+
 ANALYTIC_HINTS = {
     "average",
     "between",
@@ -68,6 +74,21 @@ GENERIC_INVENTORY_HINTS = {
     "show",
     "what can",
     "which topics",
+}
+
+GRAPH_COMPARISON_HINTS = {
+    "average",
+    "breakdown",
+    "count",
+    "group",
+    "highest",
+    "how many",
+    "list",
+    "lowest",
+    "show",
+    "sum",
+    "total",
+    "trend",
 }
 
 
@@ -272,6 +293,33 @@ def _definition_targets(question: str) -> List[str]:
     return deduped
 
 
+def _looks_like_graph_comparison(question: str) -> bool:
+    q_norm = re.sub(r"\s+", " ", str(question or "").lower()).strip()
+    if any(re.search(rf"\b{re.escape(hint)}\b", q_norm) for hint in GRAPH_COMPARISON_HINTS):
+        return True
+    return bool(re.search(r"\bby\s+(region|month|quarter|year|survey|technology|vehicle|component|category)\b", q_norm))
+
+
+def _comparison_targets(question: str) -> List[str]:
+    if _looks_like_graph_comparison(question):
+        return []
+    raw = str(question or "").strip()
+    for pattern in COMPARISON_PATTERNS:
+        match = pattern.match(raw)
+        if not match:
+            continue
+        targets = [_clean_definition_target(match.group(1)), _clean_definition_target(match.group(2))]
+        deduped: List[str] = []
+        seen = set()
+        for target in targets:
+            key = _normalize_alias(target)
+            if key and key not in seen:
+                deduped.append(target)
+                seen.add(key)
+        return deduped if len(deduped) >= 2 else []
+    return []
+
+
 def _best_term(target: str, terms: Dict[str, DROntologyTerm]) -> Optional[DROntologyTerm]:
     key = _normalize_alias(target)
     if not key:
@@ -449,30 +497,88 @@ def _join(values: Iterable[str], limit: int = 5) -> str:
     return ", ".join(unique[:limit])
 
 
+def _resolve_definition_targets(
+    targets: Iterable[str],
+    path: Optional[Path],
+    terms: Optional[Dict[str, DROntologyTerm]] = None,
+) -> Tuple[List[Dict[str, str]], List[str]]:
+    found: List[Dict[str, str]] = []
+    missing: List[str] = []
+    for target in targets:
+        term = _best_term(target, terms or {}) if terms else None
+        if term is not None:
+            found.append(
+                {
+                    "label": term.label,
+                    "kind": term.kind,
+                    "answer": _term_answer(term),
+                    "uri": term.uri,
+                    "source": "digital_reference_ontology",
+                }
+            )
+            continue
+        glossary_match = _project_glossary_match(target)
+        if glossary_match is None:
+            missing.append(target)
+            continue
+        label, kind, definition = glossary_match
+        found.append(
+            {
+                "label": label,
+                "kind": kind,
+                "answer": definition,
+                "uri": "",
+                "source": "true_demand_project_glossary",
+            }
+        )
+    return found, missing
+
+
+def _comparison_answer(found: List[Dict[str, str]]) -> str:
+    labels = [item["label"] for item in found]
+    lines = [
+        f"This is a terminology comparison between **{labels[0]}** and **{labels[1]}**.",
+        "",
+    ]
+    for item in found:
+        lines.append(f"- **{item['label']}** ({item['kind']}): {item['answer']}")
+    if len(found) == 2:
+        lines.extend(
+            [
+                "",
+                f"In short, **{labels[0]}** and **{labels[1]}** are distinct terms in the system vocabulary. "
+                f"Use **{labels[0]}** or **{labels[1]}** according to the specific meaning described above.",
+            ]
+        )
+    return "\n".join(lines)
+
+
 def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
+    comparison_targets = _comparison_targets(question)
+    if comparison_targets:
+        path = _dr_path()
+        terms = _load_dr_terms(str(path)) if path is not None else None
+        found, missing = _resolve_definition_targets(comparison_targets, path, terms)
+        if len(found) >= 2 and not missing:
+            return {
+                "route": "definition_comparison",
+                "answer": _comparison_answer(found),
+                "matched_term": _join([item["label"] for item in found], limit=8),
+                "confidence": "High",
+                "reason": "The question compares known ontology or project glossary concepts.",
+                "source": "digital_reference_ontology",
+                "term_kind": "comparison",
+                "term_uri": _join([item["uri"] for item in found if item["uri"]], limit=8),
+                "ontology_path": str(path or ""),
+            }
+
     targets = _definition_targets(question)
     if not targets:
         return None
     path = _dr_path()
-    found: List[Dict[str, str]] = []
-    missing: List[str] = []
 
     if path is None:
-        for target in targets:
-            glossary_match = _project_glossary_match(target)
-            if glossary_match is None:
-                missing.append(target)
-                continue
-            label, kind, definition = glossary_match
-            found.append(
-                {
-                    "label": label,
-                    "kind": kind,
-                    "answer": definition,
-                    "uri": "",
-                    "source": "true_demand_project_glossary",
-                }
-            )
+        found, missing = _resolve_definition_targets(targets, path)
         if not found:
             return {
                 "route": "definition",
@@ -516,33 +622,7 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
         }
 
     terms = _load_dr_terms(str(path))
-    for target in targets:
-        term = _best_term(target, terms)
-        if term is not None:
-            found.append(
-                {
-                    "label": term.label,
-                    "kind": term.kind,
-                    "answer": _term_answer(term),
-                    "uri": term.uri,
-                    "source": "digital_reference_ontology",
-                }
-            )
-            continue
-        glossary_match = _project_glossary_match(target)
-        if glossary_match is None:
-            missing.append(target)
-            continue
-        label, kind, definition = glossary_match
-        found.append(
-            {
-                "label": label,
-                "kind": kind,
-                "answer": definition,
-                "uri": "",
-                "source": "true_demand_project_glossary",
-            }
-        )
+    found, missing = _resolve_definition_targets(targets, path, terms)
 
     if not found:
         return {

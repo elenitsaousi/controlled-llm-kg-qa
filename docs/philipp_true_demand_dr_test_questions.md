@@ -168,6 +168,9 @@ Expected behavior: deterministic ontology answer from the Digital Reference, no 
 - Define Technology Node and Current Demand.
 - Define Single Lobe, Cross Lobe, and Technology Node.
 - Define a class and an object property, for example Product and is processed by.
+- Demand vs current demand.
+- What is the difference between current demand and future demand?
+- Compare single lobe and cross lobe.
 
 ## 13. Advisory Questions
 
