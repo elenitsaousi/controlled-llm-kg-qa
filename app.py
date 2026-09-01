@@ -45,6 +45,7 @@ from llm.answer_synthesis import synthesize_answer
 from llm.candidate_generation import generate_candidate_prompt
 from llm.client import InfineonGPTClient, LLMAuthError, LLMClientError
 from pipeline.qa import answer_question
+from pipeline.request_routing import route_request
 from pipeline.slots import extract_time_window, extract_unsupported_region_mentions
 from ranking.feature_extraction import extract_query_plan
 from ranking.query_contract import compare_contracts, extract_query_contract, extract_question_contract
@@ -4322,6 +4323,23 @@ def _unsupported_region_note(original_question: str) -> str:
     )
 
 
+def _flexible_ask_needs_graph_execution(question: str) -> bool:
+    """Decide whether Flexible Ask should execute real SPARQL (falling
+    through to the same answer_question() pipeline standard Ask uses) instead
+    of the retrieval-based prose assist.
+
+    Two signals must both hold: the deterministic router must not classify
+    the question as a definition/out-of-domain/clarification-needed request,
+    and a known domain metric must be detected. The metric check keeps
+    source/scope/metadata questions like "What sources are loaded?" or "How
+    many triples are in the graph?" on the existing prose path, since the
+    SPARQL pipeline has no template for graph-introspection questions.
+    """
+    if route_request(question).get("route") != "kg_query":
+        return False
+    return bool(extract_question_contract(question).metrics)
+
+
 def _render_out_of_scope_message(reason: str) -> None:
     st.warning(
         "I cannot answer this question because it is outside the available True Demand knowledge graph "
@@ -8401,7 +8419,14 @@ if asked or flexible_asked:
                 )
             st.stop()
 
-        if flexible_asked and not guided_query and dr_definition is None and advisory_plan is None:
+        flexible_needs_graph_execution = bool(
+            flexible_asked
+            and not guided_query
+            and dr_definition is None
+            and advisory_plan is None
+            and _flexible_ask_needs_graph_execution(question)
+        )
+        if flexible_asked and not guided_query and dr_definition is None and advisory_plan is None and not flexible_needs_graph_execution:
             try:
                 schema_dict = _load_schema_dict_cached(str(schema_path or DEFAULT_SCHEMA_PATH))
             except Exception as exc:

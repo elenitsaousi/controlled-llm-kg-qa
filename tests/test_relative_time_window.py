@@ -117,6 +117,36 @@ check(
     ) == "",
 )
 
+# Flexible Ask should redirect analytics questions to real graph execution,
+# but keep source/scope/metadata questions on the existing prose path (no
+# SPARQL template exists for graph-introspection questions).
+check(
+    "flexible_redirects_current_demand_by_region",
+    app._flexible_ask_needs_graph_execution("Show current demand by region.") is True,
+)
+check(
+    "flexible_redirects_lowest_semiconductor_demand",
+    app._flexible_ask_needs_graph_execution(
+        "Which region has the lowest semiconductor demand?"
+    ) is True,
+)
+check(
+    "flexible_keeps_prose_for_source_scope_question",
+    app._flexible_ask_needs_graph_execution("What sources are loaded?") is False,
+)
+check(
+    "flexible_keeps_prose_for_metadata_question",
+    app._flexible_ask_needs_graph_execution("How many triples are in the graph?") is False,
+)
+check(
+    "flexible_keeps_prose_for_definition_question",
+    app._flexible_ask_needs_graph_execution("What is a Technology Node?") is False,
+)
+check(
+    "flexible_keeps_prose_for_out_of_scope_question",
+    app._flexible_ask_needs_graph_execution("What is the weather in Munich?") is False,
+)
+
 print(json.dumps(results))
 """
 
