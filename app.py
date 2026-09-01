@@ -184,6 +184,72 @@ SELECT ?quarterLabel (SUM(?pct) AS ?totalPctChange) WHERE {
 GROUP BY ?quarterLabel
 ORDER BY ?quarterLabel
 """.strip()
+
+
+def _semiconductor_demand_last_n_quarters_query(n_quarters: int) -> str:
+    """Semiconductor demand for the latest N available quarters, by region.
+
+    Mirrors CURRENT_DEMAND_LAST_THREE_MONTHS_QUERY's parse-order-limit-rejoin
+    shape: quarter periodLabel is "Q<n> <year>" (e.g. "Q1 2026"), so the
+    quarter number and year are parsed directly instead of via the month-name
+    lookup table the monthly query needs.
+    """
+    n = max(1, int(n_quarters))
+    return f"""
+SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {{
+  {{
+    SELECT ?quarter ?quarterLabel ?year ?quarterNo WHERE {{
+      ?quarter a survey:Quarter ;
+        survey:periodLabel ?quarterLabel .
+      FILTER(REGEX(?quarterLabel, "^Q[1-4] [0-9]{{4}}$"))
+      BIND(xsd:integer(SUBSTR(?quarterLabel, 2, 1)) AS ?quarterNo)
+      BIND(xsd:integer(STRAFTER(?quarterLabel, " ")) AS ?year)
+    }}
+    GROUP BY ?quarter ?quarterLabel ?year ?quarterNo
+    ORDER BY DESC(?year) DESC(?quarterNo)
+    LIMIT {n}
+  }}
+  ?d a survey:DemandForRegion ;
+     survey:hasSurveyOrigin ?o ;
+     survey:inRegion ?r ;
+     survey:quarter ?quarter ;
+     survey:totalDemandPercentageChange ?pct .
+  ?o a survey:Semiconductor_Survey .
+  ?r survey:regionName ?regionName .
+}}
+GROUP BY ?quarterLabel ?regionName
+ORDER BY ?quarterLabel ?regionName
+""".strip()
+
+
+def _semiconductor_demand_last_n_quarters_trend_query(n_quarters: int) -> str:
+    """Semiconductor demand trend for the latest N available quarters."""
+    n = max(1, int(n_quarters))
+    return f"""
+SELECT ?quarterLabel (SUM(?pct) AS ?totalPctChange) WHERE {{
+  {{
+    SELECT ?quarter ?quarterLabel ?year ?quarterNo WHERE {{
+      ?quarter a survey:Quarter ;
+        survey:periodLabel ?quarterLabel .
+      FILTER(REGEX(?quarterLabel, "^Q[1-4] [0-9]{{4}}$"))
+      BIND(xsd:integer(SUBSTR(?quarterLabel, 2, 1)) AS ?quarterNo)
+      BIND(xsd:integer(STRAFTER(?quarterLabel, " ")) AS ?year)
+    }}
+    GROUP BY ?quarter ?quarterLabel ?year ?quarterNo
+    ORDER BY DESC(?year) DESC(?quarterNo)
+    LIMIT {n}
+  }}
+  ?d a survey:DemandForRegion ;
+     survey:hasSurveyOrigin ?o ;
+     survey:quarter ?quarter ;
+     survey:totalDemandPercentageChange ?pct .
+  ?o a survey:Semiconductor_Survey .
+}}
+GROUP BY ?quarterLabel
+ORDER BY ?quarterLabel
+""".strip()
+
+
 FUTURE_DEMAND_BY_SURVEY_QUARTER_QUERY = """
 SELECT ?surveyGroup ?quarterLabel (AVG(?pct) AS ?avgPercentageChange) WHERE {
   ?entry a survey:FutureDemandAnalysis ;
@@ -3511,7 +3577,7 @@ ORDER BY ?surveyGroup DESC(?totalDemand)
             "",
         )
 
-    if month_intent or trend_intent:
+    if (month_intent or trend_intent) and "semiconductor" not in q and "semi" not in q:
         n_months = _number_from_question(q, default=1 if "month" in q and not re.search(r"\d|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve", q) else 3)
         value_name = "avgCurrentDemand" if avg_intent else "currentDemand"
         if avg_intent:
@@ -3647,27 +3713,65 @@ def _relative_time_approximation_query(question: str) -> Tuple[str, str, str]:
                 "three available monthly actual demand observations in the graph, not as a live calendar window."
             ),
         )
-    if "semiconductor" in q and "demand" in q and re.search(r"\b(?:past|last|recent|previous)\s+(?:3|three)?\s*months?\b", q):
-        if trend_intent:
-            return (
-                "Show semiconductor demand trend by quarter.",
-                SEMICONDUCTOR_DEMAND_TREND_BY_QUARTER_QUERY,
-                (
-                    "The question asks for recent semiconductor-demand direction. The KG does not "
-                    "provide a live rolling three-month window, so the system uses the available "
-                    "quarter-level semiconductor demand percentages and computes the trend from graph results."
-                ),
-            )
+    return "", "", ""
+
+
+def _semiconductor_relative_time_query(question: str) -> Tuple[str, str, str]:
+    """Genuinely N-parametric "last N months/quarters/years" for semiconductor demand.
+
+    Self-contained gate (independent of _is_unsupported_relative_time_question,
+    which only recognizes day/week/month units) so quarter- and year-phrased
+    questions reach it too, without risking that broader gate hard-stopping
+    unrelated non-demand questions phrased in quarters/years.
+    """
+    q = _normalize_question_key(question)
+    semiconductor_intent = bool(re.search(r"\b(?:semiconductor|semiconductors|semi|semis)\b", q))
+    if not q or not semiconductor_intent or "demand" not in q:
+        return "", "", ""
+    relative_time = re.search(
+        r"\b(?:past|last|recent|previous)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)?"
+        r"\s*(?:months?|quarters?|years?)\b",
+        q,
+    )
+    if not relative_time:
+        return "", "", ""
+    trend_intent = bool(
+        re.search(
+            r"\b(rising|falling|increase|increasing|decrease|decreasing|up|down|developing|trend|direction|improving|worsening)\b",
+            q,
+        )
+    )
+    quarters_phrasing = bool(re.search(r"\bquarters?\b", relative_time.group(0)))
+    years_phrasing = bool(re.search(r"\byears?\b", relative_time.group(0)))
+    n_units = _number_from_question(q, default=1 if (quarters_phrasing or years_phrasing) else 3, maximum=48)
+    if quarters_phrasing:
+        n_quarters = n_units
+    elif years_phrasing:
+        n_quarters = n_units * 4
+    else:
+        n_quarters = max(1, math.ceil(n_units / 3))
+    period_word = "quarter" if n_quarters == 1 else "quarters"
+    if trend_intent:
         return (
-            "Show semiconductor demand by quarter.",
-            SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY,
+            f"Show semiconductor demand trend for the latest {n_quarters} available {period_word}.",
+            _semiconductor_demand_last_n_quarters_trend_query(n_quarters),
             (
-                "The question asks for the past three months. The KG does not provide a live rolling "
-                "three-month window, but the closest available time granularity is quarter-level "
-                "semiconductor demand, so the system uses the validated quarter breakdown."
+                "The question asks for recent semiconductor-demand direction. The KG does not "
+                "provide a live rolling monthly window, so the system uses the available "
+                "quarter-level semiconductor demand percentages and computes the trend from graph results."
             ),
         )
-    return "", "", ""
+    note = (
+        f"Semiconductor demand is only available at quarterly granularity in the graph, so the system "
+        f"shows the latest {n_quarters} available {period_word} instead of a live rolling window."
+    )
+    if not quarters_phrasing and not years_phrasing:
+        note += f" ({n_units} requested month(s) maps to roughly {n_quarters} quarter(s).)"
+    return (
+        f"Show semiconductor demand for the latest {n_quarters} available {period_word}.",
+        _semiconductor_demand_last_n_quarters_query(n_quarters),
+        note,
+    )
 
 
 def _semiconductor_demand_quarter_guided_query(question: str) -> Tuple[str, str, str]:
@@ -7955,6 +8059,13 @@ if asked or flexible_asked:
                 question = current_question
                 guided_query = current_query
                 trend_route_id = current_route_id
+
+        if not guided_query and dr_definition is None and advisory_plan is None:
+            semi_time_question, semi_time_query, semi_time_note = _semiconductor_relative_time_query(question)
+            if semi_time_query:
+                st.info(semi_time_note)
+                question = semi_time_question
+                guided_query = semi_time_query
 
         if not guided_query and dr_definition is None and advisory_plan is None:
             future_question, future_query, future_note = _future_demand_guided_query(question)
