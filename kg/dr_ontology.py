@@ -36,6 +36,12 @@ COMPARISON_PATTERNS = (
     re.compile(r"^\s*compare\s+(.+?)\s+(?:and|with|to)\s+(.+?)\s*\??\s*$", re.IGNORECASE),
 )
 
+DEFINITION_INTENT_PATTERNS = (
+    re.compile(r"\b(defin(e|ed|ition)|meaning|mean|explain|describe)\b", re.IGNORECASE),
+    re.compile(r"\btell\s+me\s+about\b", re.IGNORECASE),
+    re.compile(r"\bwhat\s+(is|are)\b", re.IGNORECASE),
+)
+
 ANALYTIC_HINTS = {
     "average",
     "between",
@@ -92,6 +98,31 @@ GRAPH_COMPARISON_HINTS = {
     "sum",
     "total",
     "trend",
+}
+
+GRAPH_QUERY_HINTS = GRAPH_COMPARISON_HINTS | {
+    "develop",
+    "developing",
+    "development",
+    "latest",
+    "last",
+    "monitor",
+    "past",
+    "risk",
+    "should",
+}
+
+TARGET_STOP_TERMS = {
+    "class",
+    "classes",
+    "concept",
+    "definition",
+    "meaning",
+    "properties",
+    "property",
+    "relation",
+    "relationship",
+    "term",
 }
 
 
@@ -276,6 +307,8 @@ def _definition_targets(question: str) -> List[str]:
     target = _definition_target(question)
     if target is None:
         return []
+    if _looks_like_graph_query(question):
+        return []
 
     lowered_question = str(question or "").lower()
     lowered_target = target.lower()
@@ -288,7 +321,7 @@ def _definition_targets(question: str) -> List[str]:
 
     parts = DEFINITION_LIST_SEPARATORS.split(target)
     cleaned = [_clean_definition_target(part) for part in parts]
-    cleaned = [part for part in cleaned if part and _normalize_alias(part) not in {"class", "classes", "property", "properties"}]
+    cleaned = [part for part in cleaned if part and _normalize_alias(part) not in TARGET_STOP_TERMS]
     if not cleaned:
         cleaned = [_clean_definition_target(target)]
 
@@ -307,6 +340,79 @@ def _looks_like_graph_comparison(question: str) -> bool:
     if any(re.search(rf"\b{re.escape(hint)}\b", q_norm) for hint in GRAPH_COMPARISON_HINTS):
         return True
     return bool(re.search(r"\bby\s+(region|month|quarter|year|survey|technology|vehicle|component|category)\b", q_norm))
+
+
+def _looks_like_graph_query(question: str) -> bool:
+    q_norm = re.sub(r"\s+", " ", str(question or "").lower()).strip()
+    if any(re.search(rf"\b{re.escape(hint)}\b", q_norm) for hint in GRAPH_QUERY_HINTS):
+        return True
+    return bool(re.search(r"\bby\s+(region|month|quarter|year|survey|technology|vehicle|component|category)\b", q_norm))
+
+
+def _has_definition_intent(question: str) -> bool:
+    q_norm = re.sub(r"\s+", " ", str(question or "").lower()).strip()
+    if not q_norm or _looks_like_graph_query(q_norm):
+        return False
+    if (
+        any(hint in q_norm for hint in GENERIC_INVENTORY_HINTS)
+        and re.search(r"\b(classes?|properties?|topics?|capabilities|questions?)\b", q_norm)
+    ):
+        return False
+    return any(pattern.search(q_norm) for pattern in DEFINITION_INTENT_PATTERNS)
+
+
+def _term_label_by_uri(terms: Dict[str, DROntologyTerm]) -> Dict[str, DROntologyTerm]:
+    unique: Dict[str, DROntologyTerm] = {}
+    for term in terms.values():
+        unique[term.uri] = term
+    return unique
+
+
+def _known_targets_from_question(question: str, terms: Dict[str, DROntologyTerm]) -> List[str]:
+    if not _has_definition_intent(question):
+        return []
+
+    raw = str(question or "")
+    candidates: List[Tuple[int, int, str]] = []
+
+    for label in PROJECT_GLOSSARY:
+        if len(label) < 4 or _normalize_alias(label) in TARGET_STOP_TERMS:
+            continue
+        pattern = re.compile(rf"(?<![A-Za-z0-9]){re.escape(label).replace(r'\ ', r'\s+')}(?![A-Za-z0-9])", re.IGNORECASE)
+        for match in pattern.finditer(raw):
+            candidates.append((match.start(), match.end(), label))
+
+    for term in _term_label_by_uri(terms).values():
+        aliases = [term.label, *term.aliases]
+        for alias in dict.fromkeys(alias for alias in aliases if len(str(alias).strip()) >= 4):
+            alias_text = str(alias).strip()
+            if _normalize_alias(alias_text) in TARGET_STOP_TERMS:
+                continue
+            if len(alias_text.split()) == 1 and len(alias_text) < 5:
+                continue
+            pattern = re.compile(
+                rf"(?<![A-Za-z0-9]){re.escape(alias_text).replace(r'\ ', r'\s+')}(?![A-Za-z0-9])",
+                re.IGNORECASE,
+            )
+            for match in pattern.finditer(raw):
+                candidates.append((match.start(), match.end(), term.label))
+
+    candidates.sort(key=lambda item: (item[1] - item[0], -item[0]), reverse=True)
+    accepted: List[Tuple[int, int, str]] = []
+    for start, end, label in candidates:
+        if any(not (end <= taken_start or start >= taken_end) for taken_start, taken_end, _ in accepted):
+            continue
+        accepted.append((start, end, label))
+
+    accepted.sort(key=lambda item: item[0])
+    deduped: List[str] = []
+    seen = set()
+    for _start, _end, label in accepted:
+        key = _normalize_alias(label)
+        if key and key not in seen:
+            deduped.append(label)
+            seen.add(key)
+    return deduped
 
 
 def _comparison_targets(question: str) -> List[str]:
@@ -581,10 +687,13 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
                 "ontology_path": str(path or ""),
             }
 
+    path = _dr_path()
+    terms = _load_dr_terms(str(path)) if path is not None else None
     targets = _definition_targets(question)
     if not targets:
+        targets = _known_targets_from_question(question, terms or {})
+    if not targets:
         return None
-    path = _dr_path()
 
     if path is None:
         found, missing = _resolve_definition_targets(targets, path)
@@ -630,7 +739,6 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
             "ontology_path": "",
         }
 
-    terms = _load_dr_terms(str(path))
     found, missing = _resolve_definition_targets(targets, path, terms)
 
     if not found:
