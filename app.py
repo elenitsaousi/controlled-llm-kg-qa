@@ -124,6 +124,43 @@ SELECT ?monthLabel (SUM(?units) AS ?unitsSold) WHERE {
 GROUP BY ?monthLabel
 ORDER BY ?monthLabel
 """.strip()
+CURRENT_DEMAND_LAST_THREE_MONTHS_QUERY = """
+SELECT ?monthLabel (SUM(?units) AS ?currentDemand) WHERE {
+  {
+    SELECT ?month ?monthLabel ?year ?monthNo WHERE {
+      ?month a survey:Month ;
+        survey:periodLabel ?monthLabel .
+      BIND(xsd:integer(STRAFTER(STR(?monthLabel), " ")) AS ?year)
+      BIND(STRBEFORE(STR(?monthLabel), " ") AS ?monthName)
+      BIND(
+        IF(?monthName = "Jan", 1,
+        IF(?monthName = "Feb", 2,
+        IF(?monthName = "Mar", 3,
+        IF(?monthName = "Apr", 4,
+        IF(?monthName = "May", 5,
+        IF(?monthName = "Jun", 6,
+        IF(?monthName = "Jul", 7,
+        IF(?monthName = "Aug", 8,
+        IF(?monthName = "Sep", 9,
+        IF(?monthName = "Oct", 10,
+        IF(?monthName = "Nov", 11, 12))))))))))) AS ?monthNo)
+      ?obs a survey:VehicleSalesObservation ;
+        survey:forTimePeriod ?month ;
+        survey:isActualData true ;
+        survey:unitsSold ?u .
+    }
+    GROUP BY ?month ?monthLabel ?year ?monthNo
+    ORDER BY DESC(?year) DESC(?monthNo)
+    LIMIT 3
+  }
+  ?obs a survey:VehicleSalesObservation ;
+    survey:forTimePeriod ?month ;
+    survey:isActualData true ;
+    survey:unitsSold ?units .
+}
+GROUP BY ?monthLabel ?year ?monthNo
+ORDER BY ?year ?monthNo
+""".strip()
 FUTURE_SEMICONDUCTOR_DEMAND_BY_TECH_QUARTER_QUERY = """
 SELECT ?techLabel ?quarter
   (SUM(IF(?baseline = "Option1", ?pct, 0)) AS ?Option1)
@@ -3278,6 +3315,22 @@ def _relative_time_approximation_query(question: str) -> Tuple[str, str, str]:
     q = _normalize_question_key(question)
     if not q:
         return "", "", ""
+    last_three_months = bool(re.search(r"\b(?:past|last|recent|previous)\s+(?:3|three)?\s*months?\b", q))
+    if (
+        "demand" in q
+        and last_three_months
+        and "future" not in q
+        and "forecast" not in q
+        and "semiconductor" not in q
+    ):
+        return (
+            "Show current demand for the latest three available months.",
+            CURRENT_DEMAND_LAST_THREE_MONTHS_QUERY,
+            (
+                "The question asks for the last three months. The system interprets this as the latest "
+                "three available monthly actual demand observations in the graph, not as a live calendar window."
+            ),
+        )
     if "semiconductor" in q and "demand" in q and re.search(r"\b(?:past|last|recent|previous)\s+(?:3|three)?\s*months?\b", q):
         return (
             "Show semiconductor demand by quarter.",
