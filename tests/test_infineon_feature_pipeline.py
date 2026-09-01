@@ -75,6 +75,16 @@ def test_route_request_answers_definition_questions():
     assert "battery electric vehicle" in route["answer"].lower()
 
 
+def test_route_request_sends_bare_current_demand_questions_to_the_graph():
+    assert route_request("What is current demand?")["route"] != "definition"
+    assert route_request("Show current demand by region.")["route"] != "definition"
+
+
+def test_route_request_still_defines_current_demand_when_explicitly_asked():
+    assert route_request("What does current demand mean?")["route"] == "definition"
+    assert route_request("Define current demand.")["route"] == "definition"
+
+
 def test_route_request_clarifies_underspecified_entity_questions():
     route = route_request("What about BEV?")
     assert route["route"] == "clarification_needed"

@@ -101,6 +101,7 @@ GRAPH_COMPARISON_HINTS = {
 }
 
 GRAPH_QUERY_HINTS = GRAPH_COMPARISON_HINTS | {
+    "current",
     "develop",
     "developing",
     "development",
