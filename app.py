@@ -161,6 +161,29 @@ SELECT ?monthLabel (SUM(?units) AS ?currentDemand) WHERE {
 GROUP BY ?monthLabel ?year ?monthNo
 ORDER BY ?year ?monthNo
 """.strip()
+CURRENT_DEMAND_BY_MONTH_TREND_QUERY = """
+SELECT ?monthLabel (SUM(?units) AS ?currentDemand) WHERE {
+  ?obs a survey:VehicleSalesObservation ;
+    survey:forTimePeriod ?month ;
+    survey:isActualData true ;
+    survey:unitsSold ?units .
+  ?month survey:periodLabel ?monthLabel .
+}
+GROUP BY ?monthLabel
+ORDER BY ?monthLabel
+""".strip()
+SEMICONDUCTOR_DEMAND_TREND_BY_QUARTER_QUERY = """
+SELECT ?quarterLabel (SUM(?pct) AS ?totalPctChange) WHERE {
+  ?d a survey:DemandForRegion ;
+     survey:hasSurveyOrigin ?o ;
+     survey:quarter ?q ;
+     survey:totalDemandPercentageChange ?pct .
+  ?o a survey:Semiconductor_Survey .
+  ?q survey:periodLabel ?quarterLabel .
+}
+GROUP BY ?quarterLabel
+ORDER BY ?quarterLabel
+""".strip()
 FUTURE_SEMICONDUCTOR_DEMAND_BY_TECH_QUARTER_QUERY = """
 SELECT ?techLabel ?quarter
   (SUM(IF(?baseline = "Option1", ?pct, 0)) AS ?Option1)
@@ -3316,6 +3339,12 @@ def _relative_time_approximation_query(question: str) -> Tuple[str, str, str]:
     if not q:
         return "", "", ""
     last_three_months = bool(re.search(r"\b(?:past|last|recent|previous)\s+(?:3|three)?\s*months?\b", q))
+    trend_intent = bool(
+        re.search(
+            r"\b(rising|falling|increase|increasing|decrease|decreasing|up|down|developing|trend|direction|improving|worsening)\b",
+            q,
+        )
+    )
     if (
         "demand" in q
         and last_three_months
@@ -3323,6 +3352,15 @@ def _relative_time_approximation_query(question: str) -> Tuple[str, str, str]:
         and "forecast" not in q
         and "semiconductor" not in q
     ):
+        if trend_intent:
+            return (
+                "Show current demand trend for the latest available months.",
+                CURRENT_DEMAND_BY_MONTH_TREND_QUERY,
+                (
+                    "The question asks for recent current-demand direction. The system uses the "
+                    "available monthly actual demand observations and computes the trend from graph results."
+                ),
+            )
         return (
             "Show current demand for the latest three available months.",
             CURRENT_DEMAND_LAST_THREE_MONTHS_QUERY,
@@ -3332,6 +3370,16 @@ def _relative_time_approximation_query(question: str) -> Tuple[str, str, str]:
             ),
         )
     if "semiconductor" in q and "demand" in q and re.search(r"\b(?:past|last|recent|previous)\s+(?:3|three)?\s*months?\b", q):
+        if trend_intent:
+            return (
+                "Show semiconductor demand trend by quarter.",
+                SEMICONDUCTOR_DEMAND_TREND_BY_QUARTER_QUERY,
+                (
+                    "The question asks for recent semiconductor-demand direction. The KG does not "
+                    "provide a live rolling three-month window, so the system uses the available "
+                    "quarter-level semiconductor demand percentages and computes the trend from graph results."
+                ),
+            )
         return (
             "Show semiconductor demand by quarter.",
             SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY,
@@ -3369,6 +3417,125 @@ def _semiconductor_demand_quarter_guided_query(question: str) -> Tuple[str, str,
             ),
         )
     return "", "", ""
+
+
+def _demand_trend_guided_query(question: str) -> Tuple[str, str, str, str]:
+    q = _normalize_question_key(question)
+    if not q or "demand" not in q:
+        return "", "", "", ""
+    trend_intent = bool(
+        re.search(
+            r"\b(rising|falling|increase|increasing|decrease|decreasing|up|down|developing|trend|direction|improving|worsening)\b",
+            q,
+        )
+    )
+    if not trend_intent:
+        return "", "", "", ""
+    if "future" in q or "forecast" in q:
+        return "", "", "", ""
+    if "semiconductor" in q:
+        return (
+            "Show semiconductor demand trend by quarter.",
+            SEMICONDUCTOR_DEMAND_TREND_BY_QUARTER_QUERY,
+            "The system detected a trend-direction question and uses the available quarter-level semiconductor demand percentages.",
+            "semiconductor_quarter_trend",
+        )
+    if "current" in q or "actual" in q:
+        return (
+            "Show current demand trend for the latest three available months.",
+            CURRENT_DEMAND_BY_MONTH_TREND_QUERY,
+            "The system detected a current-demand trend question and uses the latest available monthly actual demand observations.",
+            "current_monthly_trend",
+        )
+    return (
+        "Show semiconductor demand trend by quarter.",
+        SEMICONDUCTOR_DEMAND_TREND_BY_QUARTER_QUERY,
+        "The question asks about demand direction but does not specify a source. The system uses the available semiconductor demand quarter trend as the closest supported graph-backed view.",
+        "semiconductor_quarter_trend",
+    )
+
+
+def _numeric_row_value(row: Dict[str, str], keys: List[str]) -> Optional[float]:
+    for key in keys:
+        if key not in row:
+            continue
+        raw = str(row.get(key) or "").strip()
+        match = re.search(r"-?\d+(?:\.\d+)?", raw)
+        if match:
+            return float(match.group(0))
+    return None
+
+
+def _period_sort_key(label: str) -> Tuple[int, int, str]:
+    text = str(label or "").strip()
+    month_match = re.search(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b\s+(\d{4})", text, re.IGNORECASE)
+    if month_match:
+        months = {
+            "jan": 1,
+            "feb": 2,
+            "mar": 3,
+            "apr": 4,
+            "may": 5,
+            "jun": 6,
+            "jul": 7,
+            "aug": 8,
+            "sep": 9,
+            "oct": 10,
+            "nov": 11,
+            "dec": 12,
+        }
+        return (int(month_match.group(2)), months[month_match.group(1).lower()], text)
+    quarter_match = re.search(r"\bQ([1-4])\s*(\d{4})\b", text, re.IGNORECASE)
+    if quarter_match:
+        return (int(quarter_match.group(2)), int(quarter_match.group(1)) * 3, text)
+    year_match = re.search(r"\b(\d{4})\b", text)
+    if year_match:
+        return (int(year_match.group(1)), 0, text)
+    return (0, 0, text)
+
+
+def _synthesize_demand_trend_answer(question: str, rows: List[Dict[str, str]], route_id: str) -> str:
+    if len(rows) < 2:
+        return "The graph did not return enough time-ordered demand points to determine whether demand is rising or falling."
+    period_key = "monthLabel" if any("monthLabel" in row for row in rows) else "quarterLabel"
+    value_keys = ["currentDemand", "totalPctChange", "avgPercentageChange", "totalDemand", "pct"]
+    points = []
+    for row in rows:
+        label = str(row.get(period_key) or row.get("periodLabel") or row.get("quarter") or row.get("month") or "").strip()
+        value = _numeric_row_value(row, value_keys)
+        if label and value is not None:
+            points.append((label, value))
+    points.sort(key=lambda item: _period_sort_key(item[0]))
+    if len(points) < 2:
+        return "The graph returned rows, but they do not contain enough comparable time values to determine a trend direction."
+    first_label, first_value = points[0]
+    last_label, last_value = points[-1]
+    delta = last_value - first_value
+    tolerance = max(abs(first_value), abs(last_value), 1.0) * 0.01
+    if delta > tolerance:
+        direction = "rising"
+    elif delta < -tolerance:
+        direction = "falling"
+    else:
+        direction = "roughly stable"
+    reversals = 0
+    previous_delta = 0.0
+    for idx in range(1, len(points)):
+        step_delta = points[idx][1] - points[idx - 1][1]
+        if abs(step_delta) <= tolerance:
+            continue
+        if previous_delta and (step_delta > 0) != (previous_delta > 0):
+            reversals += 1
+        previous_delta = step_delta
+    if reversals:
+        direction = f"mixed overall, but {direction} from the first to the latest available period"
+    evidence = "; ".join(f"{label}: {value:g}" for label, value in points[:6])
+    metric = "current demand" if route_id == "current_monthly_trend" else "semiconductor demand percentage change"
+    return (
+        f"Based on the available graph time series, {metric} is **{direction}**. "
+        f"It changes from {first_value:g} in {first_label} to {last_value:g} in {last_label} "
+        f"(delta {delta:+g}). Evidence points: {evidence}."
+    )
 
 
 def _render_out_of_scope_message(reason: str) -> None:
@@ -7145,6 +7312,7 @@ if asked or flexible_asked:
     guided_query = _active_guided_query(question)
     dr_definition = route_dr_ontology_definition(question)
     advisory_plan = resolve_advisory_plan(question)
+    trend_route_id = ""
     if not question.strip():
         st.warning("Please enter a question.")
     else:
@@ -7257,6 +7425,10 @@ if asked or flexible_asked:
                 st.info(approximate_note)
                 question = approximate_question
                 guided_query = approximate_query
+                if approximate_query == CURRENT_DEMAND_BY_MONTH_TREND_QUERY:
+                    trend_route_id = "current_monthly_trend"
+                elif approximate_query == SEMICONDUCTOR_DEMAND_TREND_BY_QUARTER_QUERY:
+                    trend_route_id = "semiconductor_quarter_trend"
             else:
                 request_id = uuid.uuid4().hex
                 result = {
@@ -7314,6 +7486,14 @@ if asked or flexible_asked:
                 st.info(quarter_note)
                 question = quarter_question
                 guided_query = quarter_query
+
+        if not guided_query and dr_definition is None and advisory_plan is None:
+            trend_question, trend_query, trend_note, trend_id = _demand_trend_guided_query(question)
+            if trend_query:
+                st.info(trend_note)
+                question = trend_question
+                guided_query = trend_query
+                trend_route_id = trend_id
 
         if (
             _is_advisory_like_question(question)
@@ -7547,7 +7727,7 @@ if asked or flexible_asked:
                     "candidates": [{"query": guided_query, "source": "guided"}],
                     "schema_ranked": [],
                     "learning_ranked": [],
-                    "metadata": {"guided_query": True},
+                    "metadata": {"guided_query": True, "trend_route": bool(trend_route_id), "trend_route_id": trend_route_id},
                     "errors": [],
                     "prompt": "",
                     "policy": "guided",
@@ -7845,6 +8025,12 @@ if asked or flexible_asked:
                 result_metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
                 if result_metadata.get("advisory_route") and advisory_plan is not None:
                     graph_answer = synthesize_advisory_answer(question, advisory_plan, graph_rows)
+                elif result_metadata.get("trend_route"):
+                    graph_answer = _synthesize_demand_trend_answer(
+                        question,
+                        graph_rows,
+                        str(result_metadata.get("trend_route_id") or ""),
+                    )
                 else:
                     graph_answer = synthesize_answer(
                         question,

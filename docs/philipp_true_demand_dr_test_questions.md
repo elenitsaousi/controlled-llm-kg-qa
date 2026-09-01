@@ -54,6 +54,11 @@ Expected behavior: graph-backed answer. Many of these should use deterministic r
 - Show demand for the last 3 months.
 - Show current demand for the last three months.
 - How has current demand developed in the past three months?
+- Is current demand rising or falling?
+- Is the current demand increasing or decreasing?
+- How is current demand developing?
+- Is semiconductor demand rising or falling?
+- How is semiconductor demand developing in the past three months?
 
 ## 4. True Demand: Future Demand
 
