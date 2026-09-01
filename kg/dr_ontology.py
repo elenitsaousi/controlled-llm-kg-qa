@@ -381,7 +381,10 @@ def _looks_like_coverage_request(question: str) -> bool:
 
 def _has_definition_intent(question: str) -> bool:
     q_norm = re.sub(r"\s+", " ", str(question or "").lower()).strip()
-    if not q_norm or _looks_like_graph_query(q_norm) or _looks_like_coverage_request(q_norm):
+    if not q_norm or _looks_like_coverage_request(q_norm):
+        return False
+    strong_definition_intent = bool(re.search(r"\b(defin(e|ed|ition)|meaning|mean)\b", q_norm))
+    if _looks_like_graph_query(q_norm) and not strong_definition_intent:
         return False
     if (
         any(hint in q_norm for hint in GENERIC_INVENTORY_HINTS)

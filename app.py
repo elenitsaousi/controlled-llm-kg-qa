@@ -3382,6 +3382,196 @@ def _looks_like_graph_analytics_question(question: str) -> bool:
     return any(term in q for term in graph_terms) and any(term in q for term in analytic_terms)
 
 
+def _number_from_question(q_norm: str, default: int = 1, maximum: int = 24) -> int:
+    words = {
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "eleven": 11,
+        "twelve": 12,
+    }
+    match = re.search(
+        r"\b(?:last|past|previous|recent|over|during|in|upcoming|next|first)\s+(?:the\s+)?(?P<n>\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)?\s*(?:months?|quarters?|years?)\b",
+        q_norm,
+    )
+    if not match:
+        return default
+    raw = str(match.group("n") or "").strip()
+    if not raw:
+        return default
+    value = int(raw) if raw.isdigit() else words.get(raw, default)
+    return max(1, min(int(maximum), value))
+
+
+def _quarter_limit_from_question(q_norm: str) -> int:
+    if not re.search(r"\b(first|next|upcoming)\b", q_norm):
+        return 0
+    if "quarters" in q_norm and not re.search(r"\b(first|next)\b", q_norm):
+        return 0
+    return _number_from_question(q_norm, default=1, maximum=12)
+
+
+def _values_rows_count(values_rows: str) -> int:
+    return max(1, len(re.findall(r"\(survey:", values_rows)))
+
+
+def _region_values_for_question(q_norm: str) -> str:
+    rows = []
+    if re.search(r"\b(america|americas|usa|us)\b", q_norm):
+        rows.append("survey:RegionAmericas")
+    if re.search(r"\beurope\b", q_norm):
+        rows.append("survey:RegionEurope")
+    if re.search(r"\bchina\b", q_norm):
+        rows.append("survey:China")
+    if re.search(r"\bjapan\b", q_norm):
+        rows.append("survey:RegionJapan")
+    if re.search(r"\b(all other|other regions?|asia pacific|apac)\b", q_norm):
+        rows.append("survey:AllOther")
+    return "\n    ".join(dict.fromkeys(rows))
+
+
+def _current_demand_guided_query(question: str) -> Tuple[str, str, str, str]:
+    q = _normalize_question_key(question)
+    if not q or "current demand" not in q:
+        return "", "", "", ""
+    if re.search(r"\b(technology|technologies|tech|node|nodes|category|categories)\b", q):
+        return (
+            "Report current-demand technology-node coverage limitation.",
+            """
+SELECT ("Current-demand technology-node breakdown is not available in the current graph. The graph contains current demand by survey group and region, and separate future-demand/inventory views by technology category." AS ?coverageLimitation) WHERE {
+}
+""".strip(),
+            "The system detected a current-demand technology-node request and reports the graph coverage limitation instead of using a definition fallback.",
+            "",
+        )
+
+    region_intent = bool(re.search(r"\b(region|regions|regional|america|americas|europe|china|japan|all other|asia pacific|apac)\b", q))
+    month_intent = bool(re.search(r"\b(month|months|monthly|latest|last|past|previous|recent)\b", q))
+    avg_intent = bool(re.search(r"\b(avg|average|mean)\b", q))
+    trend_intent = bool(re.search(r"\b(rising|falling|increase|increasing|decrease|decreasing|up|down|developing|trend|direction)\b", q))
+
+    if region_intent:
+        survey_rows = _survey_values_for_question(q)
+        region_rows = _region_values_for_question(q)
+        combined = bool(re.search(r"\b(combined|together|sum|total)\b", q)) and bool(region_rows)
+        ranking_prefix = "lowest " if re.search(r"\b(lowest|bottom|smallest|min|minimum|least)\b", q) else "highest " if re.search(r"\b(highest|top|largest|max|maximum|most)\b", q) else ""
+        region_filter = f"VALUES ?region {{\n    {region_rows}\n  }}" if region_rows else ""
+        if combined:
+            query = f"""
+SELECT ?surveyGroup (GROUP_CONCAT(DISTINCT ?regionName; separator=", ") AS ?regions) (SUM(?demand) AS ?totalDemand) WHERE {{
+  ?entry a survey:DemandForRegion ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:inRegion ?region ;
+         survey:totalDemand ?demand .
+  VALUES (?origin ?surveyGroup) {{
+    {survey_rows}
+  }}
+  {region_filter}
+  ?region survey:regionName ?regionName .
+}}
+GROUP BY ?surveyGroup
+ORDER BY DESC(?totalDemand)
+""".strip()
+        else:
+            query = f"""
+SELECT ?surveyGroup ?regionName (SUM(?demand) AS ?totalDemand) WHERE {{
+  ?entry a survey:DemandForRegion ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:inRegion ?region ;
+         survey:totalDemand ?demand .
+  VALUES (?origin ?surveyGroup) {{
+    {survey_rows}
+  }}
+  {region_filter}
+  ?region survey:regionName ?regionName .
+}}
+GROUP BY ?surveyGroup ?regionName
+ORDER BY ?surveyGroup DESC(?totalDemand)
+""".strip()
+        note = "The system detected a current-demand regional request and applies the requested survey/region filters when present."
+        if month_intent:
+            note += " Month-level current-demand observations do not carry the same survey/region dimensions, so the answer uses the closest available regional current-demand view."
+        return (
+            f"Show {ranking_prefix}current demand by survey group and region.",
+            query,
+            note,
+            "",
+        )
+
+    if month_intent or trend_intent:
+        n_months = _number_from_question(q, default=1 if "month" in q and not re.search(r"\d|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve", q) else 3)
+        value_name = "avgCurrentDemand" if avg_intent else "currentDemand"
+        if avg_intent:
+            query = f"""
+SELECT (AVG(?currentDemand) AS ?avgCurrentDemand) (COUNT(?monthLabel) AS ?monthsUsed)
+       (GROUP_CONCAT(CONCAT(?monthLabel, ": ", STR(?currentDemand)); separator="; ") AS ?evidence) WHERE {{
+  {{
+    SELECT ?month ?monthLabel ?year ?monthNo (SUM(?units) AS ?currentDemand) WHERE {{
+      ?month a survey:Month ;
+        survey:periodLabel ?monthLabel .
+      BIND(xsd:integer(STRAFTER(STR(?monthLabel), " ")) AS ?year)
+      BIND(STRBEFORE(STR(?monthLabel), " ") AS ?monthName)
+      BIND(IF(?monthName = "Jan", 1, IF(?monthName = "Feb", 2, IF(?monthName = "Mar", 3, IF(?monthName = "Apr", 4, IF(?monthName = "May", 5, IF(?monthName = "Jun", 6, IF(?monthName = "Jul", 7, IF(?monthName = "Aug", 8, IF(?monthName = "Sep", 9, IF(?monthName = "Oct", 10, IF(?monthName = "Nov", 11, 12))))))))))) AS ?monthNo)
+      ?obs a survey:VehicleSalesObservation ;
+        survey:forTimePeriod ?month ;
+        survey:isActualData true ;
+        survey:unitsSold ?units .
+    }}
+    GROUP BY ?month ?monthLabel ?year ?monthNo
+    ORDER BY DESC(?year) DESC(?monthNo)
+    LIMIT {n_months}
+  }}
+}}
+""".strip()
+        else:
+            query = f"""
+SELECT ?monthLabel (SUM(?units) AS ?currentDemand) WHERE {{
+  {{
+    SELECT ?month ?monthLabel ?year ?monthNo WHERE {{
+      ?month a survey:Month ;
+        survey:periodLabel ?monthLabel .
+      BIND(xsd:integer(STRAFTER(STR(?monthLabel), " ")) AS ?year)
+      BIND(STRBEFORE(STR(?monthLabel), " ") AS ?monthName)
+      BIND(IF(?monthName = "Jan", 1, IF(?monthName = "Feb", 2, IF(?monthName = "Mar", 3, IF(?monthName = "Apr", 4, IF(?monthName = "May", 5, IF(?monthName = "Jun", 6, IF(?monthName = "Jul", 7, IF(?monthName = "Aug", 8, IF(?monthName = "Sep", 9, IF(?monthName = "Oct", 10, IF(?monthName = "Nov", 11, 12))))))))))) AS ?monthNo)
+      ?obs a survey:VehicleSalesObservation ;
+        survey:forTimePeriod ?month ;
+        survey:isActualData true ;
+        survey:unitsSold ?u .
+    }}
+    GROUP BY ?month ?monthLabel ?year ?monthNo
+    ORDER BY DESC(?year) DESC(?monthNo)
+    LIMIT {n_months}
+  }}
+  ?obs a survey:VehicleSalesObservation ;
+    survey:forTimePeriod ?month ;
+    survey:isActualData true ;
+    survey:unitsSold ?units .
+}}
+GROUP BY ?monthLabel ?year ?monthNo
+ORDER BY ?year ?monthNo
+""".strip()
+        note = (
+            f"The system detected a current-demand time-window request and uses the latest {n_months} available monthly actual demand point(s)."
+        )
+        if re.search(r"\b(oem|tier\s*-?\s*1|tier1|semi|semis|semiconductor|semiconductors|region|regions|europe|america|americas)\b", q):
+            note += " The monthly current-demand source does not carry survey-group or region filters, so those filters cannot be applied at month granularity."
+        return (
+            f"Show {'average ' if avg_intent else ''}current demand for the latest {n_months} available month(s).",
+            query,
+            note,
+            "current_monthly_trend" if trend_intent else ("current_monthly_average" if avg_intent else "latest_month_current"),
+        )
+
+    return "", "", "", ""
+
+
 def _is_unsupported_relative_time_question(question: str) -> Tuple[bool, str]:
     q = _normalize_question_key(question)
     if not q:
@@ -3553,9 +3743,11 @@ def _future_demand_guided_query(question: str) -> Tuple[str, str, str]:
     tech_intent = bool(re.search(r"\b(technology|technologies|tech|node|nodes|category|categories)\b", q))
     vehicle_type_intent = bool(re.search(r"\b(vehicle type|vehicle types|bev|phev|ice)\b", q))
     scoped_values = _survey_values_for_question(q)
+    quarter_limit = _quarter_limit_from_question(q)
+    ranking_prefix = "lowest " if re.search(r"\b(lowest|bottom|smallest|min|minimum|least)\b", q) else "highest " if re.search(r"\b(highest|top|largest|max|maximum|most)\b", q) else ""
     if vehicle_type_intent:
         return (
-            "Show future demand outlook by vehicle type.",
+            f"Show {ranking_prefix}future demand outlook by vehicle type.",
             """
 SELECT ?vehicleType (SUM(?sales) AS ?yearlySales) WHERE {
   ?entry a survey:YearlySalesData ;
@@ -3582,19 +3774,19 @@ ORDER BY DESC(?yearlySales)
         )
     if region_intent:
         return (
-            "Show expected future demand by survey group and region.",
+            f"Show {ranking_prefix}expected future demand by survey group and region.",
             _future_demand_by_region_query(scoped_values),
             "The system detected an expected/future-demand regional split and uses the supported future demand by survey group and region view.",
         )
     if quarter_intent or re.search(r"\b(oem|tier\s*-?\s*1|tier1|semi|semis|semiconductor|semiconductors)\b", q):
         return (
-            "Show expected future demand by survey group and quarter.",
-            _future_demand_by_survey_quarter_query(scoped_values),
+            f"Show expected future demand by survey group and {'first ' if quarter_limit == 1 else ''}quarter.",
+            _future_demand_by_survey_quarter_query(scoped_values, quarter_limit, "upcoming" in q or "next" in q),
             "The system detected an expected/future-demand development question and uses the supported survey-group by quarter view.",
         )
     return (
         "Show expected future demand by survey group and quarter.",
-        _future_demand_by_survey_quarter_query(scoped_values),
+        _future_demand_by_survey_quarter_query(scoped_values, quarter_limit, "upcoming" in q or "next" in q),
         "The system detected an expected/future-demand question and uses the supported survey-group by quarter view.",
     )
 
@@ -3616,9 +3808,24 @@ def _survey_values_for_question(q_norm: str) -> str:
     return "\n    ".join(dict.fromkeys(rows))
 
 
-def _future_demand_by_survey_quarter_query(values_rows: str) -> str:
+def _future_demand_by_survey_quarter_query(values_rows: str, quarter_limit: int = 0, upcoming_only: bool = False) -> str:
+    limit_clause = ""
+    if quarter_limit:
+        limit_clause = f"\nLIMIT {quarter_limit * _values_rows_count(values_rows)}"
+    current_year = datetime.now().year
+    current_quarter = ((datetime.now().month - 1) // 3) + 1
+    min_year = current_year
+    min_quarter = current_quarter + 1
+    if min_quarter > 4:
+        min_year += 1
+        min_quarter = 1
+    upcoming_filter = (
+        f"\n  FILTER(?year > {min_year} || (?year = {min_year} && ?quarterNo >= {min_quarter}))"
+        if upcoming_only
+        else ""
+    )
     return f"""
-SELECT ?surveyGroup ?quarterLabel (SUM(?pct) AS ?expectedFutureDemand) WHERE {{
+SELECT ?surveyGroup ?quarterLabel (SUM(?pct) AS ?expectedFutureDemand) ?year ?quarterNo WHERE {{
   ?entry a survey:DemandForRegion ;
          survey:hasSurveyOrigin ?origin ;
          survey:quarter ?quarter ;
@@ -3627,9 +3834,12 @@ SELECT ?surveyGroup ?quarterLabel (SUM(?pct) AS ?expectedFutureDemand) WHERE {{
     {values_rows}
   }}
   ?quarter survey:periodLabel ?quarterLabel .
+  BIND(xsd:integer(STRAFTER(STR(?quarterLabel), " ")) AS ?year)
+  BIND(xsd:integer(STRAFTER(STRBEFORE(STR(?quarterLabel), " "), "Q")) AS ?quarterNo)
+  {upcoming_filter}
 }}
-GROUP BY ?surveyGroup ?quarterLabel
-ORDER BY ?surveyGroup ?quarterLabel
+GROUP BY ?surveyGroup ?quarterLabel ?year ?quarterNo
+ORDER BY ?surveyGroup ?year ?quarterNo{limit_clause}
 """.strip()
 
 
@@ -3653,10 +3863,10 @@ ORDER BY ?surveyGroup DESC(?expectedFutureDemand)
 def _future_demand_region_and_technology_query(values_rows: str) -> str:
     return f"""
 SELECT ?view ?surveyGroup ?dimension ?quarterLabel (SUM(?value) AS ?expectedFutureDemand) WHERE {{
-  VALUES (?origin ?surveyGroup) {{
-    {values_rows}
-  }}
   {{
+    VALUES (?origin ?surveyGroup) {{
+      {values_rows}
+    }}
     ?entry a survey:DemandForRegion ;
            survey:hasSurveyOrigin ?origin ;
            survey:inRegion ?region ;
@@ -3668,8 +3878,10 @@ SELECT ?view ?surveyGroup ?dimension ?quarterLabel (SUM(?value) AS ?expectedFutu
   }}
   UNION
   {{
+    ?root a survey:FutureDemandAnalysis ;
+          survey:hasSurveyOrigin survey:Semiconductor_Survey ;
+          survey:hasAggregatedResult ?entry .
     ?entry a survey:FutureDemandAnalysis ;
-           survey:hasSurveyOrigin ?origin ;
            survey:analyzesTechnologyCategory ?technology ;
            survey:forTimePeriod ?quarter ;
            survey:percentageChange ?value .
@@ -3677,6 +3889,7 @@ SELECT ?view ?surveyGroup ?dimension ?quarterLabel (SUM(?value) AS ?expectedFutu
     BIND(COALESCE(?technologyName, REPLACE(STR(?technology), "^.*/", "")) AS ?dimension)
     ?quarter survey:periodLabel ?quarterLabel .
     BIND("technology category" AS ?view)
+    BIND("Semiconductor" AS ?surveyGroup)
   }}
 }}
 GROUP BY ?view ?surveyGroup ?dimension ?quarterLabel
@@ -7704,13 +7917,47 @@ clarification_rendered = False
 if asked or flexible_asked:
     guided_query = _active_guided_query(question)
     dr_definition = route_dr_ontology_definition(question)
-    if dr_definition is not None and _looks_like_graph_analytics_question(question):
+    if (
+        dr_definition is not None
+        and _looks_like_graph_analytics_question(question)
+        and not re.search(r"\b(defin(e|ed|ition)|meaning|mean)\b", question, re.IGNORECASE)
+    ):
         dr_definition = None
     advisory_plan = resolve_advisory_plan(question)
     trend_route_id = ""
     if not question.strip():
         st.warning("Please enter a question.")
     else:
+        if not guided_query and dr_definition is None and advisory_plan is None:
+            current_question, current_query, current_note, current_route_id = _current_demand_guided_query(question)
+            if current_query:
+                st.info(current_note)
+                question = current_question
+                guided_query = current_query
+                trend_route_id = current_route_id
+
+        if not guided_query and dr_definition is None and advisory_plan is None:
+            future_question, future_query, future_note = _future_demand_guided_query(question)
+            if future_query:
+                st.info(future_note)
+                question = future_question
+                guided_query = future_query
+
+        if not guided_query and dr_definition is None and advisory_plan is None:
+            trend_question, trend_query, trend_note, trend_id = _demand_trend_guided_query(question)
+            if trend_query:
+                st.info(trend_note)
+                question = trend_question
+                guided_query = trend_query
+                trend_route_id = trend_id
+
+        if not guided_query and dr_definition is None and advisory_plan is None:
+            status_question, status_query, status_note = _status_or_development_guided_query(question)
+            if status_query:
+                st.info(status_note)
+                question = status_question
+                guided_query = status_query
+
         metadata_help = _metadata_help_result(question, schema_path, graph_path, dr_ontology_path)
         if metadata_help is not None and not guided_query and dr_definition is None and advisory_plan is None:
             request_id = uuid.uuid4().hex

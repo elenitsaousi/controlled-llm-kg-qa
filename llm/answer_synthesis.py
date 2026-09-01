@@ -236,7 +236,7 @@ def _format_total_demand_by_region(
     *,
     question: str = "",
 ) -> str:
-    if not _has_any_key(rows, ["regionName"]) or not _has_any_key(
+    if not _has_any_key(rows, ["regionName", "regions"]) or not _has_any_key(
         rows,
         [
             "totalDemand",
@@ -267,21 +267,26 @@ def _format_total_demand_by_region(
             label="Regional demand",
         )
 
-    top_row, metric_key, top_value = max(scored, key=lambda item: item[2])
-    region = _clean_value(_row_get(top_row, "regionName"))
+    choose_min = bool(re.search(r"\b(lowest|bottom|smallest|min|minimum|least|weakest)\b", str(question or "").lower()))
+    top_row, metric_key, top_value = (
+        min(scored, key=lambda item: item[2]) if choose_min else max(scored, key=lambda item: item[2])
+    )
+    region = _clean_value(_row_get(top_row, "regionName", "regions"))
     survey_type = _row_get(top_row, "surveyType", "originType")
     survey_text = f" for {_clean_value(survey_type)}" if survey_type else ""
     metric_text = _humanize_key(metric_key)
+    direction = "lowest" if choose_min else "highest"
     summary = (
         f"Regional demand returned {len(rows)} row(s). "
-        f"The highest {metric_text}{survey_text} is in {region} "
+        f"The {direction} {metric_text}{survey_text} is in {region} "
         f"with {_format_number(top_value)}."
     )
 
     if len(scored) > 1:
-        low_row, _, low_value = min(scored, key=lambda item: item[2])
-        low_region = _clean_value(_row_get(low_row, "regionName"))
-        summary += f" The lowest returned value is {low_region} with {_format_number(low_value)}."
+        other_row, _, other_value = (max(scored, key=lambda item: item[2]) if choose_min else min(scored, key=lambda item: item[2]))
+        other_region = _clean_value(_row_get(other_row, "regionName", "regions"))
+        other_label = "highest" if choose_min else "lowest"
+        summary += f" The {other_label} returned value is {other_region} with {_format_number(other_value)}."
 
     return summary
 
@@ -515,9 +520,31 @@ def _format_shortage_status(rows: List[Dict[str, object]]) -> str:
     return f"{conclusion} Companies with shortage: {_format_number(yes_count)}; without shortage: {_format_number(no_count)}."
 
 
-def _format_future_demand_split(rows: List[Dict[str, object]]) -> str:
+def _format_future_demand_split(rows: List[Dict[str, object]], *, question: str = "") -> str:
     if not _has_any_key(rows, ["expectedFutureDemand", "avgPercentageChange", "yearlySales"]):
         return ""
+    if _has_any_key(rows, ["view", "dimension"]):
+        scored = _numeric_rows(rows, ["expectedFutureDemand", "avgPercentageChange"])
+        if not scored:
+            return ""
+        by_view: Dict[str, Tuple[Dict[str, object], str, float]] = {}
+        for row, key, value in scored:
+            view = _clean_value(_row_get(row, "view"))
+            if view and (view not in by_view or value > by_view[view][2]):
+                by_view[view] = (row, key, value)
+        parts = []
+        for view, (row, key, value) in sorted(by_view.items()):
+            dim = _clean_value(_row_get(row, "dimension"))
+            quarter = _clean_value(_row_get(row, "quarterLabel"))
+            group = _clean_value(_row_get(row, "surveyGroup"))
+            suffix = f" in {quarter}" if quarter else ""
+            prefix = f"{group} " if group else ""
+            parts.append(f"{view}: {prefix}{dim}{suffix} ({_humanize_key(key)} {_format_number(value)})")
+        return (
+            f"Future-demand split returned {len(rows)} grouped row(s). "
+            f"The graph contains separate regional and technology-category views, not a single joint region-by-technology cube. "
+            f"Top returned signals: {'; '.join(parts)}."
+        )
     if _has_any_key(rows, ["surveyGroup"]) and _has_any_key(rows, ["quarterLabel"]):
         scored = _numeric_rows(rows, ["expectedFutureDemand", "avgPercentageChange"])
         if not scored:
@@ -531,6 +558,10 @@ def _format_future_demand_split(rows: List[Dict[str, object]]) -> str:
         parts = []
         for group, values in sorted(grouped.items()):
             values.sort(key=lambda item: _period_sort_key(item[0]))
+            if len(values) == 1:
+                only_q, only_v = values[0]
+                parts.append(f"{group}: {_format_number(only_v)} in {only_q}")
+                continue
             first_q, first_v = values[0]
             last_q, last_v = values[-1]
             delta = last_v - first_v
@@ -557,46 +588,38 @@ def _format_future_demand_split(rows: List[Dict[str, object]]) -> str:
             f"The strongest available vehicle-type demand outlook signal is {vehicle} "
             f"with yearly sales of {_format_number(top_value)}. Evidence: {evidence}."
         )
-    if _has_any_key(rows, ["view", "dimension"]):
-        scored = _numeric_rows(rows, ["expectedFutureDemand", "avgPercentageChange"])
-        if not scored:
-            return ""
-        by_view: Dict[str, Tuple[Dict[str, object], str, float]] = {}
-        for row, key, value in scored:
-            view = _clean_value(_row_get(row, "view"))
-            if view and (view not in by_view or value > by_view[view][2]):
-                by_view[view] = (row, key, value)
-        parts = []
-        for view, (row, key, value) in sorted(by_view.items()):
-            dim = _clean_value(_row_get(row, "dimension"))
-            quarter = _clean_value(_row_get(row, "quarterLabel"))
-            group = _clean_value(_row_get(row, "surveyGroup"))
-            suffix = f" in {quarter}" if quarter else ""
-            prefix = f"{group} " if group else ""
-            parts.append(f"{view}: {prefix}{dim}{suffix} ({_humanize_key(key)} {_format_number(value)})")
-        return (
-            f"Future-demand split returned {len(rows)} grouped row(s). "
-            f"The graph contains separate regional and technology-category views, not a single joint region-by-technology cube. "
-            f"Top returned signals: {'; '.join(parts)}."
-        )
     if _has_any_key(rows, ["regionName"]):
         scored = _numeric_rows(rows, ["expectedFutureDemand", "avgPercentageChange"])
         if not scored:
             return ""
-        top_row, metric_key, top_value = max(scored, key=lambda item: item[2])
-        region = _clean_value(_row_get(top_row, "regionName"))
-        group = _row_get(top_row, "surveyGroup")
-        group_text = f" for {_clean_value(group)}" if group else ""
-        evidence = "; ".join(
-            f"{_clean_value(_row_get(row, 'regionName'))}: {_format_number(value)}"
-            for row, _, value in scored[:5]
-        )
-        return (
-            f"Expected future demand by region returned {len(rows)} grouped row(s). "
-            f"The highest returned {_humanize_key(metric_key)}{group_text} is {region} with {_format_number(top_value)}. "
-            f"Evidence from the returned rows: {evidence}."
-        )
+        return _format_future_region_rows(rows, scored, question=question)
     return ""
+
+
+def _format_future_region_rows(
+    rows: List[Dict[str, object]],
+    scored: List[Tuple[Dict[str, object], str, float]],
+    *,
+    question: str = "",
+) -> str:
+    choose_min = bool(re.search(r"\b(lowest|bottom|smallest|min|minimum|least|weakest)\b", str(question or "").lower()))
+    top_row, metric_key, top_value = (
+        min(scored, key=lambda item: item[2]) if choose_min else max(scored, key=lambda item: item[2])
+    )
+    region_key = "regionName" if _has_any_key(rows, ["regionName"]) else "regions"
+    region = _clean_value(_row_get(top_row, region_key))
+    group = _row_get(top_row, "surveyGroup")
+    group_text = f" for {_clean_value(group)}" if group else ""
+    direction = "lowest" if choose_min else "highest"
+    evidence = "; ".join(
+        f"{_clean_value(_row_get(row, region_key))}: {_format_number(value)}"
+        for row, _, value in (sorted(scored, key=lambda item: item[2]) if choose_min else scored)[:5]
+    )
+    return (
+        f"Expected future demand by region returned {len(rows)} grouped row(s). "
+        f"The {direction} returned {_humanize_key(metric_key)}{group_text} is {region} with {_format_number(top_value)}. "
+        f"Evidence from the returned rows: {evidence}."
+    )
 
 
 def _format_yearly_vehicle_sales(rows: List[Dict[str, object]]) -> str:
@@ -708,6 +731,36 @@ def _format_vehicle_sales_by_month(
     )
 
 
+def _format_current_demand_time_window(rows: List[Dict[str, object]]) -> str:
+    if _has_any_key(rows, ["avgCurrentDemand"]):
+        row = rows[0]
+        avg_value = _row_get(row, "avgCurrentDemand")
+        months_used = _row_get(row, "monthsUsed")
+        evidence = _row_get(row, "evidence")
+        answer = f"The average current demand over the selected latest monthly window is {_format_number(avg_value)}."
+        if months_used is not None:
+            answer += f" It used {_format_number(months_used)} month(s)."
+        if evidence is not None:
+            answer += f" Evidence: {_clean_value(evidence)}."
+        return answer
+    if _has_any_key(rows, ["monthLabel"]) and _has_any_key(rows, ["currentDemand"]):
+        scored = []
+        for row in rows:
+            month = _clean_value(_row_get(row, "monthLabel"))
+            value = _to_float(_row_get(row, "currentDemand"))
+            if month and value is not None:
+                scored.append((month, value))
+        scored.sort(key=lambda item: _period_sort_key(item[0]))
+        if not scored:
+            return ""
+        if len(scored) == 1:
+            month, value = scored[0]
+            return f"The latest available monthly current demand is {_format_number(value)} in {month}."
+        evidence = "; ".join(f"{month}: {_format_number(value)}" for month, value in scored)
+        return f"Current demand returned {len(scored)} monthly point(s): {evidence}."
+    return ""
+
+
 def _format_infineon_answer(rows: List[Dict[str, object]], query: str, question: str = "") -> str:
     query_lower = query.lower()
 
@@ -721,11 +774,15 @@ def _format_infineon_answer(rows: List[Dict[str, object]], query: str, question:
         if answer:
             return answer
     if _has_any_key(rows, ["expectedFutureDemand", "avgPercentageChange", "yearlySales"]):
-        answer = _format_future_demand_split(rows)
+        answer = _format_future_demand_split(rows, question=question)
         if answer:
             return answer
     if _has_any_key(rows, ["year"]) and _has_any_key(rows, ["unitsSold", "yearlySales"]):
         answer = _format_yearly_vehicle_sales(rows)
+        if answer:
+            return answer
+    if _has_any_key(rows, ["avgCurrentDemand", "currentDemand"]):
+        answer = _format_current_demand_time_window(rows)
         if answer:
             return answer
     if "currentdemandanalysis" in query_lower or "baseline" in query_lower:
@@ -742,7 +799,7 @@ def _format_infineon_answer(rows: List[Dict[str, object]], query: str, question:
             return answer
     if "futuredemandanalysis" in query_lower or _has_any_key(rows, ["techLabel", "quarterLabel"]):
         formatters.append(_format_future_demand_by_tech_quarter)
-    if "demandforregion" in query_lower or _has_any_key(rows, ["regionName"]):
+    if "demandforregion" in query_lower or _has_any_key(rows, ["regionName", "regions"]):
         answer = _format_total_demand_by_region(rows, question=question)
         if answer:
             return answer
