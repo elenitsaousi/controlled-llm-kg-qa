@@ -104,12 +104,15 @@ GRAPH_QUERY_HINTS = GRAPH_COMPARISON_HINTS | {
     "develop",
     "developing",
     "development",
+    "expected",
     "latest",
     "last",
     "monitor",
     "past",
     "risk",
     "should",
+    "split",
+    "upcoming",
 }
 
 COVERAGE_INTENT_HINTS = {
@@ -324,7 +327,10 @@ def _definition_targets(question: str) -> List[str]:
     target = _definition_target(question)
     if target is None:
         return []
-    if _looks_like_graph_query(question):
+    strong_definition_intent = bool(
+        re.search(r"\b(defin(e|ed|ition)|meaning|mean)\b", str(question or ""), re.IGNORECASE)
+    )
+    if _looks_like_graph_query(question) and not strong_definition_intent:
         return []
 
     lowered_question = str(question or "").lower()
@@ -492,6 +498,10 @@ PROJECT_GLOSSARY: Dict[str, Tuple[str, str]] = {
         "True Demand KG concept",
         "Future Demand describes survey-reported expected demand signals in the True Demand knowledge graph. It can be analyzed by supported dimensions such as region, quarter, survey origin, vehicle type, component share, or technology category when the corresponding graph path exists.",
     ),
+    "expected future demand": (
+        "True Demand KG concept",
+        "Expected future demand is treated as Future Demand in this system: survey-reported expected demand signals that can be analyzed by supported dimensions such as region, quarter, survey origin, vehicle type, component share, or technology category.",
+    ),
     "current demand": (
         "True Demand KG concept",
         "Current Demand describes survey-reported present demand signals in the True Demand knowledge graph. It is used for graph-supported breakdowns such as current demand by region, survey origin, vehicle type, or related demand dimensions.",
@@ -499,6 +509,22 @@ PROJECT_GLOSSARY: Dict[str, Tuple[str, str]] = {
     "technology node": (
         "True Demand KG concept",
         "Technology Node represents a semiconductor technology category or node used to group demand, inventory, shortage, and related survey responses in the True Demand knowledge graph.",
+    ),
+    "oem": (
+        "supply-chain actor",
+        "OEM means Original Equipment Manufacturer. In this system, OEM is used as a survey/source group for demand and supply-chain signals reported from original equipment manufacturers.",
+    ),
+    "tier1": (
+        "supply-chain actor",
+        "Tier1 refers to first-tier suppliers that provide systems, modules, or components directly to OEMs. In this system, Tier1 is used as a survey/source group for demand, inventory, and related supply-chain signals.",
+    ),
+    "tier 1": (
+        "supply-chain actor",
+        "Tier1 refers to first-tier suppliers that provide systems, modules, or components directly to OEMs. In this system, Tier1 is used as a survey/source group for demand, inventory, and related supply-chain signals.",
+    ),
+    "semis": (
+        "supply-chain actor",
+        "Semis is shorthand for the semiconductor survey/source group in this system. It refers to semiconductor-side demand and supply-chain signals in the True Demand knowledge graph.",
     ),
     "lobe": (
         "Digital Reference modelling concept",
@@ -515,7 +541,11 @@ PROJECT_GLOSSARY: Dict[str, Tuple[str, str]] = {
 }
 
 PROJECT_GLOSSARY_BY_ALIAS: Dict[str, Tuple[str, str, str]] = {
-    _normalize_alias(label): (label.title(), kind, definition)
+    _normalize_alias(label): (
+        {"oem": "OEM", "tier1": "Tier1", "tier 1": "Tier1", "semis": "Semis"}.get(label, label.title()),
+        kind,
+        definition,
+    )
     for label, (kind, definition) in PROJECT_GLOSSARY.items()
 }
 

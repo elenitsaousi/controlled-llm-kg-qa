@@ -184,6 +184,38 @@ SELECT ?quarterLabel (SUM(?pct) AS ?totalPctChange) WHERE {
 GROUP BY ?quarterLabel
 ORDER BY ?quarterLabel
 """.strip()
+FUTURE_DEMAND_BY_SURVEY_QUARTER_QUERY = """
+SELECT ?surveyGroup ?quarterLabel (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:FutureDemandAnalysis ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:forTimePeriod ?quarter ;
+         survey:percentageChange ?pct .
+  VALUES (?origin ?surveyGroup) {
+    (survey:OEM_Survey_Instance "OEM")
+    (survey:Tier1_Survey_Instance "Tier1")
+    (survey:Semiconductor_Survey_Instance "Semiconductor")
+  }
+  ?quarter survey:periodLabel ?quarterLabel .
+}
+GROUP BY ?surveyGroup ?quarterLabel
+ORDER BY ?surveyGroup ?quarterLabel
+""".strip()
+FUTURE_DEMAND_BY_REGION_SCOPED_QUERY = """
+SELECT ?surveyGroup ?regionName (SUM(?demand) AS ?expectedFutureDemand) WHERE {
+  ?entry a survey:DemandForRegion ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:inRegion ?region ;
+         survey:totalDemandPercentageChange ?demand .
+  VALUES (?origin ?surveyGroup) {
+    (survey:OEM_Survey_Instance "OEM")
+    (survey:Tier1_Survey_Instance "Tier1")
+    (survey:Semiconductor_Survey_Instance "Semiconductor")
+  }
+  ?region survey:regionName ?regionName .
+}
+GROUP BY ?surveyGroup ?regionName
+ORDER BY ?surveyGroup DESC(?expectedFutureDemand)
+""".strip()
 FUTURE_SEMICONDUCTOR_DEMAND_BY_TECH_QUARTER_QUERY = """
 SELECT ?techLabel ?quarter
   (SUM(IF(?baseline = "Option1", ?pct, 0)) AS ?Option1)
@@ -3396,6 +3428,8 @@ def _semiconductor_demand_quarter_guided_query(question: str) -> Tuple[str, str,
     q = _normalize_question_key(question)
     if not q:
         return "", "", ""
+    if re.search(r"\b(future|expected|expectation|outlook|upcoming|forecast|forecasted)\b", q):
+        return "", "", ""
     if "semiconductor" in q and "demand" in q and "quarter" in q:
         return (
             "Show semiconductor demand by quarter.",
@@ -3453,6 +3487,282 @@ def _demand_trend_guided_query(question: str) -> Tuple[str, str, str, str]:
         "The question asks about demand direction but does not specify a source. The system uses the available semiconductor demand quarter trend as the closest supported graph-backed view.",
         "semiconductor_quarter_trend",
     )
+
+
+def _future_demand_guided_query(question: str) -> Tuple[str, str, str]:
+    q = _normalize_question_key(question)
+    if not q or "demand" not in q:
+        return "", "", ""
+    future_intent = bool(
+        re.search(r"\b(future|expected|expectation|outlook|upcoming|forecast|forecasted)\b", q)
+    )
+    if not future_intent:
+        return "", "", ""
+    region_intent = bool(re.search(r"\b(region|regions|regional|america|americas|europe|china|japan)\b", q))
+    quarter_intent = bool(re.search(r"\b(quarter|quarters|quarterly|upcoming|development|developing|trend|compare|comparison)\b", q))
+    tech_intent = bool(re.search(r"\b(technology|technologies|tech|node|nodes|category|categories)\b", q))
+    vehicle_type_intent = bool(re.search(r"\b(vehicle type|vehicle types|bev|phev|ice)\b", q))
+    scoped_values = _survey_values_for_question(q)
+    if vehicle_type_intent:
+        return (
+            "Show future demand outlook by vehicle type.",
+            """
+SELECT ?vehicleType (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:FutureDemandAnalysis ;
+         survey:analyzesVehicleType ?vehicle ;
+         survey:percentageChange ?pct .
+  BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)
+}
+GROUP BY ?vehicleType
+ORDER BY DESC(?avgPercentageChange)
+""".strip(),
+            "The system detected a future-demand vehicle-type outlook question and uses average future-demand percentage change by vehicle type.",
+        )
+    if tech_intent and region_intent:
+        return (
+            "Show expected future demand split across regions and technology categories.",
+            _future_demand_region_and_technology_query(scoped_values),
+            "The system detected both regional and technology split intent and uses a combined graph-backed future-demand view.",
+        )
+    if tech_intent and not region_intent:
+        return (
+            "Show future semiconductor demand by technology category and quarter.",
+            FUTURE_SEMICONDUCTOR_DEMAND_BY_TECH_QUARTER_QUERY,
+            "The system detected an expected/future-demand technology split and uses the supported future semiconductor demand by technology category and quarter view.",
+        )
+    if region_intent:
+        return (
+            "Show expected future demand by survey group and region.",
+            _future_demand_by_region_query(scoped_values),
+            "The system detected an expected/future-demand regional split and uses the supported future demand by survey group and region view.",
+        )
+    if quarter_intent or re.search(r"\b(oem|tier\s*-?\s*1|tier1|semi|semis|semiconductor|semiconductors)\b", q):
+        return (
+            "Show expected future demand by survey group and quarter.",
+            _future_demand_by_survey_quarter_query(scoped_values),
+            "The system detected an expected/future-demand development question and uses the supported survey-group by quarter view.",
+        )
+    return (
+        "Show expected future demand by survey group and quarter.",
+        _future_demand_by_survey_quarter_query(scoped_values),
+        "The system detected an expected/future-demand question and uses the supported survey-group by quarter view.",
+    )
+
+
+def _survey_values_for_question(q_norm: str) -> str:
+    rows = []
+    if re.search(r"\boems?\b", q_norm):
+        rows.append('(survey:OEM_Survey_Instance "OEM")')
+    if re.search(r"\btier\s*-?\s*1\b|\btier1\b", q_norm):
+        rows.append('(survey:Tier1_Survey_Instance "Tier1")')
+    if re.search(r"\bsemi\b|\bsemis\b|\bsemiconductor\b|\bsemiconductors\b", q_norm):
+        rows.append('(survey:Semiconductor_Survey_Instance "Semiconductor")')
+    if not rows:
+        rows = [
+            '(survey:OEM_Survey_Instance "OEM")',
+            '(survey:Tier1_Survey_Instance "Tier1")',
+            '(survey:Semiconductor_Survey_Instance "Semiconductor")',
+        ]
+    return "\n    ".join(dict.fromkeys(rows))
+
+
+def _future_demand_by_survey_quarter_query(values_rows: str) -> str:
+    return f"""
+SELECT ?surveyGroup ?quarterLabel (AVG(?pct) AS ?avgPercentageChange) WHERE {{
+  ?entry a survey:FutureDemandAnalysis ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:forTimePeriod ?quarter ;
+         survey:percentageChange ?pct .
+  VALUES (?origin ?surveyGroup) {{
+    {values_rows}
+  }}
+  ?quarter survey:periodLabel ?quarterLabel .
+}}
+GROUP BY ?surveyGroup ?quarterLabel
+ORDER BY ?surveyGroup ?quarterLabel
+""".strip()
+
+
+def _future_demand_by_region_query(values_rows: str) -> str:
+    return f"""
+SELECT ?surveyGroup ?regionName (SUM(?demand) AS ?expectedFutureDemand) WHERE {{
+  ?entry a survey:DemandForRegion ;
+         survey:hasSurveyOrigin ?origin ;
+         survey:inRegion ?region ;
+         survey:totalDemandPercentageChange ?demand .
+  VALUES (?origin ?surveyGroup) {{
+    {values_rows}
+  }}
+  ?region survey:regionName ?regionName .
+}}
+GROUP BY ?surveyGroup ?regionName
+ORDER BY ?surveyGroup DESC(?expectedFutureDemand)
+""".strip()
+
+
+def _future_demand_region_and_technology_query(values_rows: str) -> str:
+    return f"""
+SELECT ?view ?surveyGroup ?dimension ?quarterLabel (SUM(?value) AS ?expectedFutureDemand) WHERE {{
+  VALUES (?origin ?surveyGroup) {{
+    {values_rows}
+  }}
+  {{
+    ?entry a survey:DemandForRegion ;
+           survey:hasSurveyOrigin ?origin ;
+           survey:inRegion ?region ;
+           survey:quarter ?quarter ;
+           survey:totalDemandPercentageChange ?value .
+    ?region survey:regionName ?dimension .
+    ?quarter survey:periodLabel ?quarterLabel .
+    BIND("region" AS ?view)
+  }}
+  UNION
+  {{
+    ?entry a survey:FutureDemandAnalysis ;
+           survey:hasSurveyOrigin ?origin ;
+           survey:analyzesTechnologyCategory ?technology ;
+           survey:forTimePeriod ?quarter ;
+           survey:percentageChange ?value .
+    OPTIONAL {{ ?technology survey:technologyCategoryName ?technologyName . }}
+    BIND(COALESCE(?technologyName, REPLACE(STR(?technology), "^.*/", "")) AS ?dimension)
+    ?quarter survey:periodLabel ?quarterLabel .
+    BIND("technology category" AS ?view)
+  }}
+}}
+GROUP BY ?view ?surveyGroup ?dimension ?quarterLabel
+ORDER BY ?view ?surveyGroup ?quarterLabel ?dimension
+""".strip()
+
+
+def _last_month_current_demand_guided_query(question: str) -> Tuple[str, str, str, str]:
+    q = _normalize_question_key(question)
+    if not q or "demand" not in q:
+        return "", "", "", ""
+    if not re.search(r"\b(last|latest|most recent|recent|previous)\s+month\b", q):
+        return "", "", "", ""
+    if "semiconductor" in q or re.search(r"\bsemis?\b", q):
+        return (
+            "Show semiconductor demand by quarter.",
+            SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY,
+            (
+                "The question asks for a semiconductor last-month value, but the semiconductor regional demand data "
+                "is available at quarter granularity. The system uses the supported quarter-level semiconductor demand view."
+            ),
+            "",
+        )
+    return (
+        "Show current demand for the latest available month.",
+        CURRENT_DEMAND_BY_MONTH_TREND_QUERY,
+        "The question asks for the latest month. The system uses monthly actual demand observations and reports the latest available month.",
+        "latest_month_current",
+    )
+
+
+def _status_or_development_guided_query(question: str) -> Tuple[str, str, str]:
+    q = _normalize_question_key(question)
+    if not q:
+        return "", "", ""
+    dev_intent = bool(
+        re.search(r"\b(development|developing|trend|stable|rising|falling|increase|decrease|outlook|positive|negative|above target|targets?)\b", q)
+    )
+    if not dev_intent:
+        return "", "", ""
+    if "order cancellation" in q or "order cancellations" in q:
+        return (
+            "Summarize order-cancellation response trends by technology category and response type.",
+            """
+SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE {
+  ?entry a survey:OrderCancellation ;
+         survey:forTechnologyCategory ?technology ;
+         survey:hasResponseType ?responseType ;
+         survey:participantCount ?participants .
+  BIND(REPLACE(STR(?technology), "^.*/", "") AS ?technologyCategory)
+}
+GROUP BY ?technologyCategory ?responseType
+ORDER BY ?technologyCategory ?responseType
+""".strip(),
+            "The system detected an order-cancellation trend question and uses response-type counts by technology category.",
+        )
+    if "inventory" in q or "inventories" in q:
+        if "target" in q:
+            return (
+                "Review semiconductor inventory target status.",
+                """
+SELECT ?targetStatus (COUNT(?entry) AS ?entryCount) WHERE {
+  ?entry a survey:InventoryTargetIndicator_Semi ;
+         survey:targetIndicatorStatus ?targetStatus .
+}
+GROUP BY ?targetStatus
+ORDER BY DESC(?entryCount)
+""".strip(),
+                "The system detected an inventory target-status question and uses the available semiconductor inventory target indicator data.",
+            )
+        return (
+            "Review semiconductor inventory development by technology category and trend.",
+            """
+SELECT ?technologyCategory ?trend (COUNT(?entry) AS ?entryCount) WHERE {
+  ?entry a survey:InventoryDevelopment_Semi ;
+         survey:forTechnologyCategory ?technology ;
+         survey:hasInventoryTrend ?trend .
+  BIND(REPLACE(STR(?technology), "^.*/", "") AS ?technologyCategory)
+}
+GROUP BY ?technologyCategory ?trend
+ORDER BY ?technologyCategory ?trend
+""".strip(),
+            "The system detected an inventory development question and uses inventory trend by technology category.",
+        )
+    if "vehicle" in q and "sales" in q:
+        return (
+            "Show vehicle sales development by year.",
+            """
+SELECT ?year (SUM(?units) AS ?unitsSold) WHERE {
+  ?obs a survey:VehicleSalesObservation ;
+       survey:forTimePeriod ?month ;
+       survey:unitsSold ?units .
+  OPTIONAL { ?month survey:periodLabel ?periodLabel . }
+  BIND(COALESCE(?periodLabel, REPLACE(STR(?month), "^.*/", "")) AS ?label)
+  BIND(REPLACE(STR(?label), "^.*(20[0-9]{2}).*$", "$1") AS ?year)
+}
+GROUP BY ?year
+ORDER BY ?year
+""".strip(),
+            "The system detected a vehicle-sales development question and uses yearly vehicle-sales totals.",
+        )
+    if "autonomous" in q or "sae" in q:
+        return (
+            "Show autonomous driving development for OEMs by SAE level and year.",
+            """
+SELECT ?saeLevel ?year (AVG(?pct) AS ?avgPercentage) WHERE {
+  ?root a survey:AutonomousDrivingDevelopment_OEM ;
+        survey:hasSurveyOrigin survey:OEM_Survey ;
+        survey:hasDetail ?entry .
+  ?entry a survey:AutonomousDrivingDevelopment ;
+         survey:hasSAELevel ?sae ;
+         survey:hasYear ?year ;
+         survey:hasPercentage ?pct .
+  BIND(REPLACE(STR(?sae), "^.*/", "") AS ?saeLevel)
+}
+GROUP BY ?saeLevel ?year
+ORDER BY ?saeLevel ?year
+""".strip(),
+            "The system detected an autonomous-driving development question and uses OEM SAE-level percentages by year.",
+        )
+    if "vehicle type" in q and ("outlook" in q or "positive" in q or "demand development" in q):
+        return (
+            "Show future demand outlook by vehicle type.",
+            """
+SELECT ?vehicleType (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:FutureDemandAnalysis ;
+         survey:analyzesVehicleType ?vehicle ;
+         survey:percentageChange ?pct .
+  BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)
+}
+GROUP BY ?vehicleType
+ORDER BY DESC(?avgPercentageChange)
+""".strip(),
+            "The system detected a vehicle-type demand outlook question and uses average future-demand percentage change by vehicle type.",
+        )
+    return "", "", ""
 
 
 def _numeric_row_value(row: Dict[str, str], keys: List[str]) -> Optional[float]:
@@ -3536,6 +3846,20 @@ def _synthesize_demand_trend_answer(question: str, rows: List[Dict[str, str]], r
         f"It changes from {first_value:g} in {first_label} to {last_value:g} in {last_label} "
         f"(delta {delta:+g}). Evidence points: {evidence}."
     )
+
+
+def _synthesize_latest_month_answer(rows: List[Dict[str, str]]) -> str:
+    points = []
+    for row in rows:
+        label = str(row.get("monthLabel") or row.get("periodLabel") or row.get("month") or "").strip()
+        value = _numeric_row_value(row, ["currentDemand", "totalDemand", "unitsSold", "units"])
+        if label and value is not None:
+            points.append((label, value))
+    points.sort(key=lambda item: _period_sort_key(item[0]))
+    if not points:
+        return "The graph did not return a comparable monthly current-demand value."
+    label, value = points[-1]
+    return f"The latest available monthly current-demand value is **{value:g}** for **{label}**."
 
 
 def _render_out_of_scope_message(reason: str) -> None:
@@ -5806,6 +6130,7 @@ def _metadata_help_result(
         re.search(r"\b(what can i ask|what can we ask|available topics|topics covered|which topics|what topics|coverage|covered|capabilities|supported questions|question types|what questions)\b", q_norm)
     )
     asks_examples = bool(re.search(r"\b(examples?|sample questions?)\b", q_norm))
+    asks_dr_metadata = bool(re.search(r"\b(digital reference|dr ontology|ontology)\b", q_norm))
 
     source_answer = _source_scope_answer(
         question,
@@ -5813,7 +6138,22 @@ def _metadata_help_result(
         _safe_graph_data_stats(graph_path),
         dr_ontology_path,
     )
-    if source_answer:
+    if asks_dr_metadata and asks_count and (asks_classes or asks_predicates or asks_properties or asks_topics):
+        try:
+            dr_counts = dr_ontology_counts(dr_ontology_path)
+        except Exception:
+            dr_counts = {}
+        parts = []
+        if asks_classes or asks_topics:
+            parts.append(f"- Digital Reference classes: {int(dr_counts.get('class') or 0):,}")
+        if asks_predicates:
+            parts.append(f"- Digital Reference object properties: {int(dr_counts.get('object_property') or 0):,}")
+        if asks_properties:
+            parts.append(f"- Digital Reference datatype properties: {int(dr_counts.get('datatype_property') or 0):,}")
+        if not parts:
+            parts.append(f"- Digital Reference searchable terms: {int(dr_counts.get('searchable_entries') or dr_counts.get('total') or 0):,}")
+        answer = "Here is the current Digital Reference ontology scale:\n\n" + "\n".join(parts)
+    elif source_answer:
         answer = source_answer
     elif asks_topics or asks_examples:
         topic_lines = "\n".join(_supported_topics_lines(schema_dict, compact=True))
@@ -7413,6 +7753,14 @@ if asked or flexible_asked:
             _render_out_of_scope_message(out_of_scope_reason)
             st.stop()
 
+        if not guided_query and dr_definition is None and advisory_plan is None:
+            month_question, month_query, month_note, month_route_id = _last_month_current_demand_guided_query(question)
+            if month_query:
+                st.info(month_note)
+                question = month_question
+                guided_query = month_query
+                trend_route_id = month_route_id
+
         unsupported_time, unsupported_time_reason = _is_unsupported_relative_time_question(question)
         if (
             unsupported_time
@@ -7488,12 +7836,26 @@ if asked or flexible_asked:
                 guided_query = quarter_query
 
         if not guided_query and dr_definition is None and advisory_plan is None:
+            future_question, future_query, future_note = _future_demand_guided_query(question)
+            if future_query:
+                st.info(future_note)
+                question = future_question
+                guided_query = future_query
+
+        if not guided_query and dr_definition is None and advisory_plan is None:
             trend_question, trend_query, trend_note, trend_id = _demand_trend_guided_query(question)
             if trend_query:
                 st.info(trend_note)
                 question = trend_question
                 guided_query = trend_query
                 trend_route_id = trend_id
+
+        if not guided_query and dr_definition is None and advisory_plan is None:
+            status_question, status_query, status_note = _status_or_development_guided_query(question)
+            if status_query:
+                st.info(status_note)
+                question = status_question
+                guided_query = status_query
 
         if (
             _is_advisory_like_question(question)
@@ -8025,6 +8387,8 @@ if asked or flexible_asked:
                 result_metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
                 if result_metadata.get("advisory_route") and advisory_plan is not None:
                     graph_answer = synthesize_advisory_answer(question, advisory_plan, graph_rows)
+                elif result_metadata.get("trend_route_id") == "latest_month_current":
+                    graph_answer = _synthesize_latest_month_answer(graph_rows)
                 elif result_metadata.get("trend_route"):
                     graph_answer = _synthesize_demand_trend_answer(
                         question,

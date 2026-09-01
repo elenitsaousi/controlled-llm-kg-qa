@@ -57,6 +57,8 @@ Expected behavior: graph-backed answer. Many of these should use deterministic r
 - Is current demand rising or falling?
 - Is the current demand increasing or decreasing?
 - How is current demand developing?
+- What is the current demand for the last month?
+- What is the current demand for semiconductor for the last month?
 - Is semiconductor demand rising or falling?
 - How is semiconductor demand developing in the past three months?
 
@@ -65,6 +67,10 @@ Expected behavior: graph-backed answer. Many of these should use deterministic r
 Expected behavior: graph-backed answer or relevant clarification if the question is too broad.
 
 - Show future demand by region.
+- What is the expected future demand for Tier1 for the upcoming quarters?
+- How does Tier1 and semiconductor expected future demand development compare?
+- What is the expected future demand for OEM per region?
+- What is the expected future demand split across regions and technology nodes?
 - Show the total percentage of future demand for OEM, detailed by quarter and region.
 - Show the overall future demand for Tier1, grouped by region and quarter.
 - Show the total percentage of future demand for Semiconductor, detailed by quarter and region.
@@ -103,6 +109,8 @@ Expected behavior: graph-backed answer.
 
 - Summarize Tier1 inventory participant totals by component.
 - What is the overall Tier1 inventory amount for each component and trend?
+- Is inventory development for semiconductors stable?
+- Are the inventories for Tier1 above targets?
 - Show inventory trends by component.
 - For each semiconductor technology category and inventory trend, how many inventory entries are recorded?
 - Show inventory by technology category.
@@ -124,6 +132,7 @@ Expected behavior: graph-backed answer or graph-grounded advisory answer for mon
 Expected behavior: graph-backed answer.
 
 - What is the total count of order cancellation responses per semiconductor technology category?
+- What is the trend for order cancellations?
 - Can you provide the total count of semiconductor order-cancellation responses grouped by technology category and response type?
 - Summarize increase, decrease, and stable order-cancellation response trends by semiconductor technology category.
 - Group order-cancellation participant counts by technology category and response type.
@@ -134,6 +143,7 @@ Expected behavior: graph-backed answer.
 
 - What is the average autonomous driving development broken down by vehicle type and SAE level?
 - What is the average autonomous driving development for OEMs by vehicle type, SAE level, and year?
+- How is the development of the autonomous driving level SAE for OEMs?
 - What is the average autonomous-driving development for Tier1 suppliers, grouped by vehicle type, SAE level, and year?
 - For each year, what is the average autonomous driving development percentage?
 - Which vehicle type makes up the largest percentage at Level 5 autonomy?
@@ -161,6 +171,8 @@ Expected behavior: deterministic ontology answer from the Digital Reference, no 
 - What is a Supply Chain?
 - What is a Knowledge Graph?
 - What is an Ontology?
+- What is an OEM?
+- What is the definition of expected future demand?
 - What is a lobe?
 - What are single lobe and cross lobe?
 - What does is processed by mean?
@@ -187,6 +199,7 @@ Expected behavior: graph-grounded advisory route or relevant clarification askin
 - What should I look at if I want to understand future demand risk?
 - Which survey group appears most exposed to shortage?
 - Which technology category should be reviewed first based on future demand?
+- Which vehicle type has the most positive outlook with regards to demand development?
 
 ## 14. Ambiguous Questions for Clarification Testing
 
