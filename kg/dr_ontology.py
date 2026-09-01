@@ -112,6 +112,23 @@ GRAPH_QUERY_HINTS = GRAPH_COMPARISON_HINTS | {
     "should",
 }
 
+COVERAGE_INTENT_HINTS = {
+    "composed of",
+    "consist of",
+    "consists of",
+    "contain",
+    "contains",
+    "cover",
+    "covered",
+    "covers",
+    "include",
+    "included",
+    "includes",
+    "made of",
+    "part of",
+    "parts of",
+}
+
 TARGET_STOP_TERMS = {
     "class",
     "classes",
@@ -349,9 +366,16 @@ def _looks_like_graph_query(question: str) -> bool:
     return bool(re.search(r"\bby\s+(region|month|quarter|year|survey|technology|vehicle|component|category)\b", q_norm))
 
 
+def _looks_like_coverage_request(question: str) -> bool:
+    q_norm = re.sub(r"\s+", " ", str(question or "").lower()).strip()
+    if not any(hint in q_norm for hint in COVERAGE_INTENT_HINTS):
+        return False
+    return bool(re.search(r"\b(true demand|digital reference|dr ontology|ontology|kg|knowledge graph|source|sources|graph)\b", q_norm))
+
+
 def _has_definition_intent(question: str) -> bool:
     q_norm = re.sub(r"\s+", " ", str(question or "").lower()).strip()
-    if not q_norm or _looks_like_graph_query(q_norm):
+    if not q_norm or _looks_like_graph_query(q_norm) or _looks_like_coverage_request(q_norm):
         return False
     if (
         any(hint in q_norm for hint in GENERIC_INVENTORY_HINTS)
@@ -669,6 +693,9 @@ def _comparison_answer(found: List[Dict[str, str]]) -> str:
 
 
 def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
+    if _looks_like_coverage_request(question):
+        return None
+
     comparison_targets = _comparison_targets(question)
     if comparison_targets:
         path = _dr_path()
