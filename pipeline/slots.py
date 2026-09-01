@@ -35,6 +35,31 @@ _REGION_ALIASES = {
 }
 
 
+# World regions that are unambiguously not one of the graph's five known
+# regions (see REGION_LITERALS above). Deliberately excludes anything that
+# could plausibly be a synonym for a covered region (e.g. "South America" is
+# left out because it may fall under "Americas" in this dataset) so this only
+# fires when we can honestly say the graph has no data for it.
+_UNSUPPORTED_REGION_ALIASES = {
+    "oceania": ("oceania", "australia"),
+    "africa": ("africa",),
+    "middle_east": ("middle east",),
+    "antarctica": ("antarctica",),
+}
+
+
+def extract_unsupported_region_mentions(question: str) -> Set[str]:
+    """Return canonical labels of world regions mentioned in the question that
+    the graph does not model at all (distinct from the five it does cover).
+    """
+    q = (question or "").lower()
+    found: Set[str] = set()
+    for canonical, aliases in _UNSUPPORTED_REGION_ALIASES.items():
+        if any(alias in q for alias in aliases):
+            found.add(canonical)
+    return found
+
+
 def extract_region_scope(question: str) -> Set[str]:
     """Return the set of canonical region keys (see REGION_LITERALS) mentioned
     in the question, e.g. {"europe", "americas"} for "Europe and America combined".

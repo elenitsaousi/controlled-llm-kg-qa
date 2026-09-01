@@ -82,6 +82,41 @@ check("last_n_quarters_parametric_5", "LIMIT 5" in query_five)
 check("last_n_quarters_uses_pct_change", "survey:totalDemandPercentageChange" in query_two)
 check("last_n_quarters_uses_semiconductor_survey", "survey:Semiconductor_Survey" in query_two)
 
+# Coverage-shortfall honesty note: requested window exceeds available periods.
+shortfall = app._coverage_shortfall_note(
+    "What are vehicle sales for the past 3 years?",
+    [{"year": "2023", "unitsSold": "1000"}, {"year": "2024", "unitsSold": "1200"}],
+)
+check("shortfall_note_fires_when_n_exceeds_available", "only 2 available years" in shortfall)
+check("shortfall_note_lists_actual_years", "2023 and 2024" in shortfall)
+check("shortfall_note_states_requested_window", "requested 3-year window" in shortfall)
+
+no_shortfall = app._coverage_shortfall_note(
+    "What are vehicle sales for the past 2 years?",
+    [{"year": "2023", "unitsSold": "1000"}, {"year": "2024", "unitsSold": "1200"}],
+)
+check("shortfall_note_silent_when_n_satisfied", no_shortfall == "")
+
+no_window = app._coverage_shortfall_note("Show current demand by region.", [])
+check("shortfall_note_silent_without_time_window", no_window == "")
+
+# Unsupported-region honesty note: question mentions a world region the
+# graph does not model at all.
+region_note = app._unsupported_region_note("What is current demand in Oceania?")
+check("region_note_fires_for_oceania", "does not include data for Oceania" in region_note)
+check("region_note_lists_available_regions", "Americas, Europe, Japan, China, and Asia Pacific" in region_note)
+
+check(
+    "region_note_silent_for_known_region",
+    app._unsupported_region_note("Show current demand by region.") == "",
+)
+check(
+    "region_note_silent_for_europe_and_america",
+    app._unsupported_region_note(
+        "What is the combined current demand for Europe and America?"
+    ) == "",
+)
+
 print(json.dumps(results))
 """
 

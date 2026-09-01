@@ -1,4 +1,8 @@
-from pipeline.slots import extract_region_scope, extract_time_window
+from pipeline.slots import (
+    extract_region_scope,
+    extract_time_window,
+    extract_unsupported_region_mentions,
+)
 
 
 def test_extract_time_window_last_n_months():
@@ -72,3 +76,19 @@ def test_extract_region_scope_oem_vs_tier1_is_not_a_region():
     # OEM vs Tier1 is a survey-origin scope, not a region; extract_region_scope
     # should not misclassify it.
     assert extract_region_scope("Compare OEM vs Tier1 current demand.") == set()
+
+
+def test_extract_unsupported_region_mentions_detects_uncovered_world_regions():
+    assert extract_unsupported_region_mentions(
+        "What is current demand in Oceania?"
+    ) == {"oceania"}
+    assert extract_unsupported_region_mentions(
+        "Show demand for Africa and the Middle East."
+    ) == {"africa", "middle_east"}
+
+
+def test_extract_unsupported_region_mentions_absent_for_known_regions():
+    assert extract_unsupported_region_mentions("Show current demand by region.") == set()
+    assert extract_unsupported_region_mentions(
+        "What is the combined current demand for Europe and America?"
+    ) == set()

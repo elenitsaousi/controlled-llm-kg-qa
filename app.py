@@ -45,6 +45,7 @@ from llm.answer_synthesis import synthesize_answer
 from llm.candidate_generation import generate_candidate_prompt
 from llm.client import InfineonGPTClient, LLMAuthError, LLMClientError
 from pipeline.qa import answer_question
+from pipeline.slots import extract_time_window, extract_unsupported_region_mentions
 from ranking.feature_extraction import extract_query_plan
 from ranking.query_contract import compare_contracts, extract_query_contract, extract_question_contract
 from visualization.interactive_graph import (
@@ -4252,6 +4253,75 @@ def _synthesize_latest_month_answer(rows: List[Dict[str, str]]) -> str:
     return f"The latest available monthly current-demand value is **{value:g}** for **{label}**."
 
 
+_TIME_WINDOW_ROW_KEYS = {
+    "relative_months": ("monthLabel", "month"),
+    "relative_quarters": ("quarterLabel", "quarter"),
+    "relative_years": ("year", "year"),
+}
+
+
+def _distinct_period_values(rows: List[Dict[str, str]], period_key: str) -> List[str]:
+    seen: Dict[str, None] = {}
+    for row in rows or []:
+        value = str(row.get(period_key) or "").strip()
+        if value:
+            seen.setdefault(value, None)
+    return list(seen.keys())
+
+
+def _join_with_and(values: List[str]) -> str:
+    if not values:
+        return ""
+    if len(values) == 1:
+        return values[0]
+    if len(values) == 2:
+        return f"{values[0]} and {values[1]}"
+    return ", ".join(values[:-1]) + f", and {values[-1]}"
+
+
+def _coverage_shortfall_note(original_question: str, graph_rows: List[Dict[str, str]]) -> str:
+    """If the question asked for an explicit N-period window but the graph has
+    fewer available periods than requested, say so plainly instead of silently
+    answering with less data than asked for.
+    """
+    time_window = extract_time_window(original_question)
+    if not time_window.is_present or time_window.n is None:
+        return ""
+    period_key, unit = _TIME_WINDOW_ROW_KEYS.get(time_window.kind, (None, None))
+    if not period_key:
+        return ""
+    values = _distinct_period_values(graph_rows, period_key)
+    actual = len(values)
+    if actual == 0 or actual >= time_window.n:
+        return ""
+    values_text = _join_with_and(sorted(values))
+    plural = "s" if actual != 1 else ""
+    return (
+        f"The graph contains {unit} data for only {actual} available {unit}{plural}, "
+        f"{values_text}. The requested {time_window.n}-{unit} window is answered using "
+        f"the full available {actual}-{unit} history."
+    )
+
+
+_AVAILABLE_REGION_NAMES = ["Americas", "Europe", "Japan", "China", "Asia Pacific"]
+
+
+def _unsupported_region_note(original_question: str) -> str:
+    """If the question mentions a world region the graph does not model at
+    all (e.g. Oceania, Africa), say so plainly and list what is available,
+    instead of silently returning no data or an unrelated answer.
+    """
+    unsupported = extract_unsupported_region_mentions(original_question)
+    if not unsupported:
+        return ""
+    labels = _join_with_and(sorted(name.replace("_", " ").title() for name in unsupported))
+    available = _join_with_and(_AVAILABLE_REGION_NAMES)
+    return (
+        f"The graph does not include data for {labels}. "
+        f"The regions available in the graph are: {available}."
+    )
+
+
 def _render_out_of_scope_message(reason: str) -> None:
     st.warning(
         "I cannot answer this question because it is outside the available True Demand knowledge graph "
@@ -8039,6 +8109,7 @@ if "confidence_clarification_choice_id" not in st.session_state:
 clarification_rendered = False
 
 if asked or flexible_asked:
+    original_user_question = question
     guided_query = _active_guided_query(question)
     dr_definition = route_dr_ontology_definition(question)
     if (
@@ -8843,6 +8914,12 @@ if asked or flexible_asked:
                         },
                         None if graph_rows else result.get("errors") or None,
                     )
+                shortfall_note = _coverage_shortfall_note(original_user_question, graph_rows)
+                if shortfall_note:
+                    graph_answer = f"{graph_answer}\n\n{shortfall_note}"
+                region_note = _unsupported_region_note(original_user_question)
+                if region_note:
+                    graph_answer = f"{graph_answer}\n\n{region_note}"
                 answer_synthesis_elapsed = time.perf_counter() - answer_synthesis_started
                 if result_metadata.get("advisory_route"):
                     result["answerability"] = _clarified_answerability(graph_rows)
