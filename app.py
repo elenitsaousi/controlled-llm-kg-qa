@@ -5749,6 +5749,131 @@ def _metadata_help_result(
     }
 
 
+def _flexible_llm_assist_prompt(
+    question: str,
+    schema_dict: Dict[str, Any],
+    graph_path: str,
+    dr_ontology_path: str,
+) -> str:
+    graph_stats = _safe_graph_data_stats(graph_path)
+    source_answer = _source_scope_answer(question, schema_dict, graph_stats, dr_ontology_path)
+    capability_lines = _supported_topics_lines(schema_dict, compact=True)
+    capability_report = CAPABILITY_REGISTRY.resolve(question)
+    detected_capability = capability_report.primary_capability or ""
+    detected_dimensions = [item.name for item in capability_report.detected_dimensions]
+    dr_terms = search_dr_ontology_terms(question, limit=8, path_text=dr_ontology_path)
+    dr_lines = []
+    for term in dr_terms:
+        label = str(term.get("label") or "")
+        kind = str(term.get("kind") or "term")
+        definition = str(term.get("definition") or "").strip()
+        parents = ", ".join(str(parent) for parent in term.get("parents") or [] if str(parent).strip())
+        domains = ", ".join(str(domain) for domain in term.get("domains") or [] if str(domain).strip())
+        ranges = ", ".join(str(range_) for range_ in term.get("ranges") or [] if str(range_).strip())
+        details = [f"{label} ({kind})"]
+        if definition:
+            details.append(f"definition: {definition[:450]}")
+        if parents:
+            details.append(f"parents: {parents[:220]}")
+        if domains or ranges:
+            details.append(f"domain/range: {domains[:120]} -> {ranges[:120]}")
+        dr_lines.append("- " + "; ".join(details))
+
+    stats_lines = []
+    if graph_stats:
+        for key in ("triples", "resource_nodes", "subject_entities"):
+            if graph_stats.get(key) is not None:
+                stats_lines.append(f"- {key}: {graph_stats[key]}")
+
+    return f"""
+You are a flexible but controlled assistant for the SC4EU True Demand KGQA prototype.
+
+User question:
+{question}
+
+Available source/scope context:
+{source_answer or "No specific source/scope route matched."}
+
+Supported True Demand graph capability areas:
+{chr(10).join(capability_lines) if capability_lines else "No capability summary available."}
+
+Detected graph capability signal:
+- primary capability: {detected_capability or "none"}
+- detected dimensions: {", ".join(detected_dimensions) if detected_dimensions else "none"}
+
+Graph metadata:
+{chr(10).join(stats_lines) if stats_lines else "Graph metadata unavailable."}
+
+Relevant Digital Reference / glossary terms:
+{chr(10).join(dr_lines) if dr_lines else "No close ontology terms were retrieved."}
+
+Instructions:
+- Answer the user's intent, not only exact training examples.
+- Use only the source/scope, capability, graph metadata, and ontology/glossary context above.
+- If the question asks for definitions, meanings, comparisons, source coverage, or system capabilities, answer directly from the retrieved context.
+- If the question asks for numerical graph results, do not invent numbers unless graph metadata above explicitly contains them. Instead, explain which supported graph query should be executed.
+- If the question is ambiguous, give at most 3 relevant interpretations and make them specific to the user's wording.
+- If the available context is insufficient, say so clearly and suggest a more precise supported question.
+- Keep the answer concise.
+""".strip()
+
+
+def _flexible_llm_assist_result(
+    question: str,
+    schema_dict: Dict[str, Any],
+    graph_path: str,
+    dr_ontology_path: str,
+    client: InfineonGPTClient,
+) -> Dict[str, Any]:
+    prompt = _flexible_llm_assist_prompt(question, schema_dict, graph_path, dr_ontology_path)
+    answer = client.generate_text(prompt).strip()
+    if not answer:
+        answer = "I could not produce a grounded flexible answer from the retrieved context."
+    return {
+        "answer": answer,
+        "selected_query": "",
+        "candidates": [],
+        "schema_ranked": [],
+        "learning_ranked": [],
+        "metadata": {
+            "flexible_llm_assist_route": True,
+            "llm_skipped": False,
+        },
+        "errors": [],
+        "prompt": prompt,
+        "policy": "flexible_llm_assist",
+        "entropy": 0.0,
+        "selection_reason": "Experimental flexible LLM assist answered from retrieved source, capability, and ontology context.",
+        "used_ml": False,
+        "effective_question": question,
+        "selection_explanation": {
+            "selected_policy": "flexible_llm_assist",
+            "selection_reason": "Answered by an optional RAG-style LLM assist path using bounded retrieved context.",
+            "selected_query_valid": True,
+            "selected_query_errors": [],
+            "selected_execution_has_rows": None,
+        },
+        "answerability": {
+            "status": "flexible_assist_answer",
+            "can_answer": True,
+            "reason": "The answer was generated from bounded retrieved context and should be treated as assistive, not as graph execution.",
+        },
+        "confidence_route": {
+            "enabled": True,
+            "route": "flexible_assist",
+            "score1": 0.72,
+            "score2": 0.0,
+            "margin": 0.72,
+            "selected_query": "",
+            "reason": "optional flexible LLM assist route; no SPARQL execution performed",
+            "safety_flags": ["assistive_not_graph_executed"],
+            "blocking_safety_flags": [],
+        },
+        "clarification": None,
+        "request_clarification": None,
+    }
+
+
 def _report_html(markdown_report: str) -> str:
     # Small self-contained HTML document so the user can download and print it
     # without requiring a server-side PDF dependency.
@@ -6991,7 +7116,11 @@ st.markdown(
 )
 
 question = _render_kg_autocomplete_input(schema_path, graph_path, _active_fuseki_query_url())
-asked = st.button("Ask", type="primary")
+ask_col, flexible_col, _ask_spacer = st.columns([1, 1.35, 6])
+with ask_col:
+    asked = st.button("Ask", type="primary", use_container_width=True)
+with flexible_col:
+    flexible_asked = st.button("Flexible Ask", use_container_width=True)
 
 _render_question_guidance(graph_path, _active_fuseki_query_url())
 
@@ -7012,7 +7141,7 @@ if "confidence_clarification_choice_id" not in st.session_state:
 
 clarification_rendered = False
 
-if asked:
+if asked or flexible_asked:
     guided_query = _active_guided_query(question)
     dr_definition = route_dr_ontology_definition(question)
     advisory_plan = resolve_advisory_plan(question)
@@ -7225,6 +7354,102 @@ if asked:
                     fuseki_query_url=_active_fuseki_query_url(),
                 )
             st.stop()
+
+        if flexible_asked and not guided_query and dr_definition is None and advisory_plan is None:
+            try:
+                schema_dict = _load_schema_dict_cached(str(schema_path or DEFAULT_SCHEMA_PATH))
+            except Exception as exc:
+                st.error(f"Schema load failed: {exc}")
+                st.stop()
+            if not api_url.strip():
+                st.error("Missing API URL.")
+                st.stop()
+            try:
+                os.environ["INFINEON_REQUEST_TIMEOUT_SEC"] = os.environ.get(
+                    "KGQA_FLEXIBLE_ASSIST_TIMEOUT_SEC",
+                    str(int(DEFAULT_INTERACTIVE_LLM_TIMEOUT_SEC)),
+                )
+                os.environ["INFINEON_MAX_RETRIES"] = os.environ.get("KGQA_INTERACTIVE_LLM_MAX_RETRIES", "0")
+                os.environ["INFINEON_RETRY_BACKOFF_SEC"] = os.environ.get("KGQA_INTERACTIVE_LLM_RETRY_BACKOFF_SEC", "0.25")
+                os.environ["LLM_BACKEND"] = llm_backend.strip() or "infineon"
+                if llm_backend in {"litellm", "lite_llm"}:
+                    os.environ["LITELLM_BASE_URL"] = api_url.strip()
+                    os.environ["LITELLM_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
+                    os.environ["LITELLM_MODEL"] = model_name.strip() or default_model
+                    if api_key.strip():
+                        os.environ["LITELLM_API_KEY"] = api_key.strip()
+                    os.environ.setdefault("BASE_URL", api_url.strip())
+                    os.environ.setdefault("LITE_LLM_TOKEN", api_key.strip())
+                    os.environ["INFINEON_AUTO_REFRESH_TOKEN"] = "0"
+                os.environ["INFINEON_CHAT_ENDPOINT"] = api_endpoint.strip() or "/chat/completions"
+                client = InfineonGPTClient(
+                    model=model_name.strip() or None,
+                    base_url=api_url.strip() or None,
+                    api_key=api_key.strip() or None,
+                    temperature=min(float(temperature), 0.2),
+                    max_tokens=500,
+                )
+                request_id = uuid.uuid4().hex
+                request_started = time.perf_counter()
+                result = _run_with_timeout(
+                    lambda: _flexible_llm_assist_result(
+                        question,
+                        schema_dict,
+                        graph_path,
+                        dr_ontology_path,
+                        client,
+                    ),
+                    min(
+                        _interactive_remaining_sec(request_started, reserve_s=1.0),
+                        max(1.0, float(os.environ["INFINEON_REQUEST_TIMEOUT_SEC"]) + 1.0),
+                    ),
+                    label="flexible LLM assist",
+                )
+                request_elapsed = time.perf_counter() - request_started
+                st.session_state["last_qa_result"] = result
+                st.session_state["last_graph_rows"] = []
+                st.session_state["last_selected_query"] = ""
+                st.session_state["last_graph_answer"] = str(result.get("answer") or "")
+                st.session_state["last_question"] = question
+                st.session_state["last_request_id"] = request_id
+                st.session_state["last_latency_s"] = request_elapsed
+                st.session_state["last_latency_breakdown"] = {"flexible_assist": request_elapsed}
+                try:
+                    _write_user_audit_record(
+                        _user_audit_payload(
+                            request_id=request_id,
+                            question=question,
+                            result=result,
+                            selected_query="",
+                            graph_rows=[],
+                            graph_exec_error="",
+                            graph_answer=str(result.get("answer") or ""),
+                            latency_s=request_elapsed,
+                        )
+                    )
+                except Exception:
+                    pass
+                st.info("Flexible assist answer. No SPARQL query was executed.")
+                _render_answer_block(
+                    answer_text=str(result.get("answer") or ""),
+                    selected_query="",
+                    graph_rows=[],
+                    graph_exec_error="",
+                    execute_selected=False,
+                    answerability=result.get("answerability"),
+                )
+                _render_compact_explainability(result)
+                st.stop()
+            except (LLMAuthError, LLMClientError, TimeoutError, socket.timeout, urllib.error.URLError) as exc:
+                st.warning(
+                    "Flexible assist could not answer within the interactive budget. "
+                    "Use the standard Ask button for graph-backed execution or ask a more specific question."
+                )
+                st.caption(str(exc))
+                st.stop()
+            except Exception as exc:
+                st.error(f"Flexible assist failed: {exc}")
+                st.stop()
 
         try:
             schema = _load_schema_from_path(schema_path)
