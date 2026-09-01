@@ -463,7 +463,7 @@ def _format_order_cancellation(rows: List[Dict[str, object]]) -> str:
 
 def _format_inventory_status(rows: List[Dict[str, object]]) -> str:
     if _has_any_key(rows, ["coverageLimitation"]):
-        return _clean_value(_row_get(rows[0], "coverageLimitation"))
+        return str(_row_get(rows[0], "coverageLimitation") or "").strip()
     if _has_any_key(rows, ["targetStatus"]):
         counts: Dict[str, float] = {}
         for row in rows:
@@ -631,8 +631,11 @@ def _format_yearly_vehicle_sales(rows: List[Dict[str, object]]) -> str:
         value = _to_float(_row_get(row, "unitsSold", "yearlySales"))
         if year and value is not None:
             scored.append((year, value))
-    scored.sort(key=lambda item: item[0])
+    scored.sort(key=lambda item: _period_sort_key(item[0]))
     if len(scored) < 2:
+        if scored:
+            year, value = scored[0]
+            return f"The latest available yearly vehicle-sales value is {_format_number(value)} for {year}."
         return _format_grouped_breakdown_answer(rows, label="Vehicle-sales development")
     first_year, first_value = scored[0]
     last_year, last_value = scored[-1]

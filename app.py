@@ -3432,14 +3432,20 @@ def _region_values_for_question(q_norm: str) -> str:
         rows.append("survey:China")
     if re.search(r"\bjapan\b", q_norm):
         rows.append("survey:RegionJapan")
-    if re.search(r"\b(all other|other regions?|asia pacific|apac)\b", q_norm):
-        rows.append("survey:AllOther")
+    if re.search(r"\b(asia|asian|asia pacific|apac|china)\b", q_norm):
+        rows.append("<http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/RegionAsiaPacific/China>")
+    if re.search(r"\b(asia|asian|asia pacific|apac|japan)\b", q_norm):
+        rows.append("survey:RegionJapan")
+    if re.search(r"\b(all other|other regions?|asia|asian|asia pacific|apac)\b", q_norm):
+        rows.append("<http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/RegionAsiaPacific/AllOther>")
     return "\n    ".join(dict.fromkeys(rows))
 
 
 def _current_demand_guided_query(question: str) -> Tuple[str, str, str, str]:
     q = _normalize_question_key(question)
-    if not q or "current demand" not in q:
+    if not q or "demand" not in q:
+        return "", "", "", ""
+    if re.search(r"\b(future|expected|expectation|outlook|upcoming|forecast|forecasted)\b", q):
         return "", "", "", ""
     if re.search(r"\b(technology|technologies|tech|node|nodes|category|categories)\b", q):
         return (
@@ -3984,18 +3990,32 @@ ORDER BY ?technologyCategory ?trend
             "The system detected an inventory development question and uses inventory trend by technology category.",
         )
     if "vehicle" in q and "sales" in q:
+        n_years = _number_from_question(
+            q,
+            default=1 if re.search(r"\b(past|last|previous|recent)\s+year\b", q) else 2,
+            maximum=12,
+        )
         return (
-            "Show vehicle sales development by year.",
-            """
-SELECT ?year (SUM(?units) AS ?unitsSold) WHERE {
+            f"Show vehicle sales development for the latest {n_years} available year(s).",
+            f"""
+SELECT ?year (SUM(?units) AS ?unitsSold) WHERE {{
+  {{
+    SELECT ?year WHERE {{
+      ?entry a survey:YearlySalesData ;
+             survey:forYear ?year .
+    }}
+    GROUP BY ?year
+    ORDER BY DESC(?year)
+    LIMIT {n_years}
+  }}
   ?entry a survey:YearlySalesData ;
          survey:forYear ?year ;
          survey:yearlySales ?units .
-}
+}}
 GROUP BY ?year
 ORDER BY ?year
 """.strip(),
-            "The system detected a vehicle-sales development question and uses yearly vehicle-sales totals.",
+            f"The system detected a vehicle-sales development question and uses the latest {n_years} available yearly vehicle-sales total(s).",
         )
     if "autonomous" in q or "sae" in q:
         return (
@@ -8391,7 +8411,11 @@ if asked or flexible_asked:
                     "candidates": [{"query": guided_query, "source": "guided"}],
                     "schema_ranked": [],
                     "learning_ranked": [],
-                    "metadata": {"guided_query": True, "trend_route": bool(trend_route_id), "trend_route_id": trend_route_id},
+                    "metadata": {
+                        "guided_query": True,
+                        "trend_route": trend_route_id in {"current_monthly_trend", "semiconductor_quarter_trend"},
+                        "trend_route_id": trend_route_id,
+                    },
                     "errors": [],
                     "prompt": "",
                     "policy": "guided",
