@@ -5245,6 +5245,308 @@ Use precise wording when you know the intended calculation, such as **average**,
 """
 
 
+def _schema_inventory_summary(schema_dict: Dict[str, Any]) -> Dict[str, int]:
+    return {
+        "classes": len(schema_dict.get("classes") or []),
+        "predicates": len(schema_dict.get("predicates") or []),
+        "properties": len(schema_dict.get("properties") or []),
+        "relationships": len(schema_dict.get("relationships") or []),
+    }
+
+
+def _safe_graph_data_stats(graph_path: str) -> Dict[str, int]:
+    try:
+        stats = _graph_data_stats(graph_path)
+        if stats:
+            return stats
+    except Exception:
+        pass
+    quality_path = PROJECT_ROOT / "results" / "graph_quality_report.json"
+    try:
+        quality = json.loads(quality_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    out: Dict[str, int] = {}
+    if quality.get("triple_count") is not None:
+        out["triples"] = int(quality.get("triple_count") or 0)
+    if quality.get("entity_count") is not None:
+        entity_count = int(quality.get("entity_count") or 0)
+        out["resource_nodes"] = entity_count
+        out["subject_entities"] = entity_count
+    return out
+
+
+def _supported_topics_lines(schema_dict: Dict[str, Any], *, compact: bool = False) -> List[str]:
+    groups = _overview_topic_groups(schema_dict)
+    lines = []
+    for label, items in groups:
+        if not items:
+            continue
+        joined = ", ".join(items[:4] if compact else items)
+        if compact and len(items) > 4:
+            joined += ", ..."
+        lines.append(f"- **{label}:** {joined}")
+    return lines
+
+
+def _capability_examples_for_response() -> List[str]:
+    return [
+        "Show current demand by region.",
+        "Show semiconductor demand by quarter.",
+        "Show future demand by technology category and quarter.",
+        "Show vehicle sales by month.",
+        "Review shortage exposure by survey group.",
+        "What is a Technology Node?",
+    ]
+
+
+def _source_scope_answer(
+    question: str,
+    schema_dict: Dict[str, Any],
+    graph_stats: Dict[str, int],
+    dr_ontology_path: str,
+) -> Optional[str]:
+    q_norm = _normalize_question_key(question)
+    source_intent = bool(
+        re.search(r"\b(sources?|data sources?|scope|summar(y|ize)|overview|brief|loaded|contains?|coverage)\b", q_norm)
+    )
+    if not source_intent:
+        return None
+
+    mentions_true_demand = bool(re.search(r"\b(true demand|demand graph|kg|knowledge graph|graph data)\b", q_norm))
+    mentions_dr = bool(re.search(r"\b(digital reference|dr ontology|ontology|definitions?|concepts?)\b", q_norm))
+    asks_broad_sources = bool(re.search(r"\b(sources?|data sources?|my sources?|loaded)\b", q_norm))
+    if not (mentions_true_demand or mentions_dr or asks_broad_sources):
+        return None
+
+    inventory = _schema_inventory_summary(schema_dict)
+    triples = graph_stats.get("triples")
+    entities = graph_stats.get("resource_nodes") or graph_stats.get("subject_entities")
+    dr_counts: Dict[str, int] = {}
+    if mentions_dr or asks_broad_sources:
+        try:
+            dr_counts = dr_ontology_counts(dr_ontology_path)
+        except Exception:
+            dr_counts = {}
+
+    true_demand_bits = [
+        "The **True Demand knowledge graph** is the analytical source.",
+        "It contains survey-grounded semiconductor and automotive supply-chain data: demand, current/future demand, regional demand, shortages, inventory, order cancellation, vehicle sales, autonomous-driving indicators, companies, regions, technologies, vehicles, and time periods.",
+        f"Schema scale: {inventory['classes']} classes, {inventory['predicates']} object-style predicates, {inventory['properties']} datatype/data properties, and {inventory['relationships']} declared relationships.",
+    ]
+    if triples is not None:
+        true_demand_bits.append(f"Data scale: {triples:,} RDF triples.")
+    if entities is not None:
+        true_demand_bits.append(f"Entity scale: about {entities:,} graph entities/resources.")
+
+    dr_bits = [
+        "The **Digital Reference ontology** is the terminology and definition source.",
+        "It is used for concept-level questions, relationship meanings, labels, aliases, class/property descriptions, and ontology browsing.",
+        "It does not replace the True Demand analytical graph; it explains the vocabulary and model concepts used around the graph.",
+    ]
+    if dr_counts:
+        dr_bits.append(
+            "DR searchable scale: "
+            f"{int(dr_counts.get('searchable_entries') or dr_counts.get('total') or 0):,} indexed terms "
+            f"({int(dr_counts.get('class') or 0):,} classes, "
+            f"{int(dr_counts.get('object_property') or 0):,} object properties, "
+            f"{int(dr_counts.get('datatype_property') or 0):,} datatype properties)."
+        )
+
+    if mentions_true_demand and not mentions_dr:
+        return " ".join(true_demand_bits)
+    if mentions_dr and not mentions_true_demand:
+        return " ".join(dr_bits)
+    return "The app currently uses two main sources:\n\n- " + "\n- ".join(
+        [" ".join(true_demand_bits), " ".join(dr_bits)]
+    )
+
+
+def _capability_support_answer(question: str, schema_dict: Dict[str, Any]) -> Optional[str]:
+    q_norm = _normalize_question_key(question)
+    support_intent = bool(
+        re.search(r"\b(can|could|do|does|support|have|available|covered|contain|contains|include|includes)\b", q_norm)
+    )
+    if not support_intent:
+        return None
+    report = CAPABILITY_REGISTRY.resolve(question)
+    capability_name = report.primary_capability
+    dimension_names = [item.name for item in report.detected_dimensions]
+    if not capability_name and not dimension_names:
+        return None
+
+    if capability_name:
+        capability = CAPABILITY_REGISTRY.find_capability(capability_name)
+        if not capability:
+            return None
+        supported_dimensions = [dimension.name for dimension in capability.dimensions]
+        if dimension_names:
+            matched = [name for name in dimension_names if name in supported_dimensions]
+            if matched:
+                return (
+                    f"Yes. The system has graph-supported **{capability_name}** questions "
+                    f"with breakdowns such as **{', '.join(matched)}**. "
+                    "For best results, ask with an explicit metric and breakdown, for example: "
+                    f"\"Show {capability_name} by {matched[0]}.\""
+                )
+            return (
+                f"The system supports **{capability_name}**, but I do not see that exact breakdown "
+                f"as a deterministic capability. Supported breakdowns are: {', '.join(supported_dimensions)}."
+            )
+        return (
+            f"Yes. The system supports **{capability_name}** questions. "
+            f"Useful breakdowns include: {', '.join(supported_dimensions)}."
+        )
+
+    if dimension_names:
+        matches = []
+        for capability in CAPABILITY_REGISTRY.capabilities:
+            if "demand" in q_norm and "demand" not in capability.name:
+                continue
+            capability_dims = {dimension.name for dimension in capability.dimensions}
+            if any(name in capability_dims for name in dimension_names):
+                matches.append(capability.name)
+        if matches:
+            return (
+                f"Yes. The graph has supported questions using **{', '.join(dimension_names)}** "
+                f"for these topics: {', '.join(matches)}."
+            )
+    return None
+
+
+def _metadata_help_result(
+    question: str,
+    schema_path: str,
+    graph_path: str,
+    dr_ontology_path: str = "",
+) -> Optional[Dict[str, Any]]:
+    q_norm = _normalize_question_key(question)
+    if not q_norm:
+        return None
+    schema_dict = _load_schema_dict_cached(str(schema_path or DEFAULT_SCHEMA_PATH))
+    inventory = _schema_inventory_summary(schema_dict)
+
+    asks_count = bool(re.search(r"\b(how many|number of|count|counts|size|scale)\b", q_norm))
+    graph_terms = bool(re.search(r"\b(graph|kg|knowledge graph|rdf|data)\b", q_norm))
+    asks_nodes = bool(re.search(r"\b(nodes?|entities|resources?)\b", q_norm))
+    asks_triples = bool(re.search(r"\b(triples?|rdf triples?)\b", q_norm))
+    asks_classes = bool(re.search(r"\b(classes?|concepts?)\b", q_norm))
+    asks_predicates = bool(re.search(r"\b(predicates?|object properties|relationships?|relations?)\b", q_norm))
+    asks_properties = bool(re.search(r"\b(properties|datatype properties|data properties|attributes?)\b", q_norm))
+    asks_topics = bool(
+        re.search(r"\b(what can i ask|what can we ask|available topics|topics covered|which topics|what topics|coverage|covered|capabilities|supported questions|question types|what questions)\b", q_norm)
+    )
+    asks_examples = bool(re.search(r"\b(examples?|sample questions?)\b", q_norm))
+
+    source_answer = _source_scope_answer(
+        question,
+        schema_dict,
+        _safe_graph_data_stats(graph_path),
+        dr_ontology_path,
+    )
+    if source_answer:
+        answer = source_answer
+    elif asks_topics or asks_examples:
+        topic_lines = "\n".join(_supported_topics_lines(schema_dict, compact=True))
+        example_lines = "\n".join(f"- {item}" for item in _capability_examples_for_response())
+        answer = (
+            "The system is a domain-bounded True Demand KGQA assistant. It supports graph analytics, "
+            "Digital Reference ontology definitions, graph metadata questions, and conservative graph-grounded advisory questions.\n\n"
+            f"Supported topic areas include:\n{topic_lines}\n\n"
+            f"Example questions:\n{example_lines}"
+        )
+    elif asks_count and (asks_nodes or asks_triples or asks_classes or asks_predicates or asks_properties or graph_terms):
+        stats = _safe_graph_data_stats(graph_path) if (asks_nodes or asks_triples or graph_terms) else {}
+        parts = []
+        if asks_triples or graph_terms:
+            value = stats.get("triples")
+            parts.append(f"- RDF triples: {value:,}" if value is not None else "- RDF triples: unavailable from the active backend")
+        if asks_nodes or graph_terms:
+            resource_nodes = stats.get("resource_nodes")
+            subject_entities = stats.get("subject_entities")
+            parts.append(
+                f"- Resource nodes/entities: {resource_nodes:,}"
+                if resource_nodes is not None
+                else "- Resource nodes/entities: unavailable from the active backend"
+            )
+            parts.append(
+                f"- Subject entities: {subject_entities:,}"
+                if subject_entities is not None
+                else "- Subject entities: unavailable from the active backend"
+            )
+        if asks_classes or graph_terms:
+            parts.append(f"- Schema classes: {inventory['classes']}")
+        if asks_predicates or graph_terms:
+            parts.append(f"- Object-style predicates: {inventory['predicates']}")
+            parts.append(f"- Declared relationships: {inventory['relationships']}")
+        if asks_properties or graph_terms:
+            parts.append(f"- Datatype/data properties: {inventory['properties']}")
+        answer = "Here is the current True Demand graph/schema scale:\n\n" + "\n".join(parts)
+    elif asks_classes or asks_predicates or asks_properties:
+        parts = []
+        if asks_classes:
+            classes = sorted(str(x) for x in schema_dict.get("classes") or [])
+            parts.append(f"Classes ({len(classes)}): " + ", ".join(classes[:20]) + (" ..." if len(classes) > 20 else ""))
+        if asks_predicates:
+            predicates = sorted(str(x) for x in schema_dict.get("predicates") or [])
+            parts.append(f"Predicates ({len(predicates)}): " + ", ".join(predicates[:20]) + (" ..." if len(predicates) > 20 else ""))
+        if asks_properties:
+            properties = sorted(str(x) for x in schema_dict.get("properties") or [])
+            parts.append(f"Properties ({len(properties)}): " + ", ".join(properties[:20]) + (" ..." if len(properties) > 20 else ""))
+        answer = "\n\n".join(parts)
+    else:
+        support_answer = _capability_support_answer(question, schema_dict)
+        if support_answer:
+            answer = support_answer
+        else:
+            return None
+
+    return {
+        "answer": answer,
+        "selected_query": "",
+        "candidates": [],
+        "schema_ranked": [],
+        "learning_ranked": [],
+        "metadata": {
+            "metadata_help_route": True,
+            "llm_skipped": True,
+        },
+        "errors": [],
+        "prompt": "",
+        "policy": "metadata_help",
+        "entropy": 0.0,
+        "selection_reason": "Deterministic metadata/capability help route selected before LLM fallback.",
+        "used_ml": False,
+        "effective_question": question,
+        "selection_explanation": {
+            "selected_policy": "metadata_help",
+            "selection_reason": "Answered from schema, graph metadata, or capability registry.",
+            "selected_query_valid": True,
+            "selected_query_errors": [],
+            "selected_execution_has_rows": None,
+        },
+        "answerability": {
+            "status": "metadata_answer_available",
+            "can_answer": True,
+            "reason": "The request was answered deterministically from system metadata or supported capability definitions.",
+        },
+        "confidence_route": {
+            "enabled": True,
+            "route": "auto_answer",
+            "score1": 0.97,
+            "score2": 0.05,
+            "margin": 0.92,
+            "selected_query": "",
+            "reason": "deterministic metadata/capability route; LLM skipped",
+            "options": [],
+            "safety_flags": [],
+            "blocking_safety_flags": [],
+        },
+        "clarification": None,
+        "request_clarification": None,
+    }
+
+
 def _report_html(markdown_report: str) -> str:
     # Small self-contained HTML document so the user can download and print it
     # without requiring a server-side PDF dependency.
@@ -6515,6 +6817,46 @@ if asked:
     if not question.strip():
         st.warning("Please enter a question.")
     else:
+        metadata_help = _metadata_help_result(question, schema_path, graph_path, dr_ontology_path)
+        if metadata_help is not None and not guided_query and dr_definition is None and advisory_plan is None:
+            request_id = uuid.uuid4().hex
+            st.session_state["last_qa_result"] = metadata_help
+            st.session_state["last_graph_rows"] = []
+            st.session_state["last_selected_query"] = ""
+            st.session_state["last_graph_answer"] = str(metadata_help.get("answer") or "")
+            st.session_state["last_question"] = question
+            st.session_state["last_request_id"] = request_id
+            st.session_state["last_latency_s"] = 0.0
+            st.session_state["last_latency_breakdown"] = {}
+            try:
+                _write_user_audit_record(
+                    _user_audit_payload(
+                        request_id=request_id,
+                        question=question,
+                        result=metadata_help,
+                        selected_query="",
+                        graph_rows=[],
+                        graph_exec_error="",
+                        graph_answer=str(metadata_help.get("answer") or ""),
+                        latency_s=0.0,
+                    )
+                )
+            except Exception:
+                pass
+            route = metadata_help.get("confidence_route")
+            if isinstance(route, dict):
+                _render_confidence_route_badge(route)
+            _render_answer_block(
+                answer_text=str(metadata_help.get("answer") or ""),
+                selected_query="",
+                graph_rows=[],
+                graph_exec_error="",
+                execute_selected=False,
+                answerability=metadata_help.get("answerability"),
+            )
+            _render_compact_explainability(metadata_help)
+            st.stop()
+
         out_of_scope, out_of_scope_reason = _is_out_of_scope_question(question)
         if (
             out_of_scope

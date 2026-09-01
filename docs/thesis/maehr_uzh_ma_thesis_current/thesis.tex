@@ -230,7 +230,7 @@ This thesis investigates reliable natural-language question answering over a sem
 
 The proposed system combines deterministic graph-supported routing, ontology definition lookup through the Digital Reference ontology, LLM-based SPARQL candidate generation, ML-based query selection, confidence routing, execution checks, and graph-grounded answer synthesis. The architecture separates candidate generation from candidate selection: the LLM proposes possible SPARQL interpretations, while downstream validation and ranking decide whether a candidate is reliable enough to execute.
 
-The final system is evaluated on a mixed 1000-question benchmark covering True Demand KG analytics, ontology definition questions, and graph-grounded advisory questions. The system achieves 85.9\% audited answer-level accuracy while reducing LLM calls by 45.1\% compared with an all-LLM baseline. Deterministic graph-supported and ontology routes answer 44.8\% of the benchmark with 93.8\% accuracy. For the 552 fallback questions requiring candidate selection, guarded ML reranking improves Top-1 selection accuracy from 57.4\% to 68.3\%, while candidate coverage remains 91.3\%. The results show that LLM candidate generation is often successful, but reliable KGQA requires ambiguity-aware selection, deterministic routing, and graph-grounded validation.
+The final system is evaluated on a repaired and audited mixed 1000-question benchmark covering True Demand KG analytics, ontology definition questions, and graph-grounded advisory questions. The system achieves 89.4\% audited answer-level accuracy. It answers 514 questions through deterministic graph-supported or ontology routes with 97.9\% accuracy, while the remaining 486 questions enter the LLM fallback route and reach 80.5\% answer-level accuracy. Compared with an all-LLM baseline, the system reduces cold-cache LLM calls by 51.4\%; in a warm-cache run, only 35 new LLM calls were required. On the repaired 1000-question KG selection benchmark, guarded ML reranking improves strict Top-1 selection accuracy from 51.7\% to 53.6\%, while candidate coverage remains 81.4\%. A clean 200-question holdout refinement confirms the same trend: pairwise XGBoost learning-to-rank improves strict Top-1 selection from 51.5\% to 54.0\% and execution-plausible selection from 80.5\% to 83.0\%. The results show that LLM candidate generation is often useful, but reliable KGQA requires ambiguity-aware selection, deterministic routing, benchmark validation, and graph-grounded execution.
 
 \emph{Keywords: knowledge graphs, SPARQL, large language models, query selection, ambiguity, semiconductor supply chain, True Demand}
 \end{abstract}
@@ -239,7 +239,7 @@ The final system is evaluated on a mixed 1000-question benchmark covering True D
 \begin{abstract}
 Diese Masterarbeit untersucht zuverlässige natürlichsprachliche Fragebeantwortung über einem Knowledge Graph im Halbleiter-Lieferkettenkontext. Im Mittelpunkt steht der True Demand Knowledge Graph, der umfragebasierte Informationen zu Nachfrage, Engpässen, Beständen, Fahrzeugverkäufen und autonomen Fahrfunktionen als RDF-Daten modelliert. Ziel ist es, diese Daten für Nutzerinnen und Nutzer zugänglich zu machen, die keine SPARQL-Kenntnisse besitzen.
 
-Das entwickelte System kombiniert deterministische graphgestützte Weiterleitung, Definitionen aus der Digital-Reference-Ontologie, LLM-basierte SPARQL-Kandidatengenerierung, ML-basierte Query-Auswahl, Confidence-Routing, Ausführungsprüfungen und graphgestützte Antwortsynthese. In einer gemischten Evaluation mit 1000 Fragen erreicht das System 85.9\% geprüfte Antwortgenauigkeit und reduziert LLM-Aufrufe um 45.1\% gegenüber einer reinen LLM-Baseline. Die Ergebnisse zeigen, dass zuverlässige KGQA-Systeme nicht nur gute Kandidaten generieren müssen, sondern auch robuste Auswahl-, Validierungs- und Routing-Mechanismen benötigen.
+Das entwickelte System kombiniert deterministische graphgestützte Weiterleitung, Definitionen aus der Digital-Reference-Ontologie, LLM-basierte SPARQL-Kandidatengenerierung, ML-basierte Query-Auswahl, Confidence-Routing, Ausführungsprüfungen und graphgestützte Antwortsynthese. In einer reparierten und geprüften gemischten Evaluation mit 1000 Fragen erreicht das System 89.4\% geprüfte Antwortgenauigkeit und reduziert Cold-Cache-LLM-Aufrufe um 51.4\% gegenüber einer reinen LLM-Baseline. Die Ergebnisse zeigen, dass zuverlässige KGQA-Systeme nicht nur gute Kandidaten generieren müssen, sondern auch robuste Auswahl-, Validierungs-, Benchmark- und Routing-Mechanismen benötigen.
 
 \emph{Schlüsselwörter: Knowledge Graphs, SPARQL, Large Language Models, Query Selection, Ambiguität, Halbleiter-Lieferketten}
 \end{abstract}
@@ -254,7 +254,7 @@ I would like to thank my academic and industry supervisors for their guidance an
 % \newpage
 
 
-\pagenumbering{roman}                   % roman page number for toc
+\pagenumbering{arabic}                  % arabic page numbers
 \setcounter{page}{1}
 
 
@@ -274,7 +274,7 @@ Natural-language question answering over knowledge graphs can reduce this barrie
 
 The core motivation of this thesis is therefore not simply to use an LLM for SPARQL generation, but to control and evaluate the entire decision pipeline around the LLM. The system must decide whether a question can be answered deterministically, whether it needs LLM candidate generation, which generated candidate should be selected, whether the selected query returns graph evidence, and whether the user should instead be asked for clarification. In other words, the LLM is useful, but it cannot be the only reliability mechanism.
 
-The final system also integrates the Digital Reference (DR) ontology as a complementary semantic resource. The main analytical data source remains the True Demand knowledge graph. The DR ontology is added for a different purpose: it supports concept-level and model-level questions. This allows users to ask not only analytical questions such as ``How does future demand change by region?'', but also ontology questions such as ``What is a Technology Node?'', ``Define Future Demand'', or ``What does \texttt{is processed by} mean?'' The DR ontology is therefore not a replacement for the True Demand graph. It strengthens the interface by helping users understand the terminology and model concepts behind the data.
+The final system also integrates the Digital Reference (DR) ontology as a complementary semantic resource. The DR is a shared semiconductor ontology that documents agreed concepts, classes, properties, labels, and relationship meanings across the project context. The main analytical data source remains the True Demand knowledge graph. The DR ontology is added for a different purpose: it supports concept-level and model-level questions. This allows users to ask not only analytical questions such as ``How does future demand change by region?'', but also ontology questions such as ``What is a Technology Node?'', ``Define Future Demand'', or ``What does \texttt{is processed by} mean?'' The DR ontology is therefore not a replacement for the True Demand graph. It strengthens the interface by helping users understand the terminology and model concepts behind the data.
 
 This combination reflects the intended use of the system. A non-technical user should be able to explore both data and meaning: data questions should be answered from the True Demand KG, while concept questions should be answered from the DR ontology. The resulting system is a hybrid KGQA application that combines deterministic graph-supported routing, ontology definition lookup, LLM-based candidate generation, ML-based candidate selection, execution checks, and graph-grounded answer synthesis.
 
@@ -329,8 +329,8 @@ This thesis makes the following contributions:
     \item It introduces a clear separation between \emph{candidate generation}, \emph{candidate selection}, and \emph{final answer correctness}, preventing the evaluation from conflating LLM generation quality with system-level user-facing performance.
     \item It integrates the Digital Reference ontology as a deterministic definition layer, allowing ontology-model questions to be answered without relying on free-form LLM generation.
     \item It evaluates the final system on a mixed 1000-question benchmark covering 800 KG analytics questions, 150 ontology definition questions, and 50 advisory questions.
-    \item It shows that the final system reaches 85.9\% audited answer-level accuracy while reducing LLM calls by 45.1\% compared with an all-LLM baseline.
-    \item It demonstrates that guarded ML improves fallback candidate selection from 57.4\% to 68.3\% on the 552 questions that cannot be answered deterministically, while candidate coverage remains 91.3\%.
+    \item It shows that the final system reaches 89.4\% audited answer-level accuracy while reducing cold-cache LLM calls by 51.4\% compared with an all-LLM baseline.
+    \item It demonstrates that guarded ML improves strict repaired KG candidate selection from 51.7\% to 53.6\%, with a clean pairwise learning-to-rank holdout refinement reaching 54.0\% strict Top-1 and 83.0\% execution-plausible selection, while the final hybrid system achieves much higher answer-level accuracy through deterministic routing, ontology lookup, execution checks, and answer-level validation.
 \end{itemize}
 
 \section{Scope and Delimitations}
@@ -358,7 +358,7 @@ Knowledge graphs represent information as entities, relationships, and attribute
 
 The semantic value of a knowledge graph comes from the combination of instance data and schema or ontology information. The instance graph contains concrete records and values, while the ontology defines classes, properties, relationships, and constraints. In this thesis, the True Demand graph provides the instance-level survey and analytical data, while the schema abstraction and the Digital Reference ontology provide conceptual structure and terminology. This distinction is important because analytical questions and definition questions are answered through different mechanisms.
 
-SPARQL is the standard query language for RDF graphs. It allows users to select graph patterns, join resources through predicates, filter values, and compute aggregations such as counts, sums, averages, and grouped breakdowns. A SPARQL query is therefore expressive enough to answer questions such as ``future demand by region'' or ``vehicle sales by month''. However, SPARQL also requires detailed knowledge of the graph vocabulary. A user must know which class stores the relevant observation, which predicate connects it to the required dimension, and which literal property contains the metric. This makes direct SPARQL access difficult for non-technical users.
+SPARQL is the standard query language for RDF graphs. It allows users to select graph patterns, join resources through predicates, filter values, and compute aggregations such as counts, sums, averages, and grouped breakdowns. A SPARQL query is therefore expressive enough to answer questions such as ``future demand by region'' or ``vehicle sales by month''. However, SPARQL also creates an entry-level syntactic barrier before the graph vocabulary problem even begins: users must know how to write triple patterns, variables, prefixes, filters, aggregation clauses, and grouping expressions. Beyond this syntax, SPARQL also requires detailed knowledge of the graph vocabulary. A user must know which class stores the relevant observation, which predicate connects it to the required dimension, and which literal property contains the metric. This makes direct SPARQL access difficult for non-technical users.
 
 The True Demand use case illustrates this difficulty. A business phrase such as ``demand by region'' can correspond to several graph structures: current demand, regional demand, future demand, OEM demand, Tier1 demand, or semiconductor demand. Each interpretation may be schema-valid, but only one may match the user's intended question. For this reason, the thesis treats natural-language access to the graph not merely as query generation, but as a controlled process of routing, validation, selection, and execution.
 
@@ -370,8 +370,8 @@ The True Demand use case illustrates this difficulty. A business phrase such as 
 % Requires: \bibliography{related_work_references}
 % ============================================================
 
-\section{Knowledge Graph Foundations Revisited}
-\label{sec:kg-foundations-revisited}
+\subsection{Reliability implications for KGQA}
+\label{subsec:kgqa-reliability-foundations}
 
 Section~2.1 already introduced the RDF data model and SPARQL as the
 foundation of the True Demand graph, following the W3C specifications for
@@ -505,7 +505,7 @@ retry budget is exhausted. This agentic repair loop achieves strong results
 on the challenging QALD-style benchmark it is evaluated on, but it also
 substantially increases the number of LLM calls per question -- the same
 cost concern that motivates the deterministic-routing-first design of this
-thesis (Section~4.4) and the reported 45.1\% LLM-call reduction
+thesis (Section~4.4) and the reported 51.4\% cold-cache LLM-call reduction
 (Table~6.7). The two approaches are complementary rather than competing:
 SPINACH's execution-in-the-loop repair could, in principle, be applied
 \emph{within} this thesis' LLM fallback route as an additional repair step
@@ -585,10 +585,9 @@ for free-form reasoning, its underlying assumption -- that the LLM's
 output distribution places non-trivial probability mass on the correct
 answer even when the arg-max output is wrong -- is exactly the assumption
 tested empirically in this thesis through the Any-Correct coverage metric
-(Section~5.2), which reached 87.9\% on the full selection benchmark and
-91.3\% on the fallback subset (Table~6.1, Table~6.3), confirming that the
-correct SPARQL candidate is usually present even when it is not selected
-first.
+(Section~5.2), which reached 81.4\% on the repaired 1000-question KG
+selection benchmark (Table~6.1, Table~6.3), confirming that the correct
+SPARQL candidate is often present even when it is not selected first.
 
 \citet{pourreza2024chasesql} operationalize this idea specifically for
 text-to-SQL in CHASE-SQL, combining three complementary generation
@@ -656,11 +655,9 @@ actively harmful, selection signal. \citet{pourreza2024chasesql} and
 schema-based or purely execution-based selection heuristics by observing
 that valid, well-formed candidates frequently answer a subtly different
 question. This thesis provides a direct quantitative confirmation of this
-pattern: schema-only selection achieves only 49.7\% Top-1 accuracy on the
-full selection benchmark, \emph{lower} than raw LLM ordering at 53.9\%
-(Table~6.1), and drops further to 42.2\% on the harder fallback subset,
-compared to 57.4\% for raw LLM ordering and 68.3\% for guarded ML
-(Table~6.3). Across both the text-to-SQL literature reviewed here and this
+pattern: schema-only selection achieves only 48.2\% Top-1 accuracy on the
+repaired full selection benchmark, \emph{lower} than raw LLM ordering at
+51.7\% and guarded ML at 53.6\% (Table~6.1, Table~6.3). Across both the text-to-SQL literature reviewed here and this
 thesis' text-to-SPARQL setting, the implication is the same: schema
 validity should be treated as a necessary filter, not a ranking signal in
 its own right, and effective selection requires additional features
@@ -1241,7 +1238,7 @@ For this reason, the schema is also used after candidate generation. The system 
 
 This schema-derived representation is central to the selection problem studied in this thesis. The LLM often generates multiple valid-looking SPARQL queries. The system must then decide which candidate best matches the user intent. The ontology and schema therefore play two roles: they guide generation and provide features for downstream validation and ranking.
 
-The extracted ontology file, \texttt{data/infineon/true\_demand\_ontology\_extracted.ttl}, is used primarily for visualization and explanation. It is smaller than the full graph because it contains the schema-level view rather than every instance-level survey record. This is why ontology visualizations such as WebVOWL show the conceptual model, not all 1.16 million RDF triples. The full graph remains the execution backend for SPARQL queries.
+The extracted ontology file, \texttt{data/infineon/true\_demand\_ontology\_extracted.ttl}, is used primarily for schema inspection and explanation. It is smaller than the full graph because it contains the schema-level view rather than every instance-level survey record. During development, external ontology viewers were useful for checking the first schema-level representation, but the final user-facing system uses the integrated Streamlit graph overview and answer evidence graph instead. The full graph remains the execution backend for SPARQL queries.
 
 \subsection{Digital Reference ontology integration}
 \label{subsec:digital-reference-ontology}
@@ -1326,14 +1323,14 @@ DR ontology & DR ontology & Ontology definitions and model-level terminology loo
 (\path{DigitalReference.ttl}) \\
 Ranker training data & 601 groups & Historical grouped candidate data for ML ranking
 (\path{final1000_wf_train_ranker_data.json}) \\
-KG selection benchmark & 1000 KG questions & LLM-only generation and selection benchmark
-(\path{true_demand_final_1000_gold.json}) \\
+KG selection benchmark & 1000 KG questions & Repaired LLM-only generation and selection benchmark
+(\path{true_demand_final_1000_gold_repaired.json}) \\
 Calibration split & 200 questions & Calibration split for guarded ML reranking
 (\path{true_demand_final1000_calibration_200.json}) \\
 Holdout split & 800 questions & Held-out selection evaluation after calibration
 (\path{true_demand_final1000_holdout_800.json}) \\
-Full-system benchmark & 1000 mixed questions & Final end-to-end system benchmark
-(\path{true_demand_full_system_1000.json}) \\
+Full-system benchmark & 1000 mixed questions & Final end-to-end system benchmark derived from the repaired KG benchmark, DR ontology questions, and advisory questions
+(\path{true_demand_full_system_1000_repaired.json}) \\
 DR ontology benchmark & 300 questions & Deterministic DR ontology definition benchmark
 (\path{dr_ontology_benchmark_current.json}) \\
 \bottomrule
@@ -1343,6 +1340,8 @@ DR ontology benchmark & 300 questions & Deterministic DR ontology definition ben
 For the final evaluation, two types of results are reported separately. The first is \textbf{selection accuracy}, which evaluates how well the system selects the correct query among generated candidates. This is the scientific evaluation of ambiguity-aware query selection and is measured on candidate sets where LLM-generated alternatives exist. The second is \textbf{system accuracy}, which evaluates the end-to-end system, including deterministic direct templates, DR ontology definition routing, advisory templates, LLM-generated candidates, reranking, confidence routing, and answer synthesis. This distinction prevents direct graph-supported questions from artificially hiding the difficulty of the ambiguous selection problem, while still allowing the final system to be evaluated as an engineering artefact.
 
 The final system benchmark contains 1000 mixed user-facing questions. Of these, 800 are KG analytics questions, 150 are DR ontology definition questions, and 50 are graph-grounded advisory questions. This composition reflects the intended user experience: a non-technical user may ask for numerical analysis, ask what a concept means, or ask for a data-grounded planning signal through the same interface.
+
+The KG analytics part of the benchmark was repaired before the final evaluation. Early validation showed that some gold queries were syntactically valid but semantically wrong, while others returned empty results because they used unsupported paths or overly specific classes. These cases were inspected against the loaded RDF graph in Fuseki, corrected where the graph contained an appropriate answer path, and excluded from being treated as validated ground truth until they returned meaningful results. The final benchmark therefore reports results against the repaired gold dataset rather than against the first generated version of the question set.
 
 \begin{table}[htbp]
 \centering
@@ -1475,7 +1474,7 @@ Figure~\ref{fig:system-architecture-pipeline} gives the high-level view of the f
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.75\textwidth]{system_architecture_pipeline.png}
+    \includegraphics[width=0.95\textwidth]{system_architecture_pipeline.png}
     \caption{Overall architecture of the True Demand KGQA system. The LLM generates candidate interpretations only when deterministic graph-supported routing is insufficient; downstream validation, ranking, confidence routing, and execution determine whether an answer is returned automatically or whether clarification is required.}
     \label{fig:system-architecture-pipeline}
 \end{figure}
@@ -1546,9 +1545,13 @@ The component view is important because it makes clear that the LLM does not dir
 
 The full runtime pipeline is shown in Figure~\ref{fig:runtime-flow}. The process begins when the user submits a natural-language question. The system first performs lightweight routing and capability resolution. If the question matches exactly one supported capability and the required dimensions and aggregation are clear, the system uses a deterministic SPARQL template. If the question is not directly resolvable, the LLM generates a set of candidate SPARQL queries. These candidates are validated, featurized, ranked, and checked by the confidence router. Only after this selection process is a query executed and synthesized into an answer.
 
+For interactive use, the implementation also includes runtime safety controls that are stricter than the offline evaluation scripts. User-facing requests are handled under a short interactive time budget, configured around 10 seconds for deployment testing. Deterministic routes and validated graph templates are attempted first because they avoid LLM latency. If the request requires LLM fallback and the generation or ranking path does not complete within the budget, the interface stops waiting for an automatic answer and returns supported clarification options instead of leaving the user in an indefinite loading state.
+
+The timeout guard is not treated as evidence that the question is unanswerable. It is a user-experience and safety mechanism: the system may still be able to answer the request offline or with a more precise formulation, but the interactive interface prefers a bounded response with explicit alternatives. The same guard is used for broad demand questions, unsupported relative-time windows such as ``the past three months'', and ambiguous requests where the graph contains related but not identical time granularities.
+
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.95\textwidth]{direct_graph_supported_routing.png}
+    \includegraphics[width=\textwidth]{direct_graph_supported_routing.png}
     \caption{Direct graph-supported routing before LLM candidate generation. The system first attempts to resolve a question through the capability inventory. If exactly one supported graph path matches, the query is executed deterministically; otherwise the request is passed to the LLM/ranking path or clarification.}
     \label{fig:runtime-flow}
 \end{figure}
@@ -1667,7 +1670,7 @@ continue_to_llm_pipeline_or_clarification()
 
 The direct-routing layer is intentionally conservative. It should answer directly only when the graph path is known and the user's intent is specific enough. This avoids a common failure mode of natural-language interfaces: making a broad user question look more precise than it actually is.
 
-The final 1000-question audit supports this design choice. In that run, 448 questions were handled through deterministic graph-supported or ontology-supported routing, while 552 entered the LLM fallback route. This corresponds to 44.8\% deterministic coverage and 55.2\% LLM fallback coverage. Table~\ref{tab:architecture-audit-snapshot} summarizes the main architecture-level audit signals. These values are reported in more detail in the evaluation chapter, but they are useful here to justify the architectural separation between deterministic routing and candidate-based ranking.
+The final repaired 1000-question audit supports this design choice. In that run, 514 questions were handled through deterministic graph-supported or ontology-supported routing, while 486 entered the LLM fallback route. This corresponds to 51.4\% deterministic coverage and 48.6\% LLM fallback coverage. Table~\ref{tab:architecture-audit-snapshot} summarizes the main architecture-level audit signals. These values are reported in more detail in the evaluation chapter, but they are useful here to justify the architectural separation between deterministic routing and candidate-based ranking.
 
 \begin{table}[htbp]
 \centering
@@ -1682,15 +1685,15 @@ The final 1000-question audit supports this design choice. In that run, 448 ques
 \textbf{Metric} & \textbf{Observed value in audit file} \\
 \midrule
 Evaluated questions & 1000 \\
-Deterministic / graph-supported route & 448 questions (44.8\%) \\
-LLM fallback route & 552 questions (55.2\%) \\
+Deterministic / graph-supported route & 514 questions (51.4\%) \\
+LLM fallback route & 486 questions (48.6\%) \\
 DR ontology definition route & 150 questions (15.0\%) \\
 Advisory route & 50 questions (5.0\%) \\
-Validated-retrieval selected source & 382 questions \\
-Capability-inventory selected source & 262 questions \\
-Infineon LLM selected source & 167 questions \\
-Observed LLM calls & 549 calls \\
-Estimated LLM-call reduction & 45.1\% \\
+Validated-retrieval selected source & 330 questions \\
+Capability-inventory selected source & 326 questions \\
+Infineon LLM selected source & 150 questions \\
+Observed cold-cache LLM calls & 486 calls \\
+Estimated cold-cache LLM-call reduction & 51.4\% \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -1701,7 +1704,28 @@ Estimated LLM-call reduction & 45.1\% \\
 
 The LLM is used when deterministic graph-supported routing is insufficient. In this architecture, the LLM does not generate the final answer directly. Its role is to generate candidate SPARQL queries that represent plausible interpretations of the user's question. The candidate set is then inspected by the downstream validation and ranking components.
 
-The candidate-generation prompt contains the user question, schema context, graph naming conventions, examples of valid SPARQL structures, and capability hints where available. The schema context restricts the model to known classes and predicates, while the capability hints encourage graph-supported analytical patterns. In some cases, a family-aware schema slice can be used to reduce prompt size by focusing on the most relevant graph area. If routing confidence is low, the system can use a broader schema context to avoid excluding the correct family too early.
+The candidate-generation prompt contains the user question, schema context, graph naming conventions, examples of valid SPARQL structures, and capability hints where available. The schema context restricts the model to known classes and predicates, while the capability hints encourage graph-supported analytical patterns. In the final candidate-generation benchmark, each unresolved question requested up to eight SPARQL candidates at temperature 0.2. Candidate sets may contain fewer than eight usable candidates after duplicate removal, syntax validation, and limited repair of invalid candidates. In some cases, a family-aware schema slice can be used to reduce prompt size by focusing on the most relevant graph area. If routing confidence is low, the system can use a broader schema context to avoid excluding the correct family too early.
+
+\begin{lstlisting}[
+caption={Abbreviated LLM candidate-generation prompt structure.},
+label={lst:candidate-generation-prompt},
+breaklines=true,
+basicstyle=\ttfamily\small
+]
+Task: Generate up to K candidate SPARQL SELECT queries for the True Demand KG.
+Question: {user_question}
+
+Use only the provided schema vocabulary and namespace conventions.
+Prefer graph-supported analytical patterns from the capability hints.
+Do not invent classes, predicates, or literal values that are not present.
+Return multiple plausible interpretations when the question is ambiguous.
+
+Schema slice: {classes, predicates, relationships, datatype properties}
+Capability hints: {known metric-dimension-aggregation patterns}
+Validated examples: {few-shot question-query pairs}
+
+Output: JSON list of candidates with SPARQL query and short rationale.
+\end{lstlisting}
 
 \begin{table}[htbp]
 \centering
@@ -1794,6 +1818,8 @@ The ML selector addresses the core ambiguity problem: given a natural-language q
 
 The final selector is used as a reranking component. It scores existing candidates but does not generate new queries or modify the graph. This makes its behavior auditable: when the selector improves or fails, the candidate set, extracted features, selected query, and execution result can be inspected.
 
+The strongest refinement uses XGBoost as a learning-to-rank model rather than as an independent pointwise classifier. Each natural-language question forms one ranking group, and all candidates generated for that question stay in the same train, tune, or holdout split. This avoids leakage between near-duplicate candidates from the same question. The reported holdout refinement compares \texttt{rank:pairwise} and \texttt{rank:ndcg} objectives with 180 trees, maximum depth 3, learning rate 0.03, subsampling 0.9, column subsampling 0.9, and L2 regularization 8.0. The pairwise objective performed best on the untouched holdout, so it is reported as the strongest tested reranking variant. The model wrapper keeps a compatibility name from an earlier classifier implementation, but the final experiment uses XGBoost's grouped ranking API.
+
 \begin{table}[htbp]
 \centering
 \caption{Selection components and their role in the architecture.}
@@ -1843,6 +1869,35 @@ else:
 
 This guarded policy prevents the ML model from becoming an unconditional override. The architecture therefore uses ML as one reliability component, combined with deterministic routing, schema validation, execution checks, and clarification.
 
+\section{Worked Ambiguity Case Study}
+\label{sec:worked-ambiguity-case-study}
+
+This section shows one compact end-to-end example of how the selection pipeline behaves when several generated candidates are plausible but not equivalent. The user question is: ``How many OEM companies reported experiencing a shortage compared to those that did not?'' The phrase ``compared to those that did not'' defines the required answer shape: the query should not only count companies with shortage, but return a grouped yes/no comparison for the OEM survey scope.
+
+\begin{table}[htbp]
+\centering
+\caption{Abbreviated ambiguity case study for one generated candidate set.}
+\label{tab:worked-ambiguity-case}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{
+>{\raggedright\arraybackslash}p{2.0cm}
+>{\raggedright\arraybackslash}X
+>{\raggedright\arraybackslash}p{3.3cm}
+>{\raggedleft\arraybackslash}p{1.5cm}
+}
+\toprule
+\textbf{Candidate} & \textbf{Abbreviated SPARQL interpretation} & \textbf{Key signal} & \textbf{ML score} \\
+\midrule
+A & \texttt{COUNT(?c) ... OEM\_Survey ... FILTER(?flag = true)} & Correct scope, but only counts shortage=true and misses the requested comparison. & -0.04 \\
+B & \texttt{?status COUNT(?Company) ... OEM\_Survey ... BIND(IF(...)) GROUP BY ?status} & Correct OEM scope and correct grouped yes/no answer shape. & 0.06 \\
+C & \texttt{?surveyType ?status COUNT(?c) ... GROUP BY ?surveyType ?status} & Computes the comparison, but broadens the scope to all survey types. & -0.61 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The reranking decision selects Candidate B because it best satisfies the question contract: OEM scope, shortage predicate, count aggregation, and grouped comparison. The selected query executes against the graph and returns two rows: \texttt{yes = 2} and \texttt{no = 1}. The final answer therefore reports that, within the OEM survey data, two companies reported a shortage and one company did not. If the score margin or execution evidence had been weaker, the same candidate set would have been converted into a clarification request rather than an automatic answer.
+
 \section{Confidence and Ambiguity Routing}
 \label{sec:confidence-ambiguity-routing}
 
@@ -1880,6 +1935,8 @@ Shape mismatch & Query result shape differs from requested answer type. & Penali
 \end{table}
 
 The router has three operating regimes. In high-confidence cases, the selected candidate has a strong score, acceptable margin, no blocking safety flags, and executable graph evidence; the system answers automatically. In medium-uncertainty cases, the system may apply guarded ML selection and execution-aware checks. In high-ambiguity cases, the system shows two or three natural-language alternatives and asks the user to choose.
+
+In the final user-testing version, slow fallback behavior is also converted into a clarification outcome. If no deterministic route is available and the LLM path exceeds the interactive budget, the router produces a small set of supported graph-backed alternatives instead of continuing to wait. This makes latency part of the reliability policy: an answer that cannot be selected quickly and safely is not forced.
 
 \section{Execution Layer and Answer Synthesis}
 \label{sec:execution-answer-synthesis}
@@ -1931,32 +1988,68 @@ This stage closes the loop between query selection and user-facing answer qualit
 \section{User Interface and Visual Walkthrough}
 \label{sec:user-interface}
 
-The user interface is implemented as a Streamlit application. Its role is not only to collect a question and display an answer, but also to expose the system's decision process at the right level of detail. The interface supports natural-language question entry, KG-aware autocomplete, guided examples, clarification choices, technical SPARQL inspection, answer synthesis, evidence graph visualization, feedback, and developer diagnostics.
+The user interface is implemented as a Streamlit application. Its role is not only to collect a question and display an answer, but also to expose the system's decision process at the right level of detail. The interface supports natural-language question entry, validated examples, a guided question builder, a searchable Digital Reference ontology browser, clarification choices, answer synthesis, evidence graph visualization, feedback, and deployment diagnostics.
 
-Figure~\ref{fig:ui-main-qa-flow} provides the main UI walkthrough. It combines the question-entry state and the answer state in one figure, so it explains the application without consuming too much thesis space. The first panel shows that the user can type a natural-language question and receive KG-aware suggestions. The second panel shows the synthesized answer, the route used by the system, and the evidence/explanation area.
+The user-testing version also refines the behavior of clarification choices. When a user selects a supported clarification option, the selected graph query is executed immediately and the answer is shown below, instead of copying the option back into the question box and requiring a second Ask action. Loading states are kept visually stable so that the page does not appear blurred or disabled while the backend is working.
 
-\begin{figure}[htbp]
+Figure~\ref{fig:ui-main-question} shows the main question-entry view. The user can type a free natural-language question, but the interface also provides controlled alternatives through the question guide. This is important because the target user should not need to know SPARQL, while the system should still guide users toward graph-supported questions when possible.
+
+\begin{figure}[!ht]
     \centering
-    \includegraphics[width=0.98\textwidth]{figures/ui_main_qa_flow.png}
-    \caption{Main QA workflow in the Streamlit application. Panel (a) shows the natural-language question input with KG-aware autocomplete suggestions. Panel (b) shows the graph-backed answer page, including the selected route and evidence-oriented output.}
-    \label{fig:ui-main-qa-flow}
+    \includegraphics[width=0.78\textwidth]{figures/main-question.png}
+    \caption{Main question-entry view in the Streamlit application. Users can ask a free natural-language question, while the question guide remains available for graph-supported examples and controlled question construction.}
+    \label{fig:ui-main-question}
 \end{figure}
 
-Figure~\ref{fig:ui-answer-evidence-flow} can be used either in the main architecture chapter or in an appendix, depending on space. It is especially useful because it shows the evidence graph next to the answer. This helps explain how the application communicates that the response is grounded in graph execution rather than produced as a free-text LLM answer.
+The question guide exposes four complementary entry points. Validated examples provide known working questions. The guided builder allows users to compose a question by selecting only supported topic--metric--breakdown combinations. The available-topics view summarizes what kinds of questions the graph can answer. The Digital Reference tab exposes deterministic ontology definition lookup. Figure~\ref{fig:ui-question-guide-modes} groups these modes together.
 
-\begin{figure}[htbp]
+\begin{figure}[!ht]
     \centering
-    \includegraphics[width=0.98\textwidth]{figures/ui_answer_evidence_flow.png}
-    \caption{Answer and evidence view. The application presents the natural-language answer together with an answer evidence graph and feedback controls. This view supports transparency by connecting the answer to query-specific graph evidence.}
-    \label{fig:ui-answer-evidence-flow}
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/question-guide-examples.png}\\[-1mm]
+        \small (a) Validated examples
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/question-guide-examples-guided-builder.png}\\[-1mm]
+        \small (b) Guided builder
+    \end{minipage}
+    
+    \vspace{2mm}
+    
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/question-guide-examples-available-topics.png}\\[-1mm]
+        \small (c) Available topics
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=0.78\linewidth]{figures/question-guide-examples-digital-reference.png}\\[-1mm]
+        \small (d) Digital Reference browser
+    \end{minipage}
+    \caption{Question-guide modes in the Streamlit interface. Users can choose validated examples, construct supported questions through the guided builder, inspect available graph topics, or browse Digital Reference ontology terms.}
+    \label{fig:ui-question-guide-modes}
+\end{figure}
+
+The Digital Reference tab is intentionally separated from the KG analytics flow: ontology definition questions are answered from the DR ontology index, while analytical questions are answered from the True Demand KG.
+
+After execution, the application presents both the answer and the reason why the answer was selected. Figure~\ref{fig:ui-main-answer} shows a high-confidence deterministic answer. The explanation states that the capability resolver found a single supported metric, dimension, aggregation, and graph path. This explicitly communicates that the LLM was skipped and that the answer is backed by graph execution.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.72\textwidth]{figures/main-answer.png}
+    \caption{User-facing answer and explanation. The interface reports the route decision, confidence score, row evidence, and the reasoning behind the selected answer.}
+    \label{fig:ui-main-answer}
 \end{figure}
 
 The UI separates business-facing information from technical details. The default view uses natural-language interpretations and readable answers. The technical SPARQL query, candidate diagnostics, and developer controls are available through expandable sections. This separation is important because the target user may not know SPARQL, while developers and evaluators still need access to the internal decision process.
 
-\begin{table}[htbp]
+\begin{table}[!ht]
 \centering
 \caption{Main UI elements and their purpose.}
 \label{tab:ui-elements}
+\scriptsize
 
 \begin{tabularx}{\textwidth}{
 >{\raggedright\arraybackslash}p{3.5cm}
@@ -1978,36 +2071,78 @@ Developer/status panel & Shows backend, model, graph, and routing configuration.
 \bottomrule
 \end{tabularx}
 \end{table}
+\normalsize
 
 \section{Ontology and Evidence Visualization}
 \label{sec:ontology-evidence-visualization}
 
-The system uses two different kinds of visual graph explanation. First, WebVOWL can be used to inspect the schema-level ontology. This is useful for understanding classes and relationships, but it does not show every instance-level survey record. Second, the Streamlit evidence graph is query-specific and shows the part of the graph related to the selected answer.
+The final interface uses two integrated graph visualizations. The first is a schema-level graph overview that helps users and developers inspect the main True Demand classes and relationships. The second is a query-specific answer evidence graph that shows the smaller subgraph related to the selected answer. Earlier in development, WebVOWL was used as an external ontology viewer to inspect the first schema representation; it is not part of the final user-facing system and is therefore not used as the main thesis screenshot.
 
-These two visualizations should not be confused. WebVOWL explains the conceptual structure of the ontology. The answer evidence graph explains why a particular query result is graph-backed. Figure~\ref{fig:webvowl-schema-view} shows the schema-level ontology view, while the Streamlit evidence graph remains query-specific.
+Figure~\ref{fig:ui-schema-overview-details} shows the integrated schema overview. Users can zoom, pan, click nodes, and inspect outgoing and incoming relationships. This view is useful for understanding the graph structure, but it is still a schema-level overview. It does not replace SPARQL execution over the full 1.16 million-triple graph.
 
-\begin{figure}[htbp]
+\begin{figure}[!ht]
     \centering
-    \includegraphics[width=0.95\textwidth]{figures/webvowl2.png}
-    \caption{WebVOWL schema-level view of the True Demand ontology. This visualization is useful for exploring classes and relationships at the ontology level, while the Streamlit evidence graph is used for query-specific answer evidence.}
-    \label{fig:webvowl-schema-view}
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/schema1.png}\\[-1mm]
+        \small (a) Schema-level graph overview
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/schema3.png}\\[-1mm]
+        \small (b) Node-level relationship inspection
+    \end{minipage}
+    \caption{Integrated schema-level graph visualization. The overview shows the main True Demand ontology classes and relationships, while clicking a node opens available identifiers and incoming/outgoing relationships.}
+    \label{fig:ui-schema-overview-details}
+\end{figure}
+
+The answer evidence graph is different. It is generated after a question is answered and contains only the entities and predicates relevant to the selected query and returned rows. Figure~\ref{fig:ui-answer-evidence-graph} shows this query-specific evidence view. It helps users verify that the response came from graph execution and not from unsupported free-text generation.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.74\textwidth]{figures/main-answer-graph2.png}
+    \caption{Query-specific answer evidence graph. The visualization shows the graph relationships used by the selected query together with a preview of the returned answer row.}
+    \label{fig:ui-answer-evidence-graph}
 \end{figure}
 
 \section{Developer and Deployment Controls}
 \label{sec:developer-deployment-controls}
 
-The application includes a developer mode because the architecture contains several configurable components: backend endpoint, model path, graph path, ranking policy, confidence thresholds, schema routing, candidate diagnostics, and graph-explorer settings. These controls are useful for development and evaluation, but they should not dominate the main thesis narrative. The main architecture chapter should briefly explain their purpose, while the detailed screenshots can be placed in an appendix.
+The deployed system includes lightweight status diagnostics and a separate confidence-routing dashboard. The status panel verifies that the schema, ranker model, graph backend, and LLM configuration are available. This is useful for deployment because a missing model file, unreachable Fuseki endpoint, or missing LLM credential would otherwise appear to the user as a generic application failure.
 
-Figure~\ref{fig:ui-developer-status} can be included in the architecture chapter if space allows. It shows the page navigation, system status, recommended developer configuration, and confidence-routing settings. The more detailed developer configuration screenshot can be moved to an appendix.
+These diagnostics are particularly important for deployment because local and deployed runs may differ in their graph backend mode. For example, a local run may use a Fuseki endpoint, while a deployed run may load a Turtle file inside the container unless the endpoint is configured explicitly. The status panel and guided-example availability therefore act as practical checks that the deployed runtime is using the same graph, schema, DR ontology, model, and validated query assets as the local system.
 
-\begin{figure}[htbp]
+The graph overview page also contains a compact natural-language description of the graph, its scale, and the types of questions users can ask. Figure~\ref{fig:ui-overview-status} shows the status and overview documentation together. This view is intentionally separate from the confidence dashboard: the overview explains what the graph contains, while the confidence dashboard explains how the system behaves during evaluation.
+
+\begin{figure}[!ht]
     \centering
-    \includegraphics[width=0.95\textwidth]{figures/ui_developer_status_combined.png}
-    \caption{Developer and status controls in the Streamlit interface. These panels expose the runtime configuration, backend availability, model settings, confidence thresholds, and safety-guard options used during evaluation and debugging.}
-    \label{fig:ui-developer-status}
+    \begin{minipage}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/system-status.png}\\[-1mm]
+        \small (a) Runtime status
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/true-demand-overview1.png}\\[-1mm]
+        \small (b) Graph overview
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/true-demand-overview2.png}\\[-1mm]
+        \small (c) Measures and examples
+    \end{minipage}
+    \caption{Status and graph-overview documentation. The application exposes runtime availability checks, graph scope, available question types, schema scale, example questions, and usage guidance.}
+    \label{fig:ui-overview-status}
 \end{figure}
 
-The developer controls support reproducibility because they make it possible to verify which backend, model, schema, and confidence configuration were active during a run. However, for normal business use these controls should be hidden or simplified so that the user interacts only with the question-answering and clarification workflow.
+The confidence-routing dashboard is an evaluation-oriented view. It exposes aggregate routing behavior and error cases, including high-confidence wrong examples, family filters, safety flags, and bucket composition. This dashboard is useful for developers and evaluators, but it is not intended as the primary business-user interface.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.68\textwidth]{figures/confidence-routing.png}
+    \caption{Confidence-routing case browser. Evaluators can filter high-confidence wrong examples by family, score, safety flags, and other diagnostic attributes.}
+    \label{fig:ui-confidence-case-browser}
+\end{figure}
 
 \section{Summary}
 \label{sec:architecture-summary}
@@ -2054,12 +2189,61 @@ The KG analytics questions were designed to include both simple and compositiona
 \textbf{Evaluation view} & \textbf{Scope} & \textbf{Purpose} \\
 \midrule
 LLM selection benchmark & Candidate sets for LLM-needed questions & Measures candidate coverage, raw selection, schema-aware selection, and ML reranking. \\
-Fallback subset benchmark & 552 questions not answered deterministically in the final system & Measures raw/schema/ML selection on the exact questions that enter the fallback layer. \\
+Fallback subset benchmark & Questions not answered deterministically in the final system & Measures raw/schema/ML selection on the exact questions that enter the fallback layer. \\
 Full-system benchmark & 1000 mixed user-facing questions & Measures end-to-end answer correctness, routing, LLM-call reduction, and practical system behavior. \\
 DR ontology benchmark & 300 ontology definition questions & Measures deterministic ontology-definition lookup without LLM calls. \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+\section{Gold Benchmark Validation and Repair}
+\label{sec:gold-benchmark-validation-repair}
+
+The final evaluation depends on the quality of the benchmark itself. If a gold SPARQL query is wrong, empty for the wrong reason, or mapped to a question that it does not actually answer, the measured system accuracy becomes misleading. For this reason, the 1000-question KG benchmark was not used as a raw generated dataset. It was validated and repaired before the final system evaluation.
+
+The validation process combined manual inspection and automated checks. First, each gold query was checked for syntactic validity and executable behavior against the True Demand RDF graph. Queries were executed through the same graph backend used by the application, including Fuseki when available. The validation script recorded whether the query executed, how many rows it returned, whether the result shape matched the expected answer type, and whether the question belonged to the expected analytical family. This automatically identified queries that were invalid, returned no rows, or looked suspicious because the requested metric, grouping dimension, or answer shape did not match the query.
+
+Second, the suspicious and representative cases were manually inspected. Approximately half of the 1000 benchmark questions were checked manually either directly through Fuseki result inspection or through the detailed audit sheets used during system evaluation. This manual step was especially important for questions where a query returned rows but still might be semantically wrong. For example, a query can return a non-empty result while grouping by region although the question asks for survey group, or it can return a top-ranked value although the question asks for a full breakdown. These cases cannot be validated by row count alone.
+
+The manual validation followed a consistent procedure:
+
+\begin{enumerate}
+    \item inspect the natural-language question and identify the requested metric, scope, grouping dimension, aggregation, and answer shape;
+    \item execute the gold SPARQL query in Fuseki or through the local RDF graph;
+    \item inspect whether the returned rows were non-empty and whether they matched the requested interpretation;
+    \item mark the gold query as correct, probably correct, or incorrect;
+    \item repair incorrect gold queries when the graph contained a better supported path;
+    \item keep notes explaining whether the problem was an empty result, a wrong path, a wrong aggregation, a missing scope, or an answer-shape mismatch.
+\end{enumerate}
+
+This process exposed several concrete benchmark problems. Some autonomous-driving questions referred to survey-specific classes that were not populated in the graph, while the actual graph used a shared \texttt{AutonomousDrivingDevelopment} class with survey information represented differently. Some vehicle-sales questions used the wrong actual/forecast filter or counted observations instead of summing \texttt{unitsSold}. Some future-demand and order-cancellation questions returned only the highest category even though the question asked for a breakdown across categories. These were repaired by changing the gold query, and in a few cases by changing the question wording to match the graph-supported interpretation.
+
+\begin{table}[htbp]
+\centering
+\caption{Benchmark validation checks applied before the final evaluation.}
+\label{tab:benchmark-validation-checks}
+\small
+\begin{tabularx}{\textwidth}{
+>{\raggedright\arraybackslash}p{3.2cm}
+>{\raggedright\arraybackslash}p{3.1cm}
+>{\raggedright\arraybackslash}X
+}
+\toprule
+\textbf{Validation layer} & \textbf{Applied to} & \textbf{Purpose} \\
+\midrule
+SPARQL syntax and prefix check & All KG gold queries & Detect malformed queries, unresolved prefixes, and queries that cannot be parsed. \\
+Fuseki / RDF execution & Manual sample and flagged queries & Verify that the query actually runs against the loaded True Demand graph and inspect returned rows. \\
+Empty-result inspection & Queries with zero rows & Distinguish genuinely absent data from unsupported or overly specific gold paths. \\
+Answer-shape check & All automatically processed rows & Verify that count, sum, average, top-value, raw-list, and grouped-breakdown questions return the expected result structure. \\
+Manual semantic audit & Approximately half of the 1000-question benchmark & Check whether non-empty query results actually answer the natural-language question. \\
+Result-signature comparison & Remaining KG analytics audit rows & Compare selected-query outputs against repaired gold-query outputs when no unchanged manual label was available. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The remaining half of the benchmark was validated automatically through execution and semantic diagnostics. This included syntactic parsing, non-empty execution checks where appropriate, expected-family checks, answer-shape checks, and result-signature comparisons. For the final full-system audit, KG analytics answers were labeled by comparing the selected query's result signature against the repaired gold query result signature when no unchanged previous manual label was available. DR ontology definition questions were evaluated through deterministic ontology lookup behavior, and advisory questions were evaluated as graph-backed recommendations with non-empty evidence rows and conservative answer synthesis.
+
+The final benchmark validation therefore used a layered approach rather than a single weak criterion. Manual Fuseki inspection was used for the difficult and suspicious cases, while automatic validation ensured that the remaining benchmark rows were executable and consistent with their expected result shape. This does not make the benchmark perfect in a formal semantic sense, but it makes it substantially more reliable than an unverified generated benchmark and provides an audit trail for the reported accuracy values.
 
 \section{Evaluation Metrics}
 \label{sec:evaluation-metrics}
@@ -2070,11 +2254,13 @@ The evaluation distinguishes between several metrics because they answer differe
 
 \textbf{Any-correct candidate coverage} measures whether at least one candidate in the generated set is correct. This evaluates candidate generation rather than selection. High Any-Correct with lower Top-1 accuracy indicates that the correct query is often generated but not always selected.
 
+\textbf{Execution-plausible selected-query rate} measures whether the selected query executed without an error and returned graph rows. It is less strict than Top-1 selection accuracy because it does not require the selected query to be the canonical repaired gold query. Instead, it asks whether the selected query is executable and produces graph evidence. This metric is useful because multiple SPARQL queries may be semantically close or may produce an acceptable user-facing answer even when they are not identical to the gold query. However, execution plausibility alone is not sufficient for correctness: a non-empty query can still answer the wrong business question. Therefore, it is reported as an intermediate execution signal, not as a replacement for strict selection accuracy or manual answer-level correctness.
+
 \textbf{Answer-level correctness} measures whether the final user-facing answer is correct. This is used for the full system because a final answer can be correct even when the selected query is not identical to a canonical gold query, for example when multiple semantically equivalent queries produce the same answer.
 
 \textbf{LLM-call reduction} measures how many questions avoid an LLM call through deterministic routing. With an assumed cost of EUR 0.20 per LLM call, the cost of the final system can be compared against an all-LLM baseline.
 
-\textbf{Human SPARQL difficulty} is used for error analysis. Incorrect LLM fallback answers are classified according to how difficult it would be for a knowledgeable human to formulate the correct SPARQL query: easy, medium, or hard. This analysis helps distinguish avoidable system mistakes from genuinely schema-dependent or ambiguous graph-composition problems.
+\textbf{Human SPARQL difficulty} is used for error analysis. Incorrect final-system answers are classified according to how difficult it would be for a knowledgeable human to formulate the correct SPARQL query or validate the graph-grounded answer: easy, medium, or hard. This analysis helps distinguish avoidable system mistakes from genuinely schema-dependent or ambiguous graph-composition problems.
 
 \begin{table}[htbp]
 \centering
@@ -2090,6 +2276,7 @@ The evaluation distinguishes between several metrics because they answer differe
 \midrule
 Top-1 selection accuracy & Correct candidate selected as the first query. \\
 Any-correct coverage & At least one correct candidate exists in the candidate set. \\
+Execution-plausible selected query & Selected query executes without error and returns graph rows. \\
 Answer-level correctness & Final answer judged correct in the system audit. \\
 LLM-call reduction & Share of questions answered without LLM calls. \\
 Human SPARQL difficulty & Estimated difficulty of manually writing the correct query for failed cases. \\
@@ -2187,7 +2374,7 @@ This connects the theoretical measure to the implemented system. Low-uncertainty
 
 The full-system benchmark was executed through the same pipeline used by the Streamlit application. Each question first passed through the deterministic routing layer. If a supported graph capability, DR ontology definition, or advisory route was available, the system answered without LLM generation. Otherwise, the question entered the LLM fallback layer, where candidates were generated or retrieved, validated, reranked, executed, and synthesized into a final answer.
 
-The final audit file records the question ID, question text, topic, expected route, selected source, selected query, row count, answer text, and correctness label. Correctness was evaluated at the answer level. This means that the final answer was judged according to whether it answered the user question, not only whether the selected SPARQL query matched one canonical query string.
+The final audit file records the question ID, question text, topic, expected route, selected source, selected query, row count, answer text, and correctness label. Correctness was evaluated at the answer level. This means that the final answer was judged according to whether it answered the user question, not only whether the selected SPARQL query matched one canonical query string. For KG analytics rows without an unchanged previous manual label, the final label was produced by comparing the result signature of the selected query with the result signature of the repaired gold query. This made the audit stricter than a purely text-based answer review. For DR ontology and advisory rows, deterministic route-specific checks were used because those answers are not ordinary KG analytics queries.
 
 
 \chapter{Experiments and Results}
@@ -2196,11 +2383,11 @@ The final audit file records the question ID, question text, topic, expected rou
 \section{Baseline Selection Results}
 \label{sec:baseline-selection-results}
 
-The first experiment evaluates the LLM candidate-generation and selection pipeline independently of deterministic routing. On the 1000-question KG selection benchmark, the raw LLM candidate order achieved 53.9\% Top-1 accuracy, while Any-Correct coverage reached 87.9\%. This means that in most cases the correct query was present somewhere in the generated candidate set, but the first selected candidate was often not the correct interpretation.
+The first experiment evaluates the LLM candidate-generation and selection pipeline independently of deterministic routing. On the repaired 1000-question KG selection benchmark, the raw LLM candidate order achieved 51.7\% Top-1 accuracy, while Any-Correct coverage reached 81.4\%. This means that in most cases the correct query was present somewhere in the generated candidate set, but the first selected candidate was often not the correct interpretation.
 
 This result confirms the core motivation of the thesis: the main bottleneck is not only query generation, but query selection under ambiguity. If the correct query appears in the candidate set but is not selected, improving the ranking and routing layer can improve reliability without necessarily requiring more LLM calls.
 
-The gap between Top-1 accuracy and Any-Correct coverage is the most important observation in this experiment. A Top-1 value of 53.9\% means that the raw candidate order produced by the LLM is not reliable enough to be executed blindly. However, the Any-Correct value of 87.9\% means that the LLM frequently generated a correct query somewhere in the candidate set. The system is therefore not primarily failing because the LLM cannot express the graph query at all. Instead, it often fails because several plausible candidates are generated and the wrong one is ranked first. This justifies treating KGQA as a candidate-selection problem rather than as a single-query generation problem.
+The gap between Top-1 accuracy and Any-Correct coverage is the most important observation in this experiment. A Top-1 value of 51.7\% means that the raw candidate order produced by the LLM is not reliable enough to be executed blindly. However, the Any-Correct value of 81.4\% means that the LLM still frequently generated a correct query somewhere in the candidate set. The system is therefore not only failing because the LLM cannot express the graph query at all. It also fails because several plausible candidates are generated and the wrong one is ranked first. This justifies treating KGQA as a candidate-selection problem rather than as a single-query generation problem.
 
 \begin{table}[htbp]
 \centering
@@ -2217,55 +2404,32 @@ The gap between Top-1 accuracy and Any-Correct coverage is the most important ob
 \toprule
 \textbf{Mode} & \textbf{Questions} & \textbf{Top-1} & \textbf{Any Correct} & \textbf{Gen. fail.} \\
 \midrule
-Raw LLM order & 1000 & 53.9\% & 87.9\% & 12.1\% \\
-Schema / semantic selection & 1000 & 49.7\% & 87.9\% & 12.1\% \\
-Guarded ML selection & 1000 & 56.8\% & 87.9\% & 12.1\% \\
+Raw LLM order & 1000 & 51.7\% & 81.4\% & 18.6\% \\
+Schema / semantic selection & 1000 & 48.2\% & 81.4\% & 18.6\% \\
+Guarded ML selection & 1000 & 53.6\% & 81.4\% & 18.6\% \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 The schema-only result is lower than raw LLM ordering in this benchmark. This is an important finding. Schema validity alone is not sufficient for semantic correctness: a query can use valid classes and relationships while still answering the wrong analytical question. This motivates the use of answer-shape features, execution-aware validation, and ML-based reranking rather than relying only on schema matching.
 
-This result also explains why a purely ontology-constrained system is not enough for the True Demand graph. The ontology can say that a class, property, or path is valid, but it cannot always decide whether the query matches the user's business intent. For example, a query that counts records may be structurally valid, but it is not correct if the user asked for a demand value. Similarly, a query over future demand may be schema-valid but wrong for a current-demand question. The decrease from 53.9\% to 49.7\% shows that schema information can even hurt selection when it over-prioritizes structurally clean but semantically mismatched candidates.
+This result also explains why a purely ontology-constrained system is not enough for the True Demand graph. The ontology can say that a class, property, or path is valid, but it cannot always decide whether the query matches the user's business intent. For example, a query that counts records may be structurally valid, but it is not correct if the user asked for a demand value. Similarly, a query over future demand may be schema-valid but wrong for a current-demand question. The decrease from 51.7\% to 48.2\% shows that schema information can even hurt selection when it over-prioritizes structurally clean but semantically mismatched candidates.
 
-This does not contradict the use of schema-derived features inside the ML reranker. The difference is that schema-only selection treats structural validity as the main decision criterion, while the guarded ML model treats schema validity as one signal among many. The ML feature vector also contains answer-shape indicators, aggregation type, selected variables, candidate source, scope/provenance cues, and safety flags. This allows the model to down-weight schema-valid but intent-mismatched candidates, such as a valid count query when the user asked for a grouped demand value. In other words, schema information is useful as evidence, but harmful when used as the complete objective.
+This does not contradict the use of schema-derived features inside the ML reranker. The difference is that schema-only selection treats structural validity as the main decision criterion, while the guarded ML model treats schema validity as one signal among many. The ML feature vector also contains answer-shape indicators, aggregation type, selected variables, candidate source, scope/provenance cues, and safety flags. This allows the model to down-weight schema-valid but intent-mismatched candidates, such as a valid count query when the user asked for a grouped demand value. In other words, schema information is useful as evidence, but harmful when used as the complete objective. On the repaired benchmark, this produces a smaller but still positive strict-selection gain: guarded ML improves Top-1 from 51.7\% to 53.6\%.
 
 \section{ML Reranking Results}
 \label{sec:ml-reranking-results}
 
 The ML reranker was trained on grouped candidate-query examples, where candidates belonging to the same natural-language question form a ranking group. The model uses query-plan and schema-derived features, including aggregation type, grouping behavior, selected variables, expected domains, source metadata, and semantic coverage signals. The model is applied in a guarded manner: it does not override the selected candidate unless score, margin, and rank constraints are satisfied.
 
-To avoid overfitting the final benchmark, a 200-question calibration split was separated from the 1000-question set, and the resulting model was evaluated on an untouched 800-question holdout split. On this holdout set, calibrated guarded ML improved Top-1 selection accuracy from 54.1\% raw LLM ordering to 59.8\%, while Any-Correct coverage remained 87.9\%. The improvement therefore comes from better selection, not from generating more correct candidates.
+Before the final repaired benchmark was fixed, a separate calibration split was used during model development to choose a guarded reranking configuration. However, the final reported selection result is the repaired 1000-question benchmark below. This avoids mixing calibration diagnostics with the final evaluation.
 
-The holdout result is intentionally more conservative than the full-system result. It evaluates only whether the ranker selects the correct candidate from an existing candidate set. It does not include deterministic routing, ontology definitions, advisory templates, or answer-level equivalence. The improvement from 54.1\% to 59.8\% is therefore a direct measurement of the ML reranker's contribution to candidate selection. The fact that Any-Correct remains unchanged confirms that the model is not improving generation; it is exploiting features of the already generated candidates to select better among them.
-
-\begin{table}[htbp]
-\centering
-\caption{Calibrated ML reranking on the 800-question holdout split.}
-\label{tab:calibrated-ml-holdout}
-\small
-\begin{tabularx}{\textwidth}{
->{\raggedright\arraybackslash}X
->{\raggedleft\arraybackslash}p{1.8cm}
->{\raggedleft\arraybackslash}p{2.2cm}
->{\raggedleft\arraybackslash}p{2.4cm}
-}
-\toprule
-\textbf{Mode} & \textbf{Questions} & \textbf{Top-1 accuracy} & \textbf{Any-Correct coverage} \\
-\midrule
-Raw LLM order & 800 & 54.1\% & 87.9\% \\
-Previous guarded ML & 800 & 57.0\% & 87.9\% \\
-Calibrated guarded ML & 800 & 59.8\% & 87.9\% \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-For the final system, it is also useful to evaluate only the questions that actually enter the fallback layer after deterministic routing. This subset contains 552 questions. On this fallback subset, raw LLM selection achieved 57.4\% Top-1 accuracy, schema-only selection achieved 42.2\%, and guarded ML achieved 68.3\%. Candidate coverage was 91.3\% for all three settings because the candidate set was the same; only the selection strategy changed.
+The repaired 1000-question candidate set was analyzed with detailed failure counts. Raw LLM ordering selected the correct candidate for 517 questions. Schema-only selection selected 482 correctly, confirming that structural validity alone can over-prioritize semantically wrong candidates. Guarded ML selected 536 correctly, improving over raw ordering by 19 questions. Candidate coverage was 81.4\% for all three settings because the candidate set was the same; only the selection strategy changed.
 
 \begin{table}[htbp]
 \centering
-\caption{Selection results on the 552-question LLM fallback subset.}
-\label{tab:fallback552-selection}
+\caption{Detailed selection results on the repaired 1000-question KG benchmark.}
+\label{tab:repaired1000-selection}
 \small
 \begin{tabularx}{\textwidth}{
 >{\raggedright\arraybackslash}X
@@ -2278,29 +2442,95 @@ For the final system, it is also useful to evaluate only the questions that actu
 \toprule
 \textbf{Mode} & \textbf{Questions} & \textbf{Top-1} & \textbf{Any Correct} & \textbf{Rank fail.} & \textbf{Gen. fail.} \\
 \midrule
-Raw LLM selection & 552 & 57.4\% & 91.3\% & 187 & 48 \\
-Schema-only selection & 552 & 42.2\% & 91.3\% & 271 & 48 \\
-Guarded ML selection & 552 & 68.3\% & 91.3\% & 127 & 48 \\
+Raw LLM selection & 1000 & 51.7\% & 81.4\% & 296 & 186 \\
+Schema-only selection & 1000 & 48.2\% & 81.4\% & 331 & 186 \\
+Guarded ML selection & 1000 & 53.6\% & 81.4\% & 277 & 186 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Guarded ML therefore improves the fallback selection layer by 10.9 percentage points over raw LLM ordering, corresponding to 60 additional correctly selected queries on the 552 fallback questions. This is the cleanest evidence that ML helps the selection component, while the Any-Correct value shows that candidate generation remains strong.
+Guarded ML therefore improves the strict selection layer by 1.9 percentage points over raw LLM ordering, corresponding to 19 additional correctly selected queries on the repaired 1000-question KG benchmark. This is a more conservative result than the earlier fallback diagnostic, because the gold benchmark was repaired and the evaluation contract became stricter. The Any-Correct value shows that candidate generation still leaves selection headroom: 814 questions contain a correct candidate somewhere in the candidate set, while guarded ML selects 536 of them as Top-1.
 
-The fallback subset is especially important because it represents the questions that the final system could not answer deterministically. In other words, these are the questions for which candidate selection actually matters at runtime. The raw LLM order already solves 57.4\% of these cases, which shows that the first generated candidate is often useful. However, the 91.3\% Any-Correct coverage shows that there is much more information available in the candidate set than the first candidate alone. Guarded ML uses this information and raises Top-1 accuracy to 68.3\%. The remaining gap between 68.3\% Top-1 and 91.3\% Any-Correct represents the unresolved selection headroom: in many cases the correct query is present, but the system still does not select it.
+The repaired selection benchmark should be interpreted separately from the final answer-level benchmark. It is strict: a candidate is correct only when it matches the repaired gold query intent. It does not count cases where a different query produces an acceptable answer, and it does not include deterministic ontology lookup, direct graph templates, advisory routing, or answer synthesis. This explains why strict guarded-ML selection reaches 53.6\%, while the final hybrid system reaches 89.4\% answer-level accuracy.
 
-The low schema-only result on the same subset further supports the argument that ambiguity is semantic, not only structural. These fallback questions are precisely the cases where deterministic capability matching was not sufficient. They often involve competing domains, similar metrics, missing scope, or subtle differences between a grouped breakdown and a top-value query. Schema-only selection does not capture these distinctions well, while guarded ML can use additional features such as query shape, aggregation, selected variables, candidate source, and score margins.
+The low schema-only result on the same repaired benchmark further supports the argument that ambiguity is semantic, not only structural. The difficult questions often involve competing domains, similar metrics, missing scope, or subtle differences between a grouped breakdown and a top-value query. Schema-only selection does not capture these distinctions well, while guarded ML can use additional features such as query shape, aggregation, selected variables, candidate source, and score margins.
 
 To make this interpretation reproducible, the repository includes a schema-versus-ML diagnostic script. The script compares raw, schema-only, and guarded-ML analysis files and, when the ranker model is available, reports the largest absolute feature weights grouped into interpretable feature families. This provides an audit trail for the claim that the ML model succeeds by combining schema signals with non-schema signals, rather than by merely applying schema validation more strongly.
+
+The full 1000-question KG selection benchmark is useful as a controlled scientific diagnostic, but it is not identical to the set of questions that actually reaches the LLM in the final hybrid system. In the final system, deterministic graph-supported templates, DR ontology lookup, and advisory templates answer many questions before LLM generation is attempted. Therefore, an additional fallback-subset analysis was computed. This analysis takes the 486 questions that the final system routed to the LLM fallback layer, maps them back to the repaired KG candidate benchmark where possible, and compares raw, schema-only, and guarded-ML selection only on that mapped fallback subset.
+
+\begin{table}[htbp]
+\centering
+\caption{Selection results on the final-system LLM fallback subset.}
+\label{tab:fallback-subset-selection}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{
+>{\raggedright\arraybackslash}X
+>{\raggedleft\arraybackslash}p{1.4cm}
+>{\raggedleft\arraybackslash}p{1.35cm}
+>{\raggedleft\arraybackslash}p{1.6cm}
+>{\raggedleft\arraybackslash}p{1.8cm}
+>{\raggedleft\arraybackslash}p{1.45cm}
+>{\raggedleft\arraybackslash}p{1.45cm}
+}
+\toprule
+\textbf{Mode} & \textbf{Q.} & \textbf{Top-1} & \textbf{Any Correct} & \textbf{Exec.-plaus.} & \textbf{Rank fail.} & \textbf{Gen. fail.} \\
+\midrule
+Raw LLM selection & 482 & 56.2\% & 82.8\% & 85.9\% & 128 & 83 \\
+Schema-only selection & 482 & 53.7\% & 82.8\% & 81.7\% & 140 & 83 \\
+Guarded ML selection & 482 & 58.7\% & 82.8\% & 86.1\% & 116 & 83 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:fallback-subset-selection} is the most direct selection diagnostic for the deployed hybrid pipeline, because it evaluates only the questions that were not solved deterministically. Of the 486 final-system fallback questions, 482 could be mapped to repaired KG candidate IDs; the four unmatched questions were advisory-style fallback cases and are excluded from strict KG candidate selection. On this mapped fallback subset, guarded ML improves Top-1 selection from 56.2\% to 58.7\%, corresponding to 12 additional correctly selected candidates over raw LLM ordering. The Any-Correct value remains 82.8\% across modes because the generated candidate set is unchanged. Schema-only selection again performs worse than raw ordering, confirming that schema validity is a useful signal but an insufficient decision rule.
+
+A second diagnostic evaluates the same selection problem with a less strict execution-oriented signal. The strict Top-1 metric asks whether the selected candidate is the repaired canonical gold candidate. The execution-plausible metric instead asks whether the selected candidate executed successfully and returned graph evidence. This is not the same as correctness, because a non-empty query may still answer the wrong question. However, it explains why strict selection scores can be substantially lower than final answer-level scores: the final system can still produce an acceptable answer when the selected query is executable, semantically close, or result-equivalent to the repaired gold query.
+
+To avoid evaluating a model on the same examples used for training or threshold tuning, a clean train--tune--holdout split was created from the repaired benchmark. The split used 600 questions for training, 200 questions for tuning, and 200 untouched questions for holdout evaluation. Table~\ref{tab:holdout200-selection-exec} reports this holdout analysis. In addition to raw and schema-only selection, it compares a feature-rich non-parametric reranker with two XGBoost learning-to-rank objectives. These variants test whether grouped ranking objectives improve selection without changing the generated candidate set.
+
+\begin{table}[htbp]
+\centering
+\caption{Strict and execution-plausible selection results on the 200-question repaired holdout split.}
+\label{tab:holdout200-selection-exec}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{
+>{\raggedright\arraybackslash}X
+>{\raggedleft\arraybackslash}p{1.25cm}
+>{\raggedleft\arraybackslash}p{1.25cm}
+>{\raggedleft\arraybackslash}p{1.45cm}
+>{\raggedleft\arraybackslash}p{1.65cm}
+>{\raggedleft\arraybackslash}p{1.35cm}
+>{\raggedleft\arraybackslash}p{1.35cm}
+}
+\toprule
+\textbf{Mode} & \textbf{Q.} & \textbf{Top-1} & \textbf{Any Correct} & \textbf{Exec.-plaus.} & \textbf{Rank fail.} & \textbf{Gen. fail.} \\
+\midrule
+Raw LLM selection & 200 & 51.5\% & 81.5\% & 80.5\% & 60 & 37 \\
+Schema-only selection & 200 & 46.5\% & 81.5\% & 76.5\% & 70 & 37 \\
+Feature-rich non-parametric & 200 & 50.5\% & 81.5\% & 81.5\% & 62 & 37 \\
+XGBoost pairwise LTR & 200 & 54.0\% & 81.5\% & 83.0\% & 55 & 37 \\
+XGBoost NDCG LTR & 200 & 51.5\% & 81.5\% & 80.5\% & 60 & 37 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The holdout results show three important patterns. First, schema-only selection again performs worse than raw ordering, both in strict Top-1 accuracy and in execution plausibility. This confirms that selecting the most schema-compatible candidate is not enough. Second, feature-rich non-parametric reranking improves execution plausibility but does not improve strict Top-1 accuracy, which indicates that execution-friendly signals and canonical-query correctness are related but not identical. Third, the pairwise XGBoost learning-to-rank objective gives the best holdout result, improving strict Top-1 selection from 51.5\% to 54.0\% and execution-plausible selection from 80.5\% to 83.0\%. The gain is modest but clean: it is measured on an untouched holdout split and uses grouped candidate sets rather than tuning on the final evaluation rows.
+
+The NDCG objective did not improve over raw ordering on this holdout. This suggests that the main bottleneck is not simply the tree objective or hyperparameter tuning, but the available semantic features and the quality of the generated candidate set. The reported system therefore keeps the ranking layer conservative: ML is useful, but it should be interpreted as a guarded selection aid rather than as a complete semantic judge.
+
+The distinction between Top-1 and execution plausibility is central to interpreting the numbers. Top-1 is a strict scientific metric for candidate selection: the selected candidate must match the repaired gold intent. Execution plausibility is an operational metric: the selected query must execute and return rows. The former answers whether the selection model chose the canonical target; the latter answers whether the selected query produced graph evidence. Neither metric alone is sufficient. Strict Top-1 can undercount result-equivalent or acceptable alternatives, while execution plausibility can overcount non-empty but semantically wrong queries. For this reason, the thesis reports both, and keeps final system accuracy as a separate answer-level audit.
 
 \section{Error Analysis}
 \label{sec:error-analysis-results}
 
-The final full-system audit contains 141 incorrect answers out of 1000 questions. Of these, 113 occur in the LLM fallback route. To understand whether these failures are avoidable, the LLM fallback errors were classified according to the difficulty of writing the correct SPARQL query manually.
+The final repaired full-system audit contains 106 incorrect answers out of 1000 questions. Of these, 11 occur in the deterministic route and 95 occur in the LLM fallback route. The audit did not leave any rows as unclear. Each incorrect row was also assigned a human SPARQL difficulty label. This label estimates how difficult it would be for a knowledgeable human analyst, with access to the schema and graph, to formulate and validate the correct query manually. It does not measure whether the final answer is obviously wrong after inspection; it measures how difficult the correct query would be to produce from the original question.
 
 \begin{table}[htbp]
 \centering
-\caption{Human SPARQL difficulty of incorrect LLM fallback answers.}
+\caption{Human SPARQL difficulty of incorrect answers in the final audit.}
 \label{tab:human-sparql-difficulty}
 \small
 \begin{tabularx}{\textwidth}{
@@ -2310,24 +2540,50 @@ The final full-system audit contains 141 incorrect answers out of 1000 questions
 >{\raggedleft\arraybackslash}p{2.4cm}
 }
 \toprule
-\textbf{Difficulty} & \textbf{Errors} & \textbf{Share of LLM errors} & \textbf{Share of all questions} \\
+\textbf{Difficulty} & \textbf{Errors} & \textbf{Share of errors} & \textbf{Share of all questions} \\
 \midrule
-Easy & 53 & 46.9\% & 5.3\% \\
-Medium & 37 & 32.7\% & 3.7\% \\
-Hard & 23 & 20.4\% & 2.3\% \\
+Easy & 7 & 6.6\% & 0.7\% \\
+Medium & 25 & 23.6\% & 2.5\% \\
+Hard & 74 & 69.8\% & 7.4\% \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The easy failures mostly occur in shortage and vehicle-sales questions. These are cases where a human with schema knowledge could likely write the correct query by applying the appropriate shortage flag, actual/forecast filter, or units-sold aggregation. Medium failures include autonomous-driving and regional/future-demand groupings where the intent is understandable, but the correct graph path requires schema inspection. Hard failures include BL1/BL2 baseline modeling, future-demand combinations across region and quarter, and advisory questions that require both query execution and interpretation.
+The result shows that most remaining errors are not simple parsing mistakes. Only 7 out of 1000 benchmark questions, or 0.7\%, are errors classified as easy for a knowledgeable human to formulate correctly. In contrast, 74 errors are hard cases. These are questions where the natural-language wording requires a graph path that is not obvious from the wording alone, or where several semantically adjacent classes and metrics compete.
 
-This analysis shows that the remaining failures are not all equally difficult. A substantial share of the LLM errors are still avoidable engineering failures, especially around answer-shape enforcement and missing filters. However, a smaller subset reflects genuinely difficult graph-composition problems where even a human would need to inspect the ontology, test candidate paths, and validate non-empty results.
+The easy failures are still important because they indicate avoidable implementation weaknesses. Typical examples include grouped-versus-top answer-shape mismatches, overly narrow survey filters, or cases where a question explicitly asks for companies but the query returns counts or status buckets. These should be handled through stronger templates, stricter answer-shape checks, and more precise contract validation.
 
-The distribution in Table~\ref{tab:human-sparql-difficulty} is useful for interpreting the 113 LLM fallback errors. The 53 easy cases indicate remaining implementation weaknesses that should be addressed through stronger templates, filter checks, and answer-shape validation. These include cases where the question clearly asks for a shortage flag, actual versus forecast sales, or a simple count. A knowledgeable human would likely write the correct SPARQL query without extensive graph exploration.
+Medium failures occur when the user intent is understandable, but the correct graph path still requires schema inspection. Examples include survey-scope questions, demand questions where total demand and percentage change are easy to confuse, and analytical questions that require joining a measure with the correct grouping dimension. A human analyst could usually answer these questions, but would likely need to inspect the schema and test at least one candidate query.
 
-The 37 medium cases are different. Here, the natural-language intent is usually understandable, but the correct graph path is not immediately obvious. Examples include autonomous-driving questions that combine vehicle type, SAE level, year, and survey provenance, or demand questions that require the correct distinction between total demand, percentage change, and survey scope. A human could answer these questions, but would probably inspect the schema and test one or two candidate queries.
+Hard failures represent the main limitation of the current graph interface. They require non-obvious joins, derived interpretation, or paths that are not aligned with how a user would naturally phrase the question. For such cases, it is reasonable that the LLM and deterministic router struggle. The error is not simply a language-understanding failure; it reflects a mismatch between natural business phrasing and the actual graph modeling structure.
 
-The 23 hard cases represent the most important limitation of the current graph interface. These questions require non-obvious joins, derived interpretation, or paths that are not aligned with the way a user would naturally phrase the question. For such cases, it is reasonable that the LLM struggles. The error is not simply a language-understanding failure; it reflects a mismatch between natural business phrasing and the actual graph modeling structure.
+\begin{table}[htbp]
+\centering
+\caption{Main failure families among the 106 incorrect final-system answers.}
+\label{tab:final-failure-types}
+\small
+\begin{tabularx}{\textwidth}{
+>{\raggedright\arraybackslash}p{4.2cm}
+>{\raggedleft\arraybackslash}p{1.4cm}
+>{\raggedright\arraybackslash}X
+}
+\toprule
+\textbf{Failure family} & \textbf{Cases} & \textbf{Interpretation} \\
+\midrule
+Autonomous-driving complex grouping & 24 & Multi-dimensional vehicle, SAE-level, year, or survey-provenance questions remain difficult. \\
+Current-demand baseline or scope & 22 & BL1/BL2, current-demand, and survey-scope cues are sometimes confused. \\
+Future-demand complex dimension & 16 & The query selects a related future-demand path but misses the requested grouping or scope. \\
+Vehicle-sales metric or dimension & 14 & Sales units, observation counts, actual/forecast filters, and time dimensions compete. \\
+Other semantic mismatch & 10 & The selected query is executable but does not match the intended business interpretation. \\
+Regional demand scope or dimension & 8 & Region, vehicle type, quarter, and survey scope are not always aligned in the graph path. \\
+Wrong scope or grouping & 5 & The answer uses a narrower scope or different grouping than requested. \\
+Advisory not synthesized & 2 & The question needed a graph-grounded recommendation, but the route returned raw analytic rows. \\
+Other single-case failures & 5 & Inventory, shortage, wrong-answer-shape, and incomplete-comparison errors. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The largest remaining categories are concentrated in difficult analytical families rather than in ontology lookup or simple direct templates. Autonomous-driving, current-demand baseline, future-demand, vehicle-sales, and regional-demand questions often require several constraints to be satisfied simultaneously. The selected query may be executable and graph-supported, but it can still miss the requested scope, aggregation, or grouping dimension. This is why the benchmark validation step is important: the final errors are measured against repaired gold result signatures rather than against unverified generated labels.
 
 \section{Confidence Routing Results}
 \label{sec:confidence-routing-results}
@@ -2336,7 +2592,7 @@ Confidence routing is used to decide whether the system should answer automatica
 
 The final system avoids treating empty results as high-confidence answers. If the selected high-confidence candidate returns no graph rows, the system either tries a supported alternative or reports that no checked interpretation returned graph evidence. This is important because a syntactically valid query with zero rows should not be presented as a confident answer unless the user explicitly asked whether such records exist.
 
-In the final benchmark, 448 questions were routed deterministically, while 552 entered the LLM fallback layer. This split shows that the router reduced unnecessary LLM usage while still preserving a flexible candidate-generation route for harder questions.
+In the final repaired benchmark, 514 questions were routed deterministically, while 486 entered the LLM fallback layer. This split shows that the router reduced unnecessary LLM usage while still preserving a flexible candidate-generation route for harder questions.
 
 This routing split also explains why the final system can be more reliable than a pure LLM-to-SPARQL pipeline. The deterministic route handles questions where the system has strong prior knowledge: the metric, dimension, aggregation, and graph path are already known. These questions do not need probabilistic generation. The fallback route is reserved for cases where the system cannot safely map the question to one graph-supported template. This separation prevents simple questions from being exposed to unnecessary LLM variability and prevents ambiguous questions from being forced into an arbitrary deterministic template.
 
@@ -2356,7 +2612,7 @@ The entropy analysis also explains why high confidence should not be interpreted
 \section{Final System-Level Evaluation}
 \label{sec:final-system-level-evaluation}
 
-The final 1000-question system benchmark evaluates the complete user-facing pipeline. The benchmark contains 800 True Demand KG questions, 150 DR ontology definition questions, and 50 advisory questions. The system answered 448 questions through deterministic graph-supported routing and 552 through the LLM fallback route.
+The final 1000-question system benchmark evaluates the complete user-facing pipeline. The benchmark contains 800 True Demand KG questions, 150 DR ontology definition questions, and 50 advisory questions. After gold-query validation and repair, the system answered 514 questions through deterministic graph-supported routing or ontology lookup and 486 through the LLM fallback route.
 
 \begin{table}[htbp]
 \centering
@@ -2373,23 +2629,27 @@ The final 1000-question system benchmark evaluates the complete user-facing pipe
 \toprule
 \textbf{Route} & \textbf{Questions} & \textbf{Share} & \textbf{Correct} & \textbf{Accuracy} \\
 \midrule
-Deterministic / graph-supported & 448 & 44.8\% & 420 & 93.8\% \\
-LLM fallback & 552 & 55.2\% & 439 & 79.5\% \\
+Deterministic / graph-supported & 514 & 51.4\% & 503 & 97.9\% \\
+LLM fallback & 486 & 48.6\% & 391 & 80.5\% \\
 \midrule
-Overall system & 1000 & 100.0\% & 859 & 85.9\% \\
+Overall system & 1000 & 100.0\% & 894 & 89.4\% \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The final audited answer-level accuracy is 85.9\%. This is higher than the selection-only accuracy because the full-system audit evaluates the final answer, not only whether the selected query exactly matches a single canonical candidate. Some selected queries can still produce acceptable answers even when they are not identical to the expected candidate.
+The final audited answer-level accuracy is 89.4\%. This is higher than the selection-only accuracy because the full-system audit evaluates the final answer, not only whether the selected query exactly matches a single canonical candidate. Some selected queries can still produce acceptable answers even when they are not identical to the expected candidate.
 
-The difference between the 68.3\% fallback selection accuracy and the 79.5\% fallback answer-level accuracy is expected. Selection accuracy asks whether the system selected the exact correct candidate according to the candidate benchmark. Answer-level correctness asks whether the final answer returned to the user is acceptable. These are related but not identical. Multiple SPARQL queries can sometimes produce the same relevant answer, especially for counts, lookups, or grouped summaries. In addition, the final fallback layer includes validated retrieval and execution-aware candidate selection, not only the ML ranking decision. Therefore, the answer-level audit can be higher than strict Top-1 candidate selection.
+The difference between the 53.6\% strict guarded-ML selection accuracy and the 80.5\% fallback answer-level accuracy is expected. Selection accuracy asks whether the system selected the exact correct candidate according to the repaired candidate benchmark. Answer-level correctness asks whether the final answer returned to the user is acceptable. These are related but not identical. Multiple SPARQL queries can sometimes produce the same relevant answer, especially for counts, lookups, or grouped summaries. In addition, the final fallback layer includes validated retrieval and execution-aware candidate selection, not only the ML ranking decision. Therefore, the answer-level audit can be higher than strict Top-1 candidate selection.
 
 The numerical gap should therefore be interpreted as a difference between two evaluation contracts. The selection benchmark is strict: a candidate is counted as correct only if it matches the labeled intended query candidate. The answer-level audit is user-facing: it checks whether the final answer is acceptable for the question. Some differences are harmless, for example when two grouped queries return the same rows, when variable names differ, or when a retrieval-backed candidate produces the same answer as the canonical query. Other differences are not harmless, such as returning a top-ranked value when the user asked for a full breakdown. For this reason, the thesis reports both metrics separately and includes a diagnostic script that extracts cases where strict Top-1 selection and audited answer correctness diverge.
 
-The deterministic route is more accurate because it is narrower. It only fires when the capability resolver has enough evidence to identify a supported metric, dimension, aggregation, and graph path. This explains the 93.8\% deterministic accuracy. The route is not perfect because some deterministic patterns can still be too broad, can miss a subtle scope requirement, or can return a grouped answer when the user expected a ranked one. However, it is much more stable than the fallback route because it avoids open-ended candidate generation.
+This distinction is important for interpreting the contribution. The 53.6\% value should not be read as the accuracy of the user-facing system. It measures only whether the reranker selected the repaired canonical query as the first candidate in an LLM-only KG selection setting. The 89.4\% value measures the full deployed pipeline after deterministic routing, ontology lookup, advisory routing, execution checks, and answer synthesis. In other words, strict Top-1 selection evaluates the ranking component under a deliberately difficult contract, while answer-level accuracy evaluates whether the final response shown to the user was correct.
 
-The LLM fallback route is lower at 79.5\% because it handles the harder part of the benchmark. These questions are precisely the ones that deterministic routing could not safely resolve. They contain more ambiguity, more schema-dependent joins, and more competing interpretations. The fallback accuracy should therefore not be interpreted as a weakness of the system alone; it reflects the higher difficulty of the subset routed to the LLM.
+The deterministic route is more accurate because it fires only when the capability resolver has enough evidence to identify a supported metric, dimension, aggregation, and graph path. This explains the 97.9\% deterministic accuracy. The repaired benchmark also makes the deterministic result more credible because direct answers are evaluated against a cleaned gold benchmark and not against queries that may themselves use unsupported graph paths.
+
+The LLM fallback route reaches 80.5\% answer-level accuracy. These questions are precisely the ones that deterministic routing could not safely resolve. They contain more ambiguity, more schema-dependent joins, and more competing interpretations. The fallback accuracy should therefore not be interpreted as a weakness of the system alone; it reflects the higher difficulty of the subset routed to the LLM.
+
+These results were measured in batch evaluation. The deployed interactive UI adds the 10-second timeout guard described in Chapter~\ref{chap:system-architecture}. This guard changes the user-facing behavior for slow fallback requests: instead of waiting indefinitely for the LLM, the system returns clarification choices or a controlled no-answer. Therefore, the timeout guard primarily affects auto-answer coverage and user experience, not the definition of correctness in the reported benchmark.
 
 \begin{table}[htbp]
 \centering
@@ -2405,7 +2665,7 @@ The LLM fallback route is lower at 79.5\% because it handles the harder part of 
 \toprule
 \textbf{Question type} & \textbf{Questions} & \textbf{Correct} & \textbf{Accuracy} \\
 \midrule
-True Demand KG analytics & 800 & 661 & 82.6\% \\
+True Demand KG analytics & 800 & 696 & 87.0\% \\
 DR ontology definitions & 150 & 150 & 100.0\% \\
 Advisory questions & 50 & 48 & 96.0\% \\
 \bottomrule
@@ -2414,7 +2674,7 @@ Advisory questions & 50 & 48 & 96.0\% \\
 
 The DR ontology route reached 100.0\% accuracy in the final mixed benchmark because definition questions were resolved through deterministic ontology lookup rather than LLM generation. A separate 300-question DR ontology benchmark reached 88.0\% before additional normalization and routing improvements, showing that ontology term normalization was an important implementation detail.
 
-The question-type breakdown also explains the overall 85.9\% result. Ontology definition questions perform best because they are resolved through a controlled lookup over labels and definitions. Advisory questions also perform strongly because they are constrained to graph-grounded templates and conservative recommendations. KG analytics questions are harder: they require selecting the correct metric, graph class, aggregation, grouping dimension, and survey scope. The 82.6\% KG analytics accuracy therefore reflects the difficulty of the actual data-querying task, while the higher ontology and advisory scores show the value of deterministic routing for well-defined request types.
+The question-type breakdown also explains the overall 89.4\% result. Ontology definition questions perform best because they are resolved through a controlled lookup over labels and definitions. Advisory questions also perform strongly because they are constrained to graph-grounded templates and conservative recommendations. KG analytics questions are harder: they require selecting the correct metric, graph class, aggregation, grouping dimension, and survey scope. The 87.0\% KG analytics accuracy therefore reflects the difficulty of the actual data-querying task, while the higher ontology and advisory scores show the value of deterministic routing for well-defined request types.
 
 The difference between KG analytics and ontology definitions is particularly important for the final system design. If ontology questions were sent to the LLM as ordinary free-text questions, the system could hallucinate definitions. By routing them through the DR ontology, the answer becomes deterministic and explainable. This is why adding the DR ontology improves the system as a user-facing assistant even though it does not directly improve SPARQL candidate selection.
 
@@ -2455,20 +2715,23 @@ return conservative_advice(
 \textbf{Metric} & \textbf{Value} \\
 \midrule
 Total questions & 1000 \\
-Observed LLM calls & 549 \\
+Observed cold-cache LLM calls & 486 \\
 All-LLM baseline calls & 1000 \\
-Estimated cost at EUR 0.20 per call & EUR 109.80 \\
+Estimated cold-cache cost at EUR 0.20 per call & EUR 97.20 \\
 All-LLM baseline cost & EUR 200.00 \\
-Estimated cost reduction & 45.1\% \\
+Estimated cold-cache cost reduction & 51.4\% \\
+Observed warm-cache LLM calls & 35 \\
+Observed warm-cache cost & EUR 7.00 \\
+Observed warm-cache cost reduction & 96.5\% \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The final benchmark also supports a conservative time-saving estimate. Manually formulating and validating SPARQL queries for 1000 mixed questions would require substantial expert time, especially for schema-dependent analytical questions. Under conservative assumptions, the manual effort would be on the order of dozens of analyst hours, while the KGQA system returns most answers within seconds and reduces the number of cases requiring expert inspection. This estimate is not presented as an exact measurement, but it illustrates the practical value of the system for non-technical users.
+The final benchmark also supports a conservative time-saving estimate. Manually formulating and validating SPARQL queries for 1000 mixed questions would require substantial expert time, especially for schema-dependent analytical questions. Under conservative assumptions, the remaining incorrect cases alone correspond to dozens of analyst hours. The estimate is not presented as an exact measurement or as a user study, but it illustrates why a graph-backed natural-language interface is useful for non-technical users.
 
 \begin{table}[htbp]
 \centering
-\caption{Transparent assumptions for manual SPARQL effort estimation on incorrect LLM fallback cases.}
+\caption{Transparent assumptions for manual SPARQL effort estimation on incorrect final-system cases.}
 \label{tab:manual-sparql-effort}
 \small
 \begin{tabularx}{\textwidth}{
@@ -2480,20 +2743,20 @@ The final benchmark also supports a conservative time-saving estimate. Manually 
 \toprule
 \textbf{Difficulty tier} & \textbf{Cases} & \textbf{Assumed min. / case} & \textbf{Total minutes} \\
 \midrule
-Easy & 53 & 5 & 265 \\
-Medium & 37 & 15 & 555 \\
-Hard & 23 & 30 & 690 \\
+Easy & 7 & 5 & 35 \\
+Medium & 25 & 15 & 375 \\
+Hard & 74 & 30 & 2220 \\
 \midrule
-Total & 113 & -- & 1510 \\
+Total & 106 & -- & 2630 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The assumptions in Table~\ref{tab:manual-sparql-effort} are intentionally conservative. They apply only to the 113 incorrect LLM fallback cases, not to the full benchmark, and they estimate the time a knowledgeable analyst would need to formulate and validate a correct SPARQL query. Under these assumptions, the remaining fallback errors alone correspond to about 25.2 hours of manual query-engineering effort. The estimate is not a replacement for a user study, but it anchors the time-saving claim in a transparent calculation.
+The assumptions in Table~\ref{tab:manual-sparql-effort} are intentionally conservative. They apply only to the 106 incorrect final-system cases, not to the full benchmark, and they estimate the time a knowledgeable analyst would need to formulate and validate a correct SPARQL query or advisory interpretation. Under these assumptions, the remaining errors alone correspond to about 43.8 hours of manual query-engineering effort. The estimate is not a replacement for a user study, but it anchors the time-saving claim in a transparent calculation.
 
-The cost result follows directly from the routing architecture. In an all-LLM baseline, every question would require an LLM call, resulting in 1000 calls for the benchmark. The final system made 549 LLM calls because deterministic KG routes, DR ontology definitions, and advisory templates answered a substantial portion of the questions without generation. At an assumed cost of EUR 0.20 per call, this reduces the estimated cost from EUR 200.00 to EUR 109.80. The 45.1\% reduction is therefore not an abstract optimization; it is a direct consequence of moving answerable questions out of the LLM path.
+The cost result follows directly from the routing architecture. In an all-LLM baseline, every question would require an LLM call, resulting in 1000 calls for the benchmark. In a cold-cache run, the final system requires 486 LLM calls because deterministic KG routes, DR ontology definitions, and advisory templates answer a substantial portion of the questions without generation. At an assumed cost of EUR 0.20 per call, this reduces the estimated cost from EUR 200.00 to EUR 97.20. The 51.4\% cold-cache reduction is therefore not an abstract optimization; it is a direct consequence of moving answerable questions out of the LLM path. A warm-cache rerun observed only 35 new LLM calls, corresponding to EUR 7.00 and a 96.5\% incremental cost reduction, but that value reflects cache reuse and is therefore reported separately from the cold-cache cost claim.
 
-The time-saving interpretation is similar. A human analyst writing SPARQL manually would need to understand the ontology, identify the correct graph path, test the query, inspect empty results, and summarize the output. The system automates this process for most questions and leaves only the difficult or incorrect cases for review. The exact time saved depends on the analyst's expertise, but the benchmark shows that the system can answer 859 out of 1000 mixed questions correctly and can do so with substantially fewer LLM calls than an all-LLM approach.
+The time-saving interpretation is similar. A human analyst writing SPARQL manually would need to understand the ontology, identify the correct graph path, test the query, inspect empty results, and summarize the output. The system automates this process for most questions and leaves only the difficult or incorrect cases for review. The exact time saved depends on the analyst's expertise, but the benchmark shows that the system can answer 894 out of 1000 mixed questions correctly and can do so with substantially fewer LLM calls than an all-LLM approach.
 
 
 \chapter{Discussion}
@@ -2502,20 +2765,32 @@ The time-saving interpretation is similar. A human analyst writing SPARQL manual
 \section{What Worked}
 \label{sec:what-worked}
 
-The strongest result is the combination of deterministic routing and LLM fallback. Deterministic routes answered 44.8\% of the final benchmark with 93.8\% accuracy. This shows that many recurring business questions do not require LLM generation at all if the graph capabilities are known and validated. At the same time, the LLM fallback layer remains useful for questions outside the deterministic capability inventory.
+The strongest result is the combination of deterministic routing and LLM fallback. Deterministic routes answered 51.4\% of the final benchmark with 97.9\% accuracy. This shows that many recurring business questions do not require LLM generation at all if the graph capabilities are known and validated. At the same time, the LLM fallback layer remains useful for questions outside the deterministic capability inventory.
 
-The second important result is that candidate generation is substantially stronger than candidate selection. On the 552 fallback questions, Any-Correct coverage reached 91.3\%, meaning that the correct query was usually present in the candidate set. Guarded ML improved Top-1 fallback selection from 57.4\% to 68.3\%. This supports the central claim that ambiguity-aware selection is a meaningful component in LLM-based KGQA.
+The second important result is that candidate generation is substantially stronger than candidate selection. On the repaired 1000-question KG selection benchmark, Any-Correct coverage reached 81.4\%, meaning that the correct query was often present in the candidate set even when it was not ranked first. Guarded ML improved strict Top-1 selection from 51.7\% to 53.6\%. The gain is modest, but it is still positive and supports the central claim that ambiguity-aware selection is a meaningful component in LLM-based KGQA.
+
+The holdout diagnostics clarify why the strict selection numbers should not be read as the complete user-facing performance of the LLM fallback. On the 200-question repaired holdout split, the best pairwise XGBoost learning-to-rank variant reached 54.0\% strict Top-1 accuracy, while 83.0\% of selected queries were execution-plausible, meaning that they executed successfully and returned graph rows. This does not prove that all of these answers were semantically correct, but it explains why answer-level audit scores can be higher than strict canonical-query scores. The strict metric evaluates exact candidate selection against the repaired gold intent; the execution-plausible metric evaluates whether the selected query produced graph evidence; the final answer-level audit evaluates whether the user-facing answer was correct.
 
 The DR ontology integration also worked well in the final system. Definition questions can be answered deterministically, avoiding unnecessary LLM calls and reducing hallucination risk. This makes the system more useful for non-technical users because they can ask both analytical and model-explanation questions through the same interface.
 
 \section{What Did Not Fully Work}
 \label{sec:what-did-not-work}
 
-Schema-only selection did not perform well on the fallback subset. It reduced Top-1 accuracy from 57.4\% for raw LLM ordering to 42.2\%. This indicates that schema validity can be misleading when several structurally valid candidates correspond to different business interpretations.
+Schema-only selection did not perform well on the repaired KG selection benchmark. It reduced Top-1 accuracy from 51.7\% for raw LLM ordering to 48.2\%. This indicates that schema validity can be misleading when several structurally valid candidates correspond to different business interpretations.
+
+This result is counter-intuitive but important. The schema-only selector is good at identifying candidates that look valid with respect to the ontology: they use existing classes, known properties, and plausible graph paths. However, this is not the same as selecting the candidate that answers the intended business question. In the True Demand KG, many wrong candidates are structurally clean. A query can correctly traverse the graph and still compute a count when the user asked for a sum, return a top-ranked value when the user asked for a breakdown, use future-demand records for a current-demand question, or group by region when the requested dimension was survey group. In these cases, schema validity becomes a deceptive signal: it rewards candidates that are formally well-formed but semantically misaligned.
+
+This explains why schema features are still useful inside the guarded ML reranker. The ML model does not treat schema compatibility as the objective. It combines schema information with answer-shape features, aggregation cues, selected variables, source metadata, score margins, and safety flags. Therefore, the result should not be read as ``schema is useless''. It should be read as ``schema validity is necessary but not sufficient''. Schema validity is a filter and feature; it is not a semantic objective. The guarded ML layer improves over schema-only selection because it can learn when a schema-valid candidate is likely to be the wrong interpretation of the question, for example when the query is executable but violates the requested metric, grouping, scope, or answer shape.
 
 Some analytical families remain difficult. Shortage, current-demand baselines, autonomous-driving questions with year or survey provenance, and some vehicle-sales questions still produce errors. The error analysis shows that many of these errors are avoidable with better templates, filters, and answer-shape constraints. However, a smaller subset requires deeper graph-path reasoning and cannot be solved reliably through simple schema matching.
 
-Another limitation is that the answer-level audit and the selection benchmark measure different things. The full system reached 85.9\% answer-level correctness, while guarded ML reached 68.3\% Top-1 selection on the fallback subset. These numbers should not be compared directly. The former evaluates the final user-facing answer; the latter evaluates whether the selected candidate matches the intended query candidate.
+Another limitation is that the answer-level audit and the selection benchmark measure different things. The full system reached 89.4\% answer-level correctness, while guarded ML reached 53.6\% strict Top-1 selection on the repaired KG candidate benchmark. These numbers should not be compared directly. The former evaluates the final user-facing answer; the latter evaluates whether the selected candidate matches the intended query candidate.
+
+Concrete audit examples illustrate this gap. For the question ``How many companies are currently recorded?'', the selected query counted \texttt{?company a survey:Company}, while the repaired gold query counted \texttt{?c a survey:Company}. The query strings and variable names differed, but both produced the same answer: 9 companies. For ``Count the FutureDemandAnalysis entries that are related to Semiconductor surveys?'', the selected query used a direct origin constraint \texttt{survey:hasSurveyOrigin survey:Semiconductor\_Survey}, while the repaired gold query used an intermediate origin variable typed as \texttt{survey:Semiconductor\_Survey}. Both forms returned the same count of 3. A similar case occurred for actual vehicle sales by month: the selected query and the repaired gold query used different projected variable names and label bindings, but both summed \texttt{survey:unitsSold} over actual \texttt{VehicleSalesObservation} records grouped by month. These cases are not strict string-level or canonical-query matches, but they are correct at the user-facing answer level.
+
+Execution-plausible selection sits between these two levels. It is useful for diagnosing whether the selected query was at least executable and evidence-producing, but it is not a substitute for either strict query selection or answer-level correctness. In the holdout analysis, this intermediate metric was much higher than strict Top-1, but it still required careful interpretation because a non-empty result can be semantically wrong.
+
+The execution-signature entropy diagnostic should also be interpreted cautiously. The methodology defines \(H_{\mathrm{sig}}\) as a way to collapse candidates that produce the same preview result before computing entropy. This would avoid overestimating ambiguity when two SPARQL strings are different but execution-equivalent. In the final logged evaluation, however, candidate-level execution signatures were not consistently available before the diagnostic step, so no reliable quantitative case study is reported. This is an implementation limitation rather than a theoretical contradiction. The current thesis therefore keeps \(H_{\mathrm{sig}}\) as a transparent methodological extension and reports execution plausibility separately, while leaving full execution-signature clustering as future instrumentation work.
 
 \section{Practical Value for Infineon}
 \label{sec:practical-value-infineon}
@@ -2526,20 +2801,26 @@ The practical value is visible in three areas:
 
 \begin{itemize}
     \item \textbf{Accessibility}: business users can ask KG analytics and ontology-definition questions without writing SPARQL.
-    \item \textbf{Cost control}: deterministic and ontology routes reduce LLM calls by 45.1\% compared with an all-LLM baseline.
+    \item \textbf{Cost control}: deterministic and ontology routes reduce cold-cache LLM calls by 51.4\% compared with an all-LLM baseline, while cache reuse reduces incremental repeated-run calls even further.
     \item \textbf{Reliability}: generated candidates are not trusted blindly; they are validated, reranked, checked for execution behavior, and audited.
 \end{itemize}
 
-For reporting purposes, a conservative claim is that the system reduces manual KG-querying effort substantially while reaching 85.9\% audited answer accuracy on a mixed 1000-question benchmark. The exact time saving depends on the expertise of the human analyst and the complexity of the question, but the system clearly reduces the need for manual SPARQL formulation in a large share of cases.
+For reporting purposes, a conservative claim is that the system reduces manual KG-querying effort substantially while reaching 89.4\% audited answer accuracy on a repaired mixed 1000-question benchmark. The exact time saving depends on the expertise of the human analyst and the complexity of the question, but the system clearly reduces the need for manual SPARQL formulation in a large share of cases.
+
+The value is also connected to the supply-chain motivation discussed in Chapter~2. In semiconductor planning, ambiguity between current demand, future demand, regional demand, OEM demand, and semiconductor-supplier demand can amplify misinterpretation across the planning chain. This is related to the bullwhip effect: small misunderstandings or delayed interpretations of demand signals can lead to larger planning deviations upstream. The KGQA system does not solve the bullwhip effect by itself, but it reduces one practical source of information distortion: users can ask for a specific demand signal and receive a graph-grounded answer with the selected metric, dimension, and scope made explicit.
+
+For example, the question ``demand by region'' is not treated as a single obvious request. It may refer to current regional demand, future demand by region, OEM demand, semiconductor demand, or total regional demand. By separating deterministic routes from ambiguous fallback cases, the system forces these distinctions to be resolved before presenting an answer. For a planner, this matters because acting on future demand when the intended signal was current demand can lead to different allocation, inventory, and escalation decisions. The practical contribution is therefore not only faster access to graph data, but also more controlled interpretation of demand signals before they are used in planning discussions.
 
 \section{Limitations}
 \label{sec:discussion-limitations}
 
 The final benchmark is still limited by the available graph and survey coverage. Some business questions are meaningful but not answerable because the required metric, dimension, or graph path does not exist. The system should therefore continue to distinguish between unsupported questions and failed generation.
 
+A related deployment limitation is latency. Some free-text questions trigger the full fallback path: LLM candidate generation, validation, preview execution, ML ranking, confidence routing, and answer synthesis. Even when such a question is answerable, this path can be too slow for interactive business use. The implemented timeout guard addresses this by returning graph-supported clarification choices after the configured time budget, but it also means that some answerable questions may require a second, more specific user choice.
+
 The human difficulty analysis is an informed audit rather than a controlled user study. It estimates how difficult failed queries would be for a knowledgeable human to write, but it does not measure actual human completion time. A future study with SPARQL users could provide a stronger empirical comparison.
 
-The ML reranker improves selection, but it does not solve all semantic ambiguity. More expressive semantic features, embeddings, or preference-learning approaches may improve the ranking of close candidates. However, high-ambiguity cases will still require clarification or abstention when the user intent cannot be inferred from the question alone.
+The ML reranker improves selection, but it does not solve all semantic ambiguity. Additional experiments with richer query-shape features and pairwise/listwise objectives showed only modest gains, with pairwise XGBoost performing best on the clean holdout. This suggests that further improvement will likely require stronger semantic signals rather than only additional hyperparameter tuning. Embedding-based similarity between the user question and a natural-language candidate-query description was implemented as an optional extension, but it is not part of the reported final system because no approved local embedding model was included in the stable deployment. Future work should evaluate such embeddings or preference-learning approaches under the same repaired benchmark protocol. High-ambiguity cases will still require clarification or abstention when the user intent cannot be inferred from the question alone.
 
 
 \chapter{Conclusion and Future Work}
@@ -2550,7 +2831,7 @@ The ML reranker improves selection, but it does not solve all semantic ambiguity
 
 This thesis developed and evaluated a hybrid KGQA system for the True Demand knowledge graph in the semiconductor supply-chain domain. The system combines deterministic graph-supported routing, DR ontology definition lookup, LLM-based SPARQL candidate generation, ML-based candidate selection, confidence routing, execution checks, and user-facing answer synthesis.
 
-The final evaluation shows that the hybrid architecture improves both reliability and efficiency. On a mixed 1000-question benchmark, the system achieved 85.9\% audited answer accuracy. It answered 44.8\% of questions through deterministic graph-supported routing and reduced LLM calls by 45.1\% compared with an all-LLM baseline. On the 552 fallback questions that required candidate selection, guarded ML improved Top-1 selection accuracy from 57.4\% to 68.3\%, while candidate coverage remained 91.3\%.
+The final evaluation shows that the hybrid architecture improves both reliability and efficiency. On a repaired mixed 1000-question benchmark, the system achieved 89.4\% audited answer accuracy. It answered 51.4\% of questions through deterministic graph-supported routing and reduced cold-cache LLM calls by 51.4\% compared with an all-LLM baseline. On the repaired KG candidate benchmark, guarded ML improved strict Top-1 selection accuracy from 51.7\% to 53.6\%, while candidate coverage remained 81.4\%. A separate clean holdout refinement showed that pairwise XGBoost LTR was the strongest tested ML variant, reaching 54.0\% strict Top-1 and 83.0\% execution-plausible selection on the untouched 200-question holdout.
 
 These results support the main thesis: reliable LLM-based KGQA should not be treated as a single prompt-to-query problem. The LLM can generate useful candidates, but reliable operation requires downstream validation, selection, routing, and graph-grounded execution.
 
@@ -2559,7 +2840,7 @@ These results support the main thesis: reliable LLM-based KGQA should not be tre
 
 Future work should focus on three directions. First, the direct capability inventory can be expanded for the remaining weak families, especially shortage, current-demand baselines, autonomous-driving provenance, and vehicle-sales filters. These improvements should be based on general graph patterns rather than overfitting to individual benchmark questions.
 
-Second, the ML reranker can be improved with richer semantic features. The current model uses structured query and schema-derived features. Embedding-based similarity between the natural-language question and candidate query descriptions could help distinguish candidates that are structurally similar but semantically different. The grouped candidate-query dataset could also support preference-learning approaches, such as DPO-style fine-tuning of the query generator. This would not eliminate the need for ambiguity estimation, but it may reduce the number of semantically incorrect candidates generated in the first place.
+Second, the ML reranker can be improved with richer semantic features. The current model uses structured query and schema-derived features, and the best clean holdout result came from a pairwise learning-to-rank objective. Embedding-based similarity between the natural-language question and candidate query descriptions could help distinguish candidates that are structurally similar but semantically different, but this should be evaluated only with a stable local or enterprise-approved embedding model. The grouped candidate-query dataset could also support preference-learning approaches, such as DPO-style fine-tuning of the query generator. This would not eliminate the need for ambiguity estimation, but it may reduce the number of semantically incorrect candidates generated in the first place.
 
 Third, future evaluation should include human user studies. The current thesis estimates the manual effort required to write SPARQL, but it does not directly measure analyst time. A controlled study comparing manual SPARQL formulation against the KGQA system would make the time-saving claim more precise.
 
