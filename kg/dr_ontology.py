@@ -53,6 +53,23 @@ ANALYTIC_HINTS = {
     "year",
 }
 
+DEFINITION_LIST_SEPARATORS = re.compile(
+    r"\s*(?:,|;|/|\band\b|\bor\b|\bversus\b|\bvs\.?\b)\s*",
+    re.IGNORECASE,
+)
+
+GENERIC_INVENTORY_HINTS = {
+    "available",
+    "covered",
+    "coverage",
+    "do you have",
+    "how many",
+    "list",
+    "show",
+    "what can",
+    "which topics",
+}
+
 
 @dataclass
 class DROntologyTerm:
@@ -73,6 +90,12 @@ def _normalize_alias(text: str) -> str:
 def _clean_definition_target(text: str) -> str:
     target = unquote(str(text or "")).strip(" \t\r\n.?!\"'`“”‘’")
     target = re.sub(r"\s+", " ", target).strip()
+    target = re.sub(
+        r"^(?:the\s+)?(?:concept|term|class|property|relationship|relation|object\s+property|data\s+property|datatype\s+property)\s+",
+        "",
+        target,
+        flags=re.IGNORECASE,
+    ).strip()
     target = re.sub(
         r"\s+(?:relationship|relation|object\s+property|data\s+property|datatype\s+property)\s*$",
         "",
@@ -219,6 +242,36 @@ def _definition_target(question: str) -> Optional[str]:
     return None
 
 
+def _definition_targets(question: str) -> List[str]:
+    target = _definition_target(question)
+    if target is None:
+        return []
+
+    lowered_question = str(question or "").lower()
+    lowered_target = target.lower()
+    if (
+        any(hint in lowered_question for hint in GENERIC_INVENTORY_HINTS)
+        and any(word in lowered_target for word in ("class", "classes", "property", "properties", "topic", "topics"))
+        and not any(mark in target for mark in (",", ";", "/", " and ", " or "))
+    ):
+        return []
+
+    parts = DEFINITION_LIST_SEPARATORS.split(target)
+    cleaned = [_clean_definition_target(part) for part in parts]
+    cleaned = [part for part in cleaned if part and _normalize_alias(part) not in {"class", "classes", "property", "properties"}]
+    if not cleaned:
+        cleaned = [_clean_definition_target(target)]
+
+    deduped: List[str] = []
+    seen = set()
+    for part in cleaned:
+        key = _normalize_alias(part)
+        if key and key not in seen:
+            deduped.append(part)
+            seen.add(key)
+    return deduped
+
+
 def _best_term(target: str, terms: Dict[str, DROntologyTerm]) -> Optional[DROntologyTerm]:
     key = _normalize_alias(target)
     if not key:
@@ -260,6 +313,18 @@ PROJECT_GLOSSARY: Dict[str, Tuple[str, str]] = {
         "True Demand KG concept",
         "Technology Node represents a semiconductor technology category or node used to group demand, inventory, shortage, and related survey responses in the True Demand knowledge graph.",
     ),
+    "lobe": (
+        "Digital Reference modelling concept",
+        "A lobe is a high-level Digital Reference domain area used to organize related concepts and relationships. It helps separate vocabulary by business or technical scope while still allowing links across domains when needed.",
+    ),
+    "single lobe": (
+        "Digital Reference modelling concept",
+        "Single-lobe modelling means that the requested concept, property, or use case can be described within one Digital Reference lobe. The relevant classes and relationships mainly stay inside the same domain area.",
+    ),
+    "cross lobe": (
+        "Digital Reference modelling concept",
+        "Cross-lobe modelling means that the requested concept, property, or use case connects concepts from more than one Digital Reference lobe. It is used when the business meaning depends on relationships across domain areas rather than a single isolated vocabulary branch.",
+    ),
 }
 
 PROJECT_GLOSSARY_BY_ALIAS: Dict[str, Tuple[str, str, str]] = {
@@ -271,6 +336,24 @@ PROJECT_GLOSSARY_BY_ALIAS: Dict[str, Tuple[str, str, str]] = {
 def _project_glossary_match(target: str) -> Optional[Tuple[str, str, str]]:
     key = _normalize_alias(target)
     return PROJECT_GLOSSARY_BY_ALIAS.get(key)
+
+
+def _term_answer(term: DROntologyTerm) -> str:
+    answer_parts = [
+        term.definition
+        or f"The Digital Reference ontology contains {term.label} as a {term.kind}."
+    ]
+    if term.parents:
+        answer_parts.append(f"In the Digital Reference ontology, it is a subclass of {_join(term.parents)}.")
+    if term.domains or term.ranges:
+        answer_parts.append(
+            "Its declared domain is "
+            + (_join(term.domains) or "not specified")
+            + " and its declared range is "
+            + (_join(term.ranges) or "not specified")
+            + "."
+        )
+    return " ".join(answer_parts)
 
 
 def _term_to_dict(term: DROntologyTerm) -> Dict[str, object]:
@@ -367,67 +450,141 @@ def _join(values: Iterable[str], limit: int = 5) -> str:
 
 
 def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
-    target = _definition_target(question)
-    if target is None:
+    targets = _definition_targets(question)
+    if not targets:
         return None
     path = _dr_path()
+    found: List[Dict[str, str]] = []
+    missing: List[str] = []
+
     if path is None:
-        glossary_match = _project_glossary_match(target)
-        if glossary_match is None:
-            return None
-        label, kind, definition = glossary_match
+        for target in targets:
+            glossary_match = _project_glossary_match(target)
+            if glossary_match is None:
+                missing.append(target)
+                continue
+            label, kind, definition = glossary_match
+            found.append(
+                {
+                    "label": label,
+                    "kind": kind,
+                    "answer": definition,
+                    "uri": "",
+                    "source": "true_demand_project_glossary",
+                }
+            )
+        if not found:
+            return {
+                "route": "definition",
+                "answer": "I could not find reliable Digital Reference or True Demand glossary definitions for: "
+                + _join(missing, limit=8)
+                + ".",
+                "matched_term": "",
+                "confidence": "Low",
+                "reason": "The question asks for definitions, but no deterministic ontology or glossary match was found.",
+                "source": "digital_reference_ontology",
+                "term_kind": "",
+                "term_uri": "",
+                "ontology_path": "",
+            }
+        if len(found) == 1 and not missing:
+            item = found[0]
+            return {
+                "route": "definition",
+                "answer": item["answer"],
+                "matched_term": item["label"],
+                "confidence": "High",
+                "reason": "The question asks for a deterministic True Demand glossary definition.",
+                "source": item["source"],
+                "term_kind": item["kind"],
+                "term_uri": item["uri"],
+                "ontology_path": "",
+            }
+        answer = "\n".join(f"- **{item['label']}** ({item['kind']}): {item['answer']}" for item in found)
+        if missing:
+            answer += "\n\nI could not find reliable definitions for: " + _join(missing, limit=8) + "."
         return {
             "route": "definition",
-            "answer": definition,
-            "matched_term": label,
+            "answer": answer,
+            "matched_term": _join([item["label"] for item in found], limit=8),
             "confidence": "High",
-            "reason": "The question asks for a deterministic True Demand glossary definition.",
+            "reason": "The question asks for multiple deterministic True Demand / Digital Reference definitions.",
             "source": "true_demand_project_glossary",
-            "term_kind": kind,
+            "term_kind": "multiple",
             "term_uri": "",
             "ontology_path": "",
         }
+
     terms = _load_dr_terms(str(path))
-    term = _best_term(target, terms)
-    if term is None:
+    for target in targets:
+        term = _best_term(target, terms)
+        if term is not None:
+            found.append(
+                {
+                    "label": term.label,
+                    "kind": term.kind,
+                    "answer": _term_answer(term),
+                    "uri": term.uri,
+                    "source": "digital_reference_ontology",
+                }
+            )
+            continue
         glossary_match = _project_glossary_match(target)
         if glossary_match is None:
-            return None
+            missing.append(target)
+            continue
         label, kind, definition = glossary_match
+        found.append(
+            {
+                "label": label,
+                "kind": kind,
+                "answer": definition,
+                "uri": "",
+                "source": "true_demand_project_glossary",
+            }
+        )
+
+    if not found:
         return {
             "route": "definition",
-            "answer": definition,
-            "matched_term": label,
-            "confidence": "High",
-            "reason": "The question asks for a deterministic True Demand / Digital Reference glossary definition.",
-            "source": "true_demand_project_glossary",
-            "term_kind": kind,
+            "answer": "I could not find reliable Digital Reference or True Demand glossary definitions for: "
+            + _join(missing, limit=8)
+            + ".",
+            "matched_term": "",
+            "confidence": "Low",
+            "reason": "The question asks for definitions, but no deterministic ontology or glossary match was found.",
+            "source": "digital_reference_ontology",
+            "term_kind": "",
             "term_uri": "",
             "ontology_path": str(path),
         }
-    answer_parts = [
-        term.definition
-        or f"The Digital Reference ontology contains {term.label} as a {term.kind}."
-    ]
-    if term.parents:
-        answer_parts.append(f"In the Digital Reference ontology, it is a subclass of {_join(term.parents)}.")
-    if term.domains or term.ranges:
-        answer_parts.append(
-            "Its declared domain is "
-            + (_join(term.domains) or "not specified")
-            + " and its declared range is "
-            + (_join(term.ranges) or "not specified")
-            + "."
-        )
+
+    if len(found) == 1 and not missing:
+        item = found[0]
+        return {
+            "route": "definition",
+            "answer": item["answer"],
+            "matched_term": item["label"],
+            "confidence": "High",
+            "reason": "The question asks for a Digital Reference ontology definition.",
+            "source": item["source"],
+            "term_kind": item["kind"],
+            "term_uri": item["uri"],
+            "ontology_path": str(path),
+        }
+
+    answer = "\n".join(f"- **{item['label']}** ({item['kind']}): {item['answer']}" for item in found)
+    if missing:
+        answer += "\n\nI could not find reliable definitions for: " + _join(missing, limit=8) + "."
 
     return {
         "route": "definition",
-        "answer": " ".join(answer_parts),
-        "matched_term": term.label,
+        "answer": answer,
+        "matched_term": _join([item["label"] for item in found], limit=8),
         "confidence": "High",
-        "reason": "The question asks for a Digital Reference ontology definition.",
+        "reason": "The question asks for multiple Digital Reference / True Demand definitions.",
         "source": "digital_reference_ontology",
-        "term_kind": term.kind,
-        "term_uri": term.uri,
+        "term_kind": "multiple",
+        "term_uri": _join([item["uri"] for item in found if item["uri"]], limit=8),
         "ontology_path": str(path),
     }
