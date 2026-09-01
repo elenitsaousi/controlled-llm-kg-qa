@@ -5308,7 +5308,7 @@ def _source_scope_answer(
 ) -> Optional[str]:
     q_norm = _normalize_question_key(question)
     source_intent = bool(
-        re.search(r"\b(sources?|data sources?|scope|summar(y|ize)|overview|brief|loaded|contains?|coverage)\b", q_norm)
+        re.search(r"\b(sources?|data sources?|scope|summar(y|ize)|overview|brief|loaded|contains?|cover|covers|covered|coverage)\b", q_norm)
     )
     if not source_intent:
         return None
