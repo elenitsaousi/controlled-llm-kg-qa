@@ -1077,6 +1077,31 @@ def test_candidate_answerable_unaffected_for_unrelated_region_breakdown_question
     assert reasons == []
 
 
+def test_candidate_answerable_generalizes_beyond_a_region_pair():
+    # The region guard now uses pipeline.slots.extract_region_scope, so it
+    # covers combinations of any size, not just the Europe/America pair.
+    question = "What is the combined current demand for Europe, America, and Japan?"
+    two_of_three_query = (
+        "SELECT (SUM(?demand) AS ?totalDemand) WHERE { "
+        "?entry a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin ?origin ; "
+        "survey:inRegion ?region ; survey:totalDemand ?demand . "
+        "VALUES ?region { survey:RegionEurope survey:RegionAmericas } }"
+    )
+    three_region_query = (
+        "SELECT (SUM(?demand) AS ?totalDemand) WHERE { "
+        "?entry a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin ?origin ; "
+        "survey:inRegion ?region ; survey:totalDemand ?demand . "
+        "VALUES ?region { survey:RegionEurope survey:RegionAmericas survey:RegionJapan } }"
+    )
+    ok, reasons = _candidate_is_user_answerable(question, two_of_three_query)
+    assert ok is False
+    assert any("japan" in reason for reason in reasons)
+
+    ok, reasons = _candidate_is_user_answerable(question, three_region_query)
+    assert ok is True
+    assert reasons == []
+
+
 def test_template_candidates_use_ascending_order_for_lowest_questions():
     lowest_semiconductor = _template_candidate_queries(
         "Which region has the lowest semiconductor demand?"

@@ -27,6 +27,7 @@ from ranking.ambiguity_policy import (
 )
 from ranking.clarification import build_clarification_payload
 from pipeline.request_routing import route_request
+from pipeline.slots import REGION_LITERALS, extract_region_scope
 from ranking.feature_extraction import extract_features, extract_query_plan
 from ranking.query_contract import (
     compare_contracts,
@@ -1209,17 +1210,9 @@ def _candidate_is_user_answerable(question: str, query: str) -> Tuple[bool, List
     if asks_inventory and not any(token in sparql for token in ("inventory", "component")):
         reasons.append("non_inventory_query_for_inventory_question")
 
-    requested_region_literals = {
-        "americas": "americas",
-        "america": "americas",
-        "europe": "europe",
-        "japan": "japan",
-        "china": "china",
-        "all other": "all other",
-        "asia pacific": "asia pacific",
-    }
-    for region_hint, required_literal in requested_region_literals.items():
-        if region_hint in q and required_literal not in sparql:
+    for region_hint in extract_region_scope(question):
+        required_literal = REGION_LITERALS[region_hint]
+        if required_literal not in sparql:
             reasons.append(f"missing_region_filter:{region_hint}")
 
     asks_cancellation = "cancellation" in q or "cancel" in q
