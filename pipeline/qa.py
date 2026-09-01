@@ -1211,6 +1211,7 @@ def _candidate_is_user_answerable(question: str, query: str) -> Tuple[bool, List
 
     requested_region_literals = {
         "americas": "americas",
+        "america": "americas",
         "europe": "europe",
         "japan": "japan",
         "china": "china",

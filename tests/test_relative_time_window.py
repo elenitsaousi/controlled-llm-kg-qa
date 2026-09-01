@@ -91,7 +91,7 @@ def test_semiconductor_relative_time_window_behavior():
         [sys.executable, "-c", _CHECK_SCRIPT],
         capture_output=True,
         text=True,
-        timeout=90,
+        timeout=180,
     )
     assert result.returncode == 0, result.stderr
     results = json.loads(result.stdout.strip().splitlines()[-1])

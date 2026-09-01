@@ -23,7 +23,11 @@ from ranking.np_tfidf_ranker import (
 from llm.prompts import build_candidate_prompt
 from llm.answer_synthesis import synthesize_answer
 from kg.schema import load_schema
-from pipeline.qa import _intent_alignment_report, _rerank_with_semantic_coverage
+from pipeline.qa import (
+    _candidate_is_user_answerable,
+    _intent_alignment_report,
+    _rerank_with_semantic_coverage,
+)
 from validation.semantic import (
     question_intent_report,
     rank_candidates_by_semantic_judge,
@@ -1033,6 +1037,44 @@ def test_template_candidates_cover_hard_infineon_intents():
     )
     assert component_share
     assert "ComponentShare" in component_share[0]
+
+
+def test_candidate_answerable_rejects_single_region_answer_for_combined_request():
+    question = "What is the combined current demand for Europe and America?"
+    europe_only_query = (
+        "SELECT (SUM(?demand) AS ?totalDemand) WHERE { "
+        "?entry a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin ?origin ; "
+        "survey:inRegion survey:RegionEurope ; survey:totalDemand ?demand . }"
+    )
+    ok, reasons = _candidate_is_user_answerable(question, europe_only_query)
+    assert ok is False
+    assert any("america" in reason for reason in reasons)
+
+
+def test_candidate_answerable_accepts_query_covering_both_combined_regions():
+    question = "What is the combined current demand for Europe and America?"
+    combined_query = (
+        "SELECT (SUM(?demand) AS ?totalDemand) WHERE { "
+        "?entry a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin ?origin ; "
+        "survey:inRegion ?region ; survey:totalDemand ?demand . "
+        "VALUES ?region { survey:RegionEurope survey:RegionAmericas } }"
+    )
+    ok, reasons = _candidate_is_user_answerable(question, combined_query)
+    assert ok is True
+    assert reasons == []
+
+
+def test_candidate_answerable_unaffected_for_unrelated_region_breakdown_question():
+    question = "Show total current demand from OEM customers by region."
+    all_regions_query = (
+        "SELECT ?regionName (SUM(?demand) AS ?totalDemand) WHERE { "
+        "?entry a survey:CurrentDemandAnalysis ; survey:hasSurveyOrigin survey:OEM_Survey ; "
+        "survey:inRegion ?region ; survey:totalDemand ?demand . "
+        "?region survey:regionName ?regionName . } GROUP BY ?regionName"
+    )
+    ok, reasons = _candidate_is_user_answerable(question, all_regions_query)
+    assert ok is True
+    assert reasons == []
 
 
 def test_template_candidates_use_ascending_order_for_lowest_questions():
