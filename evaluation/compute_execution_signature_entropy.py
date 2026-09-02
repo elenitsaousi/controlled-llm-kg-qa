@@ -26,6 +26,22 @@ the resulting group probabilities:
 Both values are written per-question to CSV and JSON, alongside the
 unclustered (raw, per-candidate) entropy for comparison.
 
+Two clustering variants are computed side by side, because a naive
+implementation can be over-credited: if two candidates both time out, both
+error, or both simply return zero rows, they are not "the same answer" in
+any meaningful sense -- they just both failed or matched nothing. Grouping
+those together would mix genuine execution-equivalence with coincidental
+shared failure and inflate the apparent entropy reduction.
+
+  - H_sig / H_sig_norm (lenient): all timeouts for a question share one
+    signature, and all 0-row successes with the same projected variables
+    share one signature, alongside genuine non-empty result equivalence.
+  - H_sig_strict / H_sig_strict_norm: timeouts, errors, and 0-row results
+    are never clustered with one another -- each keeps a unique signature
+    -- so only candidates producing the exact same non-empty result are
+    ever grouped. This is the conservative number to cite when the claim
+    needs to survive a reviewer asking exactly that question.
+
 Input format: a JSON file shaped like the existing selection/analysis result
 files under results/ (e.g. final1000_repaired_holdout200_xgb_pairwise_ltr_selection.json),
 i.e. {"details": [{"id": ..., "question": ..., "candidates": [{"query": ...,
@@ -260,11 +276,33 @@ class Executor:
         return outcome
 
 
-def _execution_signature(outcome: Dict[str, Any], preview_rows: int) -> str:
+def _execution_signature(
+    outcome: Dict[str, Any],
+    preview_rows: int,
+    *,
+    candidate_key: int = 0,
+    strict_nonempty: bool = False,
+) -> str:
+    """Build a signature clustering candidates by execution outcome.
+
+    ``strict_nonempty`` controls whether timeouts, errors, and successful
+    but empty (0-row) results are allowed to cluster with other candidates
+    that failed/returned nothing for a different reason. When False (the
+    default, "lenient" variant), all timeouts collapse into one bucket and
+    all 0-row successes with the same projected variables collapse into
+    one bucket, which is appropriate for measuring "does the user see a
+    distinguishable outcome" but conflates genuinely equivalent answers
+    with merely-coincidental shared failure/emptiness. When True (the
+    "strict" variant), every timeout, every error, and every 0-row success
+    gets its own unique signature via ``candidate_key``, so only candidates
+    that produced the *same non-empty* result are ever clustered together.
+    """
     if outcome["status"] == "timeout":
-        return "timeout"
+        return f"timeout:{candidate_key}" if strict_nonempty else "timeout"
     if outcome["status"] == "error":
-        return f"error:{outcome['error']}"
+        return f"error:{candidate_key}:{outcome['error']}" if strict_nonempty else f"error:{outcome['error']}"
+    if strict_nonempty and outcome["row_count"] == 0:
+        return f"empty:{candidate_key}"
     preview = sorted(outcome["rows"])[: max(0, preview_rows)]
     payload = {
         "vars": outcome["selected_vars"],
@@ -343,6 +381,7 @@ def analyze(
     rows: List[Dict[str, Any]] = []
     h_raw_values: List[float] = []
     h_sig_values: List[float] = []
+    h_sig_strict_values: List[float] = []
 
     for detail in details:
         candidates = detail.get("candidates") or []
@@ -355,52 +394,78 @@ def analyze(
         h_raw_norm = _normalized_entropy(h_raw, len(probs))
 
         grouped: Dict[str, float] = {}
+        grouped_strict: Dict[str, float] = {}
         group_status: Dict[str, Dict[str, Any]] = {}
+        group_status_strict: Dict[str, Dict[str, Any]] = {}
         error_count = 0
         timeout_count = 0
-        for prob, candidate in zip(probs, candidates):
+        nonempty_count = 0
+        for idx, (prob, candidate) in enumerate(zip(probs, candidates)):
             query = str(candidate.get("query") or "")
             outcome = executor.run(query) if query.strip() else {"status": "error", "error": "empty_query"}
             if outcome["status"] == "error":
                 error_count += 1
             elif outcome["status"] == "timeout":
                 timeout_count += 1
-            sig = _execution_signature(outcome, preview_rows)
+            elif outcome.get("row_count", 0) > 0:
+                nonempty_count += 1
+
+            sig = _execution_signature(outcome, preview_rows, candidate_key=idx, strict_nonempty=False)
             grouped[sig] = grouped.get(sig, 0.0) + prob
             meta = group_status.setdefault(
                 sig,
-                {
-                    "status": outcome["status"],
-                    "row_count": outcome.get("row_count"),
-                    "candidate_count": 0,
-                },
+                {"status": outcome["status"], "row_count": outcome.get("row_count"), "candidate_count": 0},
             )
             meta["candidate_count"] += 1
+
+            sig_strict = _execution_signature(outcome, preview_rows, candidate_key=idx, strict_nonempty=True)
+            grouped_strict[sig_strict] = grouped_strict.get(sig_strict, 0.0) + prob
+            meta_strict = group_status_strict.setdefault(
+                sig_strict,
+                {"status": outcome["status"], "row_count": outcome.get("row_count"), "candidate_count": 0},
+            )
+            meta_strict["candidate_count"] += 1
 
         group_probs = list(grouped.values())
         h_sig = _shannon_entropy_nats(group_probs)
         h_sig_norm = _normalized_entropy(h_sig, len(group_probs))
 
+        group_probs_strict = list(grouped_strict.values())
+        h_sig_strict = _shannon_entropy_nats(group_probs_strict)
+        h_sig_strict_norm = _normalized_entropy(h_sig_strict, len(group_probs_strict))
+
         h_raw_values.append(h_raw)
         h_sig_values.append(h_sig)
+        h_sig_strict_values.append(h_sig_strict)
 
         rows.append(
             {
                 "id": detail.get("id") or detail.get("question_id") or detail.get("request_id"),
                 "question": detail.get("question") or detail.get("effective_question"),
                 "candidate_count": len(candidates),
+                "nonempty_candidates": nonempty_count,
+                "failed_or_empty_candidates": len(candidates) - nonempty_count,
                 "signature_count": len(grouped),
+                "signature_count_strict": len(grouped_strict),
                 "execution_errors": error_count,
                 "execution_timeouts": timeout_count,
                 "H_raw": h_raw,
                 "H_raw_norm": h_raw_norm,
                 "H_sig": h_sig,
                 "H_sig_norm": h_sig_norm,
+                "H_sig_strict": h_sig_strict,
+                "H_sig_strict_norm": h_sig_strict_norm,
                 "entropy_reduction": h_raw - h_sig,
                 "entropy_reduction_norm": h_raw_norm - h_sig_norm,
+                "entropy_reduction_strict": h_raw - h_sig_strict,
+                "entropy_reduction_strict_norm": h_raw_norm - h_sig_strict_norm,
                 "groups": [
                     {"signature": sig, "probability": grouped[sig], **group_status[sig]}
                     for sig in sorted(grouped, key=lambda s: -grouped[s])
+                ],
+                "groups_strict": [
+                    {"signature": sig, "probability": grouped_strict[sig], **group_status_strict[sig]}
+                    for sig in sorted(grouped_strict, key=lambda s: -grouped_strict[s])
                 ],
             }
         )
@@ -409,6 +474,7 @@ def analyze(
     total = len(rows)
     avg_h_raw = sum(h_raw_values) / total if total else 0.0
     avg_h_sig = sum(h_sig_values) / total if total else 0.0
+    avg_h_sig_strict = sum(h_sig_strict_values) / total if total else 0.0
 
     return {
         "results": results_path,
@@ -422,18 +488,26 @@ def analyze(
             "questions": total,
             "avg_H_raw": avg_h_raw,
             "avg_H_sig": avg_h_sig,
+            "avg_H_sig_strict": avg_h_sig_strict,
             "avg_entropy_reduction": avg_h_raw - avg_h_sig,
+            "avg_entropy_reduction_strict": avg_h_raw - avg_h_sig_strict,
             "candidate_executions": executor.executions,
             "candidate_cache_hits": executor.cache_hits,
         },
         "rows": rows,
         "interpretation": (
-            "H_sig clusters candidates by actual execution outcome (selected variables, row "
-            "count, normalized preview rows) before computing entropy, so SPARQL candidates that "
-            "differ only in variable names or triple-pattern order but return the same result no "
-            "longer count as separate competitors. A large gap between H_raw and H_sig indicates "
-            "the raw candidate set overstates ambiguity; a small gap indicates the candidates are "
-            "genuinely distinct in what they would answer."
+            "Two clustering variants are reported. H_sig (lenient) clusters candidates by "
+            "execution outcome including shared failure modes: all timeouts for a question "
+            "collapse into one bucket, and all successful-but-empty (0-row) results with the "
+            "same projected variables collapse into one bucket, alongside genuine non-empty "
+            "result equivalence. This answers 'does the user see a distinguishable outcome' but "
+            "can understate ambiguity between candidates that merely failed/matched-nothing for "
+            "different underlying reasons. H_sig_strict never clusters timeouts, errors, or "
+            "0-row results with one another -- each gets a unique signature -- so it only "
+            "collapses candidates that produced the exact same non-empty result. The gap between "
+            "H_raw and H_sig_strict is therefore a conservative, reviewer-safe lower bound on how "
+            "much raw candidate-level entropy is attributable to genuine execution-level answer "
+            "equivalence, uncontaminated by shared failure or shared emptiness."
         ),
     }
 
@@ -443,15 +517,22 @@ def _write_csv(report: Dict[str, Any], out_csv: str) -> None:
         "id",
         "question",
         "candidate_count",
+        "nonempty_candidates",
+        "failed_or_empty_candidates",
         "signature_count",
+        "signature_count_strict",
         "execution_errors",
         "execution_timeouts",
         "H_raw",
         "H_raw_norm",
         "H_sig",
         "H_sig_norm",
+        "H_sig_strict",
+        "H_sig_strict_norm",
         "entropy_reduction",
         "entropy_reduction_norm",
+        "entropy_reduction_strict",
+        "entropy_reduction_strict_norm",
     ]
     Path(out_csv).parent.mkdir(parents=True, exist_ok=True)
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
