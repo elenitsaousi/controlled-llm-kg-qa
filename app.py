@@ -3490,23 +3490,54 @@ def _values_rows_count(values_rows: str) -> int:
     return max(1, len(re.findall(r"\(survey:", values_rows)))
 
 
+# The graph models exactly five sibling regions (verified against
+# survey:Region individuals): Americas, Europe, Japan, Asia Pacific/China,
+# Asia Pacific/All Other. Japan is its own top-level region here, not a
+# subset of "Asia Pacific" -- this mirrors standard semiconductor-market
+# reporting (e.g. WSTS: Americas / Europe / Japan / Asia Pacific are
+# reported as separate lines), so a bare "Asia"/"APAC" mention must resolve
+# to the two Asia-Pacific sub-regions only, never to Japan.
+_REGION_ALIAS_WORDS: Dict[str, Tuple[str, ...]] = {
+    "americas": ("americas", "america", "usa", "us"),
+    "europe": ("europe",),
+    "japan": ("japan",),
+    "china": ("china",),
+    "all_other": ("all other", "other regions", "other region"),
+}
+_ASIA_PACIFIC_WORDS: Tuple[str, ...] = ("asia pacific", "apac", "asia", "asian")
+_ASIA_PACIFIC_MEMBERS = ("china", "all_other")
+
+_REGION_URIS: Dict[str, str] = {
+    "americas": "survey:RegionAmericas",
+    "europe": "survey:RegionEurope",
+    "japan": "survey:RegionJapan",
+    "china": "<http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/RegionAsiaPacific/China>",
+    "all_other": "<http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/RegionAsiaPacific/AllOther>",
+}
+
+# Matches an exclusion clause ("but not Japan", "excluding China", "except
+# Asia", "without Europe") and captures everything after the trigger word so
+# any region mentioned there can be subtracted from the included set. This
+# makes exclusion generic across phrasing rather than tied to one wording.
+_REGION_EXCLUSION_CLAUSE = re.compile(r"\b(?:not|excluding|except(?:\s+for)?|without|but\s+not)\b(.*)$")
+
+
+def _region_keys_in_text(text: str) -> set:
+    keys = set()
+    for key, words in _REGION_ALIAS_WORDS.items():
+        if any(re.search(rf"\b{re.escape(word)}\b", text) for word in words):
+            keys.add(key)
+    if any(re.search(rf"\b{re.escape(word)}\b", text) for word in _ASIA_PACIFIC_WORDS):
+        keys.update(_ASIA_PACIFIC_MEMBERS)
+    return keys
+
+
 def _region_values_for_question(q_norm: str) -> str:
-    rows = []
-    if re.search(r"\b(america|americas|usa|us)\b", q_norm):
-        rows.append("survey:RegionAmericas")
-    if re.search(r"\beurope\b", q_norm):
-        rows.append("survey:RegionEurope")
-    if re.search(r"\bchina\b", q_norm):
-        rows.append("survey:China")
-    if re.search(r"\bjapan\b", q_norm):
-        rows.append("survey:RegionJapan")
-    if re.search(r"\b(asia|asian|asia pacific|apac|china)\b", q_norm):
-        rows.append("<http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/RegionAsiaPacific/China>")
-    if re.search(r"\b(asia|asian|asia pacific|apac|japan)\b", q_norm):
-        rows.append("survey:RegionJapan")
-    if re.search(r"\b(all other|other regions?|asia|asian|asia pacific|apac)\b", q_norm):
-        rows.append("<http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/RegionAsiaPacific/AllOther>")
-    return "\n    ".join(dict.fromkeys(rows))
+    included = _region_keys_in_text(q_norm)
+    exclusion_match = _REGION_EXCLUSION_CLAUSE.search(q_norm)
+    if exclusion_match:
+        included -= _region_keys_in_text(exclusion_match.group(1))
+    return "\n    ".join(_REGION_URIS[key] for key in _REGION_URIS if key in included)
 
 
 def _current_demand_guided_query(question: str) -> Tuple[str, str, str, str]:
@@ -3526,7 +3557,7 @@ SELECT ("Current-demand technology-node breakdown is not available in the curren
             "",
         )
 
-    region_intent = bool(re.search(r"\b(region|regions|regional|america|americas|europe|china|japan|all other|asia pacific|apac)\b", q))
+    region_intent = bool(re.search(r"\b(region|regions|regional)\b", q)) or bool(_region_keys_in_text(q))
     month_intent = bool(re.search(r"\b(month|months|monthly|latest|last|past|previous|recent)\b", q))
     avg_intent = bool(re.search(r"\b(avg|average|mean)\b", q))
     trend_intent = bool(re.search(r"\b(rising|falling|increase|increasing|decrease|decreasing|up|down|developing|trend|direction)\b", q))
