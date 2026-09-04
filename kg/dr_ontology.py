@@ -42,14 +42,26 @@ DEFINITION_PATTERNS = (
 COMPARISON_PATTERNS = (
     re.compile(r"^\s*(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*(?:what\s+is\s+)?(?:the\s+)?difference\s+between\s+(.+?)\s+and\s+(.+?)\s*\??\s*$", re.IGNORECASE),
+    re.compile(r"^\s*(?:what\s+is\s+)?(?:the\s+)?distinction\s+between\s+(.+?)\s+and\s+(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*compare\s+(.+?)\s+(?:and|with|to)\s+(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*how\s+(?:is|are)\s+(.+?)\s+different\s+from\s+(.+?)\s*\??\s*$", re.IGNORECASE),
 )
 
 DEFINITION_INTENT_PATTERNS = (
-    re.compile(r"\b(defin(e|ed|ition)|meaning|mean|explain|describe)\b", re.IGNORECASE),
+    re.compile(r"\b(defin(e|ed|ition)|meaning|mean|explain|describe|represent(s)?)\b", re.IGNORECASE),
     re.compile(r"\btell\s+me\s+about\b", re.IGNORECASE),
     re.compile(r"\bwhat\s+(is|are)\b", re.IGNORECASE),
+    # Broader interrogative openers common in real ontology/concept
+    # questions that don't fit the narrow "what is X"/"define X" shape --
+    # e.g. "Which chemical factors contribute to the CO2 burden?", "How is
+    # an open order book structured?", "What formula links X to Y?". Safe
+    # to be broad here because _has_definition_intent still runs these
+    # through _looks_like_graph_query right afterward, which rejects real
+    # graph-analytics questions (show/count/group/by region/etc.) unless
+    # they also carry strong "define/meaning" intent.
+    re.compile(r"^\s*which\b", re.IGNORECASE),
+    re.compile(r"^\s*how\s+(?:is|are|does|do)\b", re.IGNORECASE),
+    re.compile(r"\bwhat\s+(formula|parameters?|factors?)\b", re.IGNORECASE),
 )
 
 ANALYTIC_HINTS = {
@@ -178,6 +190,13 @@ def _normalize_alias(text: str) -> str:
 def _clean_definition_target(text: str) -> str:
     target = unquote(str(text or "")).strip(" \t\r\n.?!\"'`“”‘’")
     target = re.sub(r"\s+", " ", target).strip()
+    # "Battery Management System (BMS)" -- a trailing parenthetical
+    # abbreviation gets concatenated straight onto the normalized alias key
+    # with no separator ("batterymanagementsystembms"), which then matches
+    # neither the real term's own key ("batterymanagementsystem") nor any
+    # fuzzy substring of it. The ontology term's own label is virtually
+    # never written with the abbreviation attached, so just drop it.
+    target = re.sub(r"\s*\([A-Za-z0-9][A-Za-z0-9/&-]{0,15}\)\s*$", "", target).strip()
     # COMPARISON_PATTERNS (e.g. "X versus Y") has no fixed leading question
     # phrase built into its own regex the way DEFINITION_PATTERNS does, so
     # "What's a single lobe versus a cross lobe?" captures "What's a single
@@ -443,6 +462,13 @@ def _has_definition_intent(question: str) -> bool:
     ):
         return False
     return any(pattern.search(q_norm) for pattern in DEFINITION_INTENT_PATTERNS)
+
+
+_MEDIUM_CONFIDENCE_CAVEAT = (
+    "\n\n(This term was matched by a broad keyword scan of the question rather than "
+    "a precise phrase match, so it may not be the exact concept you meant -- double-check "
+    "against the source if this doesn't look right.)"
+)
 
 
 def _term_label_by_uri(terms: Dict[str, DROntologyTerm]) -> Dict[str, DROntologyTerm]:
@@ -806,8 +832,19 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
     path = _dr_path()
     terms = _load_dr_terms(str(path)) if path is not None else None
     targets = _definition_targets(question)
+    # _known_targets_from_question is a much cruder fallback: it scans the
+    # whole question for any known term/alias occurring anywhere as a
+    # substring, with no requirement that the match is actually the
+    # question's real subject (e.g. "which chemical, gas, and electricity
+    # factors contribute to the CO2 burden..." can latch onto the
+    # incidental word "Electricity" as if it were the term being asked
+    # about). Matches sourced this way get a lower confidence than a
+    # structured DEFINITION_PATTERNS match, so a wrong guess is at least
+    # flagged as less certain rather than presented as equally reliable.
+    match_confidence = "High"
     if not targets:
         targets = _known_targets_from_question(question, terms or {})
+        match_confidence = "Medium"
     if not targets:
         return None
 
@@ -829,11 +866,14 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
             }
         if len(found) == 1 and not missing:
             item = found[0]
+            item_answer = item["answer"]
+            if match_confidence == "Medium":
+                item_answer += _MEDIUM_CONFIDENCE_CAVEAT
             return {
                 "route": "definition",
-                "answer": item["answer"],
+                "answer": item_answer,
                 "matched_term": item["label"],
-                "confidence": "High",
+                "confidence": match_confidence,
                 "reason": "The question asks for a deterministic True Demand glossary definition.",
                 "source": item["source"],
                 "term_kind": item["kind"],
@@ -843,11 +883,13 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
         answer = "\n".join(f"- **{item['label']}** ({item['kind']}): {item['answer']}" for item in found)
         if missing:
             answer += "\n\nI could not find reliable definitions for: " + _join(missing, limit=8) + "."
+        if match_confidence == "Medium":
+            answer += _MEDIUM_CONFIDENCE_CAVEAT
         return {
             "route": "definition",
             "answer": answer,
             "matched_term": _join([item["label"] for item in found], limit=8),
-            "confidence": "High",
+            "confidence": match_confidence,
             "reason": "The question asks for multiple deterministic True Demand / Digital Reference definitions.",
             "source": "true_demand_project_glossary",
             "term_kind": "multiple",
@@ -874,11 +916,14 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
 
     if len(found) == 1 and not missing:
         item = found[0]
+        item_answer = item["answer"]
+        if match_confidence == "Medium":
+            item_answer += _MEDIUM_CONFIDENCE_CAVEAT
         return {
             "route": "definition",
-            "answer": item["answer"],
+            "answer": item_answer,
             "matched_term": item["label"],
-            "confidence": "High",
+            "confidence": match_confidence,
             "reason": "The question asks for a Digital Reference ontology definition.",
             "source": item["source"],
             "term_kind": item["kind"],
@@ -889,12 +934,14 @@ def route_dr_ontology_definition(question: str) -> Optional[Dict[str, object]]:
     answer = "\n".join(f"- **{item['label']}** ({item['kind']}): {item['answer']}" for item in found)
     if missing:
         answer += "\n\nI could not find reliable definitions for: " + _join(missing, limit=8) + "."
+    if match_confidence == "Medium":
+        answer += _MEDIUM_CONFIDENCE_CAVEAT
 
     return {
         "route": "definition",
         "answer": answer,
         "matched_term": _join([item["label"] for item in found], limit=8),
-        "confidence": "High",
+        "confidence": match_confidence,
         "reason": "The question asks for multiple Digital Reference / True Demand definitions.",
         "source": "digital_reference_ontology",
         "term_kind": "multiple",

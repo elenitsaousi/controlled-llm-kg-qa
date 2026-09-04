@@ -709,16 +709,16 @@ def _format_current_bl_comparison(rows: List[Dict[str, object]]) -> str:
             f"The returned BL1-BL2 delta is {_format_number(delta)}."
         )
 
-    if not _has_any_key(rows, ["baseline"]) or not _has_any_key(
-        rows, ["pct", "totalChange", "avgPct", "avgPctChange"]
+    if not _has_any_key(rows, ["baseline", "baselineType"]) or not _has_any_key(
+        rows, ["pct", "totalChange", "avgPct", "avgPctChange", "avgPercentageChange"]
     ):
         return ""
 
     values = {}
     metric_key = ""
     for row in rows:
-        baseline = _clean_value(_row_get(row, "baseline"))
-        value = _row_get(row, "totalChange", "pct", "avgPct", "avgPctChange")
+        baseline = _clean_value(_row_get(row, "baseline", "baselineType"))
+        value = _row_get(row, "totalChange", "pct", "avgPct", "avgPctChange", "avgPercentageChange")
         number = _to_float(value)
         if baseline and number is not None:
             values[baseline.upper()] = number

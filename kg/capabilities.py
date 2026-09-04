@@ -881,11 +881,33 @@ def _shortage_direct_query(dims: set, q_norm: str) -> Optional[str]:
     scope = _scope_from_question(q_norm)
     bind_survey, origin_type, survey_var = _survey_group_projection(scope)
     asks_negative = bool(re.search(r"\b(not|no|without|did not|have not|has not)\b", q_norm))
-    asks_positive = bool(
-        asks_negative is False
-        and re.search(r"\b(reported|reporting|facing|experiencing|identified|indicated|acknowledged|stated|disclosed|marked as having|with shortages?)\b", q_norm)
+    asks_positive_words = bool(
+        re.search(r"\b(reported|reporting|facing|experiencing|identified|indicated|acknowledged|stated|disclosed|marked as having|with shortages?)\b", q_norm)
     )
-    shortage_filter = "false" if asks_negative else "true" if asks_positive else ""
+    # "X reported experiencing a shortage COMPARED TO those that did not"
+    # mentions both a positive-shortage cue ("reported ... experiencing")
+    # and a negation ("did not") -- treating that as a single negative-only
+    # filter (the "not" branch wins) silently answers with only the count
+    # of companies WITHOUT a shortage, dropping the very comparison the
+    # question asked for.
+    asks_comparison = bool(re.search(r"\b(compared to|versus|vs\.?)\b", q_norm)) or (
+        asks_negative and asks_positive_words
+    )
+    asks_positive = asks_positive_words and not asks_negative
+    shortage_filter = "" if asks_comparison else ("false" if asks_negative else "true" if asks_positive else "")
+    if asks_comparison and scope and _asks_for_count(q_norm):
+        return f"""
+SELECT ?shortageStatus (COUNT(?company) AS ?companyCount) WHERE {{
+  {bind_survey}
+  ?company a survey:Company ;
+           survey:hasSurveyOrigin ?origin ;
+           survey:reportsShortage ?shortage .
+  {origin_type}
+  BIND(IF(?shortage = true, "yes", "no") AS ?shortageStatus)
+}}
+GROUP BY ?shortageStatus
+ORDER BY ?shortageStatus
+"""
     if "survey group" in dims and shortage_filter and _asks_for_count(q_norm):
         return f"""
 SELECT {survey_var} (COUNT(?company) AS ?companyCount) WHERE {{

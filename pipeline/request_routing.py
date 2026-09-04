@@ -453,6 +453,18 @@ def route_request(
     glossary = build_domain_glossary(schema, alias_index) if schema is not None else dict(CURATED_TERMS)
 
     dr_definition = route_dr_ontology_definition(question)
+    if dr_definition is not None and dr_definition.get("confidence") == "Medium":
+        # Sourced via a broad keyword-scan fallback, not a precise phrase
+        # match. When the question is really comparing/describing the two
+        # data sources themselves (mentions both "True Demand" and "Digital
+        # Reference"), let the rest of this routing chain (which classifies
+        # this as a graph/source-scope question) handle it instead of a
+        # generic "here are two separate definitions" dump.
+        q_lower = question.lower()
+        mentions_true_demand_src = bool(re.search(r"\b(true demand|demand graph|kg|knowledge graph|graph data)\b", q_lower))
+        mentions_dr_src = bool(re.search(r"\b(digital reference|dr ontology)\b", q_lower))
+        if mentions_true_demand_src and mentions_dr_src:
+            dr_definition = None
     if dr_definition is not None:
         return dr_definition
 

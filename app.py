@@ -8293,6 +8293,22 @@ if asked or flexible_asked:
         # a confident-looking auto_answer) instead of letting source-scope,
         # metadata, or other guided routes actually try to answer it.
         dr_definition = None
+    if dr_definition is not None and dr_definition.get("confidence") == "Medium":
+        # A "Medium" result was sourced via a broad keyword-scan fallback
+        # (see kg/dr_ontology.py's _known_targets_from_question), not a
+        # precise phrase match. When the question is really asking to
+        # compare/describe the two DATA SOURCES themselves (mentions both
+        # "True Demand" and "Digital Reference"), _source_scope_answer
+        # already gives a purpose-built, better-tailored comparison than
+        # this fallback's generic "here are two separate definitions" dump
+        # -- prefer it. This is a narrow override: it doesn't affect the
+        # (much more common) case of a Medium-confidence match for a real
+        # domain concept, where no better handler exists downstream anyway.
+        q_lower = question.lower()
+        mentions_true_demand_src = bool(re.search(r"\b(true demand|demand graph|kg|knowledge graph|graph data)\b", q_lower))
+        mentions_dr_src = bool(re.search(r"\b(digital reference|dr ontology)\b", q_lower))
+        if mentions_true_demand_src and mentions_dr_src:
+            dr_definition = None
     if (
         dr_definition is not None
         and _looks_like_graph_analytics_question(question)
