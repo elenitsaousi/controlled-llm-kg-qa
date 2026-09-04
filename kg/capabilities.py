@@ -124,10 +124,10 @@ DEFAULT_CAPABILITIES: Tuple[CapabilitySpec, ...] = (
         core_terms=("FutureDemandAnalysis",),
         dimensions=(
             _dim("region", ("regions", "regional"), ("DemandForRegion", "Region", "percentageChange", "totalDemandPercentageChange"), distinct_values=5),
-            _dim("quarter", ("quarters", "quater", "quarterly", "time period"), ("DemandForQuarter", "Quarter", "periodLabel", "percentageChange", "totalDemandPercentageChange"), distinct_values=8),
-            _dim("vehicle type", ("vehicle", "vehcle type", "vehicle category"), ("DemandForVehicleType", "VehicleType", "percentageChange"), distinct_values=3),
-            _dim("technology category", ("technology", "technolgy category", "tech category", "node"), ("DemandForTechnologyCategory", "TechnologyCategory", "percentageChange"), distinct_values=5),
-            _dim("survey group", ("survey", "survey type", "origin", "survey origin"), ("DemandForSurveyGroup", "SurveyGroup", "hasSurveyOrigin"), distinct_values=3),
+            _dim("quarter", ("quarters", "quater", "quarterly", "time period"), ("Quarter", "periodLabel", "percentageChange", "totalDemandPercentageChange"), distinct_values=8),
+            _dim("vehicle type", ("vehicle", "vehcle type", "vehicle category"), ("VehicleType", "percentageChange"), distinct_values=3),
+            _dim("technology category", ("technology", "technolgy category", "tech category", "node"), ("TechnologyCategory", "percentageChange"), distinct_values=5),
+            _dim("survey group", ("survey", "survey type", "origin", "survey origin"), ("hasSurveyOrigin",), distinct_values=3),
         ),
         aggregations=("AVG", "SUM", "COUNT", "MAX", "MIN"),
         query_templates={
@@ -199,10 +199,10 @@ ORDER BY ?surveyGroup
     CapabilitySpec(
         name="vehicle sales",
         aliases=("actual vehicle sales", "forecast vehicle sales", "vehicle units sold", "vehicles sold", "sales units", "sales volume"),
-        core_terms=("VehicleSales", "VehicleSalesForecast"),
+        core_terms=("VehicleSalesObservation",),
         dimensions=(
-            _dim("month", ("months", "monthly", "time period", "time periods"), ("monthLabel", "Month"), distinct_values=12),
-            _dim("year", ("years", "yearly"), ("year", "hasYear")),
+            _dim("month", ("months", "monthly", "time period", "time periods"), ("periodLabel", "Month"), distinct_values=12),
+            _dim("year", ("years", "yearly"), ("hasYear",)),
             _dim("vehicle type", ("vehicle", "vehcle type"), ("VehicleType", "hasVehicleType")),
         ),
         aggregations=("SUM", "AVG", "COUNT"),
@@ -212,7 +212,7 @@ ORDER BY ?surveyGroup
         aliases=("shortages", "shortage status", "companies reporting shortage", "reported shortage"),
         core_terms=("Company", "reportsShortage"),
         dimensions=(
-            _dim("shortage status", ("shortage", "reported shortage", "with and without shortage"), ("reportsShortage", "ShortageStatus")),
+            _dim("shortage status", ("shortage", "reported shortage", "with and without shortage"), ("reportsShortage",)),
             _dim("survey group", ("survey", "survey type", "origin"), ("hasSurveyOrigin", "OEM_Survey", "Tier1_Survey", "Semiconductor_Survey")),
             _dim("technology category", ("technology", "technolgy category"), ("TechnologyCategory", "technologyCategoryName")),
         ),
@@ -225,7 +225,7 @@ ORDER BY ?surveyGroup
         dimensions=(
             _dim("vehicle type", ("vehicle", "vehcle type"), ("VehicleType", "hasVehicleType")),
             _dim("SAE level", ("sae", "level 5", "sae level 5"), ("SAELevel", "hasSAELevel"), distinct_values=6),
-            _dim("year", ("years", "yearly"), ("hasYear", "year")),
+            _dim("year", ("years", "yearly"), ("hasYear",)),
             _dim("survey group", ("survey", "survey type", "origin"), ("hasSurveyOrigin", "OEM_Survey", "Tier1_Survey")),
         ),
         aggregations=("AVG", "COUNT", "MAX"),
@@ -233,18 +233,18 @@ ORDER BY ?surveyGroup
     CapabilitySpec(
         name="inventory",
         aliases=("inventory trend", "inventory trends", "inventory entries", "inventory amount"),
-        core_terms=("InventoryDevelopment", "InventoryResponse"),
+        core_terms=("InventoryDevelopment",),
         dimensions=(
-            _dim("component", ("components", "component type"), ("ComponentType", "forComponent")),
+            _dim("component", ("components", "component type"), ("forComponent",)),
             _dim("technology category", ("technology", "technolgy category"), ("TechnologyCategory", "technologyCategoryName")),
-            _dim("trend", ("inventory trend", "increase decrease stable"), ("inventoryTrend", "InventoryTrend")),
+            _dim("trend", ("inventory trend", "increase decrease stable"), ("inventoryTrend", "hasInventoryTrend")),
         ),
         aggregations=("SUM", "COUNT"),
     ),
     CapabilitySpec(
         name="order cancellation",
         aliases=("order cancellations", "order cancellation response", "cancellation response"),
-        core_terms=("OrderCancellation", "OrderCancellationResponse"),
+        core_terms=("OrderCancellation",),
         dimensions=(
             _dim("technology category", ("technology", "technolgy category"), ("TechnologyCategory", "technologyCategoryName")),
             _dim("response type", ("response", "response trend", "increase decrease stable"), ("responseType", "hasResponseType")),

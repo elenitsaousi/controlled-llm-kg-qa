@@ -74,6 +74,18 @@ DEFAULT_FUSEKI_QUERY_URL = "http://localhost:3030/infineon/sparql"
 DEFAULT_INTERACTIVE_TIME_BUDGET_SEC = 10.0
 DEFAULT_INTERACTIVE_LLM_TIMEOUT_SEC = 6.0
 DEFAULT_INTERACTIVE_QUERY_TIMEOUT_SEC = 3.0
+# A cold parse of the in-memory Turtle graph (~1.16M triples, ~27MB) takes on
+# the order of 15-20s standalone, but measured 45-55s when run inside this
+# app's own process (heavier import footprint -- streamlit plus the ranking
+# stack -- makes the same parse noticeably slower) -- far longer than the
+# interactive query budget above, which is sized for running a SPARQL query
+# against an already-loaded graph. _load_graph_cached() is an
+# @st.cache_resource, so this cost is paid at most once per running app
+# process; every subsequent call is effectively instant. Any code path that
+# may trigger that first load (not just query execution against an
+# already-warm graph) must use this longer budget, or it silently times out
+# and falls back to stale/missing data on cold start.
+DEFAULT_GRAPH_LOAD_TIMEOUT_SEC = 120.0
 INTERACTIVE_EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="kgqa-ui")
 SEMICONDUCTOR_DEMAND_BY_QUARTER_QUERY = """
 SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {
@@ -534,6 +546,19 @@ def _interactive_query_timeout_sec() -> float:
         return DEFAULT_INTERACTIVE_QUERY_TIMEOUT_SEC
 
 
+def _graph_load_timeout_sec() -> float:
+    """Budget for an operation that may trigger the first (cold) parse of
+    the graph file, as opposed to a query against an already-loaded graph.
+    See DEFAULT_GRAPH_LOAD_TIMEOUT_SEC."""
+    try:
+        return max(
+            _interactive_query_timeout_sec(),
+            float(os.getenv("KGQA_GRAPH_LOAD_TIMEOUT_SEC", str(DEFAULT_GRAPH_LOAD_TIMEOUT_SEC))),
+        )
+    except ValueError:
+        return DEFAULT_GRAPH_LOAD_TIMEOUT_SEC
+
+
 def _interactive_budget_exceeded(started_at: float, reserve_s: float = 0.0) -> bool:
     return (time.perf_counter() - started_at + float(reserve_s)) >= _interactive_time_budget_sec()
 
@@ -619,7 +644,7 @@ def _preview_query_rows_cached(
 
         rows, _truncated = _run_with_timeout(
             _load_and_preview,
-            max(_interactive_query_timeout_sec(), 0.75),
+            _graph_load_timeout_sec(),
             label="graph preview",
         )
         return rows, ""
@@ -1443,7 +1468,7 @@ def _render_answer_subgraph(
 
         triples, meta = _run_with_timeout(
             _collect_evidence,
-            _interactive_query_timeout_sec(),
+            _graph_load_timeout_sec(),
             label="answer evidence graph",
         )
     except Exception:
@@ -1544,7 +1569,7 @@ def _render_clarification(
                     try:
                         graph = _run_with_timeout(
                             lambda: _load_active_graph(graph_path),
-                            _interactive_query_timeout_sec(),
+                            _graph_load_timeout_sec(),
                             label="graph backend load",
                         )
                         rows, _truncated = _execute_query_preview(
@@ -1938,7 +1963,7 @@ def _execute_guided_question_now(
             graph_load_started = time.perf_counter()
             graph = _run_with_timeout(
                 lambda: _load_active_graph(graph_path),
-                _interactive_query_timeout_sec(),
+                _graph_load_timeout_sec(),
                 label="graph backend load",
             )
             graph_load_elapsed = time.perf_counter() - graph_load_started
@@ -6337,7 +6362,7 @@ def _graph_data_stats(graph_path: str) -> Dict[str, int]:
         return {}
     graph = _run_with_timeout(
         lambda: _load_active_graph(graph_path),
-        _interactive_query_timeout_sec(),
+        _graph_load_timeout_sec(),
         label="graph backend load",
     )
     if _active_fuseki_query_url():
@@ -6619,6 +6644,23 @@ def _capability_support_answer(question: str, schema_dict: Dict[str, Any]) -> Op
     )
     if not support_intent:
         return None
+
+    if re.search(r"\b(ontology|digital reference|dr ontology)\b", q_norm) and re.search(
+        r"\b(definitions?|concepts?|questions?)\b", q_norm
+    ):
+        # CAPABILITY_REGISTRY below only models True-Demand graph
+        # capabilities (demand, shortage, inventory, ...), not the separate
+        # Digital Reference ontology module -- without this, a question like
+        # "Do you have ontology definition questions?" falls through with no
+        # deterministic answer even though that capability is extensively
+        # supported (see kg/dr_ontology.py).
+        return (
+            "Yes. The system supports Digital Reference ontology definition questions -- "
+            "for concepts (e.g. \"What is a Technology Node?\"), relationships/properties "
+            "(e.g. \"What does is processed by mean?\"), and term comparisons "
+            "(e.g. \"What is the difference between current demand and future demand?\")."
+        )
+
     report = CAPABILITY_REGISTRY.resolve(question)
     capability_name = report.primary_capability
     dimension_names = [item.name for item in report.detected_dimensions]
@@ -8980,7 +9022,7 @@ if asked or flexible_asked:
                 graph_load_started = time.perf_counter()
                 graph = _run_with_timeout(
                     lambda: _load_active_graph(graph_path),
-                    _interactive_remaining_sec(request_started, reserve_s=1.0),
+                    max(_interactive_remaining_sec(request_started, reserve_s=1.0), _graph_load_timeout_sec()),
                     label="graph backend load",
                 )
                 graph_load_elapsed = time.perf_counter() - graph_load_started
@@ -9055,7 +9097,7 @@ if asked or flexible_asked:
                         graph_load_started = time.perf_counter()
                         graph = _run_with_timeout(
                             lambda: _load_active_graph(graph_path),
-                            _interactive_remaining_sec(request_started, reserve_s=1.0),
+                            max(_interactive_remaining_sec(request_started, reserve_s=1.0), _graph_load_timeout_sec()),
                             label="graph backend load",
                         )
                         graph_load_elapsed = time.perf_counter() - graph_load_started
