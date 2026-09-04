@@ -109,6 +109,8 @@ def resolve_advisory_plan(question: str) -> Optional[AdvisoryPlan]:
             "unstable",
             "volatile",
             "unclear",
+            "decision",
+            "decide",
         ),
     ) or bool(
         # Generalizes the old exact-phrase list ("look at first", "inspect
@@ -188,6 +190,26 @@ def resolve_advisory_plan(question: str) -> Optional[AdvisoryPlan]:
             value_key="avgPercentageChange",
             value_label="average future-demand percentage change",
             objective="identify the region with the strongest future-demand signal",
+        )
+
+    # A question explicitly asking for a "decision"/"recommendation" about a
+    # named region (e.g. "give me a business decision for China") but not
+    # mentioning "demand" would otherwise fall through to a plain
+    # unqualified answer with none of this module's "data-grounded
+    # analytical signal, not an autonomous business decision" disclaimer --
+    # exactly the wording most likely to be misread as the system deciding
+    # something. Default it to the same current-demand-by-region signal.
+    if _has_any(q, ("decision", "decide", "recommend", "suggest")) and _has_any(
+        q, ("china", "japan", "europe", "americas", "america", "asia", "asia pacific", "apac")
+    ):
+        return AdvisoryPlan(
+            plan_id="current_demand_region_focus",
+            title="Current-demand focus by region",
+            query=CURRENT_DEMAND_BY_REGION,
+            group_key="regionName",
+            value_key="totalDemand",
+            value_label="total current demand",
+            objective="identify the region with the highest current-demand signal",
         )
 
     return None

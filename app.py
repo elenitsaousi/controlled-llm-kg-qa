@@ -3902,7 +3902,7 @@ def _future_demand_guided_query(question: str) -> Tuple[str, str, str]:
     if not q or "demand" not in q:
         return "", "", ""
     future_intent = bool(
-        re.search(r"\b(future|expected|expectation|outlook|upcoming|forecast|forecasted)\b", q)
+        re.search(r"\b(future|expected|expectation|outlook|upcoming|forecast|forecasted|predict|predicted|prediction|next year)\b", q)
     )
     if not future_intent:
         return "", "", ""
@@ -6607,7 +6607,7 @@ def _source_scope_answer(
     q_norm = _normalize_question_key(question)
     source_intent = bool(
         re.search(
-            r"\b(sources?|data sources?|scope|summar(y|ize)|overview|brief|loaded|contains?|cover|covers|covered|coverage|includes?|included|parts?|part of|made of|composed of|consists? of)\b",
+            r"\b(sources?|data sources?|scope|summar(y|ize)|overview|brief|loaded|contains?|cover|covers|covered|coverage|includes?|included|parts?|part of|made of|composed of|consists? of|used for|use case|purpose|role|different from|difference|differs from)\b",
             q_norm,
         )
     )
@@ -8277,6 +8277,15 @@ if asked or flexible_asked:
     original_user_question = question
     guided_query = _active_guided_query(question)
     dr_definition = route_dr_ontology_definition(question)
+    if dr_definition is not None and dr_definition.get("confidence") == "Low":
+        # A "Low" confidence result here means route_dr_ontology_definition
+        # found no real definition match and is only returning an "I could
+        # not find..." message -- every downstream guided-query/metadata
+        # branch below is gated on `dr_definition is None`, so without this
+        # that honest non-answer would monopolize the question (rendered as
+        # a confident-looking auto_answer) instead of letting source-scope,
+        # metadata, or other guided routes actually try to answer it.
+        dr_definition = None
     if (
         dr_definition is not None
         and _looks_like_graph_analytics_question(question)

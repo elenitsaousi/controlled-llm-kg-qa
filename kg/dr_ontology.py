@@ -34,6 +34,7 @@ COMPARISON_PATTERNS = (
     re.compile(r"^\s*(.+?)\s+(?:vs\.?|versus)\s+(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*(?:what\s+is\s+)?(?:the\s+)?difference\s+between\s+(.+?)\s+and\s+(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*compare\s+(.+?)\s+(?:and|with|to)\s+(.+?)\s*\??\s*$", re.IGNORECASE),
+    re.compile(r"^\s*how\s+(?:is|are)\s+(.+?)\s+different\s+from\s+(.+?)\s*\??\s*$", re.IGNORECASE),
 )
 
 DEFINITION_INTENT_PATTERNS = (
