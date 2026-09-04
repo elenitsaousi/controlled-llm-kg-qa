@@ -398,6 +398,9 @@ class CapabilityRegistry:
         return suggestions
 
     def direct_query_for(self, report: ResolutionReport) -> Optional[str]:
+        baseline_query = _current_demand_baseline_direct_query(normalize_text(report.original_question))
+        if baseline_query:
+            return baseline_query
         if not report.primary_capability or not report.detected_capabilities:
             return None
         primary = report.detected_capabilities[0]
@@ -548,6 +551,8 @@ def _scope_from_question(question: str) -> Optional[Tuple[str, str, str]]:
         or ("semiconductor finding" in q)
         or ("semiconductor response" in q)
         or ("semiconductor survey response" in q)
+        or ("semiconductor shortage" in q)
+        or ("semiconductor compan" in q)
     )
     if semiconductor_as_survey_scope:
         scopes.append(("Semiconductor", "Semiconductor_Survey", "Semiconductor_Survey_Instance"))
@@ -577,6 +582,37 @@ def _mentions_current_demand_baseline(q_norm: str) -> bool:
         or "body and convenience" in q_norm
         or "automotive current demand" in q_norm
     )
+
+
+def _current_demand_baseline_direct_query(q_norm: str) -> Optional[str]:
+    """A narrowly-scoped, verified-safe deterministic answer for BL1/BL2
+    current-demand baseline questions. Tier1 Automotive is the only segment
+    with real BL1/BL2 baseline data in the graph (survey:CurrentDemandAnalysis
+    with survey:baselineType "BL1"/"BL2", survey:hasMarketSegment
+    survey:Automotive, survey:percentageChange).
+
+    Without this, these questions were blocked from the direct-query path
+    (see _mentions_current_demand_baseline / _direct_contract_blocks) and
+    fell through entirely to free-form LLM SPARQL generation -- where the
+    graph also contains a decoy entity (survey:Tier1DemandAnalysis, with
+    survey:baselineB1Percent/survey:baselineB2Percent predicates whose names
+    superficially match "BL1"/"BL2" but hold nonsensical, non-Automotive
+    values) that a term-matching confidence check can mistake for the real
+    answer.
+    """
+    if not (re.search(r"\bbl1\b", q_norm) and re.search(r"\bbl2\b", q_norm)):
+        return None
+    return """
+SELECT ?baselineType (AVG(?pct) AS ?avgPercentageChange) WHERE {
+  ?entry a survey:CurrentDemandAnalysis ;
+         survey:baselineType ?baselineType ;
+         survey:hasMarketSegment survey:Automotive ;
+         survey:percentageChange ?pct .
+  FILTER(?baselineType = "BL1" || ?baselineType = "BL2")
+}
+GROUP BY ?baselineType
+ORDER BY ?baselineType
+""".strip()
 
 
 def _mentions_actual_and_forecast(q_norm: str) -> bool:
@@ -750,6 +786,22 @@ ORDER BY {survey_var}
 
 def _vehicle_sales_direct_query(dims: set, q_norm: str) -> Optional[str]:
     explicit_vehicle_type = any(phrase in q_norm for phrase in ("vehicle type", "by type", "grouped by type", "for every vehicle type"))
+    if "vehicle type" in dims and "year" in dims:
+        # e.g. "total vehicles sold each year, grouped by type" -- the
+        # graph has YearlySalesData with forYear+analyzesVehicleType+
+        # yearlySales together, so both dimensions can be honored at once
+        # instead of falling through to the ungoverned LLM path.
+        return """
+SELECT ?year ?vehicleType (SUM(?sales) AS ?yearlySales) WHERE {
+  ?entry a survey:YearlySalesData ;
+         survey:forYear ?year ;
+         survey:analyzesVehicleType ?vehicle ;
+         survey:yearlySales ?sales .
+  BIND(REPLACE(STR(?vehicle), "^.*/", "") AS ?vehicleType)
+}
+GROUP BY ?year ?vehicleType
+ORDER BY ?year ?vehicleType
+""".strip()
     if "vehicle type" in dims:
         if explicit_vehicle_type:
             return None
@@ -918,11 +970,16 @@ SELECT (COUNT(DISTINCT ?sae) AS ?saeLevelCount) WHERE {
     if scope and scope[1] == "Semiconductor_Survey":
         return None
     if scope:
+        # AutonomousDrivingDevelopment_OEM/_Tier1 are themselves the root
+        # nodes carrying hasSurveyOrigin/hasDetail directly (they're
+        # declared as rdfs:Class but used here as singleton individuals,
+        # not as a class with separate instances) -- "?root a
+        # survey:<name>" looks for a distinct instance typed as that class,
+        # which does not exist, and silently returns zero rows.
         root_class = "AutonomousDrivingDevelopment_OEM" if scope[1] == "OEM_Survey" else "AutonomousDrivingDevelopment_Tier1"
         where_start = f"""
-?root a survey:{root_class} ;
-      survey:hasSurveyOrigin survey:{scope[1]} ;
-      survey:hasDetail ?entry .
+survey:{root_class} survey:hasSurveyOrigin survey:{scope[1]} ;
+                     survey:hasDetail ?entry .
 ?entry a survey:AutonomousDrivingDevelopment ;
 """
     else:

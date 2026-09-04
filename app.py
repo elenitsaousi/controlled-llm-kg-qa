@@ -4103,7 +4103,7 @@ def _status_or_development_guided_query(question: str) -> Tuple[str, str, str]:
     )
     if not dev_intent:
         return "", "", ""
-    if "order cancellation" in q or "order cancellations" in q:
+    if re.search(r"\border[\s-]cancellations?\b", q):
         return (
             "Summarize order-cancellation response trends by technology category and response type.",
             """
@@ -4209,8 +4209,34 @@ ORDER BY ?year
             f"The system detected a vehicle-sales development question and uses the latest {n_years} available yearly vehicle-sales total(s).",
         )
     if "autonomous" in q or "sae" in q:
+        # Delegate to CAPABILITY_REGISTRY's dimension-aware autonomous-driving
+        # query builder instead of a single hardcoded SAE-level-by-year
+        # template: that fixed template used to answer every autonomous-driving
+        # question identically regardless of whether vehicle type, year, or an
+        # OEM/Tier1 scope was actually requested (and mislabeled all of them
+        # as "for OEMs").
+        capability_report = CAPABILITY_REGISTRY.resolve(question)
+        capability_query = CAPABILITY_REGISTRY.direct_query_for(capability_report)
+        if capability_query:
+            dims = [dim.name for dim in capability_report.detected_dimensions] or ["SAE level", "year"]
+            scope_note = ""
+            if re.search(r"\boems?\b", q):
+                scope_note = (
+                    " The graph currently has identical autonomous-driving figures under both the "
+                    "OEM and Tier1 scopes, so this OEM-scoped view will not differ from the Tier1 one."
+                )
+            elif re.search(r"\btier\s*-?\s*1\b|\btier1\b", q):
+                scope_note = (
+                    " The graph currently has identical autonomous-driving figures under both the "
+                    "OEM and Tier1 scopes, so this Tier1-scoped view will not differ from the OEM one."
+                )
+            return (
+                f"Show autonomous driving development by {', '.join(dims)}.",
+                capability_query,
+                f"The system detected an autonomous-driving development question and uses the requested breakdown ({', '.join(dims)}).{scope_note}",
+            )
         return (
-            "Show autonomous driving development for OEMs by SAE level and year.",
+            "Show autonomous driving development by SAE level and year.",
             """
 SELECT ?saeLevel ?year (AVG(?pct) AS ?avgPercentage) WHERE {
   ?entry a survey:AutonomousDrivingDevelopment ;
@@ -4222,7 +4248,7 @@ SELECT ?saeLevel ?year (AVG(?pct) AS ?avgPercentage) WHERE {
 GROUP BY ?saeLevel ?year
 ORDER BY ?saeLevel ?year
 """.strip(),
-            "The system detected an autonomous-driving development question and uses OEM SAE-level percentages by year.",
+            "The system detected an autonomous-driving development question but could not resolve a specific breakdown, so it uses SAE-level percentages by year across all survey groups.",
         )
     if "vehicle type" in q and ("outlook" in q or "positive" in q or "demand development" in q):
         return (
