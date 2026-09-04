@@ -3881,11 +3881,12 @@ def _future_demand_guided_query(question: str) -> Tuple[str, str, str]:
     )
     if not future_intent:
         return "", "", ""
-    region_intent = bool(re.search(r"\b(region|regions|regional|america|americas|europe|china|japan)\b", q))
+    region_intent = bool(re.search(r"\b(region|regions|regional)\b", q)) or bool(_region_keys_in_text(q))
     quarter_intent = bool(re.search(r"\b(quarter|quarters|quarterly|upcoming|development|developing|trend|compare|comparison)\b", q))
     tech_intent = bool(re.search(r"\b(technology|technologies|tech|node|nodes|category|categories)\b", q))
     vehicle_type_intent = bool(re.search(r"\b(vehicle type|vehicle types|bev|phev|ice)\b", q))
     scoped_values = _survey_values_for_question(q)
+    scoped_regions = _region_values_for_question(q) if region_intent else ""
     quarter_limit = _quarter_limit_from_question(q)
     ranking_prefix = "lowest " if re.search(r"\b(lowest|bottom|smallest|min|minimum|least)\b", q) else "highest " if re.search(r"\b(highest|top|largest|max|maximum|most)\b", q) else ""
     if vehicle_type_intent:
@@ -3906,7 +3907,7 @@ ORDER BY DESC(?yearlySales)
     if tech_intent and region_intent:
         return (
             "Show expected future demand split across regions and technology categories.",
-            _future_demand_region_and_technology_query(scoped_values),
+            _future_demand_region_and_technology_query(scoped_values, scoped_regions),
             "The system detected both regional and technology split intent and uses a combined graph-backed future-demand view.",
         )
     if tech_intent and not region_intent:
@@ -3918,7 +3919,7 @@ ORDER BY DESC(?yearlySales)
     if region_intent:
         return (
             f"Show {ranking_prefix}expected future demand by survey group and region.",
-            _future_demand_by_region_query(scoped_values),
+            _future_demand_by_region_query(scoped_values, scoped_regions),
             "The system detected an expected/future-demand regional split and uses the supported future demand by survey group and region view.",
         )
     if quarter_intent or re.search(r"\b(oem|tier\s*-?\s*1|tier1|semi|semis|semiconductor|semiconductors)\b", q):
@@ -3986,7 +3987,8 @@ ORDER BY ?surveyGroup ?year ?quarterNo{limit_clause}
 """.strip()
 
 
-def _future_demand_by_region_query(values_rows: str) -> str:
+def _future_demand_by_region_query(values_rows: str, region_rows: str = "") -> str:
+    region_filter = f"VALUES ?region {{\n    {region_rows}\n  }}" if region_rows else ""
     return f"""
 SELECT ?surveyGroup ?regionName (SUM(?demand) AS ?expectedFutureDemand) WHERE {{
   ?entry a survey:DemandForRegion ;
@@ -3996,6 +3998,7 @@ SELECT ?surveyGroup ?regionName (SUM(?demand) AS ?expectedFutureDemand) WHERE {{
   VALUES (?origin ?surveyGroup) {{
     {values_rows}
   }}
+  {region_filter}
   ?region survey:regionName ?regionName .
 }}
 GROUP BY ?surveyGroup ?regionName
@@ -4003,7 +4006,8 @@ ORDER BY ?surveyGroup DESC(?expectedFutureDemand)
 """.strip()
 
 
-def _future_demand_region_and_technology_query(values_rows: str) -> str:
+def _future_demand_region_and_technology_query(values_rows: str, region_rows: str = "") -> str:
+    region_filter = f"VALUES ?region {{\n      {region_rows}\n    }}" if region_rows else ""
     return f"""
 SELECT ?view ?surveyGroup ?dimension ?quarterLabel (SUM(?value) AS ?expectedFutureDemand) WHERE {{
   {{
@@ -4015,6 +4019,7 @@ SELECT ?view ?surveyGroup ?dimension ?quarterLabel (SUM(?value) AS ?expectedFutu
            survey:inRegion ?region ;
            survey:quarter ?quarter ;
            survey:totalDemandPercentageChange ?value .
+    {region_filter}
     ?region survey:regionName ?dimension .
     ?quarter survey:periodLabel ?quarterLabel .
     BIND("region" AS ?view)
@@ -4112,6 +4117,30 @@ ORDER BY DESC(?entryCount)
 """.strip(),
                 "The system detected an inventory target-status question and uses the available semiconductor inventory target indicator data.",
             )
+        if re.search(r"\btier\s*-?\s*1\b|\btier1\b", q):
+            return (
+                "Review Tier1 inventory development by component and trend.",
+                """
+SELECT ?component ?trend (COUNT(?entry) AS ?entryCount) WHERE {
+  ?entry a survey:InventoryDevelopment_Tier1 ;
+         survey:forComponent ?comp ;
+         survey:inventoryTrend ?trend .
+  BIND(REPLACE(STR(?comp), "^.*/", "") AS ?component)
+}
+GROUP BY ?component ?trend
+ORDER BY ?component ?trend
+""".strip(),
+                "The system detected a Tier1 inventory development question and uses Tier1 inventory trend by component (the graph tracks Tier1 inventory by component, not by technology category the way it does for semiconductor).",
+            )
+        if re.search(r"\boems?\b", q):
+            return (
+                "Report OEM inventory development coverage limitation.",
+                """
+SELECT ("OEM inventory development data is not available in the current graph. Inventory development is tracked for semiconductor (by technology category) and Tier1 (by component) only." AS ?coverageLimitation) WHERE {
+}
+""".strip(),
+                "The system detected an OEM inventory development question and reports the graph coverage limitation instead of using semiconductor data for OEM.",
+            )
         return (
             "Review semiconductor inventory development by technology category and trend.",
             """
@@ -4124,7 +4153,7 @@ SELECT ?technologyCategory ?trend (COUNT(?entry) AS ?entryCount) WHERE {
 GROUP BY ?technologyCategory ?trend
 ORDER BY ?technologyCategory ?trend
 """.strip(),
-            "The system detected an inventory development question and uses inventory trend by technology category.",
+            "The system detected an inventory development question and uses inventory trend by technology category (the default when no survey group is named).",
         )
     if "vehicle" in q and "sales" in q:
         n_years = _number_from_question(
@@ -6570,8 +6599,8 @@ def _source_scope_answer(
             "DR searchable scale: "
             f"{int(dr_counts.get('searchable_entries') or dr_counts.get('total') or 0):,} indexed terms "
             f"({int(dr_counts.get('class') or 0):,} classes, "
-            f"{int(dr_counts.get('object_property') or 0):,} object properties, "
-            f"{int(dr_counts.get('datatype_property') or 0):,} datatype properties)."
+            f"{int(dr_counts.get('object property') or 0):,} object properties, "
+            f"{int(dr_counts.get('datatype property') or 0):,} datatype properties)."
         )
 
     if mentions_true_demand and not mentions_dr:
@@ -6675,9 +6704,9 @@ def _metadata_help_result(
         if asks_classes or asks_topics:
             parts.append(f"- Digital Reference classes: {int(dr_counts.get('class') or 0):,}")
         if asks_predicates:
-            parts.append(f"- Digital Reference object properties: {int(dr_counts.get('object_property') or 0):,}")
+            parts.append(f"- Digital Reference object properties: {int(dr_counts.get('object property') or 0):,}")
         if asks_properties:
-            parts.append(f"- Digital Reference datatype properties: {int(dr_counts.get('datatype_property') or 0):,}")
+            parts.append(f"- Digital Reference datatype properties: {int(dr_counts.get('datatype property') or 0):,}")
         if not parts:
             parts.append(f"- Digital Reference searchable terms: {int(dr_counts.get('searchable_entries') or dr_counts.get('total') or 0):,}")
         answer = "Here is the current Digital Reference ontology scale:\n\n" + "\n".join(parts)

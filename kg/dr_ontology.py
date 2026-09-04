@@ -258,7 +258,13 @@ def _load_dr_terms(path_text: str) -> Dict[str, DROntologyTerm]:
         graph.parse(path_text, format="turtle")
 
     by_uri: Dict[str, DROntologyTerm] = {}
-    for subject in set(graph.subjects()):
+    # Iterate in a fixed order (not raw set order, which depends on Python's
+    # per-process hash randomization) so that when two different terms share
+    # the same normalized alias, the same one deterministically wins the
+    # by_alias slot below on every run -- otherwise the DR class/property
+    # counts reported to users vary randomly between app restarts even
+    # though the underlying ontology file never changes.
+    for subject in sorted(set(graph.subjects()), key=str):
         if not isinstance(subject, URIRef):
             continue
         kind = _kind(graph, subject)
