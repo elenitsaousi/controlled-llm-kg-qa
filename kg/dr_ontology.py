@@ -168,6 +168,13 @@ def _normalize_alias(text: str) -> str:
 def _clean_definition_target(text: str) -> str:
     target = unquote(str(text or "")).strip(" \t\r\n.?!\"'`“”‘’")
     target = re.sub(r"\s+", " ", target).strip()
+    # "What is a/an/the X" already strips its leading article via
+    # DEFINITION_PATTERNS, but "Explain/Define ... X" and "How is X defined"
+    # do not -- without this, "Explain the has part relationship" leaves a
+    # literal leading "the" in the target, which then fails to match
+    # anything (normalizes to "thehaspart") even though "has part" itself
+    # resolves fine.
+    target = re.sub(r"^(?:the|a|an)\s+", "", target, flags=re.IGNORECASE).strip()
     target = re.sub(
         r"^(?:the\s+)?(?:definition|meaning)\s+of\s+",
         "",
@@ -309,14 +316,33 @@ def _load_dr_terms(path_text: str) -> Dict[str, DROntologyTerm]:
             }
         )
 
+    # When two different entities share a normalized alias (the data has
+    # real cases of this: several distinct properties are all literally
+    # labeled "has part", for example), prefer whichever one the alias
+    # actually names -- i.e. its own local name derived from its URI, which
+    # is unique and technical -- over one that merely inherited a duplicate
+    # or generic label. Without this, an unrelated/less-specific entity can
+    # silently win the shared alias, and which one wins was previously an
+    # accident of iteration order.
     by_alias: Dict[str, DROntologyTerm] = {}
+    by_alias_is_canonical: Dict[str, bool] = {}
     for term in by_uri.values():
+        own_key = _normalize_alias(term.aliases[1]) if len(term.aliases) > 1 else ""
         for alias in term.aliases:
             key = _normalize_alias(alias)
             if not key:
                 continue
+            is_canonical = bool(own_key) and key == own_key
             existing = by_alias.get(key)
-            if existing is None or (not existing.definition and term.definition):
+            if existing is None:
+                by_alias[key] = term
+                by_alias_is_canonical[key] = is_canonical
+                continue
+            existing_is_canonical = by_alias_is_canonical.get(key, False)
+            if is_canonical and not existing_is_canonical:
+                by_alias[key] = term
+                by_alias_is_canonical[key] = True
+            elif is_canonical == existing_is_canonical and not existing.definition and term.definition:
                 by_alias[key] = term
     return by_alias
 
@@ -489,8 +515,13 @@ def _best_term(target: str, terms: Dict[str, DROntologyTerm]) -> Optional[DROnto
         if len(key) < 4:
             continue
         if alias.startswith(key) and "property" in term.kind.lower():
-            property_bonus = 0.15 if "property" in term.kind.lower() else 0.0
-            candidates.append((0.72 + property_bonus, len(alias), term))
+            # A small edge over a mid-string substring match (below), not a
+            # flat score -- a short, common-language key that merely
+            # prefixes a much longer domain-specific property alias (e.g.
+            # "lobe" prefixing "lobe number") is weak evidence and should
+            # still lose to a strong exact match elsewhere (e.g. the
+            # project glossary's own "lobe" entry).
+            candidates.append((len(key) / max(len(alias), 1) + 0.05, len(alias), term))
             continue
         if key in alias:
             candidates.append((len(key) / max(len(alias), 1), len(alias), term))
