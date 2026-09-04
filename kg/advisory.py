@@ -104,6 +104,8 @@ def resolve_advisory_plan(question: str) -> Optional[AdvisoryPlan]:
             "signal",
             "recommend",
             "suggest",
+            "advice",
+            "advise",
             "should i look",
             "uncertain",
             "unstable",
@@ -199,7 +201,7 @@ def resolve_advisory_plan(question: str) -> Optional[AdvisoryPlan]:
     # analytical signal, not an autonomous business decision" disclaimer --
     # exactly the wording most likely to be misread as the system deciding
     # something. Default it to the same current-demand-by-region signal.
-    if _has_any(q, ("decision", "decide", "recommend", "suggest")) and _has_any(
+    if _has_any(q, ("decision", "decide", "recommend", "suggest", "advice", "advise")) and _has_any(
         q, ("china", "japan", "europe", "americas", "america", "asia", "asia pacific", "apac")
     ):
         return AdvisoryPlan(
@@ -222,6 +224,27 @@ def _to_float(value: object) -> Optional[float]:
         return None
 
 
+_NAMED_REGION_ALIASES = {
+    "china": "China",
+    "japan": "Japan",
+    "europe": "Europe",
+    "americas": "Americas",
+    "america": "Americas",
+}
+
+
+def _named_region_row(question: str, rows: List[Dict[str, object]], group_key: str) -> Optional[Dict[str, object]]:
+    if group_key != "regionName":
+        return None
+    q = _norm(question)
+    for alias, canonical in _NAMED_REGION_ALIASES.items():
+        if alias in q:
+            for row in rows:
+                if canonical.lower() in str(row.get(group_key) or "").lower():
+                    return row
+    return None
+
+
 def synthesize_advisory_answer(question: str, plan: AdvisoryPlan, rows: List[Dict[str, object]]) -> str:
     if not rows:
         return (
@@ -234,6 +257,34 @@ def synthesize_advisory_answer(question: str, plan: AdvisoryPlan, rows: List[Dic
         key=lambda row: (_to_float(row.get(plan.value_key)) is not None, _to_float(row.get(plan.value_key)) or float("-inf")),
         reverse=True,
     )
+
+    # A question can name a SPECIFIC region ("give me a recommendation for
+    # Japan") rather than ask an open "which region" ranking question. This
+    # plan otherwise always reports the single highest-ranked row across
+    # ALL regions regardless of which one was asked about -- silently
+    # substituting a different region ("Asia Pacific/China" for a question
+    # about Japan) is worse than just answering honestly about the one
+    # actually named.
+    named_row = _named_region_row(question, rows, plan.group_key)
+    if named_row is not None:
+        group = str(named_row.get(plan.group_key) or "the requested region")
+        value = named_row.get(plan.value_key)
+        value_text = f" ({plan.value_label}: {value})" if value is not None else ""
+        rank_position = next((i for i, row in enumerate(ranked, start=1) if row is named_row), None)
+        rank_text = (
+            f" Among the {len(ranked)} returned regions ranked by {plan.value_label}, "
+            f"{group} is #{rank_position}."
+            if rank_position
+            else ""
+        )
+        return (
+            f"Based on the graph results, here is the {plan.value_label} signal for {group}"
+            f"{value_text}.{rank_text} This is a data-grounded analytical signal, not an "
+            "autonomous business decision. The deterministic advisory template used here was "
+            f"designed to {plan.objective}; therefore this should be read as a prioritization "
+            "cue for human review, not as a final operational decision."
+        )
+
     top = ranked[0]
     group = str(top.get(plan.group_key) or "the leading group")
     value = top.get(plan.value_key)

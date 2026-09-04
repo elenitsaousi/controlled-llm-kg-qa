@@ -6607,9 +6607,16 @@ def _source_scope_answer(
     q_norm = _normalize_question_key(question)
     source_intent = bool(
         re.search(
-            r"\b(sources?|data sources?|scope|summar(y|ize)|overview|brief|loaded|contains?|cover|covers|covered|coverage|includes?|included|parts?|part of|made of|composed of|consists? of|used for|use case|purpose|role|different from|difference|differs from)\b",
+            r"\b(sources?|data sources?|scope|summar(y|ize)|overview|brief|loaded|contains?|cover|covers|covered|coverage|includes?|included|parts?|part of|made of|composed of|consists? of|use case|purpose|role)\b",
             q_norm,
         )
+        # Catches "used for" and any "what's X for(?)" phrasing, and any
+        # conjugation of "differ(s/ing) from"/"different from"/"difference"
+        # -- a hardcoded list of exact phrases here previously missed
+        # plain "differ from" (as in "how does X differ from Y") and bare
+        # "X for?" without the word "used".
+        or bool(re.search(r"\bfor\??\s*$", q_norm))
+        or bool(re.search(r"\bdiffer(?:s|ing)?\s+from\b|\bdifferent\s+from\b|\bdifference\b", q_norm))
     )
     if not source_intent:
         return None

@@ -20,10 +20,19 @@ FALLBACK_DR_ONTOLOGY_PATHS = (
 )
 DC_DESCRIPTION = URIRef("http://purl.org/dc/elements/1.1/description")
 
+# Trailing scope-qualifier some definition questions append after the core
+# "what does X mean"/"how is X defined" phrase -- e.g. "...mean in the
+# Digital Reference?". Without stripping it, the whole pattern fails to
+# match at all (no anchor lines up with the end of string), and the target
+# extraction falls through to a much cruder whole-question keyword scan
+# that can latch onto the scope qualifier itself ("Digital Reference")
+# instead of the actual term being asked about.
+_TRAILING_SCOPE_QUALIFIER = r"(?:\s+in(?:\s+the)?\s+(?:digital reference|dr ontology|ontology|true demand|knowledge graph|graph))?"
+
 DEFINITION_PATTERNS = (
     re.compile(r"^\s*what\s+(?:is|are)\s+(?:the\s+|a\s+|an\s+)?(.+?)\s*\??\s*$", re.IGNORECASE),
-    re.compile(r"^\s*what\s+does\s+(.+?)\s+mean\s*\??\s*$", re.IGNORECASE),
-    re.compile(r"^\s*how\s+(?:is|are)\s+(.+?)\s+defined\s*\??\s*$", re.IGNORECASE),
+    re.compile(r"^\s*what\s+does\s+(.+?)\s+mean" + _TRAILING_SCOPE_QUALIFIER + r"\s*\??\s*$", re.IGNORECASE),
+    re.compile(r"^\s*how\s+(?:is|are)\s+(.+?)\s+defined" + _TRAILING_SCOPE_QUALIFIER + r"\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*how\s+(?:do|would)\s+you\s+define\s+(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*(?:what\s+is\s+)?(?:the\s+)?definition\s+of\s+(.+?)\s*\??\s*$", re.IGNORECASE),
     re.compile(r"^\s*define\s+(.+?)\s*\??\s*$", re.IGNORECASE),
@@ -169,6 +178,12 @@ def _normalize_alias(text: str) -> str:
 def _clean_definition_target(text: str) -> str:
     target = unquote(str(text or "")).strip(" \t\r\n.?!\"'`“”‘’")
     target = re.sub(r"\s+", " ", target).strip()
+    # COMPARISON_PATTERNS (e.g. "X versus Y") has no fixed leading question
+    # phrase built into its own regex the way DEFINITION_PATTERNS does, so
+    # "What's a single lobe versus a cross lobe?" captures "What's a single
+    # lobe" as the raw first side -- strip a leading "what's/what is/what
+    # are" here so it composes with the "the/a/an" strip right below.
+    target = re.sub(r"^what(?:'s|\s+is|\s+are)\s+", "", target, flags=re.IGNORECASE).strip()
     # "What is a/an/the X" already strips its leading article via
     # DEFINITION_PATTERNS, but "Explain/Define ... X" and "How is X defined"
     # do not -- without this, "Explain the has part relationship" leaves a

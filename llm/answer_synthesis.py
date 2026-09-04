@@ -360,16 +360,34 @@ def _format_autonomous_driving(rows: List[Dict[str, object]], query: str = "", q
     if _is_grouped_query(query) and not _is_ranking_question(question):
         scored = _numeric_rows(rows, ["maxPercentage", "percentage", "avgPercentage", "avgPct"])
         if scored:
+
+            def _describe_group(row: Dict[str, object]) -> str:
+                # Build the description from whichever of vehicle type/SAE
+                # level/year are actually present in this row -- the
+                # grouping can be any subset of the three (the query is no
+                # longer hardcoded to always group by SAE level and year).
+                # _clean_value(None) stringifies to the literal text "None"
+                # (truthy!), so check the raw _row_get result before
+                # cleaning it, not the cleaned string.
+                parts = []
+                vehicle_raw = _row_get(row, "vehicleType", "vehicle")
+                if vehicle_raw is not None:
+                    parts.append(_clean_value(vehicle_raw))
+                sae_raw = _row_get(row, "saeLevel", "sae", "saeLabel")
+                if sae_raw is not None:
+                    parts.append(_clean_value(sae_raw))
+                year_raw = _row_get(row, "year")
+                if year_raw is not None:
+                    parts.append(f"year {_clean_value(year_raw)}")
+                return ", ".join(parts) if parts else "the selected group"
+
             top_row, metric_key, top_value = max(scored, key=lambda item: item[2])
             low_row, _, low_value = min(scored, key=lambda item: item[2])
-            top_sae = _clean_value(_row_get(top_row, "saeLevel", "sae", "saeLabel"))
-            top_year = _clean_value(_row_get(top_row, "year"))
-            low_sae = _clean_value(_row_get(low_row, "saeLevel", "sae", "saeLabel"))
-            low_year = _clean_value(_row_get(low_row, "year"))
             return (
                 f"Autonomous-driving development returned {len(rows)} grouped row(s). "
-                f"The highest returned {_humanize_key(metric_key)} is {top_sae} in {top_year} with {_format_number(top_value)}. "
-                f"The lowest is {low_sae} in {low_year} with {_format_number(low_value)}."
+                f"The highest returned {_humanize_key(metric_key)} is {_describe_group(top_row)} "
+                f"with {_format_number(top_value)}. "
+                f"The lowest is {_describe_group(low_row)} with {_format_number(low_value)}."
             )
         return _format_grouped_breakdown_answer(rows, label="Autonomous-driving development")
 
@@ -578,6 +596,24 @@ def _format_future_demand_split(rows: List[Dict[str, object]], *, question: str 
         scored = _numeric_rows(rows, ["yearlySales"])
         if not scored:
             return ""
+        if _has_any_key(rows, ["year"]):
+            # Grouped by year AND vehicle type (e.g. "total vehicles sold
+            # each year, grouped by type") -- distinct from the single-
+            # dimension vehicle-type "outlook" query below, which has no
+            # year column. Without this branch the year was silently
+            # dropped and every row got flattened into one "outlook
+            # signal" ranking, mixing values from different years together.
+            by_year: Dict[str, List[str]] = {}
+            for row, _key, value in scored:
+                year = _clean_value(_row_get(row, "year"))
+                vehicle = _clean_value(_row_get(row, "vehicleType"))
+                by_year.setdefault(year, []).append(f"{vehicle}: {_format_number(value)}")
+            parts = [f"{year}: {', '.join(items)}" for year, items in sorted(by_year.items())]
+            return (
+                f"Vehicle sales by year and type returned {len(rows)} grouped row(s). "
+                + "; ".join(parts)
+                + "."
+            )
         top_row, _, top_value = max(scored, key=lambda item: item[2])
         vehicle = _clean_value(_row_get(top_row, "vehicleType"))
         evidence = "; ".join(
