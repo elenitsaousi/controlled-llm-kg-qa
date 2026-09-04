@@ -96,8 +96,6 @@ def resolve_advisory_plan(question: str) -> Optional[AdvisoryPlan]:
         q,
         (
             "monitor",
-            "look at first",
-            "inspect first",
             "planning attention",
             "focus",
             "risk",
@@ -107,7 +105,18 @@ def resolve_advisory_plan(question: str) -> Optional[AdvisoryPlan]:
             "recommend",
             "suggest",
             "should i look",
+            "uncertain",
+            "unstable",
+            "volatile",
+            "unclear",
         ),
+    ) or bool(
+        # Generalizes the old exact-phrase list ("look at first", "inspect
+        # first") to any "<verb> first" advisory phrasing -- e.g. "should be
+        # reviewed first", "checked first", "prioritized" -- instead of
+        # requiring the caller to anticipate every specific verb.
+        re.search(r"\b(look at|inspect|review(?:ed)?|check(?:ed)?|address(?:ed)?|prioriti[sz]ed?)\b.*\bfirst\b", q)
+        or "prioriti" in q
     )
     if not advisory_intent:
         return None
