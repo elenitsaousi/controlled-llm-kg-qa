@@ -4,22 +4,26 @@ ATP/AATP, order book, Incoterms; plus analytical KG questions covering
 shortage comparisons and BL1/BL2 formatting).
 
 1. DEFINITION_INTENT_PATTERNS only recognized a handful of exact phrasings
-   ("what is X", "define X", "explain X", ...) so most real ontology
-   questions phrased as "which X ...", "how is/are/does/do X ...", or "what
-   formula/parameters ..." got NO deterministic route at all and fell to
-   the (untestable without LLM credentials) generic kg_query path, which
-   has zero DR-ontology content. Broadened the intent patterns; the
-   existing `_looks_like_graph_query` safety check (already present, run
-   right after) still rejects genuine graph-analytics questions unless they
-   also carry strong "define/meaning" intent, so this is safe to broaden.
-2. Once broadened, the cruder `_known_targets_from_question` fallback (a
-   whole-question substring scan with no requirement that a match is
-   actually the question's real subject) started firing much more often,
-   and can latch onto an incidental generic word instead of the real
-   subject. Rather than trying to perfectly discriminate good matches from
-   bad ones, results sourced from this fallback are now marked "Medium"
-   confidence (not "High") with an explicit caveat appended to the answer
-   text, so a possibly-wrong guess is at least flagged as less certain.
+   ("what is X", "define X", "explain X", ...). Broadening it to also catch
+   "which X ...", "how is/are/does/do X ...", and "what formula/parameters
+   ..." was TRIED (relying on the existing `_looks_like_graph_query` check
+   right after as a safety net) but had to be REVERTED: that hint list
+   isn't exhaustive enough to safely gate anything this broad, and it
+   confirmed hijacked real graph-analytics questions with no recognized
+   hint word (see test_second_batch_broadening_reverted.py /
+   test_bare_which_does_not_hijack_real_analytics_questions below and
+   tests/test_second_user_batch_fixes.py's sibling checks). Only the
+   narrower "represent(s)?" word was kept, since it tested safe. Unmatched
+   ontology-shaped questions now rely on falling through to the LLM
+   candidate-generation pipeline instead (see app.py's relative-time/
+   out-of-scope guards, which no longer hard-block that fallback either).
+2. The cruder `_known_targets_from_question` fallback (a whole-question
+   substring scan with no requirement that a match is actually the
+   question's real subject) can latch onto an incidental generic word
+   instead of the real subject when it does fire. Rather than trying to
+   perfectly discriminate good matches from bad ones, results sourced from
+   this fallback are marked "Medium" confidence (not "High") with an
+   explicit caveat appended to the answer text.
 3. "Battery Management System (BMS)" -- a trailing parenthetical
    abbreviation concatenated straight onto the alias key with no separator,
    matching neither the real term's key nor any fuzzy substring of it.
@@ -54,39 +58,53 @@ def graph():
     return g
 
 
-def test_which_x_contribute_to_y_gets_a_route():
-    result = route_dr_ontology_definition(
-        "Which chemical, gas, and electricity factors contribute to the CO2 burden "
-        "in front-end semiconductor manufacturing?"
-    )
-    assert result is not None
-    # Sourced via the broad fallback scan -> must be honestly flagged, not
-    # presented as equally certain as a precise phrase match.
-    assert result["confidence"] == "Medium"
-    assert "broad keyword scan" in result["answer"]
+def test_bare_which_does_not_hijack_real_analytics_questions():
+    # A bare "^which" DEFINITION_INTENT_PATTERN was tried (to catch e.g.
+    # "Which chemical factors contribute to the CO2 burden?") and reverted:
+    # _looks_like_graph_query's hint list isn't exhaustive enough to safely
+    # gate anything this broad. "Which semiconductor companies reported a
+    # shortage?" has no recognized hint word ("shortage"/"reported"/
+    # "companies" aren't in it) and got wrongly intercepted by the DR
+    # ontology lookup ("Semiconductor is an electronic device...") instead
+    # of the real shortage-by-company data.
+    result = route_dr_ontology_definition("Which semiconductor companies reported a shortage?")
+    assert result is None
 
 
-def test_how_is_x_structured_gets_a_route():
+def test_how_is_x_structured_no_longer_gets_a_route():
+    # "^how is/are/does/do" was reverted alongside "^which" -- confirmed to
+    # hijack real analytics questions just as badly (e.g. "How do vehicle
+    # sales compare between actual and forecast?" -> wrong DR match). This
+    # DR-ontology question now correctly falls through instead (to the LLM
+    # pipeline) rather than risking that same hijack class.
     result = route_dr_ontology_definition(
         "How is an open order book structured into open orders and order line items?"
     )
-    assert result is not None
-    assert "Order" in result["matched_term"]
+    assert result is None
 
 
-def test_what_formula_links_x_to_y_gets_a_route():
+def test_what_formula_links_x_to_y_no_longer_gets_a_route():
+    # "what formula/parameters/factors" was reverted for the same reason
+    # (e.g. "What factors influence the shortage status of a company?" hit
+    # the same wrong DR match).
     result = route_dr_ontology_definition(
         "What formula or parameters link wind turbine lifetime to worldwide CO2 savings?"
     )
-    assert result is not None
+    assert result is None
 
 
-def test_real_graph_analytics_question_still_bypasses_dr_route():
-    # The intent-pattern broadening must not hijack genuine graph-analytics
-    # questions -- _looks_like_graph_query's existing safety check should
-    # still reject these.
-    assert route_dr_ontology_definition("Which region has the highest current demand?") is None
-    assert route_dr_ontology_definition("Show demand by quarter.") is None
+def test_how_and_which_do_not_hijack_real_graph_analytics_questions():
+    # The reverted broadening must stay reverted -- these are genuine
+    # graph-analytics questions with no recognized _looks_like_graph_query
+    # hint word, which is exactly what got hijacked before.
+    for question in [
+        "Which region has the highest current demand?",
+        "Show demand by quarter.",
+        "How do vehicle sales compare between actual and forecast?",
+        "How are companies distributed by shortage status?",
+        "What factors influence the shortage status of a company?",
+    ]:
+        assert route_dr_ontology_definition(question) is None, question
 
 
 def test_bms_parenthetical_abbreviation_resolves_correctly():

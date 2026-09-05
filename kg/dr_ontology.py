@@ -51,17 +51,26 @@ DEFINITION_INTENT_PATTERNS = (
     re.compile(r"\b(defin(e|ed|ition)|meaning|mean|explain|describe|represent(s)?)\b", re.IGNORECASE),
     re.compile(r"\btell\s+me\s+about\b", re.IGNORECASE),
     re.compile(r"\bwhat\s+(is|are)\b", re.IGNORECASE),
-    # Broader interrogative openers common in real ontology/concept
-    # questions that don't fit the narrow "what is X"/"define X" shape --
-    # e.g. "Which chemical factors contribute to the CO2 burden?", "How is
-    # an open order book structured?", "What formula links X to Y?". Safe
-    # to be broad here because _has_definition_intent still runs these
-    # through _looks_like_graph_query right afterward, which rejects real
-    # graph-analytics questions (show/count/group/by region/etc.) unless
-    # they also carry strong "define/meaning" intent.
-    re.compile(r"^\s*which\b", re.IGNORECASE),
-    re.compile(r"^\s*how\s+(?:is|are|does|do)\b", re.IGNORECASE),
-    re.compile(r"\bwhat\s+(formula|parameters?|factors?)\b", re.IGNORECASE),
+    # A bare "^which" and "^how is/are/does/do" and a "what
+    # formula/parameters/factors" pattern were all tried here too, to catch
+    # real ontology questions phrased outside the narrow "what is X"/"define
+    # X" shape (e.g. "Which chemical factors contribute to the CO2 burden?",
+    # "How is an open order book structured?", "What formula links X to
+    # Y?"). All three had to be reverted: they were meant to be guarded by
+    # _has_definition_intent's later _looks_like_graph_query check, but that
+    # check's hint list isn't exhaustive enough to safely gate anything this
+    # broad. Confirmed hijacking real graph-analytics questions with no
+    # recognized hint word, e.g. "Which semiconductor companies reported a
+    # shortage?", "How do vehicle sales compare between actual and
+    # forecast?", "What factors influence the shortage status of a
+    # company?" -- all wrongly routed to a DR ontology definition instead of
+    # real graph data. Broadening a keyword-list gate to guard an even
+    # broader keyword-list trigger doesn't hold up -- there will always be
+    # another instance-level analytics phrasing neither anticipated. Rather
+    # than re-litigate this per phrasing, unmatched questions of this shape
+    # now fall through to the LLM candidate-generation pipeline instead
+    # (see app.py's relative-time/out-of-scope guards, which no longer
+    # hard-block that fallback either).
 )
 
 ANALYTIC_HINTS = {
