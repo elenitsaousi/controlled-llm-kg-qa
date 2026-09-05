@@ -3370,58 +3370,13 @@ def _is_out_of_scope_question(question: str) -> Tuple[bool, str]:
         if re.search(pattern, q):
             return True, "The question appears to be outside the True Demand KG and Digital Reference ontology scope."
 
-    in_scope_terms = (
-        "true demand",
-        "demand",
-        "future demand",
-        "current demand",
-        "regional demand",
-        "oem",
-        "tier1",
-        "semiconductor",
-        "survey",
-        "region",
-        "quarter",
-        "month",
-        "year",
-        "vehicle",
-        "vehicle type",
-        "sales",
-        "inventory",
-        "shortage",
-        "order cancellation",
-        "autonomous driving",
-        "sae",
-        "technology",
-        "technology node",
-        "technology category",
-        "component",
-        "company",
-        "market segment",
-        "baseline",
-        "percentage",
-        "trend",
-        "capacity",
-        "process",
-        "product",
-        "material",
-        "resource",
-        "planning",
-        "supply chain",
-        "digital reference",
-        "ontology",
-        "class",
-        "property",
-        "domain",
-        "range",
-    )
-    if any(term in q for term in in_scope_terms):
-        return False, ""
-
-    # Very short generic questions without graph/ontology vocabulary are safer to reject.
-    tokens = re.findall(r"[a-zA-Z][a-zA-Z0-9_-]*", q)
-    if len(tokens) <= 8:
-        return True, "I could not match the question to the True Demand graph or Digital Reference ontology."
+    # Beyond the confident off-topic patterns above (weather, movies, stock
+    # price, ...), don't hard-reject based on vocabulary absence alone -- a
+    # short question simply phrased without hitting a hardcoded in-scope
+    # word list (there's always another one we haven't thought of) used to
+    # be rejected outright with no chance for the LLM candidate pipeline to
+    # try, which already has its own downstream safeguards against a
+    # genuinely bad answer.
     return False, ""
 
 
@@ -3784,7 +3739,7 @@ def _semiconductor_relative_time_query(question: str) -> Tuple[str, str, str]:
     """
     q = _normalize_question_key(question)
     semiconductor_intent = bool(re.search(r"\b(?:semiconductor|semiconductors|semi|semis)\b", q))
-    if not q or not semiconductor_intent or "demand" not in q:
+    if not q or not semiconductor_intent:
         return "", "", ""
     relative_time = re.search(
         r"\b(?:past|last|recent|previous)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)?"
@@ -3799,6 +3754,14 @@ def _semiconductor_relative_time_query(question: str) -> Tuple[str, str, str]:
             q,
         )
     )
+    # "How is semiconductor developing over the past 3 months?" is a
+    # perfectly natural way to ask about semiconductor demand trend without
+    # ever using the literal word "demand" -- demand is the only
+    # quarter-level semiconductor signal this graph tracks, so trend intent
+    # alone is enough of a signal to proceed; requiring "demand" verbatim
+    # silently rejected this common phrasing entirely.
+    if "demand" not in q and not trend_intent:
+        return "", "", ""
     quarters_phrasing = bool(re.search(r"\bquarters?\b", relative_time.group(0)))
     years_phrasing = bool(re.search(r"\byears?\b", relative_time.group(0)))
     n_units = _number_from_question(q, default=1 if (quarters_phrasing or years_phrasing) else 3, maximum=48)
@@ -8478,56 +8441,16 @@ if asked or flexible_asked:
                     trend_route_id = "current_monthly_trend"
                 elif approximate_query == SEMICONDUCTOR_DEMAND_TREND_BY_QUARTER_QUERY:
                     trend_route_id = "semiconductor_quarter_trend"
-            else:
-                request_id = uuid.uuid4().hex
-                result = {
-                    "answer": "Unsupported relative-time request.",
-                    "selected_query": "",
-                    "candidates": [],
-                    "metadata": {"llm_skipped": True, "unsupported_relative_time": True},
-                    "policy": "unsupported_relative_time_guard",
-                    "selection_reason": unsupported_time_reason,
-                    "confidence_route": {
-                        "enabled": True,
-                        "route": "controlled_no_answer",
-                        "score1": 0.96,
-                        "score2": 0.0,
-                        "margin": 0.96,
-                        "selected_query": "",
-                        "reason": unsupported_time_reason,
-                        "options": [],
-                        "safety_flags": ["unsupported_relative_time"],
-                        "blocking_safety_flags": ["unsupported_relative_time"],
-                    },
-                    "answerability": {
-                        "status": "unsupported_relative_time",
-                        "can_answer": False,
-                        "reason": unsupported_time_reason,
-                    },
-                }
-                st.session_state["last_qa_result"] = result
-                st.session_state["last_graph_rows"] = []
-                st.session_state["last_selected_query"] = ""
-                st.session_state["last_graph_answer"] = "Unsupported relative-time request."
-                st.session_state["last_question"] = question
-                st.session_state["last_request_id"] = request_id
-                try:
-                    _write_user_audit_record(
-                        _user_audit_payload(
-                            request_id=request_id,
-                            question=question,
-                            result=result,
-                            selected_query="",
-                            graph_rows=[],
-                            graph_exec_error="",
-                            graph_answer="Unsupported relative-time request.",
-                            latency_s=0.0,
-                        )
-                    )
-                except Exception:
-                    pass
-                _render_unsupported_time_message(unsupported_time_reason)
-                st.stop()
+            # No deterministic approximation matched -- previously this
+            # hard-stopped here with a "controlled_no_answer" refusal and
+            # never gave the LLM candidate-generation pipeline a chance to
+            # try (metadata explicitly said "llm_skipped": True). That's
+            # too aggressive: a live rolling window genuinely isn't in the
+            # graph, but the LLM path already has its own downstream
+            # safeguards (candidate ranking, execution-evidence checks,
+            # confidence/margin thresholds) to catch a bad guess, so a
+            # missed deterministic approximation should fall through to
+            # that pipeline rather than refuse outright.
 
         if not guided_query and dr_definition is None and advisory_plan is None:
             quarter_question, quarter_query, quarter_note = _semiconductor_demand_quarter_guided_query(question)
