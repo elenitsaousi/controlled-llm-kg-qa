@@ -2,6 +2,16 @@ import json
 import os
 from typing import Dict, List, Optional, Set, Tuple
 
+def _extract_triples(query: str) -> Set[str]:
+    triples = set()
+    if "{" in query and "}" in query:
+        body = query.split("{")[1].split("}")[0]
+        parts = body.split(".")
+        for p in parts:
+            t = p.strip()
+            if t:
+                triples.add(t.lower())
+    return triples
 
 def _load_questions(questions_path: str) -> List[Dict[str, object]]:
     with open(questions_path, "r", encoding="utf-8") as f:
@@ -62,14 +72,11 @@ def execute_query_stub(
     questions_path: Optional[str] = None,
     question: Optional[str] = None,
 ) -> Dict[str, object]:
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    default_path = os.path.join(
-        base_dir, "data", "toy_kg", "questions", "questions.json"
-    )
-    results_path = os.path.join(
-        base_dir, "data", "toy_kg", "results.json"
-    )
-    questions_file = questions_path or default_path
+    if not questions_path:
+        return {"rows": [], "matched_question_id": None, "error": None}
+
+    questions_file = questions_path
+    results_path = os.path.splitext(questions_file)[0] + "_results.json"
 
     if not os.path.exists(questions_file) or not os.path.exists(results_path):
         return {"rows": [], "matched_question_id": None, "error": None}
@@ -79,7 +86,7 @@ def execute_query_stub(
     normalized_query = _normalize(query)
     for item in questions:
         gold = str(item.get("gold_query", "")).strip()
-        if _normalize(gold) == normalized_query:
+        if _extract_triples(gold) == _extract_triples(query):
             qid = item.get("id")
             return {
                 "rows": results.get(qid, []),

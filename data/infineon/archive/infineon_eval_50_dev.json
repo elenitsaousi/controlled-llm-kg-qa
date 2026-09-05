@@ -1,0 +1,402 @@
+[
+  {
+    "id": "EVAL001",
+    "question": "Count the unique geographic regions in this survey graph.",
+    "query": "SELECT (COUNT(DISTINCT ?r) AS ?count) WHERE { ?r a survey:Region }",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW1"
+  },
+  {
+    "id": "EVAL002",
+    "question": "Give me the region names available in the Infineon data.",
+    "query": "SELECT ?name WHERE { ?r a survey:Region ; survey:regionName ?name } ORDER BY ?name",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW2"
+  },
+  {
+    "id": "EVAL003",
+    "question": "How many future-demand analysis records are in the KG?",
+    "query": "SELECT (COUNT(?f) AS ?count) WHERE { ?f a survey:FutureDemandAnalysis }",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW6"
+  },
+  {
+    "id": "EVAL004",
+    "question": "Count all order cancellation records.",
+    "query": "SELECT (COUNT(?o) AS ?count) WHERE { ?o a survey:OrderCancellation }",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW7"
+  },
+  {
+    "id": "EVAL005",
+    "question": "How many autonomous-driving development observations exist?",
+    "query": "SELECT (COUNT(?a) AS ?count) WHERE { ?a a survey:AutonomousDrivingDevelopment }",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW8"
+  },
+  {
+    "id": "EVAL006",
+    "question": "How many technology categories are modelled?",
+    "query": "SELECT (COUNT(?t) AS ?count) WHERE { ?t a survey:TechnologyCategory }",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW10"
+  },
+  {
+    "id": "EVAL007",
+    "question": "Which survey-origin classes are represented in the graph?",
+    "query": "SELECT DISTINCT ?type WHERE { ?s a ?type . FILTER(?type IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey)) } ORDER BY ?type",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW15"
+  },
+  {
+    "id": "EVAL008",
+    "question": "Count Tier1 companies that say there is a shortage.",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Tier1_Survey .\n                FILTER(?flag = true)\n                }",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW20"
+  },
+  {
+    "id": "EVAL009",
+    "question": "How many OEM companies report a shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:OEM_Survey .\n                FILTER(?flag = true)\n                }",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW26"
+  },
+  {
+    "id": "EVAL010",
+    "question": "How many semiconductor companies reported shortage?",
+    "query": "SELECT (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ; survey:hasSurveyOrigin ?o ; survey:reportsShortage ?flag .\n                ?o a survey:Semiconductor_Survey .\n                FILTER(?flag = true)\n                }",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "LOW32"
+  },
+  {
+    "id": "EVAL011",
+    "question": "Break down Tier1 total demand by region.",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "MID1"
+  },
+  {
+    "id": "EVAL012",
+    "question": "For OEM survey data, show total regional demand.",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "MID2"
+  },
+  {
+    "id": "EVAL013",
+    "question": "Show semiconductor survey demand totals per region.",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand)",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "MID3"
+  },
+  {
+    "id": "EVAL014",
+    "question": "What is OEM demand in the Americas region?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "MID9"
+  },
+  {
+    "id": "EVAL015",
+    "question": "What is semiconductor demand for Asia Pacific China?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Asia Pacific/China\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "MID16"
+  },
+  {
+    "id": "EVAL016",
+    "question": "Average Tier1 demand in Americas, please.",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Tier1_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Americas\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "MID19"
+  },
+  {
+    "id": "EVAL017",
+    "question": "Give the average OEM demand for Japan.",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:OEM_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "MID28"
+  },
+  {
+    "id": "EVAL018",
+    "question": "Average semiconductor demand in Japan?",
+    "query": "SELECT ?regionName (AVG(?units) AS ?avgDemand) WHERE {\n                    ?d a survey:DemandForRegion ;\n                       survey:hasSurveyOrigin ?o ;\n                       survey:inRegion ?r ;\n                       survey:totalDemand ?units .\n                    ?o a survey:Semiconductor_Survey .\n                    ?r survey:regionName ?regionName .\n                    FILTER(?regionName = \"Japan\")\n                    } GROUP BY ?regionName",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "MID33"
+  },
+  {
+    "id": "EVAL019",
+    "question": "Show Tier1 quarterly demand changes by region.",
+    "query": "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "HIGH1"
+  },
+  {
+    "id": "EVAL020",
+    "question": "I need OEM demand percentage change by quarter and region.",
+    "query": "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "HIGH7"
+  },
+  {
+    "id": "EVAL021",
+    "question": "Show semiconductor demand trend per quarter and region.",
+    "query": "SELECT ?quarterLabel ?regionName (SUM(?pct) AS ?totalPctChange) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:quarter ?q ;\n                   survey:totalDemandPercentageChange ?pct .\n                ?o a survey:Semiconductor_Survey .\n                ?r survey:regionName ?regionName .\n                ?q survey:periodLabel ?quarterLabel .\n                } GROUP BY ?quarterLabel ?regionName ORDER BY ?quarterLabel ?regionName",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "HIGH13"
+  },
+  {
+    "id": "EVAL022",
+    "question": "Which region is top for Tier1 total demand?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:Tier1_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY DESC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "HIGH3"
+  },
+  {
+    "id": "EVAL023",
+    "question": "Which OEM region has the lowest total demand?",
+    "query": "SELECT ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n                ?d a survey:DemandForRegion ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:inRegion ?r ;\n                   survey:totalDemand ?units .\n                ?o a survey:OEM_Survey .\n                ?r survey:regionName ?regionName .\n                } GROUP BY ?regionName ORDER BY ASC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "HIGH10"
+  },
+  {
+    "id": "EVAL024",
+    "question": "Split semiconductor companies by shortage yes or no.",
+    "query": "SELECT ?status (COUNT(?c) AS ?count) WHERE {\n                ?c a survey:Company ;\n                   survey:hasSurveyOrigin ?o ;\n                   survey:reportsShortage ?flag .\n                ?o a survey:Semiconductor_Survey .\n                BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n                } GROUP BY ?status ORDER BY ?status",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "HIGH17"
+  },
+  {
+    "id": "EVAL025",
+    "question": "Compare total demand for OEM, Tier1 and semiconductor across regions.",
+    "query": "SELECT ?surveyType ?regionName (SUM(?units) AS ?totalDemand) WHERE {\n            ?d a survey:DemandForRegion ;\n               survey:hasSurveyOrigin ?o ;\n               survey:inRegion ?r ;\n               survey:totalDemand ?units .\n            ?o a ?surveyType .\n            ?r survey:regionName ?regionName .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            } GROUP BY ?surveyType ?regionName ORDER BY ?surveyType ?regionName",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "HIGH22"
+  },
+  {
+    "id": "EVAL026",
+    "question": "Compare shortage status for the three survey types.",
+    "query": "SELECT ?surveyType ?status (COUNT(?c) AS ?count) WHERE {\n            ?c a survey:Company ;\n               survey:hasSurveyOrigin ?o ;\n               survey:reportsShortage ?flag .\n            ?o a ?surveyType .\n            FILTER(?surveyType IN (survey:Tier1_Survey, survey:OEM_Survey, survey:Semiconductor_Survey))\n            BIND(IF(?flag = true, \"yes\", \"no\") AS ?status)\n            } GROUP BY ?surveyType ?status ORDER BY ?surveyType ?status",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "HIGH23"
+  },
+  {
+    "id": "EVAL027",
+    "question": "By region, compare demand for Tier1, OEM, and Semiconductor.",
+    "query": "SELECT ?regionName ?surveyType (SUM(?unitsSold) AS ?totalDemand) WHERE { VALUES (?surveyClass ?surveyType) { (survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') (survey:Semiconductor_Survey 'Semiconductor') } ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:totalDemandPercentageChange ?unitsSold . ?origin a ?surveyClass . ?region a survey:Region ; survey:regionName ?regionName . } GROUP BY ?regionName ?surveyType ORDER BY ?regionName ?surveyType",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD101"
+  },
+  {
+    "id": "EVAL028",
+    "question": "Which origin type dominates total demand overall?",
+    "query": "SELECT ?surveyType (SUM(?unitsSold) AS ?totalDemand) WHERE { VALUES (?surveyClass ?surveyType) { (survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') (survey:Semiconductor_Survey 'Semiconductor') } ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:totalDemandPercentageChange ?unitsSold . ?origin a ?surveyClass . } GROUP BY ?surveyType ORDER BY DESC(?totalDemand) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD102"
+  },
+  {
+    "id": "EVAL029",
+    "question": "Top region for semiconductor demand?",
+    "query": "SELECT ?regionName (SUM(?unitsSold) AS ?semiconductorDemand) WHERE { ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:totalDemandPercentageChange ?unitsSold . ?origin a survey:Semiconductor_Survey . ?region a survey:Region ; survey:regionName ?regionName . } GROUP BY ?regionName ORDER BY DESC(?semiconductorDemand) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD103"
+  },
+  {
+    "id": "EVAL030",
+    "question": "Compare OEM and Tier1 demand for each region.",
+    "query": "SELECT ?regionName (SUM(IF(?surveyClass = survey:Tier1_Survey, ?unitsSold, 0)) AS ?tier1Demand) (SUM(IF(?surveyClass = survey:OEM_Survey, ?unitsSold, 0)) AS ?oemDemand) WHERE { VALUES ?surveyClass { survey:Tier1_Survey survey:OEM_Survey } ?demandForRegion a survey:DemandForRegion ; survey:hasSurveyOrigin ?origin ; survey:inRegion ?region ; survey:totalDemandPercentageChange ?unitsSold . ?origin a ?surveyClass . ?region a survey:Region ; survey:regionName ?regionName . } GROUP BY ?regionName ORDER BY ?regionName",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD105"
+  },
+  {
+    "id": "EVAL031",
+    "question": "How many companies report shortage, grouped by survey origin?",
+    "query": "SELECT ?surveyType ?shortageStatus (COUNT(?company) AS ?companyCount) WHERE { VALUES (?surveyClass ?surveyType) { (survey:OEM_Survey 'OEM') (survey:Tier1_Survey 'Tier1') (survey:Semiconductor_Survey 'Semiconductor') } ?company a survey:Company ; survey:hasSurveyOrigin ?origin ; survey:reportsShortage ?shortage . ?origin a ?surveyClass . BIND(IF(?shortage = true, 'yes', 'no') AS ?shortageStatus) } GROUP BY ?surveyType ?shortageStatus ORDER BY ?surveyType ?shortageStatus",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD106"
+  },
+  {
+    "id": "EVAL032",
+    "question": "Tier1 inventory trends by EV/non-EV component.",
+    "query": "SELECT ?componentLabel ?trend (COUNT(?entry) AS ?entryCount) WHERE { ?entry a survey:InventoryDevelopment_Tier1 ; survey:forComponent ?component ; survey:inventoryTrend ?trend . BIND(REPLACE(STR(?component), '^.*/', '') AS ?componentLabel) } GROUP BY ?componentLabel ?trend ORDER BY ?componentLabel ?trend",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD109"
+  },
+  {
+    "id": "EVAL033",
+    "question": "Semiconductor inventory trend distribution across technology nodes.",
+    "query": "SELECT ?technologyCategory ?trend (COUNT(?entry) AS ?entryCount) WHERE { ?entry a survey:InventoryDevelopment_Semi ; survey:forTechnologyCategory ?tech ; survey:hasInventoryTrend ?trend . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?trend ORDER BY ?technologyCategory ?trend",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD111"
+  },
+  {
+    "id": "EVAL034",
+    "question": "Break down semiconductor order cancellation by technology category and response.",
+    "query": "SELECT ?technologyCategory ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:forTechnologyCategory ?tech ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?technologyCategory) } GROUP BY ?technologyCategory ?responseType ORDER BY ?technologyCategory ?responseType",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD113"
+  },
+  {
+    "id": "EVAL035",
+    "question": "Which cancellation response has the biggest participant count?",
+    "query": "SELECT ?responseType (SUM(?participants) AS ?participantCount) WHERE { ?entry a survey:OrderCancellation ; survey:hasResponseType ?responseType ; survey:participantCount ?participants . } GROUP BY ?responseType ORDER BY DESC(?participantCount) LIMIT 1",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD114"
+  },
+  {
+    "id": "EVAL036",
+    "question": "Autonomous driving percentage by vehicle type and SAE level.",
+    "query": "SELECT ?vehicleType ?saeLevel (AVG(?percentage) AS ?avgPercentage) WHERE { ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?vehicle ; survey:hasSAELevel ?sae ; survey:hasPercentage ?percentage . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) BIND(REPLACE(STR(?sae), '^.*/SAE_Level_', '') AS ?saeLevel) } GROUP BY ?vehicleType ?saeLevel ORDER BY ?vehicleType xsd:integer(?saeLevel)",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD115"
+  },
+  {
+    "id": "EVAL037",
+    "question": "Find the vehicle and SAE level with the maximum autonomous driving percentage.",
+    "query": "SELECT ?vehicleType ?saeLevel (MAX(?percentage) AS ?maxPercentage) WHERE { ?entry a survey:AutonomousDrivingDevelopment ; survey:hasVehicleType ?vehicle ; survey:hasSAELevel ?sae ; survey:hasPercentage ?percentage . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) BIND(REPLACE(STR(?sae), '^.*/SAE_Level_', '') AS ?saeLevel) } GROUP BY ?vehicleType ?saeLevel ORDER BY DESC(?maxPercentage) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD117"
+  },
+  {
+    "id": "EVAL038",
+    "question": "Future demand changes across technology categories and quarters.",
+    "query": "SELECT ?techLabel ?quarterLabel (SUM(?pct) AS ?totalFutureChange) WHERE { ?entry a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:forTimePeriod ?quarter ; survey:percentageChange ?pct . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?techLabel) BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) } GROUP BY ?techLabel ?quarterLabel ORDER BY ?techLabel ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD118"
+  },
+  {
+    "id": "EVAL039",
+    "question": "Which tech category has the strongest average future demand change?",
+    "query": "SELECT ?techLabel (AVG(?pct) AS ?avgFutureChange) WHERE { ?entry a survey:FutureDemandAnalysis ; survey:analyzesTechnologyCategory ?tech ; survey:percentageChange ?pct . BIND(REPLACE(STR(?tech), '^.*/', '') AS ?techLabel) } GROUP BY ?techLabel ORDER BY DESC(?avgFutureChange) LIMIT 1",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD119"
+  },
+  {
+    "id": "EVAL040",
+    "question": "Future demand trend by vehicle type over quarters.",
+    "query": "SELECT ?vehicleType ?quarterLabel (AVG(?pct) AS ?avgChange) WHERE { ?entry a survey:FutureDemandAnalysis ; survey:analyzesVehicleType ?vehicle ; survey:forTimePeriod ?quarter ; survey:percentageChange ?pct . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) BIND(REPLACE(STR(?quarter), '^.*/', '') AS ?quarterLabel) } GROUP BY ?vehicleType ?quarterLabel ORDER BY ?vehicleType ?quarterLabel",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD120"
+  },
+  {
+    "id": "EVAL041",
+    "question": "Compare Tier1 BL1 versus BL2 current-demand percentage changes.",
+    "query": "SELECT ?baseline (SUM(?pct) AS ?totalChange) WHERE { survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; survey:hasAggregatedResult ?entry . ?entry a survey:CurrentDemandAnalysis ; survey:baselineType ?baseline ; survey:percentageChange ?pct . FILTER(?baseline IN ('BL1','BL2')) } GROUP BY ?baseline ORDER BY ?baseline",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD121"
+  },
+  {
+    "id": "EVAL042",
+    "question": "Calculate the Tier1 BL1 minus BL2 demand-change delta.",
+    "query": "SELECT ((SUM(IF(?baseline = 'BL1', ?pct, 0)) - SUM(IF(?baseline = 'BL2', ?pct, 0))) AS ?deltaBL1BL2) WHERE { survey:Tier1CurrentDemand a survey:CurrentDemandAnalysis ; survey:hasAggregatedResult ?entry . ?entry a survey:CurrentDemandAnalysis ; survey:baselineType ?baseline ; survey:percentageChange ?pct . FILTER(?baseline IN ('BL1','BL2')) }",
+    "ambiguity_label": "high",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD122"
+  },
+  {
+    "id": "EVAL043",
+    "question": "List tech categories with current demand and B1/B2 percent changes.",
+    "query": "SELECT ?technologyCategory ?currentDemand ?percentChangeB1 ?percentChangeB2 WHERE { ?tech a survey:TechnologyCategory ; survey:technologyCategoryName ?technologyCategory ; survey:currentDemand ?currentDemand ; survey:percentChangeB1 ?percentChangeB1 ; survey:percentChangeB2 ?percentChangeB2 . } ORDER BY ?technologyCategory",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD123"
+  },
+  {
+    "id": "EVAL044",
+    "question": "Which semiconductor technology category has the largest current demand?",
+    "query": "SELECT ?technologyCategory ?currentDemand WHERE { ?tech a survey:TechnologyCategory ; survey:technologyCategoryName ?technologyCategory ; survey:currentDemand ?currentDemand . } ORDER BY DESC(?currentDemand) LIMIT 1",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD124"
+  },
+  {
+    "id": "EVAL045",
+    "question": "Show conversion value per technology category and vehicle type.",
+    "query": "SELECT ?technologyCategory ?vehicleType ?conversionValue WHERE { ?tech a survey:TechnologyCategory ; survey:technologyCategoryName ?technologyCategory ; survey:hasConversionFactor ?factor . ?factor a survey:ConversionFactor ; survey:appliesToVehicleType ?vehicle ; survey:conversionValue ?conversionValue . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) } ORDER BY ?technologyCategory ?vehicleType",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD125"
+  },
+  {
+    "id": "EVAL046",
+    "question": "Count actual vs forecast vehicle sales observations.",
+    "query": "SELECT ?dataType (COUNT(?obs) AS ?observationCount) WHERE { ?obs a survey:VehicleSalesObservation . OPTIONAL { ?obs survey:isActualData ?actual . } OPTIONAL { ?obs survey:isForecastData ?forecast . } BIND(IF(BOUND(?actual) && ?actual = true, 'actual', IF(BOUND(?forecast) && ?forecast = true, 'forecast', 'unknown')) AS ?dataType) } GROUP BY ?dataType ORDER BY ?dataType",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD126"
+  },
+  {
+    "id": "EVAL047",
+    "question": "Actual monthly vehicle sales units over time.",
+    "query": "SELECT ?monthLabel (SUM(?units) AS ?unitsSold) WHERE { ?obs a survey:VehicleSalesObservation ; survey:forTimePeriod ?month ; survey:isActualData true ; survey:unitsSold ?units . BIND(REPLACE(STR(?month), '^.*/', '') AS ?monthLabel) } GROUP BY ?monthLabel ORDER BY ?monthLabel",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD127"
+  },
+  {
+    "id": "EVAL048",
+    "question": "Compare yearly sales for BEV, BEHV and ICE by year.",
+    "query": "SELECT ?vehicleType ?year (SUM(?sales) AS ?yearlySales) WHERE { ?entry a survey:YearlySalesData ; survey:analyzesVehicleType ?vehicle ; survey:forYear ?year ; survey:yearlySales ?sales . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) } GROUP BY ?vehicleType ?year ORDER BY ?vehicleType ?year",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD128"
+  },
+  {
+    "id": "EVAL049",
+    "question": "Which vehicle type leads total yearly sales?",
+    "query": "SELECT ?vehicleType (SUM(?sales) AS ?totalSales) WHERE { ?entry a survey:YearlySalesData ; survey:analyzesVehicleType ?vehicle ; survey:yearlySales ?sales . BIND(REPLACE(STR(?vehicle), '^.*/', '') AS ?vehicleType) } GROUP BY ?vehicleType ORDER BY DESC(?totalSales) LIMIT 1",
+    "ambiguity_label": "low",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD129"
+  },
+  {
+    "id": "EVAL050",
+    "question": "For each Tier1 company, count active component-share categories.",
+    "query": "SELECT ?companyName (COUNT(?share) AS ?activeCategories) WHERE { ?share a survey:ComponentShare ; survey:forCompany ?company ; survey:isActiveInCategory true . ?company survey:companyName ?companyName . } GROUP BY ?companyName ORDER BY DESC(?activeCategories)",
+    "ambiguity_label": "mid",
+    "topic": "heldout_eval",
+    "source_gold_id": "GOLD130"
+  }
+]

@@ -1,0 +1,352 @@
+[
+  {
+    "id": "SANITYKGQA0001",
+    "question": "Show current demand by region.",
+    "topic": "regional_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer with regional demand rows"
+  },
+  {
+    "id": "SANITYKGQA0002",
+    "question": "Show total current demand from OEM customers by region.",
+    "topic": "regional_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer filtered to OEM survey origin and grouped by region"
+  },
+  {
+    "id": "SANITYKGQA0003",
+    "question": "Show total current demand from Tier1 customers by region.",
+    "topic": "regional_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer filtered to Tier1 survey origin and grouped by region"
+  },
+  {
+    "id": "SANITYKGQA0004",
+    "question": "Show semiconductor current demand by region.",
+    "topic": "regional_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer filtered to semiconductor survey origin and grouped by region"
+  },
+  {
+    "id": "SANITYKGQA0005",
+    "question": "Show current demand by survey group.",
+    "topic": "regional_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer grouped by OEM, Tier1, and Semiconductor survey groups"
+  },
+  {
+    "id": "SANITYKGQA0006",
+    "question": "Show regional demand by quarter.",
+    "topic": "regional_demand",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "must not use generic direct regional-demand-by-region template"
+  },
+  {
+    "id": "SANITYKGQA0007",
+    "question": "What is the total regional demand for each quarter?",
+    "topic": "regional_demand",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "must not answer direct unless an exact quarter-supported query is available"
+  },
+  {
+    "id": "SANITYKGQA0008",
+    "question": "Give me regional demand grouped by quarter.",
+    "topic": "regional_demand",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "must not answer with region plus survey group instead of quarter"
+  },
+  {
+    "id": "SANITYKGQA0009",
+    "question": "Break down future demand by region.",
+    "topic": "future_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct future-demand regional template, not generic regional-demand template"
+  },
+  {
+    "id": "SANITYKGQA0010",
+    "question": "From the graph, show future demand by region.",
+    "topic": "future_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "future-demand capability should be primary"
+  },
+  {
+    "id": "SANITYKGQA0011",
+    "question": "Show future demand by quarter.",
+    "topic": "future_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer grouped by quarter/time period"
+  },
+  {
+    "id": "SANITYKGQA0012",
+    "question": "Show future demand by vehicle type.",
+    "topic": "future_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer grouped by vehicle type"
+  },
+  {
+    "id": "SANITYKGQA0013",
+    "question": "Show future demand by technology category.",
+    "topic": "future_demand",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "breakdown across all technology categories, no LIMIT 1 unless explicitly asking highest"
+  },
+  {
+    "id": "SANITYKGQA0014",
+    "question": "Which technology category has the highest future demand?",
+    "topic": "future_demand",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "ranking/top answer is allowed because the question explicitly asks highest"
+  },
+  {
+    "id": "SANITYKGQA0015",
+    "question": "Show sales volume by month.",
+    "topic": "vehicle_sales",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer summing units by month"
+  },
+  {
+    "id": "SANITYKGQA0016",
+    "question": "What is the total number of vehicles sold for each month?",
+    "topic": "vehicle_sales",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer summing units by month"
+  },
+  {
+    "id": "SANITYKGQA0017",
+    "question": "What is the total number of sales volume for each year?",
+    "topic": "vehicle_sales",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer summing units by year"
+  },
+  {
+    "id": "SANITYKGQA0018",
+    "question": "What is the total number of forecast vehicle sales for each month?",
+    "topic": "vehicle_sales",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct answer filtered to forecast data and grouped by month"
+  },
+  {
+    "id": "SANITYKGQA0019",
+    "question": "What is the total number of actual vehicle sales for each time period?",
+    "topic": "vehicle_sales",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "should return actual sales units by time period, not observation counts"
+  },
+  {
+    "id": "SANITYKGQA0020",
+    "question": "Which vehicle type has the highest forecast vehicle sales?",
+    "topic": "vehicle_sales",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "should not answer with a month if the user asks vehicle type"
+  },
+  {
+    "id": "SANITYKGQA0021",
+    "question": "Show shortage counts by survey group.",
+    "topic": "shortage",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct count grouped by survey group"
+  },
+  {
+    "id": "SANITYKGQA0022",
+    "question": "Show shortage status by shortage status.",
+    "topic": "shortage",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct count grouped by shortage yes/no status"
+  },
+  {
+    "id": "SANITYKGQA0023",
+    "question": "Count shortage information for each technology category.",
+    "topic": "shortage",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "should not drift into order cancellation or inventory"
+  },
+  {
+    "id": "SANITYKGQA0024",
+    "question": "Summarize reported shortages across technology category.",
+    "topic": "shortage",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "should preserve shortage capability and technology-category dimension"
+  },
+  {
+    "id": "SANITYKGQA0025",
+    "question": "What is the average autonomous driving development by vehicle type and SAE level?",
+    "topic": "autonomous_driving",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct grouped answer by vehicle type and SAE level if supported"
+  },
+  {
+    "id": "SANITYKGQA0026",
+    "question": "Show autonomous driving development by year.",
+    "topic": "autonomous_driving",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct or selected grouped answer by year"
+  },
+  {
+    "id": "SANITYKGQA0027",
+    "question": "Which vehicle type has the highest autonomous driving percentage?",
+    "topic": "autonomous_driving",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "top answer can be returned, but it must answer vehicle type"
+  },
+  {
+    "id": "SANITYKGQA0028",
+    "question": "Which survey group has the highest autonomous driving percentage?",
+    "topic": "autonomous_driving",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "should not answer with vehicle type or SAE level"
+  },
+  {
+    "id": "SANITYKGQA0029",
+    "question": "Show average autonomous driving development by survey group.",
+    "topic": "autonomous_driving",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "should not answer by year when the user asks survey group"
+  },
+  {
+    "id": "SANITYKGQA0030",
+    "question": "Compare inventory responses by technology category.",
+    "topic": "inventory",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct or selected inventory answer grouped by technology category"
+  },
+  {
+    "id": "SANITYKGQA0031",
+    "question": "Compare component inventory by trend.",
+    "topic": "inventory",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct or selected inventory answer grouped by trend"
+  },
+  {
+    "id": "SANITYKGQA0032",
+    "question": "Show component inventory by technology category.",
+    "topic": "inventory",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "should preserve inventory concept and technology-category dimension"
+  },
+  {
+    "id": "SANITYKGQA0033",
+    "question": "Summarize order cancellation by technology category.",
+    "topic": "order_cancellation",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct or selected order-cancellation answer grouped by technology category"
+  },
+  {
+    "id": "SANITYKGQA0034",
+    "question": "Show order cancellation responses by response type.",
+    "topic": "order_cancellation",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "direct or selected order-cancellation answer grouped by response type"
+  },
+  {
+    "id": "SANITYKGQA0035",
+    "question": "Which technology category has the highest cancellation behavior?",
+    "topic": "order_cancellation",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "should not drift into future demand"
+  },
+  {
+    "id": "SANITYKGQA0036",
+    "question": "What are the names of all regions recorded in the database?",
+    "topic": "catalog_lookup",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "catalog-style region name list"
+  },
+  {
+    "id": "SANITYKGQA0037",
+    "question": "What are the names of all technology categories?",
+    "topic": "catalog_lookup",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "catalog-style technology category list"
+  },
+  {
+    "id": "SANITYKGQA0038",
+    "question": "What are the quarter labels present in the dataset?",
+    "topic": "catalog_lookup",
+    "expected_layer": "direct_graph_supported",
+    "expected_behavior": "catalog-style quarter label list"
+  },
+  {
+    "id": "SANITYKGQA0039",
+    "question": "What is True Demand?",
+    "topic": "ontology_definition",
+    "expected_layer": "ontology_definition",
+    "expected_behavior": "deterministic ontology/glossary answer, LLM skipped"
+  },
+  {
+    "id": "SANITYKGQA0040",
+    "question": "Define Future Demand.",
+    "topic": "ontology_definition",
+    "expected_layer": "ontology_definition",
+    "expected_behavior": "deterministic glossary answer, LLM skipped"
+  },
+  {
+    "id": "SANITYKGQA0041",
+    "question": "What is a Technology Node?",
+    "topic": "ontology_definition",
+    "expected_layer": "ontology_definition",
+    "expected_behavior": "deterministic glossary answer, LLM skipped"
+  },
+  {
+    "id": "SANITYKGQA0042",
+    "question": "Define Demand Class.",
+    "topic": "ontology_definition",
+    "expected_layer": "ontology_definition",
+    "expected_behavior": "deterministic Digital Reference ontology answer if DR ontology path is configured"
+  },
+  {
+    "id": "SANITYKGQA0043",
+    "question": "What is Product Group?",
+    "topic": "ontology_definition",
+    "expected_layer": "ontology_definition",
+    "expected_behavior": "deterministic Digital Reference ontology answer if DR ontology path is configured"
+  },
+  {
+    "id": "SANITYKGQA0044",
+    "question": "What does is processed by mean?",
+    "topic": "ontology_definition",
+    "expected_layer": "ontology_definition",
+    "expected_behavior": "deterministic Digital Reference ontology answer if DR ontology path is configured"
+  },
+  {
+    "id": "SANITYKGQA0045",
+    "question": "What does has customer part number specification mean?",
+    "topic": "ontology_definition",
+    "expected_layer": "ontology_definition",
+    "expected_behavior": "deterministic Digital Reference ontology answer if DR ontology path is configured"
+  },
+  {
+    "id": "SANITYKGQA0046",
+    "question": "Based on the current demand data, which region should be monitored more closely?",
+    "topic": "advisory",
+    "expected_layer": "advisory_or_llm_ranking",
+    "expected_behavior": "data-grounded advisory answer, not generic business advice"
+  },
+  {
+    "id": "SANITYKGQA0047",
+    "question": "Which technology category appears most exposed to shortage?",
+    "topic": "advisory",
+    "expected_layer": "advisory_or_llm_ranking",
+    "expected_behavior": "data-grounded advisory answer based on graph evidence"
+  },
+  {
+    "id": "SANITYKGQA0048",
+    "question": "Where should planning attention focus based on the survey data?",
+    "topic": "advisory",
+    "expected_layer": "advisory_or_llm_ranking",
+    "expected_behavior": "data-grounded advisory answer with clear limitation"
+  },
+  {
+    "id": "SANITYKGQA0049",
+    "question": "How does demand forecast vary by technology category?",
+    "topic": "future_demand",
+    "expected_layer": "llm_or_ranking",
+    "expected_behavior": "should map demand forecast to future demand and preserve technology category"
+  },
+  {
+    "id": "SANITYKGQA0050",
+    "question": "Show demand by vehicle type and region.",
+    "topic": "ambiguous_compositional",
+    "expected_layer": "clarification_or_llm_ranking",
+    "expected_behavior": "should ask clarification or avoid unsupported composition if no valid path exists"
+  }
+]

@@ -1,0 +1,302 @@
+[
+  {
+    "id": "ROUTE001",
+    "question": "What is OrderCancellation?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE002",
+    "question": "What is VehicleSalesObservation?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE003",
+    "question": "What is CurrentDemandAnalysis?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE004",
+    "question": "What is InventoryDevelopment?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE005",
+    "question": "What is AutonomousDrivingDevelopment?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE006",
+    "question": "What is ComponentShare?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE007",
+    "question": "What does BL1 mean?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE008",
+    "question": "What does BL2 mean?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE009",
+    "question": "What does OEM mean?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE010",
+    "question": "What is Tier1?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE011",
+    "question": "What is hasSurveyOrigin?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE012",
+    "question": "What is participantCount?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE013",
+    "question": "What is baselineB1?",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE014",
+    "question": "Define ComponentType.",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE015",
+    "question": "Define InventoryTargetIndicator.",
+    "expected_route": "definition"
+  },
+  {
+    "id": "ROUTE016",
+    "question": "What is a manufacturer?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE017",
+    "question": "What is a supplier?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE018",
+    "question": "What is a response category?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE019",
+    "question": "What is a dashboard?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE020",
+    "question": "What does lead time mean?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE021",
+    "question": "Define procurement.",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE022",
+    "question": "What is a forecast?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE023",
+    "question": "What is a percentage?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE024",
+    "question": "What is an observation?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE025",
+    "question": "What is a benchmark?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE026",
+    "question": "Define segmentation.",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE027",
+    "question": "What does aggregation mean?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE028",
+    "question": "What is a table?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE029",
+    "question": "What is a trend?",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE030",
+    "question": "Define an entity.",
+    "expected_route": "general_definition"
+  },
+  {
+    "id": "ROUTE031",
+    "question": "What about OrderCancellation?",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE032",
+    "question": "Tell me about InventoryDevelopment.",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE033",
+    "question": "Show me CurrentDemandAnalysis.",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE034",
+    "question": "What about VehicleSalesObservation?",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE035",
+    "question": "Tell me about ComponentShare.",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE036",
+    "question": "Show me AutonomousDrivingDevelopment.",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE037",
+    "question": "What about BL1?",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE038",
+    "question": "Tell me about Tier1.",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE039",
+    "question": "Show me Inventory.",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE040",
+    "question": "What about Company?",
+    "expected_route": "clarification_needed"
+  },
+  {
+    "id": "ROUTE041",
+    "question": "What is the weather tomorrow?",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE042",
+    "question": "Will it rain next week?",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE043",
+    "question": "Who is the president of France?",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE044",
+    "question": "What is Apple's stock price?",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE045",
+    "question": "Give me a pasta recipe.",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE046",
+    "question": "Who won the football match yesterday?",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE047",
+    "question": "What is the temperature in Berlin?",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE048",
+    "question": "Show me today's soccer schedule.",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE049",
+    "question": "What is the latest exchange rate?",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE050",
+    "question": "Recommend a restaurant nearby.",
+    "expected_route": "out_of_domain"
+  },
+  {
+    "id": "ROUTE051",
+    "question": "Return monthly totals for actual vehicle-sales observations.",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE052",
+    "question": "Which month has the highest actual vehicle sales?",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE053",
+    "question": "Give forecast vehicle-sales totals grouped by month.",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE054",
+    "question": "Show yearly autonomous-driving averages by vehicle type.",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE055",
+    "question": "At SAE Level 5, which vehicle type has the highest percentage?",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE056",
+    "question": "Group order-cancellation participant counts by technology category and response type.",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE057",
+    "question": "Which cancellation response is most common by technology category?",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE058",
+    "question": "Summarize shortage responses by survey origin.",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE059",
+    "question": "Show inventory trends by component.",
+    "expected_route": "kg_query"
+  },
+  {
+    "id": "ROUTE060",
+    "question": "Compare BL1 and BL2 current-demand changes for Tier1 Automotive.",
+    "expected_route": "kg_query"
+  }
+]

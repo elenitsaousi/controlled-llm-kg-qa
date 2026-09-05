@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="520" viewBox="0 0 1100 520">
+  <rect width="100%" height="100%" fill="white"/>
+  <style>
+    .title{font:700 26px Arial, sans-serif; fill:#14212b}
+    .sub{font:400 14px Arial, sans-serif; fill:#5f7280}
+    .label{font:600 14px Arial, sans-serif; fill:#14212b}
+    .small{font:400 12px Arial, sans-serif; fill:#5f7280}
+    .num{font:700 18px Arial, sans-serif; fill:#14212b}
+  </style>
+  <text x="60" y="60" class="title">Final 1000-Question Benchmark Composition</text>
+<text x="60" y="88" class="sub">Mixed benchmark used for final audited system-level evaluation.</text>
+<rect x="70" y="170" width="850" height="54" rx="10" fill="#eef6f5" stroke="#d9e5e8"/>
+<rect x="70" y="170" width="680.0" height="54" rx="10" fill="#0f8f86"/>
+<text x="88" y="204" fill="white" font-family="Arial" font-size="18" font-weight="700">KG analytics</text>
+<text x="955" y="195" class="num">800</text>
+<text x="955" y="215" class="small">80.0%</text>
+<rect x="70" y="244" width="850" height="54" rx="10" fill="#eef6f5" stroke="#d9e5e8"/>
+<rect x="70" y="244" width="127.5" height="54" rx="10" fill="#2f7de1"/>
+<text x="88" y="278" fill="white" font-family="Arial" font-size="18" font-weight="700">DR ontology definitions</text>
+<text x="955" y="269" class="num">150</text>
+<text x="955" y="289" class="small">15.0%</text>
+<rect x="70" y="318" width="850" height="54" rx="10" fill="#eef6f5" stroke="#d9e5e8"/>
+<rect x="70" y="318" width="42.5" height="54" rx="10" fill="#f59e0b"/>
+<text x="88" y="352" fill="white" font-family="Arial" font-size="18" font-weight="700">Advisory questions</text>
+<text x="955" y="343" class="num">50</text>
+<text x="955" y="363" class="small">5.0%</text>
+<rect x="70" y="430" width="960" height="44" rx="9" fill="#eaf7f2" stroke="#9fd8c0"/>
+<text x="92" y="458" class="label">Purpose:</text><text x="165" y="458" class="small">evaluate KG analytics, ontology-model understanding, and graph-grounded advisory responses in one user-facing pipeline.</text>
+</svg>

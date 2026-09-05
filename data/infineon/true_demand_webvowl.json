@@ -1,0 +1,4132 @@
+{
+  "_comment": "Created with OWL2VOWL (version 0.3.7), http://vowl.visualdataweb.org",
+  "header": {
+    "languages": [
+      "undefined"
+    ],
+    "baseIris": [
+      "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "http://www.w3.org/2000/01/rdf-schema",
+      "http://www.w3.org/2001/XMLSchema"
+    ],
+    "prefixList": {
+      "owl": "http://www.w3.org/2002/07/owl#",
+      "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "xsd": "http://www.w3.org/2001/XMLSchema#",
+      "xml": "http://www.w3.org/XML/1998/namespace",
+      "rdfs": "http://www.w3.org/2000/01/rdf-schema#"
+    },
+    "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TrueDemandExtractedOntology",
+    "labels": {
+      "undefined": "True Demand extracted ontology"
+    },
+    "comments": {
+      "undefined": "Schema-level ontology extracted from the full True Demand RDF graph for WebVOWL visualization."
+    }
+  },
+  "namespace": [],
+  "class": [
+    {
+      "id": "0",
+      "type": "owl:Class"
+    },
+    {
+      "id": "2",
+      "type": "owl:Class"
+    },
+    {
+      "id": "9",
+      "type": "owl:Class"
+    },
+    {
+      "id": "13",
+      "type": "owl:Class"
+    },
+    {
+      "id": "21",
+      "type": "owl:Class"
+    },
+    {
+      "id": "12",
+      "type": "owl:Class"
+    },
+    {
+      "id": "52",
+      "type": "owl:Class"
+    },
+    {
+      "id": "58",
+      "type": "owl:Class"
+    },
+    {
+      "id": "24",
+      "type": "owl:Class"
+    },
+    {
+      "id": "70",
+      "type": "owl:Class"
+    },
+    {
+      "id": "22",
+      "type": "owl:Class"
+    },
+    {
+      "id": "61",
+      "type": "owl:Class"
+    },
+    {
+      "id": "34",
+      "type": "owl:Class"
+    },
+    {
+      "id": "67",
+      "type": "owl:Class"
+    },
+    {
+      "id": "81",
+      "type": "owl:Class"
+    },
+    {
+      "id": "77",
+      "type": "owl:Class"
+    },
+    {
+      "id": "89",
+      "type": "owl:Class"
+    },
+    {
+      "id": "93",
+      "type": "owl:Class"
+    },
+    {
+      "id": "15",
+      "type": "owl:Class"
+    },
+    {
+      "id": "56",
+      "type": "owl:Class"
+    },
+    {
+      "id": "20",
+      "type": "owl:Class"
+    },
+    {
+      "id": "53",
+      "type": "owl:Class"
+    },
+    {
+      "id": "59",
+      "type": "owl:Class"
+    },
+    {
+      "id": "45",
+      "type": "owl:Class"
+    },
+    {
+      "id": "97",
+      "type": "owl:Class"
+    },
+    {
+      "id": "98",
+      "type": "owl:Class"
+    },
+    {
+      "id": "72",
+      "type": "owl:Class"
+    },
+    {
+      "id": "57",
+      "type": "owl:Class"
+    },
+    {
+      "id": "10",
+      "type": "owl:Class"
+    },
+    {
+      "id": "104",
+      "type": "owl:Class"
+    },
+    {
+      "id": "11",
+      "type": "owl:Class"
+    },
+    {
+      "id": "31",
+      "type": "owl:Class"
+    },
+    {
+      "id": "54",
+      "type": "owl:Class"
+    },
+    {
+      "id": "17",
+      "type": "owl:Class"
+    },
+    {
+      "id": "28",
+      "type": "owl:Class"
+    },
+    {
+      "id": "7",
+      "type": "owl:Class"
+    },
+    {
+      "id": "68",
+      "type": "owl:Class"
+    },
+    {
+      "id": "63",
+      "type": "owl:Class"
+    },
+    {
+      "id": "124",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "4",
+      "type": "owl:Class"
+    },
+    {
+      "id": "106",
+      "type": "owl:Class"
+    },
+    {
+      "id": "127",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "128",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "47",
+      "type": "owl:Class"
+    },
+    {
+      "id": "113",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "129",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "130",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "131",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "132",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "133",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "84",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "136",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "25",
+      "type": "owl:Class"
+    },
+    {
+      "id": "140",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "14",
+      "type": "owl:Class"
+    },
+    {
+      "id": "141",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "142",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "145",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "146",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "147",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "150",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "151",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "153",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "154",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "95",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "156",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "157",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "80",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "115",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "91",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "164",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "144",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "41",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "65",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "29",
+      "type": "owl:Class"
+    },
+    {
+      "id": "149",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "73",
+      "type": "owl:Class"
+    },
+    {
+      "id": "76",
+      "type": "owl:Class"
+    },
+    {
+      "id": "32",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "138",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "103",
+      "type": "owl:Class"
+    },
+    {
+      "id": "8",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "39",
+      "type": "owl:Class"
+    },
+    {
+      "id": "75",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "172",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "18",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "5",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "173",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "135",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "174",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "175",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "43",
+      "type": "owl:Class"
+    },
+    {
+      "id": "55",
+      "type": "owl:Class"
+    },
+    {
+      "id": "100",
+      "type": "owl:Class"
+    },
+    {
+      "id": "1",
+      "type": "owl:Class"
+    },
+    {
+      "id": "88",
+      "type": "owl:Class"
+    },
+    {
+      "id": "37",
+      "type": "owl:Class"
+    },
+    {
+      "id": "162",
+      "type": "owl:Class"
+    },
+    {
+      "id": "203",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "185",
+      "type": "owl:Class"
+    },
+    {
+      "id": "202",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "191",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "204",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "205",
+      "type": "owl:Thing"
+    },
+    {
+      "id": "79",
+      "type": "owl:Class"
+    },
+    {
+      "id": "214",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "166",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "86",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "216",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "120",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "219",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "118",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "221",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "111",
+      "type": "owl:Class"
+    },
+    {
+      "id": "105",
+      "type": "owl:Class"
+    },
+    {
+      "id": "50",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "48",
+      "type": "rdfs:Datatype"
+    },
+    {
+      "id": "107",
+      "type": "owl:Class"
+    }
+  ],
+  "classAttribute": [
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Advanced_driver-assistance_systems_%28ADAS%29",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Advanced_driver-assistance_systems_%28ADAS%29",
+        "undefined": "Advanced driver assistance systems (ADAS)"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "0",
+      "superClasses": [
+        "1"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Component",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Component",
+        "undefined": "Component"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "2"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/10nm_to_less_than_28nm",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "10nm_to_less_than_28nm",
+        "undefined": "10nm to less than 28nm"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "9",
+      "superClasses": [
+        "10",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TimePeriod",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "TimePeriod",
+        "undefined": "Time Period"
+      },
+      "subClasses": [
+        "14",
+        "15"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "13"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Automotive",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Automotive",
+        "undefined": "Automotive"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "21",
+      "superClasses": [
+        "22"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator_Semi",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "InventoryTargetIndicator_Semi",
+        "undefined": "Inventory Target Indicator Semi"
+      },
+      "subClasses": [
+        "9",
+        "53",
+        "54",
+        "55",
+        "56"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "12",
+      "superClasses": [
+        "52"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryTargetIndicator",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "InventoryTargetIndicator",
+        "undefined": "Inventory Target Indicator"
+      },
+      "subClasses": [
+        "12"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "52",
+      "superClasses": [
+        "57"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Tier1",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "InventoryDevelopment_Tier1",
+        "undefined": "Inventory Development Tier1"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "58",
+      "superClasses": [
+        "59"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentType_Tier1",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "ComponentType_Tier1",
+        "undefined": "Component Type Tier1"
+      },
+      "subClasses": [
+        "76",
+        "77"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "24",
+      "superClasses": [
+        "25"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment_OEM",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "AutonomousDrivingDevelopment_OEM",
+        "undefined": "Autonomous Driving Development OEM"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "70",
+      "superClasses": [
+        "68"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/MarketSegment",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "MarketSegment",
+        "undefined": "Market Segment"
+      },
+      "subClasses": [
+        "21"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "22"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentRegionalDemand",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "CurrentRegionalDemand",
+        "undefined": "Current Regional Demand"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "61",
+      "superClasses": [
+        "7"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/YearlySalesData",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "YearlySalesData",
+        "undefined": "Yearly Sales Data"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "34",
+      "superClasses": [
+        "29"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment_Tier1",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "AutonomousDrivingDevelopment_Tier1",
+        "undefined": "Autonomous Driving Development Tier1"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "67",
+      "superClasses": [
+        "68"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/FutureDemandAnalysis",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "FutureDemandAnalysis",
+        "undefined": "Future Demand Analysis"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "81",
+      "superClasses": [
+        "7"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/EV",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "EV",
+        "undefined": "EV"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "77",
+      "superClasses": [
+        "24"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ConversionFactor",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "ConversionFactor",
+        "undefined": "Conversion Factor"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "89"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/BEV",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "BEV",
+        "undefined": "BEV"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "93",
+      "superClasses": [
+        "72"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Quarter",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Quarter",
+        "undefined": "Quarter"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "15",
+      "superClasses": [
+        "13"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/180nm_or_greater",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "180nm_or_greater",
+        "undefined": "180nm or greater"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "56",
+      "superClasses": [
+        "10",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Body_and_convenience",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Body_and_convenience",
+        "undefined": "Body and convenience"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "20",
+      "superClasses": [
+        "1"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/28nm_to_less_than_45nm",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "28nm_to_less_than_45nm",
+        "undefined": "28nm to less than 45nm"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "53",
+      "superClasses": [
+        "10",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "InventoryDevelopment",
+        "undefined": "Inventory Development"
+      },
+      "subClasses": [
+        "10",
+        "58"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "59",
+      "superClasses": [
+        "57"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Chassis_and_safety",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Chassis_and_safety",
+        "undefined": "Chassis and safety"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "45",
+      "superClasses": [
+        "1"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellation",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "OrderCancellation",
+        "undefined": "Order Cancellation"
+      },
+      "subClasses": [
+        "11"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "97"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ICE",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "ICE",
+        "undefined": "ICE"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "98",
+      "superClasses": [
+        "72"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "VehicleType",
+        "undefined": "Vehicle Type"
+      },
+      "subClasses": [
+        "98",
+        "100",
+        "93"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "72"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Inventory",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Inventory",
+        "undefined": "Inventory"
+      },
+      "subClasses": [
+        "59",
+        "52"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "57"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/InventoryDevelopment_Semi",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "InventoryDevelopment_Semi",
+        "undefined": "Inventory Development Semi"
+      },
+      "subClasses": [
+        "9",
+        "53",
+        "54",
+        "55",
+        "56"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "10",
+      "superClasses": [
+        "59"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Survey",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Survey",
+        "undefined": "Survey"
+      },
+      "subClasses": [
+        "105",
+        "106",
+        "107"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "104"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OrderCancellationChange_Semi",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "OrderCancellationChange_Semi",
+        "undefined": "Order Cancellation Change Semi"
+      },
+      "subClasses": [
+        "9",
+        "53",
+        "54",
+        "55",
+        "56"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "11",
+      "superClasses": [
+        "97"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Company",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Company",
+        "undefined": "Company"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "31"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/7nm_or_less",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "7nm_or_less",
+        "undefined": "7nm or less"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "54",
+      "superClasses": [
+        "10",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandForRegion",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "DemandForRegion",
+        "undefined": "Demand For Region"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "17",
+      "superClasses": [
+        "7"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/VehicleSalesObservation",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "VehicleSalesObservation",
+        "undefined": "Vehicle Sales Observation"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "28",
+      "superClasses": [
+        "29"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Demand",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Demand",
+        "undefined": "Demand"
+      },
+      "subClasses": [
+        "111",
+        "103",
+        "4",
+        "81",
+        "17",
+        "63",
+        "61"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "7"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AutonomousDrivingDevelopment",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "AutonomousDrivingDevelopment",
+        "undefined": "Autonomous Driving Development"
+      },
+      "subClasses": [
+        "67",
+        "70"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "68"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/CurrentDemandAnalysis",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "CurrentDemandAnalysis",
+        "undefined": "Current Demand Analysis"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "63",
+      "superClasses": [
+        "7"
+      ]
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "124",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/AggregatedDemand",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "AggregatedDemand",
+        "undefined": "Aggregated Demand"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "4",
+      "superClasses": [
+        "7"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Tier1_Survey",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Tier1_Survey",
+        "undefined": "Tier1 Survey"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "106",
+      "superClasses": [
+        "104"
+      ]
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "127",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#string",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "128",
+      "label": {
+        "IRI-based": "string"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyCategory",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "TechnologyCategory",
+        "undefined": "Technology Category"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "47"
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#integer",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "113",
+      "label": {
+        "IRI-based": "integer"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#integer",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "129",
+      "label": {
+        "IRI-based": "integer"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "130",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "131",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#integer",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "132",
+      "label": {
+        "IRI-based": "integer"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "133",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#boolean",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "84",
+      "label": {
+        "IRI-based": "boolean"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#integer",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "136",
+      "label": {
+        "IRI-based": "integer"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "ComponentShare",
+        "undefined": "Component Share"
+      },
+      "subClasses": [
+        "24",
+        "1"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "25"
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#integer",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "140",
+      "label": {
+        "IRI-based": "integer"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Month",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Month",
+        "undefined": "Month"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "14",
+      "superClasses": [
+        "13"
+      ]
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#integer",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "141",
+      "label": {
+        "IRI-based": "integer"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#integer",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "142",
+      "label": {
+        "IRI-based": "integer"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "145",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#boolean",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "146",
+      "label": {
+        "IRI-based": "boolean"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#string",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "147",
+      "label": {
+        "IRI-based": "string"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#boolean",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "150",
+      "label": {
+        "IRI-based": "boolean"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#string",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "151",
+      "label": {
+        "IRI-based": "string"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#boolean",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "153",
+      "label": {
+        "IRI-based": "boolean"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#string",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "154",
+      "label": {
+        "IRI-based": "string"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "95",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "156",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "157",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "80",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "115",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "91",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "164",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "144",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "41",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "65",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Sales",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Sales",
+        "undefined": "Sales"
+      },
+      "subClasses": [
+        "28",
+        "34"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "29"
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "149",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/SAELevel",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "SAELevel",
+        "undefined": "SAELevel"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "73"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/nonEV",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "nonEV",
+        "undefined": "non EV"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "76",
+      "superClasses": [
+        "24"
+      ]
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "32",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "138",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/DemandResponse",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "DemandResponse",
+        "undefined": "Demand Response"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "103",
+      "superClasses": [
+        "7"
+      ]
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "8",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Powertrain",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Powertrain",
+        "undefined": "Powertrain"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "39",
+      "superClasses": [
+        "1"
+      ]
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "75",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#string",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "172",
+      "label": {
+        "IRI-based": "string"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "18",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "5",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#string",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "173",
+      "label": {
+        "IRI-based": "string"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#integer",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "135",
+      "label": {
+        "IRI-based": "integer"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#boolean",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "174",
+      "label": {
+        "IRI-based": "boolean"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "175",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Other",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Other",
+        "undefined": "Other"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "43",
+      "superClasses": [
+        "1"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/55nm_to_180nm",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "55nm_to_180nm",
+        "undefined": "55nm to 180nm"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "55",
+      "superClasses": [
+        "10",
+        "11",
+        "12"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/BEHV",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "BEHV",
+        "undefined": "BEHV"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "100",
+      "superClasses": [
+        "72"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/ComponentShare_Tier1",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "ComponentShare_Tier1",
+        "undefined": "Component Share Tier1"
+      },
+      "subClasses": [
+        "0",
+        "37",
+        "39",
+        "43",
+        "45",
+        "20"
+      ],
+      "attributes": [
+        "external"
+      ],
+      "id": "1",
+      "superClasses": [
+        "25"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Region",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Region",
+        "undefined": "Region"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "88"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Infotainment_and_Telematics",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Infotainment_and_Telematics",
+        "undefined": "Infotainment and Telematics"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "37",
+      "superClasses": [
+        "1"
+      ]
+    },
+    {
+      "instances": 0,
+      "union": [
+        "81",
+        "63"
+      ],
+      "attributes": [
+        "anonymous",
+        "union"
+      ],
+      "id": "162"
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "203",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "instances": 0,
+      "union": [
+        "10",
+        "58"
+      ],
+      "attributes": [
+        "anonymous",
+        "union"
+      ],
+      "id": "185"
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "202",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "191",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "204",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2002/07/owl#Thing",
+      "baseIri": "http://owl2vowl.de",
+      "id": "205",
+      "label": {
+        "undefined": "Thing"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/TechnologyNode",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "TechnologyNode",
+        "undefined": "Technology Node"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "79"
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "214",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "166",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "86",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#string",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "216",
+      "label": {
+        "IRI-based": "string"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "120",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "219",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "118",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#string",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "221",
+      "label": {
+        "IRI-based": "string"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/FutureRegionalDemand",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "FutureRegionalDemand",
+        "undefined": "Future Regional Demand"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "111",
+      "superClasses": [
+        "7"
+      ]
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/Semiconductor_Survey",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "Semiconductor_Survey",
+        "undefined": "Semiconductor Survey"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "105",
+      "superClasses": [
+        "104"
+      ]
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "50",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.w3.org/2001/XMLSchema#decimal",
+      "baseIri": "http://www.w3.org/2001/XMLSchema",
+      "id": "48",
+      "label": {
+        "IRI-based": "decimal"
+      }
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/OEM_Survey",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "instances": 0,
+      "label": {
+        "IRI-based": "OEM_Survey",
+        "undefined": "OEM Survey"
+      },
+      "attributes": [
+        "external"
+      ],
+      "id": "107",
+      "superClasses": [
+        "104"
+      ]
+    }
+  ],
+  "property": [
+    {
+      "id": "3",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "6",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "16",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "19",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "23",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "26",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "27",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "30",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "33",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "35",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "36",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "38",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "40",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "42",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "44",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "46",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "49",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "51",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "60",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "62",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "64",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "66",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "69",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "71",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "74",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "78",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "82",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "83",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "85",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "87",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "90",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "92",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "94",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "96",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "99",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "101",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "102",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "108",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "109",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "110",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "112",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "114",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "116",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "117",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "119",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "121",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "122",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "123",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "125",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "126",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "134",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "137",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "139",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "143",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "148",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "152",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "155",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "158",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "159",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "160",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "161",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "163",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "165",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "167",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "168",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "169",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "170",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "171",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "176",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "177",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "178",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "179",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "180",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "181",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "182",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "183",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "184",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "186",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "187",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "188",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "189",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "190",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "192",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "193",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "194",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "195",
+      "type": "owl:datatypeProperty"
+    },
+    {
+      "id": "196",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "197",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "198",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "199",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "200",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "201",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "206",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "207",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "208",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "209",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "210",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "211",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "212",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "213",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "215",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "217",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "218",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "220",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "222",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "223",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "224",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "225",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "226",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "227",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "228",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "229",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "230",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "231",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "232",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "233",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "234",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "235",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "236",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "237",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "238",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "239",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "240",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "241",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "242",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "243",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "244",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "245",
+      "type": "rdfs:SubClassOf"
+    },
+    {
+      "id": "246",
+      "type": "owl:objectProperty"
+    },
+    {
+      "id": "247",
+      "type": "rdfs:SubClassOf"
+    }
+  ],
+  "propertyAttribute": [
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/isAggregatedResult",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "5",
+      "label": {
+        "IRI-based": "isAggregatedResult",
+        "undefined": "is Aggregated Result"
+      },
+      "domain": "4",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "3"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChange",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "8",
+      "label": {
+        "IRI-based": "percentageChange",
+        "undefined": "percentage Change"
+      },
+      "domain": "7",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "6"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/totalDemand",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "18",
+      "label": {
+        "IRI-based": "totalDemand",
+        "undefined": "total Demand"
+      },
+      "domain": "17",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "16"
+    },
+    {
+      "range": "1",
+      "domain": "20",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "19"
+    },
+    {
+      "range": "25",
+      "domain": "24",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "23"
+    },
+    {
+      "range": "25",
+      "domain": "1",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "26"
+    },
+    {
+      "range": "29",
+      "domain": "28",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "27"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/companyName",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "32",
+      "label": {
+        "IRI-based": "companyName",
+        "undefined": "company Name"
+      },
+      "domain": "31",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "30"
+    },
+    {
+      "range": "29",
+      "domain": "34",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "33"
+    },
+    {
+      "range": "1",
+      "domain": "0",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "35"
+    },
+    {
+      "range": "1",
+      "domain": "37",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "36"
+    },
+    {
+      "range": "1",
+      "domain": "39",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "38"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/yearlySales",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "41",
+      "label": {
+        "IRI-based": "yearlySales",
+        "undefined": "yearly Sales"
+      },
+      "domain": "34",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "40"
+    },
+    {
+      "range": "1",
+      "domain": "43",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "42"
+    },
+    {
+      "range": "1",
+      "domain": "45",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "44"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentChangeB1",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "48",
+      "label": {
+        "IRI-based": "percentChangeB1",
+        "undefined": "percent Change B1"
+      },
+      "domain": "47",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "46"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentChangeB2",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "50",
+      "label": {
+        "IRI-based": "percentChangeB2",
+        "undefined": "percent Change B2"
+      },
+      "domain": "47",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "49"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/reportsShortage",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "32",
+      "label": {
+        "IRI-based": "reportsShortage",
+        "undefined": "reports Shortage"
+      },
+      "domain": "31",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "51"
+    },
+    {
+      "range": "7",
+      "domain": "61",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "60"
+    },
+    {
+      "range": "7",
+      "domain": "63",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "62"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/isActiveInCategory",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "65",
+      "label": {
+        "IRI-based": "isActiveInCategory",
+        "undefined": "is Active In Category"
+      },
+      "domain": "1",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "64"
+    },
+    {
+      "range": "68",
+      "domain": "67",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "66"
+    },
+    {
+      "range": "68",
+      "domain": "70",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "69"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasSAELevel",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "73",
+      "label": {
+        "IRI-based": "hasSAELevel",
+        "undefined": "has SAELevel"
+      },
+      "domain": "72",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "71"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineYear",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "baselineYear",
+        "undefined": "baseline Year"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "74"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/technologyNodeLabel",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "80",
+      "label": {
+        "IRI-based": "technologyNodeLabel",
+        "undefined": "technology Node Label"
+      },
+      "domain": "79",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "78"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/analyzesTechnologyCategory",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "47",
+      "label": {
+        "IRI-based": "analyzesTechnologyCategory",
+        "undefined": "analyzes Technology Category"
+      },
+      "domain": "7",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "82"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/isActualData",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "84",
+      "label": {
+        "IRI-based": "isActualData",
+        "undefined": "is Actual Data"
+      },
+      "domain": "28",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "83"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineB2Percent",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "86",
+      "label": {
+        "IRI-based": "baselineB2Percent",
+        "undefined": "baseline B2 Percent"
+      },
+      "domain": "63",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "85"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/inRegion",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "88",
+      "label": {
+        "IRI-based": "inRegion",
+        "undefined": "in Region"
+      },
+      "domain": "17",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "87"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasComponentTypeSplit",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "91",
+      "label": {
+        "IRI-based": "hasComponentTypeSplit",
+        "undefined": "has Component Type Split"
+      },
+      "domain": "25",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "90"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/justificationDescription",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "justificationDescription",
+        "undefined": "justification Description"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "92"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasYear",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "95",
+      "label": {
+        "IRI-based": "hasYear",
+        "undefined": "has Year"
+      },
+      "domain": "68",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "94"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forCompany",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "31",
+      "label": {
+        "IRI-based": "forCompany",
+        "undefined": "for Company"
+      },
+      "domain": "97",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "96"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/analyzesVehicleType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "72",
+      "label": {
+        "IRI-based": "analyzesVehicleType",
+        "undefined": "analyzes Vehicle Type"
+      },
+      "domain": "7",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "99"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/appliesToVehicleType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "72",
+      "label": {
+        "IRI-based": "appliesToVehicleType",
+        "undefined": "applies To Vehicle Type"
+      },
+      "domain": "89",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "101"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/fromCompany",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "31",
+      "label": {
+        "IRI-based": "fromCompany",
+        "undefined": "from Company"
+      },
+      "domain": "103",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "102"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasOrderCancellation",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "97",
+      "label": {
+        "IRI-based": "hasOrderCancellation",
+        "undefined": "has Order Cancellation"
+      },
+      "domain": "105",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "108"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasAssumption",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "hasAssumption",
+        "undefined": "has Assumption"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "109"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasAggregatedResult",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "4",
+      "label": {
+        "IRI-based": "hasAggregatedResult",
+        "undefined": "has Aggregated Result"
+      },
+      "domain": "7",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "110"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forYear",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "113",
+      "label": {
+        "IRI-based": "forYear",
+        "undefined": "for Year"
+      },
+      "domain": "34",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "112"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/usesBaseline",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "115",
+      "label": {
+        "IRI-based": "usesBaseline",
+        "undefined": "uses Baseline"
+      },
+      "domain": "81",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "114"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasVehicleType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "72",
+      "label": {
+        "IRI-based": "hasVehicleType",
+        "undefined": "has Vehicle Type"
+      },
+      "domain": "68",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "116"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChangeB2",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "118",
+      "label": {
+        "IRI-based": "percentageChangeB2",
+        "undefined": "percentage Change B2"
+      },
+      "domain": "79",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "117"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChangeB1",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "120",
+      "label": {
+        "IRI-based": "percentageChangeB1",
+        "undefined": "percentage Change B1"
+      },
+      "domain": "79",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "119"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/assignedTechnologyCategory",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "assignedTechnologyCategory",
+        "undefined": "assigned Technology Category"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "121"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/assumptionReason",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "assumptionReason",
+        "undefined": "assumption Reason"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "122"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasResponse",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "103",
+      "label": {
+        "IRI-based": "hasResponse",
+        "undefined": "has Response"
+      },
+      "domain": "7",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "123"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/quarter",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "18",
+      "label": {
+        "IRI-based": "quarter",
+        "undefined": "quarter"
+      },
+      "domain": "17",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "125"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/methodologyDescription",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "methodologyDescription",
+        "undefined": "methodology Description"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "126"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/currentDemand",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "135",
+      "label": {
+        "IRI-based": "currentDemand",
+        "undefined": "current Demand"
+      },
+      "domain": "47",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "134"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/technologyDescription",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "138",
+      "label": {
+        "IRI-based": "technologyDescription",
+        "undefined": "technology Description"
+      },
+      "domain": "47",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "137"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/assignedVehicleType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "assignedVehicleType",
+        "undefined": "assigned Vehicle Type"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "139"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forVehicleType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "144",
+      "label": {
+        "IRI-based": "forVehicleType",
+        "undefined": "for Vehicle Type"
+      },
+      "domain": "103",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "143"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/unitsSold",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "149",
+      "label": {
+        "IRI-based": "unitsSold",
+        "undefined": "units Sold"
+      },
+      "domain": "28",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "148"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasTechnologyCategory",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "47",
+      "label": {
+        "IRI-based": "hasTechnologyCategory",
+        "undefined": "has Technology Category"
+      },
+      "domain": "138",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "152"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasInventoryResponse",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "58",
+      "label": {
+        "IRI-based": "hasInventoryResponse",
+        "undefined": "has Inventory Response"
+      },
+      "domain": "106",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "155"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/nameplateLabel",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "nameplateLabel",
+        "undefined": "nameplate Label"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "158"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/splitPercentage",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "131",
+      "label": {
+        "IRI-based": "splitPercentage",
+        "undefined": "split Percentage"
+      },
+      "domain": "24",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "159"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/definesCategory",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "47",
+      "label": {
+        "IRI-based": "definesCategory",
+        "undefined": "defines Category"
+      },
+      "domain": "138",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "160"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "115",
+      "label": {
+        "IRI-based": "baselineType",
+        "undefined": "baseline Type"
+      },
+      "domain": "162",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "161"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/periodLabel",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "164",
+      "label": {
+        "IRI-based": "periodLabel",
+        "undefined": "period Label"
+      },
+      "domain": "14",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "163"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineB1Percent",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "166",
+      "label": {
+        "IRI-based": "baselineB1Percent",
+        "undefined": "baseline B1 Percent"
+      },
+      "domain": "63",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "165"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasResponseType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "58",
+      "label": {
+        "IRI-based": "hasResponseType",
+        "undefined": "has Response Type"
+      },
+      "domain": "97",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "167"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineB1",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "142",
+      "label": {
+        "IRI-based": "baselineB1",
+        "undefined": "baseline B1"
+      },
+      "domain": "47",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "168"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasTechnologyNodeDemand",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "79",
+      "label": {
+        "IRI-based": "hasTechnologyNodeDemand",
+        "undefined": "has Technology Node Demand"
+      },
+      "domain": "80",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "169"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/baselineB2",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "141",
+      "label": {
+        "IRI-based": "baselineB2",
+        "undefined": "baseline B2"
+      },
+      "domain": "47",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "170"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/componentType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "157",
+      "label": {
+        "IRI-based": "componentType",
+        "undefined": "component Type"
+      },
+      "domain": "2",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "171"
+    },
+    {
+      "range": "59",
+      "domain": "58",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "176"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/platformName",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "platformName",
+        "undefined": "platform Name"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "177"
+    },
+    {
+      "range": "59",
+      "domain": "10",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "178"
+    },
+    {
+      "range": "72",
+      "domain": "98",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "179"
+    },
+    {
+      "range": "97",
+      "domain": "11",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "180"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forTimePeriod",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "14",
+      "label": {
+        "IRI-based": "forTimePeriod",
+        "undefined": "for Time Period"
+      },
+      "domain": "28",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "181"
+    },
+    {
+      "range": "22",
+      "domain": "21",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "182"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/regionName",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "156",
+      "label": {
+        "IRI-based": "regionName",
+        "undefined": "region Name"
+      },
+      "domain": "88",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "183"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasInventoryTrend",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "58",
+      "label": {
+        "IRI-based": "hasInventoryTrend",
+        "undefined": "has Inventory Trend"
+      },
+      "domain": "185",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "184"
+    },
+    {
+      "range": "24",
+      "domain": "77",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "186"
+    },
+    {
+      "range": "24",
+      "domain": "76",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "187"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/dataType",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "75",
+      "label": {
+        "IRI-based": "dataType",
+        "undefined": "data Type"
+      },
+      "domain": "75",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "188"
+    },
+    {
+      "range": "12",
+      "domain": "55",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "189"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/conversionValue",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "191",
+      "label": {
+        "IRI-based": "conversionValue",
+        "undefined": "conversion Value"
+      },
+      "domain": "89",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "190"
+    },
+    {
+      "range": "12",
+      "domain": "54",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "192"
+    },
+    {
+      "range": "52",
+      "domain": "12",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "193"
+    },
+    {
+      "range": "12",
+      "domain": "56",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "194"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/isForecastData",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "174",
+      "label": {
+        "IRI-based": "isForecastData",
+        "undefined": "is Forecast Data"
+      },
+      "domain": "28",
+      "attributes": [
+        "external",
+        "datatype"
+      ],
+      "id": "195"
+    },
+    {
+      "range": "13",
+      "domain": "15",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "196"
+    },
+    {
+      "range": "13",
+      "domain": "14",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "197"
+    },
+    {
+      "range": "12",
+      "domain": "53",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "198"
+    },
+    {
+      "range": "12",
+      "domain": "9",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "199"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forTechnologyCategory",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "11",
+      "label": {
+        "IRI-based": "forTechnologyCategory",
+        "undefined": "for Technology Category"
+      },
+      "domain": "97",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "200"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/totalDemandPercentageChange",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "202",
+      "label": {
+        "IRI-based": "totalDemandPercentageChange",
+        "undefined": "total Demand Percentage Change"
+      },
+      "domain": "111",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "201"
+    },
+    {
+      "range": "7",
+      "domain": "4",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "206"
+    },
+    {
+      "range": "7",
+      "domain": "103",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "207"
+    },
+    {
+      "range": "7",
+      "domain": "17",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "208"
+    },
+    {
+      "range": "7",
+      "domain": "81",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "209"
+    },
+    {
+      "range": "11",
+      "domain": "55",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "210"
+    },
+    {
+      "range": "7",
+      "domain": "111",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "211"
+    },
+    {
+      "range": "11",
+      "domain": "56",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "212"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasFutureDemand",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "81",
+      "label": {
+        "IRI-based": "hasFutureDemand",
+        "undefined": "has Future Demand"
+      },
+      "domain": "81",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "213"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasYearlySales",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "34",
+      "label": {
+        "IRI-based": "hasYearlySales",
+        "undefined": "has Yearly Sales"
+      },
+      "domain": "63",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "215"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChangeBL1",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "115",
+      "label": {
+        "IRI-based": "percentageChangeBL1",
+        "undefined": "percentage Change BL1"
+      },
+      "domain": "63",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "217"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/percentageChangeBL2",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "115",
+      "label": {
+        "IRI-based": "percentageChangeBL2",
+        "undefined": "percentage Change BL2"
+      },
+      "domain": "63",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "218"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/forComponent",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "2",
+      "label": {
+        "IRI-based": "forComponent",
+        "undefined": "for Component"
+      },
+      "domain": "58",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "220"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasRegionalDemand",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "17",
+      "label": {
+        "IRI-based": "hasRegionalDemand",
+        "undefined": "has Regional Demand"
+      },
+      "domain": "61",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "222"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasDetail",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "68",
+      "label": {
+        "IRI-based": "hasDetail",
+        "undefined": "has Detail"
+      },
+      "domain": "73",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "223"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasSurveyOrigin",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "104",
+      "label": {
+        "IRI-based": "hasSurveyOrigin",
+        "undefined": "has Survey Origin"
+      },
+      "domain": "103",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "224"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/participantCount",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "205",
+      "label": {
+        "IRI-based": "participantCount",
+        "undefined": "participant Count"
+      },
+      "domain": "97",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "225"
+    },
+    {
+      "range": "11",
+      "domain": "9",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "226"
+    },
+    {
+      "range": "104",
+      "domain": "107",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "227"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/targetIndicatorStatus",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "204",
+      "label": {
+        "IRI-based": "targetIndicatorStatus",
+        "undefined": "target Indicator Status"
+      },
+      "domain": "12",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "228"
+    },
+    {
+      "range": "11",
+      "domain": "54",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "229"
+    },
+    {
+      "range": "11",
+      "domain": "53",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "230"
+    },
+    {
+      "range": "10",
+      "domain": "56",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "231"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/technologyCategoryName",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "138",
+      "label": {
+        "IRI-based": "technologyCategoryName",
+        "undefined": "technology Category Name"
+      },
+      "domain": "47",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "232"
+    },
+    {
+      "range": "10",
+      "domain": "55",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "233"
+    },
+    {
+      "range": "104",
+      "domain": "106",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "234"
+    },
+    {
+      "range": "104",
+      "domain": "105",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "235"
+    },
+    {
+      "range": "10",
+      "domain": "54",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "236"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/conversionDescription",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "191",
+      "label": {
+        "IRI-based": "conversionDescription",
+        "undefined": "conversion Description"
+      },
+      "domain": "89",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "237"
+    },
+    {
+      "range": "10",
+      "domain": "53",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "238"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasPercentage",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "95",
+      "label": {
+        "IRI-based": "hasPercentage",
+        "undefined": "has Percentage"
+      },
+      "domain": "68",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "239"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasConversionFactor",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "89",
+      "label": {
+        "IRI-based": "hasConversionFactor",
+        "undefined": "has Conversion Factor"
+      },
+      "domain": "47",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "240"
+    },
+    {
+      "range": "10",
+      "domain": "9",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "241"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/hasMarketSegment",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "22",
+      "label": {
+        "IRI-based": "hasMarketSegment",
+        "undefined": "has Market Segment"
+      },
+      "domain": "7",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "242"
+    },
+    {
+      "range": "72",
+      "domain": "93",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "243"
+    },
+    {
+      "range": "72",
+      "domain": "100",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "244"
+    },
+    {
+      "range": "57",
+      "domain": "52",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "245"
+    },
+    {
+      "iri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/inventoryTrend",
+      "baseIri": "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey",
+      "range": "203",
+      "label": {
+        "IRI-based": "inventoryTrend",
+        "undefined": "inventory Trend"
+      },
+      "domain": "58",
+      "attributes": [
+        "external",
+        "object"
+      ],
+      "id": "246"
+    },
+    {
+      "range": "57",
+      "domain": "59",
+      "attributes": [
+        "anonymous",
+        "object"
+      ],
+      "id": "247"
+    }
+  ]
+}

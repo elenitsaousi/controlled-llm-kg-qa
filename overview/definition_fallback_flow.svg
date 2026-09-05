@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="780" viewBox="0 0 1400 780">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#344054"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #172033; }
+      .title { font-size: 34px; font-weight: 700; }
+      .sub { font-size: 18px; fill: #526070; }
+      .box { fill: #ffffff; stroke: #8fa3b8; stroke-width: 2; rx: 10; }
+      .primary { fill: #eef4ff; stroke: #5d82c7; }
+      .fallback { fill: #fff7e8; stroke: #d79b35; }
+      .done { fill: #edf7f1; stroke: #4d9d69; }
+      .box-title { font-size: 19px; font-weight: 700; }
+      .txt { font-size: 15px; fill: #465466; }
+      .edge { stroke: #344054; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+      .label { font-size: 14px; fill: #344054; }
+    </style>
+  </defs>
+  <rect width="1400" height="780" fill="#fbfcfe"/>
+  <text class="title" x="70" y="65">Definition Question Fallback Strategy</text>
+  <text class="sub" x="70" y="95">How the system can answer questions such as "What is a chip?" when the True Demand ontology lacks a definition</text>
+
+  <rect class="box primary" x="80" y="170" width="235" height="110"/>
+  <text class="box-title" x="110" y="210">Definition Question</text>
+  <text class="txt" x="110" y="238">"What is a chip?"</text>
+  <text class="txt" x="110" y="260">"Define component"</text>
+
+  <rect class="box" x="390" y="145" width="260" height="160"/>
+  <text class="box-title" x="420" y="185">1. True Demand KG</text>
+  <text class="txt" x="420" y="215">Check class label</text>
+  <text class="txt" x="420" y="237">Check comments/definitions</text>
+  <text class="txt" x="420" y="259">Use ontology source first</text>
+
+  <rect class="box fallback" x="735" y="145" width="270" height="160"/>
+  <text class="box-title" x="765" y="185">2. Digital Reference</text>
+  <text class="txt" x="765" y="215">Exact class match</text>
+  <text class="txt" x="765" y="237">Close match if exact fails</text>
+  <text class="txt" x="765" y="259">Use trusted definition source</text>
+
+  <rect class="box fallback" x="1090" y="145" width="240" height="160"/>
+  <text class="box-title" x="1120" y="185">3. Curated Library</text>
+  <text class="txt" x="1120" y="215">Fallback definitions</text>
+  <text class="txt" x="1120" y="237">Domain glossary</text>
+  <text class="txt" x="1120" y="259">Manual review possible</text>
+
+  <rect class="box done" x="450" y="465" width="500" height="130"/>
+  <text class="box-title" x="480" y="505">Final Answer With Source</text>
+  <text class="txt" x="480" y="535">Return definition plus provenance:</text>
+  <text class="txt" x="480" y="557">True Demand / Digital Reference / fallback library</text>
+  <text class="txt" x="480" y="579">Avoid inventing definitions from LLM memory</text>
+
+  <path class="edge" d="M315 225 L390 225"/>
+  <path class="edge" d="M650 225 L735 225"/>
+  <text class="label" x="665" y="207">if missing</text>
+  <path class="edge" d="M1005 225 L1090 225"/>
+  <text class="label" x="1022" y="207">if no match</text>
+  <path class="edge" d="M520 305 L620 465"/>
+  <text class="label" x="525" y="390">if found</text>
+  <path class="edge" d="M870 305 L775 465"/>
+  <text class="label" x="815" y="390">if found</text>
+  <path class="edge" d="M1210 305 L900 465"/>
+  <text class="label" x="1050" y="390">if found</text>
+</svg>
+

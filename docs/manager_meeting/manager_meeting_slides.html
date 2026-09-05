@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>True Demand KGQA - Manager Meeting</title>
+  <style>
+    :root {
+      --ink: #14212b;
+      --muted: #5f7280;
+      --green: #18a572;
+      --teal: #0f8f86;
+      --blue: #2f7de1;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --panel: #eaf7f2;
+      --line: #cfe1e5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eef3f4;
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .slide {
+      width: 1280px;
+      min-height: 720px;
+      margin: 28px auto;
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 46px 58px;
+      page-break-after: always;
+      box-shadow: 0 16px 44px rgba(20, 33, 43, 0.12);
+      position: relative;
+      overflow: hidden;
+    }
+    h1 { font-size: 48px; line-height: 1.05; margin: 0 0 18px; }
+    h2 { font-size: 38px; line-height: 1.08; margin: 0 0 24px; }
+    h3 { font-size: 24px; margin: 0 0 12px; color: var(--teal); }
+    p, li { font-size: 24px; line-height: 1.35; }
+    ul { margin-top: 14px; }
+    .subtitle { color: var(--muted); font-size: 24px; line-height: 1.35; max-width: 980px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 34px; }
+    .kpi {
+      border: 2px solid #a6dec8;
+      border-radius: 16px;
+      padding: 20px;
+      background: #f7fbfa;
+    }
+    .kpi .num { font-size: 38px; font-weight: 800; color: var(--green); }
+    .kpi .lab { font-size: 17px; color: var(--muted); margin-top: 8px; }
+    .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 20px; }
+    .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 20px; }
+    .card {
+      border: 1.5px solid var(--line);
+      border-radius: 16px;
+      padding: 20px 22px;
+      background: #f8fbfb;
+      min-height: 120px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 22px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: 14px 12px;
+      text-align: left;
+    }
+    th { color: var(--teal); font-weight: 800; }
+    .figure { width: 100%; max-height: 520px; object-fit: contain; margin-top: 8px; }
+    .figure.small { max-height: 420px; }
+    .note {
+      position: absolute;
+      left: 58px;
+      right: 58px;
+      bottom: 28px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--teal);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+    @media print {
+      body { background: white; }
+      .slide { margin: 0; border-radius: 0; box-shadow: none; width: 100vw; min-height: 100vh; }
+    }
+  </style>
+</head>
+<body>
+
+<section class="slide">
+  <span class="badge">Master Thesis Progress</span>
+  <h1>True Demand KGQA System</h1>
+  <p class="subtitle">Hybrid natural-language access to the True Demand RDF knowledge graph and Digital Reference ontology.</p>
+  <div class="kpis">
+    <div class="kpi"><div class="num">90.8%</div><div class="lab">audited answer-level accuracy on 1000 questions</div></div>
+    <div class="kpi"><div class="num">98.4%</div><div class="lab">deterministic route accuracy</div></div>
+    <div class="kpi"><div class="num">82.7%</div><div class="lab">LLM fallback accuracy</div></div>
+    <div class="kpi"><div class="num">51.4%</div><div class="lab">estimated LLM-call reduction</div></div>
+  </div>
+  <p class="note">Core message: deterministic where possible, LLM only where needed, audited end-to-end.</p>
+</section>
+
+<section class="slide">
+  <h2>Motivation</h2>
+  <div class="cols">
+    <div class="card"><h3>Business problem</h3><p>True Demand data is valuable but hard to access through raw RDF and SPARQL.</p></div>
+    <div class="card"><h3>Technical problem</h3><p>LLMs can generate multiple valid-looking SPARQL queries with different meanings.</p></div>
+    <div class="card"><h3>System goal</h3><p>Provide fast, graph-grounded, auditable answers for non-technical users.</p></div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Data and Ontology</h2>
+  <table>
+    <tr><th>Layer</th><th>Content</th><th>Role</th></tr>
+    <tr><td>True Demand KG</td><td>&gt;1.16M RDF triples, 100k+ entities</td><td>SPARQL execution backend for analytics</td></tr>
+    <tr><td>Schema abstraction</td><td>Classes, properties, supported dimensions</td><td>Prompting, validation, routing, ranking</td></tr>
+    <tr><td>Digital Reference ontology</td><td>~2,742 searchable ontology terms</td><td>Definitions, domain/range, class hierarchy</td></tr>
+  </table>
+</section>
+
+<section class="slide">
+  <h2>Question Families Covered</h2>
+  <div class="cols">
+    <div class="card"><h3>KG analytics</h3><p>Demand, shortages, inventory, vehicle sales, autonomous driving, regions, quarters.</p></div>
+    <div class="card"><h3>DR ontology</h3><p>Definitions and model-level questions such as “What is a Technology Node?”</p></div>
+    <div class="card"><h3>Advisory</h3><p>Conservative graph-grounded recommendations from query outputs.</p></div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>User Entry Points</h2>
+  <img class="figure" src="figures/ui_entry_points.svg" alt="User entry points">
+</section>
+
+<section class="slide">
+  <h2>System Architecture</h2>
+  <img class="figure" src="../figures/system_architecture_pipeline.png" alt="System architecture">
+</section>
+
+<section class="slide">
+  <h2>Routing Strategy</h2>
+  <img class="figure" src="figures/hybrid_routing_flow.svg" alt="Hybrid routing flow">
+</section>
+
+<section class="slide">
+  <h2>Direct Graph-Supported Routing</h2>
+  <img class="figure" src="../figures/direct_graph_supported_routing.png" alt="Direct routing">
+</section>
+
+<section class="slide">
+  <h2>LLM Candidate Selection</h2>
+  <ul>
+    <li>Generate top-k SPARQL candidates.</li>
+    <li>Validate syntax, schema, answer shape, scope, rows, and safety flags.</li>
+    <li>Apply guarded ML reranking.</li>
+    <li>Use confidence routing to answer, clarify, or no-answer.</li>
+  </ul>
+</section>
+
+<section class="slide">
+  <h2>Confidence and Ambiguity Routing</h2>
+  <img class="figure" src="../figures/confidence_ambiguity_routing.png" alt="Confidence routing">
+</section>
+
+<section class="slide">
+  <h2>Final Benchmark</h2>
+  <img class="figure" src="figures/benchmark_composition.svg" alt="Benchmark composition">
+</section>
+
+<section class="slide">
+  <h2>Evaluation Method</h2>
+  <ul>
+    <li>Ran 1000 questions through the full system.</li>
+    <li>Logged route, selected source, query, graph rows, answer, and evidence.</li>
+    <li>Manually audited each final answer as correct or incorrect.</li>
+    <li>Classified remaining errors by human SPARQL difficulty and failure family.</li>
+  </ul>
+</section>
+
+<section class="slide">
+  <h2>Final Accuracy by Route</h2>
+  <img class="figure" src="figures/route_accuracy.svg" alt="Route accuracy">
+</section>
+
+<section class="slide">
+  <h2>Accuracy by Question Family</h2>
+  <table>
+    <tr><th>Question family</th><th>Questions</th><th>Correct</th><th>Accuracy</th></tr>
+    <tr><td>KG analytics</td><td>800</td><td>710</td><td>88.8%</td></tr>
+    <tr><td>DR ontology definitions</td><td>150</td><td>150</td><td>100.0%</td></tr>
+    <tr><td>Advisory questions</td><td>50</td><td>48</td><td>96.0%</td></tr>
+  </table>
+</section>
+
+<section class="slide">
+  <h2>Correct vs Incorrect by Route</h2>
+  <img class="figure small" src="figures/route_correctness_heatmap.svg" alt="Route correctness heatmap">
+</section>
+
+<section class="slide">
+  <h2>Cost and Latency</h2>
+  <img class="figure" src="figures/cost_latency.svg" alt="Cost and latency">
+</section>
+
+<section class="slide">
+  <h2>Remaining Errors by Human Difficulty</h2>
+  <img class="figure small" src="figures/error_difficulty.svg" alt="Error difficulty">
+</section>
+
+<section class="slide">
+  <h2>Remaining Error Families</h2>
+  <img class="figure" src="figures/failure_families.svg" alt="Failure families">
+</section>
+
+<section class="slide">
+  <h2>What the Errors Mean</h2>
+  <ul>
+    <li>Only 8 remaining errors are easy cases.</li>
+    <li>Most errors are complex graph-composition problems.</li>
+    <li>Failures concentrate in autonomous driving grouping, BL1/BL2 current demand, vehicle sales dimensions, and future-demand multi-dimensional queries.</li>
+  </ul>
+</section>
+
+<section class="slide">
+  <h2>Digital Reference Integration</h2>
+  <ul>
+    <li>Searchable ontology browser.</li>
+    <li>Definitions, labels, domain/range, subclasses, and related terms.</li>
+    <li>Definition questions are answered deterministically.</li>
+    <li>Benchmark: 150/150 correct.</li>
+  </ul>
+</section>
+
+<section class="slide">
+  <h2>What Improved Recently</h2>
+  <ul>
+    <li>Stricter deterministic route guards.</li>
+    <li>Better separation between ontology definitions and KG analytics.</li>
+    <li>More direct templates for graph-supported questions.</li>
+    <li>Better shortage scope handling, ranking/top handling, and actual-vs-forecast sales handling.</li>
+  </ul>
+</section>
+
+<section class="slide">
+  <h2>Next Steps</h2>
+  <ul>
+    <li>Improve recurring hard query families.</li>
+    <li>Add deterministic templates only where schema support is real.</li>
+    <li>Improve grouped-answer synthesis.</li>
+    <li>Continue evidence graph improvements.</li>
+    <li>Maintain manual audit discipline for final thesis claims.</li>
+  </ul>
+</section>
+
+<section class="slide">
+  <h2>Conclusion</h2>
+  <div class="kpis">
+    <div class="kpi"><div class="num">90.8%</div><div class="lab">overall audited accuracy</div></div>
+    <div class="kpi"><div class="num">98.4%</div><div class="lab">deterministic accuracy</div></div>
+    <div class="kpi"><div class="num">100%</div><div class="lab">DR definition accuracy</div></div>
+    <div class="kpi"><div class="num">51.4%</div><div class="lab">estimated LLM-call reduction</div></div>
+  </div>
+  <p class="subtitle" style="margin-top:36px;">The main contribution is a reliable hybrid architecture: deterministic where graph paths are known, LLM fallback where needed, and auditable evidence for final answers.</p>
+</section>
+
+</body>
+</html>

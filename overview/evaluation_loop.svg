@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="940" viewBox="0 0 1600 940">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #16242a; }
+      .title { font-size: 36px; font-weight: 700; }
+      .sub { font-size: 18px; fill: #5d6f78; }
+      .box { fill: #ffffff; stroke: #cfdde3; stroke-width: 2; rx: 12; }
+      .data { fill: #eef4ff; stroke: #5d82c7; }
+      .eval { fill: #f3fbf5; stroke: #4d9d69; }
+      .fix { fill: #fff7e8; stroke: #d79b35; }
+      .route { fill: #edfafa; stroke: #19a99f; }
+      .box-title { font-size: 20px; font-weight: 700; }
+      .txt { font-size: 15px; fill: #465a63; }
+      .metric { font-size: 25px; font-weight: 700; fill: #007f78; }
+      .small { font-size: 13px; fill: #667984; }
+      .edge { stroke: #334155; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
+      .soft-edge { stroke: #6b7f88; stroke-width: 2; fill: none; marker-end: url(#arrow); stroke-dasharray: 7 7; }
+    </style>
+  </defs>
+  <rect width="1600" height="940" fill="#fbfcfe"/>
+  <text class="title" x="70" y="68">Evaluation and Improvement Loop</text>
+  <text class="sub" x="70" y="100">How benchmark results guided the move from forced Top-1 selection to confidence-aware answering.</text>
+
+  <rect class="box data" x="90" y="165" width="270" height="150"/>
+  <text class="box-title" x="120" y="205">Benchmark Build</text>
+  <text class="txt" x="120" y="235">1000 generated questions</text>
+  <text class="txt" x="120" y="258">125 templates</text>
+  <text class="txt" x="120" y="281">Wording and duplicate audits</text>
+
+  <rect class="box data" x="430" y="165" width="270" height="150"/>
+  <text class="box-title" x="460" y="205">Gold Validation</text>
+  <text class="txt" x="460" y="235">Gold SPARQL preserved</text>
+  <text class="txt" x="460" y="258">Non-empty graph answers</text>
+  <text class="txt" x="460" y="281">Train/dev/test split</text>
+
+  <rect class="box eval" x="770" y="165" width="300" height="150"/>
+  <text class="box-title" x="800" y="205">Held-Out Evaluation</text>
+  <text class="txt" x="800" y="235">Generate candidates</text>
+  <text class="txt" x="800" y="258">Execute/rank candidates</text>
+  <text class="txt" x="800" y="281">Analyze failures</text>
+
+  <rect class="box fix" x="1140" y="165" width="300" height="150"/>
+  <text class="box-title" x="1170" y="205">Feature Iteration</text>
+  <text class="txt" x="1170" y="235">Answer-shape features</text>
+  <text class="txt" x="1170" y="258">Scope/origin features</text>
+  <text class="txt" x="1170" y="281">Projection/grouping features</text>
+
+  <rect class="box eval" x="140" y="450" width="330" height="185"/>
+  <text class="box-title" x="170" y="492">Forced Top-1 Result</text>
+  <text class="metric" x="170" y="535">~67-69% Top-1</text>
+  <text class="txt" x="170" y="570">System must always choose one query.</text>
+  <text class="txt" x="170" y="594">Many failures have the correct query</text>
+  <text class="txt" x="170" y="618">available but ranked second or third.</text>
+
+  <rect class="box eval" x="540" y="450" width="330" height="185"/>
+  <text class="box-title" x="570" y="492">Candidate Recall</text>
+  <text class="metric" x="570" y="535">94.4% Any-Correct</text>
+  <text class="txt" x="570" y="570">A correct query candidate is usually</text>
+  <text class="txt" x="570" y="594">present. The main bottleneck is</text>
+  <text class="txt" x="570" y="618">selection, not only generation.</text>
+
+  <rect class="box route" x="940" y="450" width="360" height="185"/>
+  <text class="box-title" x="970" y="492">Confidence-Aware Routing</text>
+  <text class="metric" x="970" y="535">90.2% @ 30.8% coverage</text>
+  <text class="txt" x="970" y="570">Auto-answer high-confidence cases.</text>
+  <text class="txt" x="970" y="594">Ask user to choose among top-3</text>
+  <text class="txt" x="970" y="618">natural-language interpretations otherwise.</text>
+
+  <rect class="box fix" x="430" y="745" width="640" height="120"/>
+  <text class="box-title" x="460" y="785">Current Improvement Direction</text>
+  <text class="txt" x="460" y="817">Reduce latency with Fuseki, compact prompts, and optional graph visualizations.</text>
+  <text class="txt" x="460" y="840">Improve remaining selection errors using failure diagnostics and user feedback logs.</text>
+
+  <path class="edge" d="M360 240 L430 240"/>
+  <path class="edge" d="M700 240 L770 240"/>
+  <path class="edge" d="M1070 240 L1140 240"/>
+  <path class="edge" d="M1290 315 C1290 380 1170 410 1120 450"/>
+  <path class="edge" d="M920 315 C920 390 720 410 705 450"/>
+  <path class="edge" d="M705 635 L705 745"/>
+  <path class="edge" d="M1120 635 C1050 700 980 725 900 745"/>
+  <path class="soft-edge" d="M305 635 C370 710 450 730 570 745"/>
+</svg>

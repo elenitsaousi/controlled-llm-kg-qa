@@ -3,6 +3,36 @@ from typing import List
 
 from kg.schema import KGSchema
 
+_TYPE_RE = re.compile(r"\b(?:a|rdf:type)\s+(:[A-Za-z_][A-Za-z0-9_]*)", re.IGNORECASE)
+_PRED_RE = re.compile(
+    r"\?[A-Za-z_][A-Za-z0-9_]*\s+(:[A-Za-z_][A-Za-z0-9_]*)\s+",
+    re.IGNORECASE,
+)
+
+
+def _strip_prefix(term: str) -> str:
+    return term[1:] if term.startswith(":") else term
+
+
+def validate_sparql(query: str, schema: KGSchema) -> List[str]:
+    errors: List[str] = []
+
+    # Classes used with rdf:type / a
+    classes = [_strip_prefix(t) for t in _TYPE_RE.findall(query)]
+    for cls in classes:
+        if not schema.class_allowed(cls):
+            errors.append(f"Unknown class: {cls}")
+
+    # Predicates used in triple patterns
+    preds = [_strip_prefix(p) for p in _PRED_RE.findall(query)]
+    for pred in preds:
+        if not schema.predicate_allowed(pred):
+            errors.append(f"Unknown predicate: {pred}")
+
+    return errors
+
+
+# Backwards compatibility (Cypher)
 _NODE_LABEL_RE = re.compile(r"\([A-Za-z0-9_]*:([A-Za-z0-9_]+)")
 _REL_TYPE_RE = re.compile(r"\[:([A-Za-z0-9_]+)\]")
 _LABEL_PROPS_RE = re.compile(r":([A-Za-z0-9_]+)\s*\{([^}]*)\}")

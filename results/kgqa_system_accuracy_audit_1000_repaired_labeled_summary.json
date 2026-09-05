@@ -1,0 +1,262 @@
+{
+  "rows": 1000,
+  "overall_accuracy": 0.894,
+  "correct_answers": 894,
+  "incorrect_answers": 106,
+  "unclear_answers": 0,
+  "kg_accuracy": 0.87,
+  "ontology_accuracy": 1.0,
+  "advisory_accuracy": 0.96,
+  "deterministic_questions": 514,
+  "deterministic_correct": 503,
+  "deterministic_accuracy": 0.9785992217898832,
+  "llm_fallback_questions": 486,
+  "llm_fallback_correct": 391,
+  "llm_fallback_accuracy": 0.8045267489711934,
+  "cold_llm_calls": 486,
+  "warm_cache_llm_calls": 35,
+  "cost_per_call_eur": 0.2,
+  "cold_cost_eur": 97.2,
+  "warm_cache_cost_eur": 7.0,
+  "all_llm_baseline_cost_eur": 200.0,
+  "cold_call_reduction": 0.514,
+  "warm_cache_call_reduction": 0.965,
+  "by_expected_route": {
+    "advisory": {
+      "rows": 50,
+      "correct": 48,
+      "incorrect": 2,
+      "unclear": 0,
+      "accuracy": 0.96
+    },
+    "definition": {
+      "rows": 150,
+      "correct": 150,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "kg_analytics": {
+      "rows": 800,
+      "correct": 696,
+      "incorrect": 104,
+      "unclear": 0,
+      "accuracy": 0.87
+    }
+  },
+  "by_system_mode": {
+    "direct_graph_supported": {
+      "rows": 514,
+      "correct": 503,
+      "incorrect": 11,
+      "unclear": 0,
+      "accuracy": 0.9785992217898832
+    },
+    "llm_ranking": {
+      "rows": 486,
+      "correct": 391,
+      "incorrect": 95,
+      "unclear": 0,
+      "accuracy": 0.8045267489711934
+    }
+  },
+  "by_route": {
+    "auto_answer": {
+      "rows": 514,
+      "correct": 503,
+      "incorrect": 11,
+      "unclear": 0,
+      "accuracy": 0.9785992217898832
+    },
+    "llm_ranking": {
+      "rows": 486,
+      "correct": 391,
+      "incorrect": 95,
+      "unclear": 0,
+      "accuracy": 0.8045267489711934
+    }
+  },
+  "by_source": {
+    "advisory": {
+      "rows": 38,
+      "correct": 38,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "capability_inventory": {
+      "rows": 326,
+      "correct": 315,
+      "incorrect": 11,
+      "unclear": 0,
+      "accuracy": 0.9662576687116564
+    },
+    "digital_reference_ontology": {
+      "rows": 150,
+      "correct": 150,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "infineon": {
+      "rows": 150,
+      "correct": 131,
+      "incorrect": 19,
+      "unclear": 0,
+      "accuracy": 0.8733333333333333
+    },
+    "template": {
+      "rows": 6,
+      "correct": 6,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "validated_retrieval": {
+      "rows": 330,
+      "correct": 254,
+      "incorrect": 76,
+      "unclear": 0,
+      "accuracy": 0.7696969696969697
+    }
+  },
+  "by_topic": {
+    "advisory_current_demand": {
+      "rows": 10,
+      "correct": 10,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "advisory_future_demand": {
+      "rows": 10,
+      "correct": 10,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "advisory_shortage": {
+      "rows": 10,
+      "correct": 8,
+      "incorrect": 2,
+      "unclear": 0,
+      "accuracy": 0.8
+    },
+    "advisory_technology_signal": {
+      "rows": 10,
+      "correct": 10,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "advisory_vehicle_signal": {
+      "rows": 10,
+      "correct": 10,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "autonomous_driving": {
+      "rows": 89,
+      "correct": 65,
+      "incorrect": 24,
+      "unclear": 0,
+      "accuracy": 0.7303370786516854
+    },
+    "catalog_lookup": {
+      "rows": 89,
+      "correct": 87,
+      "incorrect": 2,
+      "unclear": 0,
+      "accuracy": 0.9775280898876404
+    },
+    "current_demand_baselines": {
+      "rows": 89,
+      "correct": 67,
+      "incorrect": 22,
+      "unclear": 0,
+      "accuracy": 0.7528089887640449
+    },
+    "future_demand": {
+      "rows": 89,
+      "correct": 72,
+      "incorrect": 17,
+      "unclear": 0,
+      "accuracy": 0.8089887640449438
+    },
+    "inventory": {
+      "rows": 89,
+      "correct": 88,
+      "incorrect": 1,
+      "unclear": 0,
+      "accuracy": 0.9887640449438202
+    },
+    "order_cancellation": {
+      "rows": 89,
+      "correct": 89,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "regional_demand": {
+      "rows": 89,
+      "correct": 74,
+      "incorrect": 15,
+      "unclear": 0,
+      "accuracy": 0.8314606741573034
+    },
+    "shortage": {
+      "rows": 89,
+      "correct": 80,
+      "incorrect": 9,
+      "unclear": 0,
+      "accuracy": 0.898876404494382
+    },
+    "unknown": {
+      "rows": 150,
+      "correct": 150,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0
+    },
+    "vehicle_sales": {
+      "rows": 88,
+      "correct": 74,
+      "incorrect": 14,
+      "unclear": 0,
+      "accuracy": 0.8409090909090909
+    }
+  },
+  "incorrect_by_difficulty": {
+    "easy": 7,
+    "hard": 74,
+    "medium": 25
+  },
+  "incorrect_by_failure_type": {
+    "incomplete_comparison": 2,
+    "previously_audited_failure": 76,
+    "advisory_not_synthesized": 2,
+    "wrong_scope_or_grouping": 5,
+    "semantic_or_result_mismatch": 20,
+    "wrong_answer_shape": 1
+  },
+  "incorrect_by_failure_family": {
+    "incomplete_comparison": 2,
+    "autonomous_driving_complex_grouping": 24,
+    "vehicle_sales_metric_or_dimension": 14,
+    "other_semantic_mismatch": 10,
+    "advisory_not_synthesized": 2,
+    "current_demand_baseline_or_scope": 22,
+    "wrong_scope_or_grouping": 5,
+    "future_demand_complex_dimension": 16,
+    "regional_demand_scope_or_dimension": 8,
+    "inventory_scope_or_dimension": 1,
+    "wrong_answer_shape": 1,
+    "shortage_scope_or_shape": 1
+  },
+  "audit_methods": {
+    "transferred_from_previous_labeled_audit": 874,
+    "deterministic_definition_rule": 86,
+    "strict_gold_result_signature": 40
+  }
+}

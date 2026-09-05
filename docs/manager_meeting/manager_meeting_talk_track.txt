@@ -1,0 +1,35 @@
+True Demand KGQA Thesis - Manager Meeting Talk Track
+
+1. What I built
+I built a hybrid Knowledge Graph Question Answering system for the True Demand use case. The system lets a non-technical user ask natural-language questions over the True Demand RDF knowledge graph and the Digital Reference ontology. It combines deterministic graph-supported routing, ontology definition lookup, LLM-based SPARQL candidate generation, validation, guarded ML reranking, confidence routing, answer synthesis, and an evidence/audit layer.
+
+2. Data and ontology
+The analytical backend is the True Demand RDF graph, with more than 1.16 million triples and over 100,000 entities. It contains survey-grounded information about demand, regions, quarters, shortages, inventories, vehicle sales, technology categories, vehicle types, and autonomous-driving development. I also integrated the Digital Reference ontology as a conceptual layer, so users can ask definition/model questions such as "What is a Technology Node?" or "What does is processed by mean?" This is routed deterministically and does not require the LLM.
+
+3. How the system routes questions
+The system first classifies the request. If it is an ontology definition question, it uses the Digital Reference lookup. If it is a graph-supported analytical question with a known capability, metric, dimension, aggregation, and scope, it uses deterministic KG templates. If it is an advisory question, it uses conservative graph-backed advisory templates. Only if the deterministic path is unsupported or genuinely ambiguous does it call the LLM fallback pipeline.
+
+4. Why this architecture matters
+The goal is not to use the LLM for everything. The system should be deterministic when the graph path is known, because that is faster, cheaper, and more reliable. The LLM is used for the unresolved questions, where query generation and selection are actually needed.
+
+5. UI capabilities
+The UI supports free-text questions, validated examples, a guided builder, available topics, a Digital Reference ontology browser, and an evidence graph. This means the user can either type freely or construct a question from supported graph paths. The answer page shows the result, the route, the evidence, and where possible the related graph.
+
+6. Evaluation setup
+I evaluated the final system on 1000 mixed user-facing questions: 800 KG analytics questions, 150 Digital Reference ontology definition questions, and 50 advisory questions. For each question, I logged the route, selected source, query, graph rows, answer text, and evidence. I then manually audited the final answer as correct or incorrect, and classified remaining errors by how hard it would be for a schema-aware human to write the correct SPARQL query.
+
+7. Final results
+The final audited answer-level accuracy is 908/1000, or 90.8%. The deterministic auto-answer route handled 514 questions and got 506 correct, giving 98.4% accuracy. The LLM fallback route handled 486 questions and got 402 correct, giving 82.7% accuracy. By question family, KG analytics reached 710/800 = 88.8%, Digital Reference definitions reached 150/150 = 100%, and advisory questions reached 48/50 = 96%.
+
+8. Cost and latency
+The actual evaluation run used cached LLM outputs, so the raw run reports zero fresh LLM calls. For a fair cold-run estimate, the hybrid system would call the LLM for 486 fallback questions instead of all 1000. At EUR 0.20 per call, this is EUR 97.20 instead of EUR 200.00, so the estimated LLM-call reduction is 51.4%. Observed cached latency was about 142 ms for deterministic answers, 1819 ms for cached LLM fallback, and 957 ms overall.
+
+9. Remaining errors
+There are 92 incorrect answers. I classified them by human SPARQL difficulty: 8 easy, 21 medium, and 63 hard. The main failure families are autonomous-driving complex grouping, current-demand BL/scope, vehicle-sales metric/dimension, and future-demand complex dimensions. This means most remaining errors are not trivial language understanding failures; they are schema-dependent graph composition issues.
+
+10. Main conclusion
+The system demonstrates that a hybrid architecture is stronger than a pure LLM approach for enterprise KGQA. Deterministic routing gives high reliability and low cost where the graph path is known. The LLM fallback remains useful for complex or ambiguous cases, but it must be controlled by validation, ML reranking, confidence routing, and audit evidence.
+
+11. Next steps
+The most useful next improvements are targeted: improve the recurring hard query families, add graph-supported deterministic paths only where the schema really supports them, improve grouped-answer synthesis, and refine the evidence graph UI. The goal is not just higher accuracy, but reliable and auditable graph access for non-technical business users.
+

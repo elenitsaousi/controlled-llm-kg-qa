@@ -1,0 +1,80 @@
+{
+  "source_csv": "/Users/elenetsaouse/Downloads/kgqa_system_accuracy_audit_1000_current.csv",
+  "total": 1000,
+  "llm_calls": 549,
+  "baseline_cost_eur_at_0_20_per_query": 200.0,
+  "estimated_cost_eur_at_0_20_per_call": 109.80000000000001,
+  "estimated_savings_eur": 90.2,
+  "cost_reduction": 0.451,
+  "by_mode": {
+    "direct_graph_supported": 448,
+    "llm_ranking": 552
+  },
+  "by_source": {
+    "capability_inventory": 262,
+    "digital_reference_ontology": 150,
+    "advisory": 36,
+    "validated_retrieval": 382,
+    "infineon": 167,
+    "template": 3
+  },
+  "by_mode_source": [
+    {
+      "system_mode": "llm_ranking",
+      "selected_source": "validated_retrieval",
+      "count": 382
+    },
+    {
+      "system_mode": "direct_graph_supported",
+      "selected_source": "capability_inventory",
+      "count": 262
+    },
+    {
+      "system_mode": "llm_ranking",
+      "selected_source": "infineon",
+      "count": 167
+    },
+    {
+      "system_mode": "direct_graph_supported",
+      "selected_source": "digital_reference_ontology",
+      "count": 150
+    },
+    {
+      "system_mode": "direct_graph_supported",
+      "selected_source": "advisory",
+      "count": 36
+    },
+    {
+      "system_mode": "llm_ranking",
+      "selected_source": "template",
+      "count": 3
+    }
+  ],
+  "by_expected_route_mode": [
+    {
+      "expected_route": "kg",
+      "system_mode": "llm_ranking",
+      "count": 550
+    },
+    {
+      "expected_route": "kg",
+      "system_mode": "direct_graph_supported",
+      "count": 250
+    },
+    {
+      "expected_route": "definition",
+      "system_mode": "direct_graph_supported",
+      "count": 150
+    },
+    {
+      "expected_route": "advisory",
+      "system_mode": "direct_graph_supported",
+      "count": 48
+    },
+    {
+      "expected_route": "advisory",
+      "system_mode": "llm_ranking",
+      "count": 2
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "repair_counts": {
+    "rows": 1000,
+    "autonomous_repaired": 40,
+    "inventory_repaired": 11,
+    "unmodified_empty": 0
+  },
+  "review_counts": {
+    "autonomous_marked": 40,
+    "inventory_marked": 11
+  }
+}

@@ -1,0 +1,362 @@
+[
+  {
+    "id": "CLAR001",
+    "question": "Summarize cancellation responses across technology categories.",
+    "expected_needs_clarification": true,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR002",
+    "question": "What do cancellation responses look like by technology category?",
+    "expected_needs_clarification": true,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR003",
+    "question": "Show cancellation results across technologies.",
+    "expected_needs_clarification": true,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR004",
+    "question": "Describe order-cancellation behavior by technology.",
+    "expected_needs_clarification": true,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR005",
+    "question": "Compare cancellation responses for technology categories.",
+    "expected_needs_clarification": true,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR006",
+    "question": "Summarize shortage responses across survey origins.",
+    "expected_needs_clarification": true,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR007",
+    "question": "What do shortage results look like by origin?",
+    "expected_needs_clarification": true,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR008",
+    "question": "Show shortage behavior across survey groups.",
+    "expected_needs_clarification": true,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR009",
+    "question": "Compare shortages across OEM, Tier1, and Semiconductor.",
+    "expected_needs_clarification": true,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR010",
+    "question": "Describe shortage responses by survey.",
+    "expected_needs_clarification": true,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR011",
+    "question": "Show inventory trends by component.",
+    "expected_needs_clarification": true,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR012",
+    "question": "What does inventory look like across components?",
+    "expected_needs_clarification": true,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR013",
+    "question": "Summarize inventory by component.",
+    "expected_needs_clarification": true,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR014",
+    "question": "Compare inventory behavior across components.",
+    "expected_needs_clarification": true,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR015",
+    "question": "Describe component inventory results.",
+    "expected_needs_clarification": true,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR016",
+    "question": "Show autonomous-driving results by vehicle type.",
+    "expected_needs_clarification": true,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR017",
+    "question": "What does autonomous-driving development look like by vehicle?",
+    "expected_needs_clarification": true,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR018",
+    "question": "Compare autonomous-driving percentages across vehicle types.",
+    "expected_needs_clarification": true,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR019",
+    "question": "Summarize autonomous-driving results over years.",
+    "expected_needs_clarification": true,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR020",
+    "question": "Describe autonomous development by vehicle category.",
+    "expected_needs_clarification": true,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR021",
+    "question": "Show actual vehicle-sales results over time.",
+    "expected_needs_clarification": true,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR022",
+    "question": "What do actual sales look like by month?",
+    "expected_needs_clarification": true,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR023",
+    "question": "Compare actual vehicle sales across time periods.",
+    "expected_needs_clarification": true,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR024",
+    "question": "Summarize monthly actual sales.",
+    "expected_needs_clarification": true,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR025",
+    "question": "Describe actual vehicle-sales observations.",
+    "expected_needs_clarification": true,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR026",
+    "question": "Show BL1 and BL2 current-demand results.",
+    "expected_needs_clarification": true,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR027",
+    "question": "What do the baseline changes look like for Tier1 Automotive?",
+    "expected_needs_clarification": true,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR028",
+    "question": "Summarize current-demand baselines for Tier1 Automotive.",
+    "expected_needs_clarification": true,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR029",
+    "question": "Compare baseline scenarios for Tier1 Automotive.",
+    "expected_needs_clarification": true,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR030",
+    "question": "Describe BL1 versus BL2 for Tier1 Automotive.",
+    "expected_needs_clarification": true,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR031",
+    "question": "Group order-cancellation participant counts by technology category and response type.",
+    "expected_needs_clarification": false,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR032",
+    "question": "Which cancellation response is most common by technology category?",
+    "expected_needs_clarification": false,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR033",
+    "question": "Return participant totals by technology category and response type.",
+    "expected_needs_clarification": false,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR034",
+    "question": "Count order-cancellation entries by technology category.",
+    "expected_needs_clarification": false,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR035",
+    "question": "List cancellation response types by technology category.",
+    "expected_needs_clarification": false,
+    "topic": "order_cancellation"
+  },
+  {
+    "id": "CLAR036",
+    "question": "Summarize shortage totals by survey origin.",
+    "expected_needs_clarification": false,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR037",
+    "question": "Count shortages by survey origin.",
+    "expected_needs_clarification": false,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR038",
+    "question": "Return shortage values grouped by survey origin.",
+    "expected_needs_clarification": false,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR039",
+    "question": "Which survey origin has the highest shortage total?",
+    "expected_needs_clarification": false,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR040",
+    "question": "List shortage responses by survey origin.",
+    "expected_needs_clarification": false,
+    "topic": "shortage"
+  },
+  {
+    "id": "CLAR041",
+    "question": "Return inventory trends by component.",
+    "expected_needs_clarification": false,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR042",
+    "question": "Count inventory observations by component.",
+    "expected_needs_clarification": false,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR043",
+    "question": "List inventory trend values for each component.",
+    "expected_needs_clarification": false,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR044",
+    "question": "Which component has decreasing inventory?",
+    "expected_needs_clarification": false,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR045",
+    "question": "Show component inventory values.",
+    "expected_needs_clarification": false,
+    "topic": "inventory"
+  },
+  {
+    "id": "CLAR046",
+    "question": "Show yearly autonomous-driving averages by vehicle type.",
+    "expected_needs_clarification": false,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR047",
+    "question": "At SAE Level 5, which vehicle type has the highest percentage?",
+    "expected_needs_clarification": false,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR048",
+    "question": "Return autonomous-driving percentages by vehicle type and year.",
+    "expected_needs_clarification": false,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR049",
+    "question": "Count autonomous-driving entries by vehicle type.",
+    "expected_needs_clarification": false,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR050",
+    "question": "List SAE percentages for each vehicle type.",
+    "expected_needs_clarification": false,
+    "topic": "autonomous"
+  },
+  {
+    "id": "CLAR051",
+    "question": "Return monthly totals for actual vehicle-sales observations.",
+    "expected_needs_clarification": false,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR052",
+    "question": "Which month has the highest actual vehicle sales?",
+    "expected_needs_clarification": false,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR053",
+    "question": "Sum actual vehicle sales for each month.",
+    "expected_needs_clarification": false,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR054",
+    "question": "Count actual vehicle-sales observations by month.",
+    "expected_needs_clarification": false,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR055",
+    "question": "List actual sold units by time period.",
+    "expected_needs_clarification": false,
+    "topic": "vehicle_sales"
+  },
+  {
+    "id": "CLAR056",
+    "question": "Compare BL1 and BL2 current-demand changes for Tier1 Automotive.",
+    "expected_needs_clarification": false,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR057",
+    "question": "What are the BL1 and BL2 percentage changes for Tier1 Automotive?",
+    "expected_needs_clarification": false,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR058",
+    "question": "Return baseline-level current-demand percentages for Tier1 Automotive.",
+    "expected_needs_clarification": false,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR059",
+    "question": "List Tier1 Automotive current-demand changes for BL1 and BL2.",
+    "expected_needs_clarification": false,
+    "topic": "current_demand"
+  },
+  {
+    "id": "CLAR060",
+    "question": "Give the average BL1 and BL2 current-demand changes for Tier1 Automotive.",
+    "expected_needs_clarification": false,
+    "topic": "current_demand"
+  }
+]

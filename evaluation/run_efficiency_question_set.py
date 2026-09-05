@@ -1,0 +1,637 @@
+"""Run or estimate a cost-aware KGQA efficiency question set.
+
+Default mode is intentionally conservative and cheap: it executes only
+direct capability queries and estimates that every unresolved question would
+need one LLM call. Use --call-llm only when you explicitly want to spend LLM
+calls for non-direct questions.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
+from rdflib import Graph
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from kg.capabilities import DEFAULT_REGISTRY
+from kg.advisory import resolve_advisory_plan, synthesize_advisory_answer
+from kg.dr_ontology import route_dr_ontology_definition
+from kg.fuseki import make_sparql_store
+from kg.schema import load_schema
+from llm.answer_synthesis import synthesize_answer
+from llm.client import InfineonGPTClient
+from pipeline.qa import answer_question
+
+
+DEFAULT_PREFIX = """\
+PREFIX : <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+"""
+
+
+def _ensure_prefixes(query: str) -> str:
+    if "PREFIX" in query.upper():
+        return query
+    return DEFAULT_PREFIX + query
+
+
+def _format_value(value: object) -> str:
+    text = str(value)
+    ns = "http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/"
+    if text.startswith(ns):
+        return text[len(ns) :]
+    return text
+
+
+def _load_questions(path: str) -> List[Dict[str, str]]:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(payload, list):
+        raise ValueError("Question file must contain a JSON list.")
+    rows = []
+    for idx, item in enumerate(payload, start=1):
+        if isinstance(item, str):
+            rows.append({"id": f"Q{idx:04d}", "question": item})
+        elif isinstance(item, dict) and item.get("question"):
+            rows.append({str(k): str(v) for k, v in item.items()})
+    return rows
+
+
+def _load_existing_log(path: Path) -> List[Dict[str, Any]]:
+    if not path.exists():
+        return []
+    rows: List[Dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                # A crash can leave a partial final JSONL line. Ignore it and
+                # rerun that request on resume.
+                continue
+            if isinstance(payload, dict):
+                rows.append(payload)
+    return rows
+
+
+def _counts_from_existing(rows: List[Dict[str, Any]]) -> Dict[str, int]:
+    counts = {"total": 0, "direct": 0, "llm_estimated": 0, "llm_called": 0, "direct_empty": 0}
+    for row in rows:
+        counts["total"] += 1
+        route = str(row.get("route") or "")
+        llm = row.get("llm") if isinstance(row.get("llm"), dict) else {}
+        if route == "llm_required_estimate":
+            counts["llm_estimated"] += 1
+        elif llm.get("skipped"):
+            counts["direct"] += 1
+        elif int(llm.get("estimated_calls") or 0) > 0:
+            counts["llm_called"] += 1
+    return counts
+
+
+def _load_graph(graph_path: str, fuseki_query_url: str) -> Graph:
+    if fuseki_query_url.strip():
+        return Graph(store=make_sparql_store(fuseki_query_url.strip()))
+    graph = Graph()
+    graph.parse(graph_path, format="turtle")
+    return graph
+
+
+def _preview_rows(graph: Graph, query: str, max_rows: int = 50) -> Tuple[List[Dict[str, str]], str]:
+    try:
+        results = graph.query(_ensure_prefixes(query))
+        rows: List[Dict[str, str]] = []
+        for idx, row in enumerate(results):
+            if idx >= max_rows:
+                break
+            if hasattr(row, "asdict"):
+                rows.append({str(k): _format_value(v) for k, v in row.asdict().items()})
+            else:
+                rows.append({f"col{j + 1}": _format_value(v) for j, v in enumerate(row)})
+        return rows, ""
+    except Exception as exc:
+        return [], str(exc)
+
+
+def _compact_query(query: object) -> str:
+    return " ".join(str(query or "").split()).lower()
+
+
+def _question_requests_breakdown(question: str) -> bool:
+    q = f" {question.lower()} "
+    return any(
+        phrase in q
+        for phrase in (" by ", " per ", " for each ", " grouped by ", " across ", " breakdown")
+    )
+
+
+def _question_requests_count(question: str) -> bool:
+    q = question.lower()
+    return any(phrase in q for phrase in ("how many", "count", "number of"))
+
+
+def _question_requests_ranking(question: str) -> bool:
+    q = question.lower()
+    return any(phrase in q for phrase in ("highest", "lowest", "top", "largest", "smallest", "maximum", "minimum"))
+
+
+def _shape_penalty(question: str, query: str, rows: List[Dict[str, str]], error: str) -> int:
+    if error:
+        return 1000
+    if not rows:
+        return 900
+    q = _compact_query(query)
+    penalty = 0
+    if _question_requests_breakdown(question) and "group by" not in q and not _question_requests_ranking(question):
+        penalty += 80
+    if _question_requests_count(question) and "count" not in q:
+        penalty += 60
+    if not _question_requests_count(question) and "count(" in q and _question_requests_breakdown(question):
+        penalty += 60
+    if _question_requests_ranking(question) and "order by" not in q and "max(" not in q and "min(" not in q:
+        # Grouped rows can still be converted into a highest/lowest answer by
+        # deterministic answer synthesis, so this is only a weak penalty.
+        penalty += 20
+    try:
+        semantic_report = DEFAULT_REGISTRY.evaluate_query(question, query)
+    except Exception:
+        semantic_report = None
+    if semantic_report is not None:
+        for missing in semantic_report.missing_required_terms:
+            if str(missing).startswith("capability:"):
+                penalty += 240
+            elif str(missing).startswith("dimension:"):
+                penalty += 120
+    return penalty
+
+
+def _candidate_source_for_query(candidates: List[Dict[str, Any]], query: str) -> str:
+    selected_key = _compact_query(query)
+    for candidate in candidates:
+        if selected_key and _compact_query(candidate.get("query")) == selected_key:
+            return str(candidate.get("source") or "")
+    return ""
+
+
+def _execution_aware_selection(
+    *,
+    question: str,
+    result: Dict[str, Any],
+    graph: Graph,
+    max_candidates: int = 8,
+) -> Tuple[str, str, List[Dict[str, str]], str, str]:
+    candidates = [c for c in (result.get("candidates") or []) if str(c.get("query") or "").strip()]
+    selected_query = str(result.get("selected_query") or "").strip()
+    if selected_query and all(_compact_query(c.get("query")) != _compact_query(selected_query) for c in candidates):
+        candidates.insert(0, {"query": selected_query, "source": "selected"})
+
+    seen = set()
+    evaluated: List[Tuple[int, int, str, str, List[Dict[str, str]], str]] = []
+    for idx, candidate in enumerate(candidates[:max_candidates]):
+        query = str(candidate.get("query") or "").strip()
+        key = _compact_query(query)
+        if not query or key in seen:
+            continue
+        seen.add(key)
+        rows, error = _preview_rows(graph, query, max_rows=50)
+        source = str(candidate.get("source") or "")
+        evaluated.append((_shape_penalty(question, query, rows, error), idx, query, source, rows, error))
+
+    if not evaluated:
+        return selected_query, _candidate_source_for_query(candidates, selected_query), [], "", "no_candidates"
+
+    selected_key = _compact_query(selected_query)
+    current = next((row for row in evaluated if _compact_query(row[2]) == selected_key), None)
+    best = min(evaluated, key=lambda row: (row[0], row[1]))
+    if current and current[0] <= 20:
+        chosen = current
+        reason = "kept_selected_nonempty"
+    else:
+        chosen = best
+        reason = "switched_to_nonempty_candidate" if current and best[0] < current[0] else "selected_best_executable_candidate"
+
+    _, _, query, source, rows, error = chosen
+    return query, source, rows, error, reason
+
+
+def _answer_text(question: str, query: str, rows: List[Dict[str, str]], error: str) -> str:
+    if not query:
+        return ""
+    errors = [{"message": error}] if error else None
+    try:
+        return synthesize_answer(question, query, {"rows": rows}, errors=errors)
+    except Exception as exc:
+        return f"Answer synthesis failed: {exc}"
+
+
+def _estimated_llm_calls(metadata: Dict[str, Any]) -> int:
+    if metadata.get("llm_skipped") or metadata.get("guided_query"):
+        return 0
+    calls = 0 if (metadata.get("llm_cache_enabled") and metadata.get("llm_cache_hit")) else 1
+    if metadata.get("full_schema_generation_attempted"):
+        calls += 0 if (metadata.get("llm_cache_enabled") and metadata.get("full_schema_llm_cache_hit")) else 1
+    return calls
+
+
+def _direct_row(
+    *,
+    request_id: str,
+    question: str,
+    query: str,
+    graph_rows: List[Dict[str, str]],
+    latency_s: float,
+) -> Dict[str, Any]:
+    return {
+        "request_id": request_id,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "question": question,
+        "route": "auto_answer",
+        "score1": 1.0,
+        "score2": 0.0,
+        "margin": 1.0,
+        "selected_source": "capability_inventory",
+        "selected_query": query,
+        "graph_row_count": len(graph_rows),
+        "graph_rows_preview": graph_rows,
+        "answer_text": _answer_text(question, query, graph_rows, ""),
+        "graph_error": "",
+        "latency_s": round(latency_s, 3),
+        "latency_breakdown": {"total_s": round(latency_s, 3)},
+        "candidate_count": 1,
+        "llm": {
+            "skipped": True,
+            "cache_enabled": False,
+            "cache_hit": False,
+            "full_schema_generation_attempted": False,
+            "full_schema_cache_hit": False,
+            "estimated_calls": 0,
+        },
+        "schema_route": {"applied": False, "confidence": "direct_capability", "families": []},
+    }
+
+
+def _deterministic_text_row(
+    *,
+    request_id: str,
+    question: str,
+    answer_text: str,
+    selected_source: str,
+    latency_s: float,
+    metadata: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    return {
+        "request_id": request_id,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "question": question,
+        "route": "auto_answer",
+        "score1": 1.0,
+        "score2": 0.0,
+        "margin": 1.0,
+        "selected_source": selected_source,
+        "selected_query": "",
+        "graph_row_count": 0,
+        "graph_rows_preview": [],
+        "answer_text": answer_text,
+        "graph_error": "",
+        "latency_s": round(latency_s, 3),
+        "latency_breakdown": {"total_s": round(latency_s, 3)},
+        "candidate_count": 0,
+        "llm": {
+            "skipped": True,
+            "cache_enabled": False,
+            "cache_hit": False,
+            "full_schema_generation_attempted": False,
+            "full_schema_cache_hit": False,
+            "estimated_calls": 0,
+        },
+        "schema_route": {"applied": False, "confidence": "deterministic_pre_route", "families": []},
+        "metadata": metadata or {},
+    }
+
+
+def _advisory_row(
+    *,
+    request_id: str,
+    question: str,
+    query: str,
+    graph_rows: List[Dict[str, str]],
+    answer_text: str,
+    latency_s: float,
+    plan_id: str,
+) -> Dict[str, Any]:
+    return {
+        "request_id": request_id,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "question": question,
+        "route": "auto_answer",
+        "score1": 1.0,
+        "score2": 0.0,
+        "margin": 1.0,
+        "selected_source": "advisory",
+        "selected_query": query,
+        "graph_row_count": len(graph_rows),
+        "graph_rows_preview": graph_rows,
+        "answer_text": answer_text,
+        "graph_error": "",
+        "latency_s": round(latency_s, 3),
+        "latency_breakdown": {"total_s": round(latency_s, 3)},
+        "candidate_count": 1,
+        "llm": {
+            "skipped": True,
+            "cache_enabled": False,
+            "cache_hit": False,
+            "full_schema_generation_attempted": False,
+            "full_schema_cache_hit": False,
+            "estimated_calls": 0,
+        },
+        "schema_route": {"applied": False, "confidence": "deterministic_advisory", "families": []},
+        "metadata": {"advisory_route": True, "advisory_plan_id": plan_id},
+    }
+
+
+def _estimated_llm_needed_row(
+    *,
+    request_id: str,
+    question: str,
+    latency_s: float,
+) -> Dict[str, Any]:
+    return {
+        "request_id": request_id,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "question": question,
+        "route": "llm_required_estimate",
+        "score1": None,
+        "score2": None,
+        "margin": None,
+        "selected_source": "",
+        "selected_query": "",
+        "graph_row_count": 0,
+        "graph_rows_preview": [],
+        "answer_text": "",
+        "graph_error": "",
+        "latency_s": round(latency_s, 3),
+        "latency_breakdown": {"total_s": round(latency_s, 3)},
+        "candidate_count": 0,
+        "llm": {
+            "skipped": False,
+            "cache_enabled": False,
+            "cache_hit": False,
+            "full_schema_generation_attempted": False,
+            "full_schema_cache_hit": False,
+            "estimated_calls": 1,
+        },
+        "schema_route": {"applied": False, "confidence": "not_direct", "families": []},
+    }
+
+
+def _full_llm_row(
+    *,
+    request_id: str,
+    question: str,
+    result: Dict[str, Any],
+    graph_rows: List[Dict[str, str]],
+    graph_error: str,
+    selected_source: str,
+    execution_selection_reason: str,
+    latency_s: float,
+) -> Dict[str, Any]:
+    metadata = result.get("metadata") if isinstance(result.get("metadata"), dict) else {}
+    selected_query = str(result.get("selected_query") or "")
+    if not selected_source:
+        selected_source = _candidate_source_for_query(result.get("candidates") or [], selected_query)
+    return {
+        "request_id": request_id,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "question": question,
+        "route": "llm_ranking",
+        "score1": None,
+        "score2": None,
+        "margin": None,
+        "selected_source": selected_source,
+        "selected_query": selected_query,
+        "graph_row_count": len(graph_rows),
+        "graph_rows_preview": graph_rows,
+        "answer_text": _answer_text(question, selected_query, graph_rows, graph_error),
+        "graph_error": graph_error,
+        "execution_selection_reason": execution_selection_reason,
+        "latency_s": round(latency_s, 3),
+        "latency_breakdown": {"total_s": round(latency_s, 3)},
+        "candidate_count": len(result.get("candidates") or []),
+        "llm": {
+            "skipped": bool(metadata.get("llm_skipped")),
+            "cache_enabled": bool(metadata.get("llm_cache_enabled")),
+            "cache_hit": bool(metadata.get("llm_cache_hit")),
+            "full_schema_generation_attempted": bool(metadata.get("full_schema_generation_attempted")),
+            "full_schema_cache_hit": bool(metadata.get("full_schema_llm_cache_hit")),
+            "estimated_calls": _estimated_llm_calls(metadata),
+        },
+        "schema_route": {
+            "applied": bool(metadata.get("schema_slicing_applied")),
+            "confidence": metadata.get("schema_slice_confidence"),
+            "families": metadata.get("schema_slice_names") or [],
+        },
+    }
+
+
+def run(
+    *,
+    questions_path: str,
+    out_log: str,
+    graph_path: str,
+    fuseki_query_url: str,
+    schema_path: str,
+    call_llm: bool,
+    limit: int | None,
+    enable_llm_cache: bool,
+    resume: bool,
+) -> Dict[str, int]:
+    questions = _load_questions(questions_path)
+    if limit is not None:
+        questions = questions[: max(0, int(limit))]
+
+    os.environ["FUSEKI_QUERY_URL"] = fuseki_query_url.strip()
+    os.environ["INFINEON_ENABLE_LLM_CACHE"] = "1" if enable_llm_cache else "0"
+
+    graph = _load_graph(graph_path, fuseki_query_url)
+    schema = load_schema(schema_path) if call_llm else None
+    client = InfineonGPTClient() if call_llm else None
+
+    out_path = Path(out_log)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    existing_rows = _load_existing_log(out_path) if resume else []
+    completed_ids = {str(row.get("request_id") or "") for row in existing_rows}
+    counts = _counts_from_existing(existing_rows)
+    mode = "a" if resume and out_path.exists() else "w"
+    if resume and existing_rows:
+        print(f"Resuming from {out_log}: {len(completed_ids)} completed request IDs.")
+
+    with out_path.open(mode, encoding="utf-8") as f:
+        for idx, row in enumerate(questions, start=1):
+            question = str(row.get("question") or "").strip()
+            if not question:
+                continue
+            request_id = str(row.get("id") or f"EFF{idx:04d}")
+            if request_id in completed_ids:
+                print(f"[{idx}/{len(questions)}] skip completed {request_id}: {question}")
+                continue
+            started = time.perf_counter()
+
+            dr_definition = route_dr_ontology_definition(question)
+            if dr_definition is not None:
+                payload = _deterministic_text_row(
+                    request_id=request_id,
+                    question=question,
+                    answer_text=str(dr_definition.get("answer") or ""),
+                    selected_source=str(dr_definition.get("source") or "digital_reference_ontology"),
+                    latency_s=time.perf_counter() - started,
+                    metadata={
+                        "dr_ontology_route": True,
+                        "matched_term": dr_definition.get("matched_term"),
+                        "term_kind": dr_definition.get("term_kind"),
+                        "term_uri": dr_definition.get("term_uri"),
+                        "ontology_path": dr_definition.get("ontology_path"),
+                    },
+                )
+                counts["direct"] += 1
+                counts["total"] += 1
+                f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+                print(f"[{idx}/{len(questions)}] ontology {request_id}: {question}")
+                continue
+
+            advisory_plan = resolve_advisory_plan(question)
+            if advisory_plan is not None:
+                graph_rows, graph_error = _preview_rows(graph, advisory_plan.query, max_rows=50)
+                if graph_rows and not graph_error:
+                    payload = _advisory_row(
+                        request_id=request_id,
+                        question=question,
+                        query=advisory_plan.query,
+                        graph_rows=graph_rows,
+                        answer_text=synthesize_advisory_answer(question, advisory_plan, graph_rows),
+                        latency_s=time.perf_counter() - started,
+                        plan_id=advisory_plan.plan_id,
+                    )
+                    counts["direct"] += 1
+                    counts["total"] += 1
+                    f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+                    print(f"[{idx}/{len(questions)}] advisory {request_id}: {question}")
+                    continue
+                counts["direct_empty"] += 1
+
+            report = DEFAULT_REGISTRY.resolve(question)
+            direct_query = DEFAULT_REGISTRY.direct_query_for(report)
+            if direct_query:
+                graph_rows, graph_error = _preview_rows(graph, direct_query, max_rows=50)
+                if graph_rows and not graph_error:
+                    payload = _direct_row(
+                        request_id=request_id,
+                        question=question,
+                        query=direct_query,
+                        graph_rows=graph_rows,
+                        latency_s=time.perf_counter() - started,
+                    )
+                    counts["direct"] += 1
+                    counts["total"] += 1
+                    f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+                    print(f"[{idx}/{len(questions)}] direct {request_id}: {question}")
+                    continue
+                counts["direct_empty"] += 1
+
+            if not call_llm:
+                payload = _estimated_llm_needed_row(
+                    request_id=request_id,
+                    question=question,
+                    latency_s=time.perf_counter() - started,
+                )
+                counts["llm_estimated"] += 1
+                counts["total"] += 1
+                f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+                print(f"[{idx}/{len(questions)}] estimated LLM {request_id}: {question}")
+                continue
+
+            assert schema is not None and client is not None
+            result = answer_question(
+                question,
+                schema,
+                llm_client=client,
+                enable_entity_linking=True,
+                use_ml_ranking=True,
+                ml_policy="all",
+                include_candidate_diagnostics=False,
+                enable_clarification=False,
+                enable_answerability_assessment=False,
+            )
+            selected_query, selected_source, graph_rows, graph_error, selection_reason = _execution_aware_selection(
+                question=question,
+                result=result,
+                graph=graph,
+            )
+            result["selected_query"] = selected_query
+            payload = _full_llm_row(
+                request_id=request_id,
+                question=question,
+                result=result,
+                graph_rows=graph_rows,
+                graph_error=graph_error,
+                selected_source=selected_source,
+                execution_selection_reason=selection_reason,
+                latency_s=time.perf_counter() - started,
+            )
+            counts["llm_called"] += int(payload["llm"]["estimated_calls"] > 0)
+            counts["total"] += 1
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            print(f"[{idx}/{len(questions)}] LLM {request_id}: {question}")
+
+    return counts
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Run/estimate cost-aware KGQA efficiency over a question set.")
+    parser.add_argument("--questions", default="evaluation/question_sets/true_demand_efficiency_500.json")
+    parser.add_argument("--out-log", default="logs/kgqa_efficiency_500.jsonl")
+    parser.add_argument("--graph", default="data/infineon/graph.ttl")
+    parser.add_argument("--schema", default="data/infineon/schema.json")
+    parser.add_argument("--fuseki-query-url", default=os.getenv("FUSEKI_QUERY_URL", ""))
+    parser.add_argument("--limit", type=int)
+    parser.add_argument("--call-llm", action="store_true", help="Actually call the LLM for non-direct questions. This costs money.")
+    parser.add_argument("--enable-llm-cache", action="store_true")
+    parser.add_argument("--resume", action="store_true", help="Append to an existing JSONL log and skip completed request IDs.")
+    args = parser.parse_args()
+
+    counts = run(
+        questions_path=args.questions,
+        out_log=args.out_log,
+        graph_path=args.graph,
+        fuseki_query_url=args.fuseki_query_url,
+        schema_path=args.schema,
+        call_llm=args.call_llm,
+        limit=args.limit,
+        enable_llm_cache=args.enable_llm_cache,
+        resume=args.resume,
+    )
+    print("===== KGQA EFFICIENCY QUESTION SET =====")
+    print(f"Questions processed: {counts['total']}")
+    print(f"Direct graph-supported: {counts['direct']}")
+    print(f"Estimated LLM-needed: {counts['llm_estimated']}")
+    print(f"Actual LLM-called rows: {counts['llm_called']}")
+    print(f"Direct templates with no rows: {counts['direct_empty']}")
+    print(f"Log: {args.out_log}")
+
+
+if __name__ == "__main__":
+    main()

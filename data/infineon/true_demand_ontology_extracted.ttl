@@ -1,0 +1,615 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+survey:10nm_to_less_than_28nm a owl:Class ;
+    rdfs:label "10nm to less than 28nm" ;
+    rdfs:subClassOf survey:InventoryDevelopment_Semi,
+        survey:InventoryTargetIndicator_Semi,
+        survey:OrderCancellationChange_Semi .
+
+survey:180nm_or_greater a owl:Class ;
+    rdfs:label "180nm or greater" ;
+    rdfs:subClassOf survey:InventoryDevelopment_Semi,
+        survey:InventoryTargetIndicator_Semi,
+        survey:OrderCancellationChange_Semi .
+
+survey:28nm_to_less_than_45nm a owl:Class ;
+    rdfs:label "28nm to less than 45nm" ;
+    rdfs:subClassOf survey:InventoryDevelopment_Semi,
+        survey:InventoryTargetIndicator_Semi,
+        survey:OrderCancellationChange_Semi .
+
+survey:55nm_to_180nm a owl:Class ;
+    rdfs:label "55nm to 180nm" ;
+    rdfs:subClassOf survey:InventoryDevelopment_Semi,
+        survey:InventoryTargetIndicator_Semi,
+        survey:OrderCancellationChange_Semi .
+
+survey:7nm_or_less a owl:Class ;
+    rdfs:label "7nm or less" ;
+    rdfs:subClassOf survey:InventoryDevelopment_Semi,
+        survey:InventoryTargetIndicator_Semi,
+        survey:OrderCancellationChange_Semi .
+
+survey:Advanced_driver-assistance_systems_%28ADAS%29 a owl:Class ;
+    rdfs:label "Advanced driver assistance systems (ADAS)" ;
+    rdfs:subClassOf survey:ComponentShare_Tier1 .
+
+survey:Automotive a owl:Class ;
+    rdfs:label "Automotive" ;
+    rdfs:subClassOf survey:MarketSegment .
+
+survey:AutonomousDrivingDevelopment_OEM a owl:Class ;
+    rdfs:label "Autonomous Driving Development OEM" ;
+    rdfs:subClassOf survey:AutonomousDrivingDevelopment .
+
+survey:AutonomousDrivingDevelopment_Tier1 a owl:Class ;
+    rdfs:label "Autonomous Driving Development Tier1" ;
+    rdfs:subClassOf survey:AutonomousDrivingDevelopment .
+
+survey:BEHV a owl:Class ;
+    rdfs:label "BEHV" ;
+    rdfs:subClassOf survey:VehicleType .
+
+survey:BEV a owl:Class ;
+    rdfs:label "BEV" ;
+    rdfs:subClassOf survey:VehicleType .
+
+survey:Body_and_convenience a owl:Class ;
+    rdfs:label "Body and convenience" ;
+    rdfs:subClassOf survey:ComponentShare_Tier1 .
+
+survey:Chassis_and_safety a owl:Class ;
+    rdfs:label "Chassis and safety" ;
+    rdfs:subClassOf survey:ComponentShare_Tier1 .
+
+survey:EV a owl:Class ;
+    rdfs:label "EV" ;
+    rdfs:subClassOf survey:ComponentType_Tier1 .
+
+survey:ICE a owl:Class ;
+    rdfs:label "ICE" ;
+    rdfs:subClassOf survey:VehicleType .
+
+survey:Infotainment_and_Telematics a owl:Class ;
+    rdfs:label "Infotainment and Telematics" ;
+    rdfs:subClassOf survey:ComponentShare_Tier1 .
+
+survey:OEM_Survey a owl:Class ;
+    rdfs:label "OEM Survey" ;
+    rdfs:subClassOf survey:Survey .
+
+survey:Other a owl:Class ;
+    rdfs:label "Other" ;
+    rdfs:subClassOf survey:ComponentShare_Tier1 .
+
+survey:Powertrain a owl:Class ;
+    rdfs:label "Powertrain" ;
+    rdfs:subClassOf survey:ComponentShare_Tier1 .
+
+survey:TrueDemandExtractedOntology a owl:Ontology ;
+    rdfs:label "True Demand extracted ontology" ;
+    rdfs:comment "Schema-level ontology extracted from the full True Demand RDF graph for WebVOWL visualization." .
+
+survey:analyzesTechnologyCategory a owl:ObjectProperty ;
+    rdfs:label "analyzes Technology Category" ;
+    rdfs:domain survey:Demand ;
+    rdfs:range survey:TechnologyCategory .
+
+survey:analyzesVehicleType a owl:ObjectProperty ;
+    rdfs:label "analyzes Vehicle Type" ;
+    rdfs:domain survey:Demand ;
+    rdfs:range survey:VehicleType .
+
+survey:appliesToVehicleType a owl:ObjectProperty ;
+    rdfs:label "applies To Vehicle Type" ;
+    rdfs:domain survey:ConversionFactor ;
+    rdfs:range survey:VehicleType .
+
+survey:assignedTechnologyCategory a owl:DatatypeProperty ;
+    rdfs:label "assigned Technology Category" ;
+    rdfs:range xsd:string .
+
+survey:assignedVehicleType a owl:DatatypeProperty ;
+    rdfs:label "assigned Vehicle Type" ;
+    rdfs:range xsd:string .
+
+survey:assumptionReason a owl:DatatypeProperty ;
+    rdfs:label "assumption Reason" ;
+    rdfs:range xsd:string .
+
+survey:baselineB1 a owl:DatatypeProperty ;
+    rdfs:label "baseline B1" ;
+    rdfs:domain survey:TechnologyCategory ;
+    rdfs:range xsd:integer .
+
+survey:baselineB1Percent a owl:DatatypeProperty ;
+    rdfs:label "baseline B1 Percent" ;
+    rdfs:domain survey:CurrentDemandAnalysis ;
+    rdfs:range xsd:decimal .
+
+survey:baselineB2 a owl:DatatypeProperty ;
+    rdfs:label "baseline B2" ;
+    rdfs:domain survey:TechnologyCategory ;
+    rdfs:range xsd:integer .
+
+survey:baselineB2Percent a owl:DatatypeProperty ;
+    rdfs:label "baseline B2 Percent" ;
+    rdfs:domain survey:CurrentDemandAnalysis ;
+    rdfs:range xsd:decimal .
+
+survey:baselineType a owl:DatatypeProperty ;
+    rdfs:label "baseline Type" ;
+    rdfs:domain survey:CurrentDemandAnalysis,
+        survey:FutureDemandAnalysis ;
+    rdfs:range xsd:string .
+
+survey:baselineYear a owl:DatatypeProperty ;
+    rdfs:label "baseline Year" ;
+    rdfs:range xsd:string .
+
+survey:companyName a owl:DatatypeProperty ;
+    rdfs:label "company Name" ;
+    rdfs:domain survey:Company ;
+    rdfs:range xsd:string .
+
+survey:componentType a owl:DatatypeProperty ;
+    rdfs:label "component Type" ;
+    rdfs:domain survey:Component ;
+    rdfs:range xsd:string .
+
+survey:conversionDescription a owl:DatatypeProperty ;
+    rdfs:label "conversion Description" ;
+    rdfs:domain survey:ConversionFactor ;
+    rdfs:range xsd:string .
+
+survey:conversionValue a owl:DatatypeProperty ;
+    rdfs:label "conversion Value" ;
+    rdfs:domain survey:ConversionFactor ;
+    rdfs:range xsd:decimal .
+
+survey:currentDemand a owl:DatatypeProperty ;
+    rdfs:label "current Demand" ;
+    rdfs:domain survey:TechnologyCategory ;
+    rdfs:range xsd:integer .
+
+survey:dataType a owl:DatatypeProperty ;
+    rdfs:label "data Type" ;
+    rdfs:range xsd:string .
+
+survey:definesCategory a owl:ObjectProperty ;
+    rdfs:label "defines Category" ;
+    rdfs:range survey:TechnologyCategory .
+
+survey:forCompany a owl:ObjectProperty ;
+    rdfs:label "for Company" ;
+    rdfs:domain survey:OrderCancellation ;
+    rdfs:range survey:Company .
+
+survey:forComponent a owl:ObjectProperty ;
+    rdfs:label "for Component" ;
+    rdfs:domain survey:InventoryDevelopment_Tier1 ;
+    rdfs:range survey:Component .
+
+survey:forTechnologyCategory a owl:ObjectProperty ;
+    rdfs:label "for Technology Category" ;
+    rdfs:domain survey:OrderCancellation ;
+    rdfs:range survey:OrderCancellationChange_Semi .
+
+survey:forTimePeriod a owl:ObjectProperty ;
+    rdfs:label "for Time Period" ;
+    rdfs:domain survey:VehicleSalesObservation ;
+    rdfs:range survey:Month .
+
+survey:forVehicleType a owl:ObjectProperty ;
+    rdfs:label "for Vehicle Type" ;
+    rdfs:domain survey:DemandResponse .
+
+survey:forYear a owl:DatatypeProperty ;
+    rdfs:label "for Year" ;
+    rdfs:domain survey:YearlySalesData ;
+    rdfs:range xsd:string .
+
+survey:fromCompany a owl:ObjectProperty ;
+    rdfs:label "from Company" ;
+    rdfs:domain survey:DemandResponse ;
+    rdfs:range survey:Company .
+
+survey:hasAggregatedResult a owl:ObjectProperty ;
+    rdfs:label "has Aggregated Result" ;
+    rdfs:domain survey:Demand ;
+    rdfs:range survey:AggregatedDemand .
+
+survey:hasAssumption a owl:ObjectProperty ;
+    rdfs:label "has Assumption" .
+
+survey:hasComponentTypeSplit a owl:ObjectProperty ;
+    rdfs:label "has Component Type Split" ;
+    rdfs:domain survey:ComponentShare ;
+    rdfs:range xsd:decimal .
+
+survey:hasConversionFactor a owl:ObjectProperty ;
+    rdfs:label "has Conversion Factor" ;
+    rdfs:domain survey:TechnologyCategory ;
+    rdfs:range survey:ConversionFactor .
+
+survey:hasDetail a owl:ObjectProperty ;
+    rdfs:label "has Detail" ;
+    rdfs:domain survey:SAELevel ;
+    rdfs:range survey:AutonomousDrivingDevelopment .
+
+survey:hasFutureDemand a owl:ObjectProperty ;
+    rdfs:label "has Future Demand" ;
+    rdfs:domain survey:FutureDemandAnalysis ;
+    rdfs:range survey:FutureDemandAnalysis .
+
+survey:hasInventoryResponse a owl:ObjectProperty ;
+    rdfs:label "has Inventory Response" ;
+    rdfs:domain survey:Tier1_Survey ;
+    rdfs:range survey:InventoryDevelopment_Tier1 .
+
+survey:hasInventoryTrend a owl:ObjectProperty ;
+    rdfs:label "has Inventory Trend" ;
+    rdfs:domain survey:InventoryDevelopment_Semi,
+        survey:InventoryDevelopment_Tier1 ;
+    rdfs:range survey:InventoryDevelopment_Tier1 .
+
+survey:hasMarketSegment a owl:ObjectProperty ;
+    rdfs:label "has Market Segment" ;
+    rdfs:domain survey:Demand ;
+    rdfs:range survey:MarketSegment .
+
+survey:hasOrderCancellation a owl:ObjectProperty ;
+    rdfs:label "has Order Cancellation" ;
+    rdfs:domain survey:Semiconductor_Survey ;
+    rdfs:range survey:OrderCancellation .
+
+survey:hasPercentage a owl:DatatypeProperty ;
+    rdfs:label "has Percentage" ;
+    rdfs:domain survey:AutonomousDrivingDevelopment ;
+    rdfs:range xsd:decimal .
+
+survey:hasRegionalDemand a owl:ObjectProperty ;
+    rdfs:label "has Regional Demand" ;
+    rdfs:domain survey:CurrentRegionalDemand ;
+    rdfs:range survey:DemandForRegion .
+
+survey:hasResponse a owl:ObjectProperty ;
+    rdfs:label "has Response" ;
+    rdfs:domain survey:Demand ;
+    rdfs:range survey:DemandResponse .
+
+survey:hasResponseType a owl:ObjectProperty ;
+    rdfs:label "has Response Type" ;
+    rdfs:domain survey:OrderCancellation ;
+    rdfs:range survey:InventoryDevelopment_Tier1 .
+
+survey:hasSAELevel a owl:ObjectProperty ;
+    rdfs:label "has SAELevel" ;
+    rdfs:domain survey:VehicleType ;
+    rdfs:range survey:SAELevel .
+
+survey:hasSurveyOrigin a owl:ObjectProperty ;
+    rdfs:label "has Survey Origin" ;
+    rdfs:domain survey:DemandResponse ;
+    rdfs:range survey:Survey .
+
+survey:hasTechnologyCategory a owl:ObjectProperty ;
+    rdfs:label "has Technology Category" ;
+    rdfs:range survey:TechnologyCategory .
+
+survey:hasTechnologyNodeDemand a owl:ObjectProperty ;
+    rdfs:label "has Technology Node Demand" ;
+    rdfs:range survey:TechnologyNode .
+
+survey:hasVehicleType a owl:ObjectProperty ;
+    rdfs:label "has Vehicle Type" ;
+    rdfs:domain survey:AutonomousDrivingDevelopment ;
+    rdfs:range survey:VehicleType .
+
+survey:hasYear a owl:DatatypeProperty ;
+    rdfs:label "has Year" ;
+    rdfs:domain survey:AutonomousDrivingDevelopment ;
+    rdfs:range xsd:integer .
+
+survey:hasYearlySales a owl:ObjectProperty ;
+    rdfs:label "has Yearly Sales" ;
+    rdfs:domain survey:CurrentDemandAnalysis ;
+    rdfs:range survey:YearlySalesData .
+
+survey:inRegion a owl:ObjectProperty ;
+    rdfs:label "in Region" ;
+    rdfs:domain survey:DemandForRegion ;
+    rdfs:range survey:Region .
+
+survey:inventoryTrend a owl:DatatypeProperty ;
+    rdfs:label "inventory Trend" ;
+    rdfs:domain survey:InventoryDevelopment_Tier1 ;
+    rdfs:range xsd:string .
+
+survey:isActiveInCategory a owl:DatatypeProperty ;
+    rdfs:label "is Active In Category" ;
+    rdfs:domain survey:ComponentShare_Tier1 ;
+    rdfs:range xsd:boolean .
+
+survey:isActualData a owl:DatatypeProperty ;
+    rdfs:label "is Actual Data" ;
+    rdfs:domain survey:VehicleSalesObservation ;
+    rdfs:range xsd:boolean .
+
+survey:isAggregatedResult a owl:DatatypeProperty ;
+    rdfs:label "is Aggregated Result" ;
+    rdfs:domain survey:AggregatedDemand ;
+    rdfs:range xsd:boolean .
+
+survey:isForecastData a owl:DatatypeProperty ;
+    rdfs:label "is Forecast Data" ;
+    rdfs:domain survey:VehicleSalesObservation ;
+    rdfs:range xsd:boolean .
+
+survey:justificationDescription a owl:DatatypeProperty ;
+    rdfs:label "justification Description" ;
+    rdfs:range xsd:string .
+
+survey:methodologyDescription a owl:DatatypeProperty ;
+    rdfs:label "methodology Description" ;
+    rdfs:range xsd:string .
+
+survey:nameplateLabel a owl:DatatypeProperty ;
+    rdfs:label "nameplate Label" ;
+    rdfs:range xsd:string .
+
+survey:nonEV a owl:Class ;
+    rdfs:label "non EV" ;
+    rdfs:subClassOf survey:ComponentType_Tier1 .
+
+survey:participantCount a owl:DatatypeProperty ;
+    rdfs:label "participant Count" ;
+    rdfs:domain survey:OrderCancellation ;
+    rdfs:range xsd:integer .
+
+survey:percentChangeB1 a owl:DatatypeProperty ;
+    rdfs:label "percent Change B1" ;
+    rdfs:domain survey:TechnologyCategory ;
+    rdfs:range xsd:decimal .
+
+survey:percentChangeB2 a owl:DatatypeProperty ;
+    rdfs:label "percent Change B2" ;
+    rdfs:domain survey:TechnologyCategory ;
+    rdfs:range xsd:decimal .
+
+survey:percentageChange a owl:DatatypeProperty ;
+    rdfs:label "percentage Change" ;
+    rdfs:domain survey:Demand ;
+    rdfs:range xsd:decimal .
+
+survey:percentageChangeB1 a owl:DatatypeProperty ;
+    rdfs:label "percentage Change B1" ;
+    rdfs:domain survey:TechnologyNode ;
+    rdfs:range xsd:decimal .
+
+survey:percentageChangeB2 a owl:DatatypeProperty ;
+    rdfs:label "percentage Change B2" ;
+    rdfs:domain survey:TechnologyNode ;
+    rdfs:range xsd:decimal .
+
+survey:percentageChangeBL1 a owl:DatatypeProperty ;
+    rdfs:label "percentage Change BL1" ;
+    rdfs:domain survey:CurrentDemandAnalysis ;
+    rdfs:range xsd:decimal .
+
+survey:percentageChangeBL2 a owl:DatatypeProperty ;
+    rdfs:label "percentage Change BL2" ;
+    rdfs:domain survey:CurrentDemandAnalysis ;
+    rdfs:range xsd:decimal .
+
+survey:periodLabel a owl:DatatypeProperty ;
+    rdfs:label "period Label" ;
+    rdfs:domain survey:Month ;
+    rdfs:range xsd:string .
+
+survey:platformName a owl:DatatypeProperty ;
+    rdfs:label "platform Name" ;
+    rdfs:range xsd:string .
+
+survey:quarter a owl:ObjectProperty ;
+    rdfs:label "quarter" ;
+    rdfs:domain survey:DemandForRegion ;
+    rdfs:range survey:Quarter .
+
+survey:regionName a owl:DatatypeProperty ;
+    rdfs:label "region Name" ;
+    rdfs:domain survey:Region ;
+    rdfs:range xsd:string .
+
+survey:reportsShortage a owl:DatatypeProperty ;
+    rdfs:label "reports Shortage" ;
+    rdfs:domain survey:Company ;
+    rdfs:range xsd:boolean .
+
+survey:splitPercentage a owl:DatatypeProperty ;
+    rdfs:label "split Percentage" ;
+    rdfs:domain survey:ComponentType_Tier1 ;
+    rdfs:range xsd:decimal .
+
+survey:targetIndicatorStatus a owl:DatatypeProperty ;
+    rdfs:label "target Indicator Status" ;
+    rdfs:domain survey:InventoryTargetIndicator_Semi ;
+    rdfs:range xsd:string .
+
+survey:technologyCategoryName a owl:DatatypeProperty ;
+    rdfs:label "technology Category Name" ;
+    rdfs:domain survey:TechnologyCategory ;
+    rdfs:range xsd:string .
+
+survey:technologyDescription a owl:DatatypeProperty ;
+    rdfs:label "technology Description" ;
+    rdfs:domain survey:TechnologyCategory ;
+    rdfs:range xsd:string .
+
+survey:technologyNodeLabel a owl:DatatypeProperty ;
+    rdfs:label "technology Node Label" ;
+    rdfs:domain survey:TechnologyNode ;
+    rdfs:range xsd:string .
+
+survey:totalDemand a owl:DatatypeProperty ;
+    rdfs:label "total Demand" ;
+    rdfs:domain survey:DemandForRegion ;
+    rdfs:range xsd:decimal .
+
+survey:totalDemandPercentageChange a owl:DatatypeProperty ;
+    rdfs:label "total Demand Percentage Change" ;
+    rdfs:domain survey:FutureRegionalDemand ;
+    rdfs:range xsd:decimal .
+
+survey:unitsSold a owl:DatatypeProperty ;
+    rdfs:label "units Sold" ;
+    rdfs:domain survey:VehicleSalesObservation ;
+    rdfs:range xsd:integer .
+
+survey:usesBaseline a owl:ObjectProperty ;
+    rdfs:label "uses Baseline" ;
+    rdfs:domain survey:CurrentDemandAnalysis .
+
+survey:yearlySales a owl:DatatypeProperty ;
+    rdfs:label "yearly Sales" ;
+    rdfs:domain survey:YearlySalesData ;
+    rdfs:range xsd:integer .
+
+survey:CurrentRegionalDemand a owl:Class ;
+    rdfs:label "Current Regional Demand" ;
+    rdfs:subClassOf survey:Demand .
+
+survey:FutureRegionalDemand a owl:Class ;
+    rdfs:label "Future Regional Demand" ;
+    rdfs:subClassOf survey:Demand .
+
+survey:InventoryTargetIndicator a owl:Class ;
+    rdfs:label "Inventory Target Indicator" ;
+    rdfs:subClassOf survey:Inventory .
+
+survey:Quarter a owl:Class ;
+    rdfs:label "Quarter" ;
+    rdfs:subClassOf survey:TimePeriod .
+
+survey:Semiconductor_Survey a owl:Class ;
+    rdfs:label "Semiconductor Survey" ;
+    rdfs:subClassOf survey:Survey .
+
+survey:Tier1_Survey a owl:Class ;
+    rdfs:label "Tier1 Survey" ;
+    rdfs:subClassOf survey:Survey .
+
+survey:AggregatedDemand a owl:Class ;
+    rdfs:label "Aggregated Demand" ;
+    rdfs:subClassOf survey:Demand .
+
+survey:Component a owl:Class ;
+    rdfs:label "Component" .
+
+survey:Inventory a owl:Class ;
+    rdfs:label "Inventory" .
+
+survey:InventoryDevelopment a owl:Class ;
+    rdfs:label "Inventory Development" ;
+    rdfs:subClassOf survey:Inventory .
+
+survey:MarketSegment a owl:Class ;
+    rdfs:label "Market Segment" .
+
+survey:Month a owl:Class ;
+    rdfs:label "Month" ;
+    rdfs:subClassOf survey:TimePeriod .
+
+survey:Region a owl:Class ;
+    rdfs:label "Region" .
+
+survey:SAELevel a owl:Class ;
+    rdfs:label "SAELevel" .
+
+survey:Sales a owl:Class ;
+    rdfs:label "Sales" .
+
+survey:TimePeriod a owl:Class ;
+    rdfs:label "Time Period" .
+
+survey:ComponentShare a owl:Class ;
+    rdfs:label "Component Share" .
+
+survey:ComponentType_Tier1 a owl:Class ;
+    rdfs:label "Component Type Tier1" ;
+    rdfs:subClassOf survey:ComponentShare .
+
+survey:FutureDemandAnalysis a owl:Class ;
+    rdfs:label "Future Demand Analysis" ;
+    rdfs:subClassOf survey:Demand .
+
+survey:YearlySalesData a owl:Class ;
+    rdfs:label "Yearly Sales Data" ;
+    rdfs:subClassOf survey:Sales .
+
+survey:Company a owl:Class ;
+    rdfs:label "Company" .
+
+survey:ConversionFactor a owl:Class ;
+    rdfs:label "Conversion Factor" .
+
+survey:DemandForRegion a owl:Class ;
+    rdfs:label "Demand For Region" ;
+    rdfs:subClassOf survey:Demand .
+
+survey:DemandResponse a owl:Class ;
+    rdfs:label "Demand Response" ;
+    rdfs:subClassOf survey:Demand .
+
+survey:Survey a owl:Class ;
+    rdfs:label "Survey" .
+
+survey:TechnologyNode a owl:Class ;
+    rdfs:label "Technology Node" .
+
+survey:VehicleSalesObservation a owl:Class ;
+    rdfs:label "Vehicle Sales Observation" ;
+    rdfs:subClassOf survey:Sales .
+
+survey:AutonomousDrivingDevelopment a owl:Class ;
+    rdfs:label "Autonomous Driving Development" .
+
+survey:InventoryDevelopment_Semi a owl:Class ;
+    rdfs:label "Inventory Development Semi" ;
+    rdfs:subClassOf survey:InventoryDevelopment .
+
+survey:InventoryDevelopment_Tier1 a owl:Class ;
+    rdfs:label "Inventory Development Tier1" ;
+    rdfs:subClassOf survey:InventoryDevelopment .
+
+survey:InventoryTargetIndicator_Semi a owl:Class ;
+    rdfs:label "Inventory Target Indicator Semi" ;
+    rdfs:subClassOf survey:InventoryTargetIndicator .
+
+survey:OrderCancellation a owl:Class ;
+    rdfs:label "Order Cancellation" .
+
+survey:OrderCancellationChange_Semi a owl:Class ;
+    rdfs:label "Order Cancellation Change Semi" ;
+    rdfs:subClassOf survey:OrderCancellation .
+
+survey:ComponentShare_Tier1 a owl:Class ;
+    rdfs:label "Component Share Tier1" ;
+    rdfs:subClassOf survey:ComponentShare .
+
+survey:CurrentDemandAnalysis a owl:Class ;
+    rdfs:label "Current Demand Analysis" ;
+    rdfs:subClassOf survey:Demand .
+
+survey:VehicleType a owl:Class ;
+    rdfs:label "Vehicle Type" .
+
+survey:TechnologyCategory a owl:Class ;
+    rdfs:label "Technology Category" .
+
+survey:Demand a owl:Class ;
+    rdfs:label "Demand" .
+

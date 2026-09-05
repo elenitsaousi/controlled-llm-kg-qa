@@ -1,0 +1,275 @@
+{
+  "audit_csv": "results/kgqa_system_accuracy_audit_1000_current_labeled_codex.csv",
+  "overall": {
+    "total": 1000,
+    "labeled": 1000,
+    "correct": 859,
+    "incorrect": 141,
+    "unclear": 0,
+    "accuracy": 0.859
+  },
+  "by_system_mode": [
+    {
+      "total": 552,
+      "labeled": 552,
+      "correct": 439,
+      "incorrect": 113,
+      "unclear": 0,
+      "accuracy": 0.7952898550724637,
+      "system_mode": "llm_ranking"
+    },
+    {
+      "total": 448,
+      "labeled": 448,
+      "correct": 420,
+      "incorrect": 28,
+      "unclear": 0,
+      "accuracy": 0.9375,
+      "system_mode": "direct_graph_supported"
+    }
+  ],
+  "by_selected_source": [
+    {
+      "total": 382,
+      "labeled": 382,
+      "correct": 290,
+      "incorrect": 92,
+      "unclear": 0,
+      "accuracy": 0.7591623036649214,
+      "selected_source": "validated_retrieval"
+    },
+    {
+      "total": 262,
+      "labeled": 262,
+      "correct": 234,
+      "incorrect": 28,
+      "unclear": 0,
+      "accuracy": 0.8931297709923665,
+      "selected_source": "capability_inventory"
+    },
+    {
+      "total": 167,
+      "labeled": 167,
+      "correct": 146,
+      "incorrect": 21,
+      "unclear": 0,
+      "accuracy": 0.874251497005988,
+      "selected_source": "infineon"
+    },
+    {
+      "total": 150,
+      "labeled": 150,
+      "correct": 150,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "selected_source": "digital_reference_ontology"
+    },
+    {
+      "total": 36,
+      "labeled": 36,
+      "correct": 36,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "selected_source": "advisory"
+    },
+    {
+      "total": 3,
+      "labeled": 3,
+      "correct": 3,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "selected_source": "template"
+    }
+  ],
+  "by_expected_route": [
+    {
+      "total": 800,
+      "labeled": 800,
+      "correct": 661,
+      "incorrect": 139,
+      "unclear": 0,
+      "accuracy": 0.82625,
+      "expected_route": "unknown"
+    },
+    {
+      "total": 150,
+      "labeled": 150,
+      "correct": 150,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "expected_route": "definition"
+    },
+    {
+      "total": 50,
+      "labeled": 50,
+      "correct": 48,
+      "incorrect": 2,
+      "unclear": 0,
+      "accuracy": 0.96,
+      "expected_route": "advisory"
+    }
+  ],
+  "by_topic": [
+    {
+      "total": 150,
+      "labeled": 150,
+      "correct": 150,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "topic": "unknown"
+    },
+    {
+      "total": 89,
+      "labeled": 89,
+      "correct": 62,
+      "incorrect": 27,
+      "unclear": 0,
+      "accuracy": 0.6966292134831461,
+      "topic": "autonomous_driving"
+    },
+    {
+      "total": 89,
+      "labeled": 89,
+      "correct": 87,
+      "incorrect": 2,
+      "unclear": 0,
+      "accuracy": 0.9775280898876404,
+      "topic": "catalog_lookup"
+    },
+    {
+      "total": 89,
+      "labeled": 89,
+      "correct": 59,
+      "incorrect": 30,
+      "unclear": 0,
+      "accuracy": 0.6629213483146067,
+      "topic": "current_demand_baselines"
+    },
+    {
+      "total": 89,
+      "labeled": 89,
+      "correct": 75,
+      "incorrect": 14,
+      "unclear": 0,
+      "accuracy": 0.8426966292134831,
+      "topic": "future_demand"
+    },
+    {
+      "total": 89,
+      "labeled": 89,
+      "correct": 88,
+      "incorrect": 1,
+      "unclear": 0,
+      "accuracy": 0.9887640449438202,
+      "topic": "inventory"
+    },
+    {
+      "total": 89,
+      "labeled": 89,
+      "correct": 89,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "topic": "order_cancellation"
+    },
+    {
+      "total": 89,
+      "labeled": 89,
+      "correct": 79,
+      "incorrect": 10,
+      "unclear": 0,
+      "accuracy": 0.8876404494382022,
+      "topic": "regional_demand"
+    },
+    {
+      "total": 89,
+      "labeled": 89,
+      "correct": 57,
+      "incorrect": 32,
+      "unclear": 0,
+      "accuracy": 0.6404494382022472,
+      "topic": "shortage"
+    },
+    {
+      "total": 88,
+      "labeled": 88,
+      "correct": 65,
+      "incorrect": 23,
+      "unclear": 0,
+      "accuracy": 0.7386363636363636,
+      "topic": "vehicle_sales"
+    },
+    {
+      "total": 10,
+      "labeled": 10,
+      "correct": 10,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "topic": "advisory_current_demand"
+    },
+    {
+      "total": 10,
+      "labeled": 10,
+      "correct": 8,
+      "incorrect": 2,
+      "unclear": 0,
+      "accuracy": 0.8,
+      "topic": "advisory_future_demand"
+    },
+    {
+      "total": 10,
+      "labeled": 10,
+      "correct": 10,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "topic": "advisory_shortage"
+    },
+    {
+      "total": 10,
+      "labeled": 10,
+      "correct": 10,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "topic": "advisory_technology_signal"
+    },
+    {
+      "total": 10,
+      "labeled": 10,
+      "correct": 10,
+      "incorrect": 0,
+      "unclear": 0,
+      "accuracy": 1.0,
+      "topic": "advisory_vehicle_signal"
+    }
+  ],
+  "llm_fallback_reasons": [
+    [
+      "validated retrieval candidate selected",
+      382
+    ],
+    [
+      "LLM-generated KG query selected",
+      165
+    ],
+    [
+      "advisory/recommendation route",
+      2
+    ],
+    [
+      "kept_selected_nonempty",
+      2
+    ],
+    [
+      "selected_best_executable_candidate",
+      1
+    ]
+  ]
+}

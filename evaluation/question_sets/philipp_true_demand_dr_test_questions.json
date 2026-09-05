@@ -1,0 +1,1334 @@
+[
+  {
+    "id": "PHIL-01-01",
+    "question": "What sources are loaded?",
+    "category": "source_and_scope",
+    "category_number": 1,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-01-02",
+    "question": "What is the scope of my sources?",
+    "category": "source_and_scope",
+    "category_number": 1,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-01-03",
+    "question": "Give me a brief summary of the sources.",
+    "category": "source_and_scope",
+    "category_number": 1,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-01-04",
+    "question": "What does True Demand cover?",
+    "category": "source_and_scope",
+    "category_number": 1,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-01-05",
+    "question": "Summarize the True Demand knowledge graph.",
+    "category": "source_and_scope",
+    "category_number": 1,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-01-06",
+    "question": "What does the Digital Reference ontology cover?",
+    "category": "source_and_scope",
+    "category_number": 1,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-01-07",
+    "question": "Summarize the Digital Reference source.",
+    "category": "source_and_scope",
+    "category_number": 1,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-01-08",
+    "question": "What is the Digital Reference used for?",
+    "category": "source_and_scope",
+    "category_number": 1,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-01-09",
+    "question": "How is the Digital Reference different from the True Demand graph?",
+    "category": "source_and_scope",
+    "category_number": 1,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-01",
+    "question": "How many triples are in the graph?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-02",
+    "question": "How many nodes do we have?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-03",
+    "question": "How many entities are in the graph?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-04",
+    "question": "How many classes are available?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-05",
+    "question": "How many predicates are available?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-06",
+    "question": "How many properties are available?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-07",
+    "question": "What classes are available?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-08",
+    "question": "What predicates are available?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-09",
+    "question": "What properties are available?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-10",
+    "question": "What can I ask?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-11",
+    "question": "Which topics are covered?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-12",
+    "question": "What question types are supported?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-13",
+    "question": "Do you support demand by quarter?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-14",
+    "question": "Do you support vehicle sales by month?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-15",
+    "question": "Do you have shortage questions?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-02-16",
+    "question": "Do you have ontology definition questions?",
+    "category": "graph_and_schema_metadata",
+    "category_number": 2,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "deterministic answer, no LLM needed",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-03-01",
+    "question": "Show current demand by region.",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-02",
+    "question": "List OEM total demand by region.",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-03",
+    "question": "Show total current demand from OEM customers by region.",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-04",
+    "question": "Show total current demand from Tier1 customers by region.",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-05",
+    "question": "Show total current demand from Semiconductor customers by region.",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-06",
+    "question": "Break down total regional demand by survey origin and region.",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-07",
+    "question": "Show regional demand by survey group.",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-08",
+    "question": "Can you show me the average quarterly demand percentage trend based on the OEM survey results?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-09",
+    "question": "Can you show me the average demand percentage trend for the Tier1 survey by quarter?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-10",
+    "question": "Can you show me the average quarterly percentage trend in demand for the Semiconductor survey?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-11",
+    "question": "Show demand for the last 3 months.",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "controlled_no_answer",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-12",
+    "question": "Show current demand for the last three months.",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "controlled_no_answer",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-13",
+    "question": "How has current demand developed in the past three months?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "controlled_no_answer",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-14",
+    "question": "Is current demand rising or falling?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-15",
+    "question": "Is the current demand increasing or decreasing?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-16",
+    "question": "How is current demand developing?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-17",
+    "question": "What is the current demand for the last month?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "controlled_no_answer",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-18",
+    "question": "What is the current demand for semiconductor for the last month?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "controlled_no_answer",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-19",
+    "question": "Is semiconductor demand rising or falling?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-03-20",
+    "question": "How is semiconductor demand developing in the past three months?",
+    "category": "regional_and_current_demand",
+    "category_number": 3,
+    "expected_route": "controlled_no_answer",
+    "expected_behavior_notes": "graph-backed answer, many deterministic",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-01",
+    "question": "Show future demand by region.",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-02",
+    "question": "What is the expected future demand for Tier1 for the upcoming quarters?",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-03",
+    "question": "How does Tier1 and semiconductor expected future demand development compare?",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-04",
+    "question": "What is the expected future demand for OEM per region?",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-05",
+    "question": "What is the expected future demand split across regions and technology nodes?",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-06",
+    "question": "Show the total percentage of future demand for OEM, detailed by quarter and region.",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-07",
+    "question": "Show the overall future demand for Tier1, grouped by region and quarter.",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-08",
+    "question": "Show the total percentage of future demand for Semiconductor, detailed by quarter and region.",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-09",
+    "question": "Show future semiconductor demand by technology category and quarter.",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-10",
+    "question": "Can you provide the total future demand for semiconductors segmented by technology category and quarter?",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-11",
+    "question": "What is the average percentage change in future demand broken down by vehicle type and quarter?",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-12",
+    "question": "What is the combined future demand for Option1, Option2, and Option3 in Automotive, broken down by quarter?",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-13",
+    "question": "Which vehicle type has the highest average future-demand change?",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-04-14",
+    "question": "Which technology categories account for the highest future semiconductor demand in each quarter?",
+    "category": "future_demand",
+    "category_number": 4,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or relevant clarification if too broad",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-05-01",
+    "question": "Which percentage changes apply to Tier1 automotive for baselines BL1 and BL2?",
+    "category": "current_demand_baselines",
+    "category_number": 5,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-05-02",
+    "question": "What is the average current-demand change for BL1 and BL2 products in the Tier1 Automotive segment?",
+    "category": "current_demand_baselines",
+    "category_number": 5,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-05-03",
+    "question": "What is the total Tier1 current demand percentage change difference between BL1 and BL2?",
+    "category": "current_demand_baselines",
+    "category_number": 5,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-05-04",
+    "question": "Compare BL1 and BL2 current-demand changes for Tier1 Automotive.",
+    "category": "current_demand_baselines",
+    "category_number": 5,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-06-01",
+    "question": "Show vehicle sales by month.",
+    "category": "vehicle_sales",
+    "category_number": 6,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-06-02",
+    "question": "Show actual vehicle sales by month.",
+    "category": "vehicle_sales",
+    "category_number": 6,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-06-03",
+    "question": "What are the monthly vehicle sales totals from actual transactions?",
+    "category": "vehicle_sales",
+    "category_number": 6,
+    "expected_route": "definition",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-06-04",
+    "question": "How do the forecasted vehicle unit totals break down by month?",
+    "category": "vehicle_sales",
+    "category_number": 6,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-06-05",
+    "question": "Compare actual and forecast vehicle-sales totals by month.",
+    "category": "vehicle_sales",
+    "category_number": 6,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-06-06",
+    "question": "Show me the difference between actual and forecasted vehicle sales totals broken down by month.",
+    "category": "vehicle_sales",
+    "category_number": 6,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-06-07",
+    "question": "Can you show the total number of vehicles sold each year, grouped by type?",
+    "category": "vehicle_sales",
+    "category_number": 6,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-06-08",
+    "question": "Which month has the highest actual vehicle sales?",
+    "category": "vehicle_sales",
+    "category_number": 6,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-07-01",
+    "question": "Summarize Tier1 inventory participant totals by component.",
+    "category": "inventory",
+    "category_number": 7,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-07-02",
+    "question": "What is the overall Tier1 inventory amount for each component and trend?",
+    "category": "inventory",
+    "category_number": 7,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-07-03",
+    "question": "Is inventory development for semiconductors stable?",
+    "category": "inventory",
+    "category_number": 7,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-07-04",
+    "question": "Are the inventories for Tier1 above targets?",
+    "category": "inventory",
+    "category_number": 7,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-07-05",
+    "question": "Show inventory trends by component.",
+    "category": "inventory",
+    "category_number": 7,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-07-06",
+    "question": "For each semiconductor technology category and inventory trend, how many inventory entries are recorded?",
+    "category": "inventory",
+    "category_number": 7,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-07-07",
+    "question": "Show inventory by technology category.",
+    "category": "inventory",
+    "category_number": 7,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-08-01",
+    "question": "How many companies report shortage by survey type?",
+    "category": "shortages",
+    "category_number": 8,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or graph-grounded advisory for monitoring questions",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-08-02",
+    "question": "How many companies have indicated shortages, grouped by the type of survey?",
+    "category": "shortages",
+    "category_number": 8,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or graph-grounded advisory for monitoring questions",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-08-03",
+    "question": "What is the number of OEM companies with and without a shortage?",
+    "category": "shortages",
+    "category_number": 8,
+    "expected_route": "definition",
+    "expected_behavior_notes": "graph-backed answer or graph-grounded advisory for monitoring questions",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-08-04",
+    "question": "How many Tier1 companies are experiencing a shortage compared to those that are not?",
+    "category": "shortages",
+    "category_number": 8,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or graph-grounded advisory for monitoring questions",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-08-05",
+    "question": "How many semiconductor companies report a shortage versus no shortage?",
+    "category": "shortages",
+    "category_number": 8,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or graph-grounded advisory for monitoring questions",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-08-06",
+    "question": "Review shortage exposure by survey group.",
+    "category": "shortages",
+    "category_number": 8,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or graph-grounded advisory for monitoring questions",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-08-07",
+    "question": "Which survey group appears most exposed to shortage?",
+    "category": "shortages",
+    "category_number": 8,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer or graph-grounded advisory for monitoring questions",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-09-01",
+    "question": "What is the total count of order cancellation responses per semiconductor technology category?",
+    "category": "order_cancellation",
+    "category_number": 9,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-09-02",
+    "question": "What is the trend for order cancellations?",
+    "category": "order_cancellation",
+    "category_number": 9,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-09-03",
+    "question": "Can you provide the total count of semiconductor order-cancellation responses grouped by technology category and response type?",
+    "category": "order_cancellation",
+    "category_number": 9,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-09-04",
+    "question": "Summarize increase, decrease, and stable order-cancellation response trends by semiconductor technology category.",
+    "category": "order_cancellation",
+    "category_number": 9,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-09-05",
+    "question": "Group order-cancellation participant counts by technology category and response type.",
+    "category": "order_cancellation",
+    "category_number": 9,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-10-01",
+    "question": "What is the average autonomous driving development broken down by vehicle type and SAE level?",
+    "category": "autonomous_driving",
+    "category_number": 10,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-10-02",
+    "question": "What is the average autonomous driving development for OEMs by vehicle type, SAE level, and year?",
+    "category": "autonomous_driving",
+    "category_number": 10,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-10-03",
+    "question": "How is the development of the autonomous driving level SAE for OEMs?",
+    "category": "autonomous_driving",
+    "category_number": 10,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-10-04",
+    "question": "What is the average autonomous-driving development for Tier1 suppliers, grouped by vehicle type, SAE level, and year?",
+    "category": "autonomous_driving",
+    "category_number": 10,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-10-05",
+    "question": "For each year, what is the average autonomous driving development percentage?",
+    "category": "autonomous_driving",
+    "category_number": 10,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-10-06",
+    "question": "Which vehicle type makes up the largest percentage at Level 5 autonomy?",
+    "category": "autonomous_driving",
+    "category_number": 10,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-11-01",
+    "question": "What are the names of all regions recorded in our database?",
+    "category": "catalog_lookup",
+    "category_number": 11,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed lookup answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-11-02",
+    "question": "What are the names of all technology categories?",
+    "category": "catalog_lookup",
+    "category_number": 11,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed lookup answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-11-03",
+    "question": "What are the quarter labels present in our dataset?",
+    "category": "catalog_lookup",
+    "category_number": 11,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed lookup answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-11-04",
+    "question": "Can you tell me how many companies are currently listed?",
+    "category": "catalog_lookup",
+    "category_number": 11,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed lookup answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-11-05",
+    "question": "List companies that reported semiconductor shortage.",
+    "category": "catalog_lookup",
+    "category_number": 11,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-backed lookup answer",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-12-01",
+    "question": "What is a Technology Node?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-02",
+    "question": "Define Future Demand.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-03",
+    "question": "What is True Demand?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-04",
+    "question": "What is a Semiconductor?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-05",
+    "question": "What is a Product?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-06",
+    "question": "What is a Customer?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-07",
+    "question": "What is a Supply Chain?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-08",
+    "question": "What is a Knowledge Graph?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-09",
+    "question": "What is an Ontology?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-10",
+    "question": "What is an OEM?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-11",
+    "question": "What is the definition of expected future demand?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-12",
+    "question": "What is a lobe?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-13",
+    "question": "What are single lobe and cross lobe?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-14",
+    "question": "What does is processed by mean?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-15",
+    "question": "What does acts on property mean?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-16",
+    "question": "Explain the has part relationship.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-17",
+    "question": "Define Technology Category.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-18",
+    "question": "Define Demand.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-19",
+    "question": "Define Component.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-20",
+    "question": "Define Product, Customer, and Supply Chain.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-21",
+    "question": "Define Technology Node and Current Demand.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-22",
+    "question": "Define Single Lobe, Cross Lobe, and Technology Node.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-23",
+    "question": "Define a class and an object property, for example Product and is processed by.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-24",
+    "question": "Demand vs current demand.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition_comparison",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-25",
+    "question": "What is the difference between current demand and future demand?",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition_comparison",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-12-26",
+    "question": "Compare single lobe and cross lobe.",
+    "category": "digital_reference_ontology",
+    "category_number": 12,
+    "expected_route": "definition_comparison",
+    "expected_behavior_notes": "deterministic ontology answer, no LLM needed when term is found",
+    "requires_live_fuseki": false
+  },
+  {
+    "id": "PHIL-13-01",
+    "question": "Which region should be monitored more closely based on current demand?",
+    "category": "advisory",
+    "category_number": 13,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-grounded advisory route or relevant clarification",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-13-02",
+    "question": "Where should planning attention focus based on the survey data?",
+    "category": "advisory",
+    "category_number": 13,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-grounded advisory route or relevant clarification",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-13-03",
+    "question": "Which demand area seems most uncertain?",
+    "category": "advisory",
+    "category_number": 13,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-grounded advisory route or relevant clarification",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-13-04",
+    "question": "What should I look at if I want to understand future demand risk?",
+    "category": "advisory",
+    "category_number": 13,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-grounded advisory route or relevant clarification",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-13-05",
+    "question": "Which survey group appears most exposed to shortage?",
+    "category": "advisory",
+    "category_number": 13,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-grounded advisory route or relevant clarification",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-13-06",
+    "question": "Which technology category should be reviewed first based on future demand?",
+    "category": "advisory",
+    "category_number": 13,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "graph-grounded advisory route or relevant clarification",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-13-07",
+    "question": "Which vehicle type has the most positive outlook with regards to demand development?",
+    "category": "advisory",
+    "category_number": 13,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "graph-grounded advisory route or relevant clarification",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-14-01",
+    "question": "Show me the demand.",
+    "category": "ambiguous_clarification",
+    "category_number": 14,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "relevant clarification options, not unrelated choices",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-14-02",
+    "question": "How is demand developing?",
+    "category": "ambiguous_clarification",
+    "category_number": 14,
+    "expected_route": "clarification_needed",
+    "expected_behavior_notes": "relevant clarification options, not unrelated choices",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-14-03",
+    "question": "What is the latest demand?",
+    "category": "ambiguous_clarification",
+    "category_number": 14,
+    "expected_route": "controlled_no_answer",
+    "expected_behavior_notes": "relevant clarification options, not unrelated choices",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-14-04",
+    "question": "Show semiconductor demand.",
+    "category": "ambiguous_clarification",
+    "category_number": 14,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "relevant clarification options, not unrelated choices",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-14-05",
+    "question": "Show demand by quarter.",
+    "category": "ambiguous_clarification",
+    "category_number": 14,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "relevant clarification options, not unrelated choices",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-14-06",
+    "question": "Show demand by region.",
+    "category": "ambiguous_clarification",
+    "category_number": 14,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "relevant clarification options, not unrelated choices",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-14-07",
+    "question": "Which area should I monitor?",
+    "category": "ambiguous_clarification",
+    "category_number": 14,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "relevant clarification options, not unrelated choices",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-14-08",
+    "question": "What should planning focus on?",
+    "category": "ambiguous_clarification",
+    "category_number": 14,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "relevant clarification options, not unrelated choices",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-15-01",
+    "question": "What is the weather in Munich?",
+    "category": "unsupported_out_of_scope",
+    "category_number": 15,
+    "expected_route": "definition",
+    "expected_behavior_notes": "controlled no-answer or clarification, not hallucinated answers",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-15-02",
+    "question": "What is the stock price of Infineon?",
+    "category": "unsupported_out_of_scope",
+    "category_number": 15,
+    "expected_route": "definition",
+    "expected_behavior_notes": "controlled no-answer or clarification, not hallucinated answers",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-15-03",
+    "question": "Predict semiconductor demand for next year.",
+    "category": "unsupported_out_of_scope",
+    "category_number": 15,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "controlled no-answer or clarification, not hallucinated answers",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-15-04",
+    "question": "What will happen in the market in 2030?",
+    "category": "unsupported_out_of_scope",
+    "category_number": 15,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "controlled no-answer or clarification, not hallucinated answers",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-15-05",
+    "question": "Give me a business decision for China.",
+    "category": "unsupported_out_of_scope",
+    "category_number": 15,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "controlled no-answer or clarification, not hallucinated answers",
+    "requires_live_fuseki": true
+  },
+  {
+    "id": "PHIL-15-06",
+    "question": "Show demand for a product that is not in the graph.",
+    "category": "unsupported_out_of_scope",
+    "category_number": 15,
+    "expected_route": "kg_query",
+    "expected_behavior_notes": "controlled no-answer or clarification, not hallucinated answers",
+    "requires_live_fuseki": true
+  }
+]

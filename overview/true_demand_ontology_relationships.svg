@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #16242a; }
+      .title { font-size: 38px; font-weight: 800; }
+      .sub { font-size: 19px; fill: #60747b; }
+      .section-label { font-size: 14px; font-weight: 800; fill: #007f78; letter-spacing: .1em; text-transform: uppercase; }
+      .panel { fill: #f7fafb; stroke: #d8e4e8; stroke-width: 2; rx: 18; }
+      .card { fill: #ffffff; stroke: #cbd9df; stroke-width: 2; rx: 12; }
+      .source { fill: #eef4ff; stroke: #5d82c7; }
+      .domain { fill: #edfafa; stroke: #19a99f; }
+      .dimension { fill: #fff7e8; stroke: #d79b35; }
+      .support { fill: #f3fbf5; stroke: #4d9d69; }
+      .card-title { font-size: 20px; font-weight: 800; }
+      .txt { font-size: 15px; fill: #465a63; }
+      .edge { stroke: #334155; stroke-width: 2.6; fill: none; marker-end: url(#arrow); }
+      .soft-edge { stroke: #6f8790; stroke-width: 2.2; fill: none; marker-end: url(#arrow); stroke-dasharray: 7 7; }
+      .legend-title { font-size: 17px; font-weight: 800; }
+      .legend { font-size: 14px; fill: #52666f; }
+      .dot-source { fill: #eef4ff; stroke: #5d82c7; stroke-width: 2; }
+      .dot-domain { fill: #edfafa; stroke: #19a99f; stroke-width: 2; }
+      .dot-dimension { fill: #fff7e8; stroke: #d79b35; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1050" fill="#fbfcfe"/>
+  <text class="title" x="70" y="70">True Demand Ontology: Key Areas Used for Q&amp;A</text>
+  <text class="sub" x="70" y="102">Corporate view of the major ontology areas used by the KGQA system. This is simplified for explanation, not a full edge-level graph.</text>
+
+  <!-- Background panels -->
+  <rect class="panel" x="70" y="155" width="310" height="680"/>
+  <rect class="panel" x="440" y="155" width="700" height="680"/>
+  <rect class="panel" x="1200" y="155" width="330" height="680"/>
+
+  <text class="section-label" x="105" y="195">Data sources</text>
+  <text class="section-label" x="475" y="195">Analytical domains</text>
+  <text class="section-label" x="1235" y="195">Shared dimensions</text>
+
+  <!-- Sources -->
+  <rect class="card source" x="105" y="230" width="240" height="120"/>
+  <text class="card-title" x="130" y="265">Survey Origins</text>
+  <text class="txt" x="130" y="294">OEM_Survey</text>
+  <text class="txt" x="130" y="317">Tier1_Survey</text>
+  <text class="txt" x="130" y="340">Semiconductor_Survey</text>
+
+  <rect class="card source" x="105" y="405" width="240" height="105"/>
+  <text class="card-title" x="130" y="440">Companies</text>
+  <text class="txt" x="130" y="470">Company</text>
+  <text class="txt" x="130" y="493">companyName</text>
+
+  <rect class="card source" x="105" y="565" width="240" height="105"/>
+  <text class="card-title" x="130" y="600">Survey Responses</text>
+  <text class="txt" x="130" y="630">shortage status</text>
+  <text class="txt" x="130" y="653">participant counts</text>
+
+  <!-- Domains -->
+  <rect class="card domain" x="475" y="230" width="285" height="120"/>
+  <text class="card-title" x="500" y="265">Regional Demand</text>
+  <text class="txt" x="500" y="294">CurrentRegionalDemand</text>
+  <text class="txt" x="500" y="317">DemandForRegion</text>
+  <text class="txt" x="500" y="340">currentDemand</text>
+
+  <rect class="card domain" x="820" y="230" width="285" height="120"/>
+  <text class="card-title" x="845" y="265">Demand Analysis</text>
+  <text class="txt" x="845" y="294">CurrentDemandAnalysis</text>
+  <text class="txt" x="845" y="317">FutureDemandAnalysis</text>
+  <text class="txt" x="845" y="340">percentage change</text>
+
+  <rect class="card domain" x="475" y="405" width="285" height="120"/>
+  <text class="card-title" x="500" y="440">Inventory</text>
+  <text class="txt" x="500" y="469">InventoryDevelopment</text>
+  <text class="txt" x="500" y="492">ComponentShare</text>
+  <text class="txt" x="500" y="515">inventory trend</text>
+
+  <rect class="card domain" x="820" y="405" width="285" height="120"/>
+  <text class="card-title" x="845" y="440">Order Cancellation</text>
+  <text class="txt" x="845" y="469">OrderCancellation</text>
+  <text class="txt" x="845" y="492">response type</text>
+  <text class="txt" x="845" y="515">participantCount</text>
+
+  <rect class="card domain" x="475" y="580" width="285" height="120"/>
+  <text class="card-title" x="500" y="615">Vehicle Sales</text>
+  <text class="txt" x="500" y="644">VehicleSalesObservation</text>
+  <text class="txt" x="500" y="667">YearlySalesData</text>
+  <text class="txt" x="500" y="690">actual / forecast</text>
+
+  <rect class="card domain" x="820" y="580" width="285" height="120"/>
+  <text class="card-title" x="845" y="615">Autonomous Driving</text>
+  <text class="txt" x="845" y="644">AutonomousDrivingDevelopment</text>
+  <text class="txt" x="845" y="667">SAE level</text>
+  <text class="txt" x="845" y="690">hasPercentage</text>
+
+  <!-- Dimensions -->
+  <rect class="card dimension" x="1235" y="230" width="250" height="105"/>
+  <text class="card-title" x="1260" y="265">Region</text>
+  <text class="txt" x="1260" y="294">region labels</text>
+  <text class="txt" x="1260" y="317">inRegion</text>
+
+  <rect class="card dimension" x="1235" y="375" width="250" height="120"/>
+  <text class="card-title" x="1260" y="410">Technology</text>
+  <text class="txt" x="1260" y="439">TechnologyCategory</text>
+  <text class="txt" x="1260" y="462">TechnologyNode</text>
+  <text class="txt" x="1260" y="485">ConversionFactor</text>
+
+  <rect class="card dimension" x="1235" y="535" width="250" height="120"/>
+  <text class="card-title" x="1260" y="570">Vehicle / SAE</text>
+  <text class="txt" x="1260" y="599">VehicleType</text>
+  <text class="txt" x="1260" y="622">SAELevel</text>
+  <text class="txt" x="1260" y="645">BEV / ICE / mixed</text>
+
+  <rect class="card dimension" x="1235" y="695" width="250" height="105"/>
+  <text class="card-title" x="1260" y="730">Time</text>
+  <text class="txt" x="1260" y="759">year, month</text>
+  <text class="txt" x="1260" y="782">quarter labels</text>
+
+  <!-- Clean connectors -->
+  <path class="edge" d="M345 290 H455"/>
+  <path class="edge" d="M345 458 H455"/>
+  <path class="edge" d="M345 618 H455"/>
+
+  <path class="soft-edge" d="M1105 290 H1215"/>
+  <path class="soft-edge" d="M1105 465 H1215"/>
+  <path class="soft-edge" d="M1105 640 H1215"/>
+
+  <path class="soft-edge" d="M960 350 C1030 745 1160 747 1215 747"/>
+  <path class="soft-edge" d="M620 700 C730 845 1110 830 1215 747"/>
+
+  <!-- Legend -->
+  <rect class="card support" x="70" y="880" width="1460" height="105"/>
+  <text class="legend-title" x="105" y="920">How to read this diagram</text>
+  <circle class="dot-source" cx="112" cy="952" r="9"/>
+  <text class="legend" x="130" y="957">Source/context classes identify where data comes from.</text>
+  <circle class="dot-domain" cx="520" cy="952" r="9"/>
+  <text class="legend" x="538" y="957">Analytical domains contain the main measures users ask about.</text>
+  <circle class="dot-dimension" cx="1002" cy="952" r="9"/>
+  <text class="legend" x="1020" y="957">Shared dimensions provide grouping, filtering, and comparison axes.</text>
+</svg>

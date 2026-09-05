@@ -1,0 +1,54 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix survey: <http://www.semanticweb.org/gibajajulena/ontologies/2025/9/OEM_Monthly_Survey#> .
+@prefix time: <http://www.w3.org/2006/time#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+survey:AggregatedDemand a owl:Class ;
+    rdfs:label "Aggregated Demand"@en ;
+    rdfs:comment "Represents aggregated demand over a specific temporal interval."@en ;
+    rdfs:subClassOf [ a owl:Restriction ;
+            owl:onProperty time:hasDuration ;
+            owl:someValuesFrom time:Duration ] .
+
+survey:January2023 a survey:Month ;
+    rdfs:label "January 2023"@en ;
+    time:inXSDDate "2023-01"^^xsd:date .
+
+survey:OEM_Monthly_Survey a owl:Ontology ;
+    owl:imports <http://www.w3.org/2006/time> .
+
+survey:Q1_2023 a survey:Quarter ;
+    rdfs:label "Q1 2023"@en ;
+    time:hasBeginning "2023-01-01"^^xsd:date ;
+    time:hasEnd "2023-03-31"^^xsd:date .
+
+survey:TimePeriod a owl:Class ;
+    rdfs:label "Time Period"@en ;
+    rdfs:comment "Represents a period of time aligned to OWL-Time's TemporalEntity."@en ;
+    rdfs:subClassOf time:TemporalEntity .
+
+survey:forTimePeriod a owl:ObjectProperty ;
+    rdfs:label "For Time Period"@en ;
+    rdfs:comment "Relates a VehicleSalesObservation to a time period using OWL-Time semantics."@en ;
+    rdfs:domain survey:VehicleSalesObservation ;
+    rdfs:range time:TemporalEntity ;
+    rdfs:subPropertyOf time:hasTime .
+
+survey:hasYear a owl:DatatypeProperty ;
+    rdfs:label "Year"@en ;
+    rdfs:comment "Specifies the year of a vehicle sales observation."@en ;
+    rdfs:domain survey:VehicleSalesObservation ;
+    rdfs:range xsd:integer ;
+    rdfs:subPropertyOf time:inXSDgYear .
+
+survey:Month a owl:Class ;
+    rdfs:label "Month"@en ;
+    rdfs:comment "Represents a month aligned to OWL-Time's Temporal concepts."@en ;
+    rdfs:subClassOf time:DateTimeDescription .
+
+survey:Quarter a owl:Class ;
+    rdfs:label "Quarter"@en ;
+    rdfs:comment "A temporal interval representing a quarter of a year."@en ;
+    rdfs:subClassOf time:ProperInterval .
+

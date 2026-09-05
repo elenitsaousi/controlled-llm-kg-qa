@@ -5,11 +5,6 @@ from typing import Dict, Iterable, List
 import numpy as np
 import joblib
 
-try:
-    import xgboost as xgb
-except ImportError:  # pragma: no cover - optional dependency
-    xgb = None
-
 from ranking.feature_config import FEATURE_NAMES
 
 
@@ -52,8 +47,11 @@ class LogisticRanker(QueryRanker):
 class XGBRanker(QueryRanker):
     def __init__(self, model_path: str = DEFAULT_XGB_MODEL):
         super().__init__()
-        if xgb is None:
-            raise ImportError("xgboost is not installed")
+        try:
+            import xgboost as xgb
+        except ImportError as exc:
+            raise ImportError("xgboost is not installed") from exc
+        self._xgb = xgb
         self.model_path = model_path
         self.model = xgb.Booster()
         self.model.load_model(model_path)
@@ -62,5 +60,5 @@ class XGBRanker(QueryRanker):
         X = self._to_matrix(feature_dicts)
         if X.size == 0:
             return np.array([])
-        dmat = xgb.DMatrix(X)
+        dmat = self._xgb.DMatrix(X)
         return self.model.predict(dmat)
